@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/styles.css">
 <style>
-/* Mapa: barra izquierda con pestañas (Remates, Buscar plano, Comparar, Top 10), mapa a la derecha, ficha flotante. En celular: mapa arriba y barra abajo. */
+/* Mapa: barra izquierda con pestañas (Remates, Buscar plano, Comparar, PRO), mapa a la derecha, ficha flotante. En celular: mapa arriba y barra abajo. */
 .app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
 header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 9px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -247,7 +247,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
         <button role="tab" data-t="rem" aria-selected="true">Remates</button>
         <button role="tab" data-t="pla" aria-selected="false">Buscar plano</button>
         <button role="tab" data-t="cmp" aria-selected="false">Comparar<span class="n" id="cmpN">0</span></button>
-        <button role="tab" data-t="top" aria-selected="false">Top 10</button>
+        <button role="tab" data-t="top" aria-selected="false" aria-label="Herramientas PRO"><span class="pro">PRO</span></button>
       </div>
 
       <div class="pane" id="p-rem" role="tabpanel">
@@ -278,8 +278,8 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
             <label><input type="checkbox" id="fPR"> Cantón con plan regulador vigente</label>
             <label><input type="checkbox" id="fAgua"> Sin ríos ni quebradas a menos de 50 m</label>
           </div>
-          <div class="fld"><span class="lbl">Atributos del lote</span><div class="attrs" id="attrs"></div></div>
-          <div class="prohint" id="attrHint"><span class="lock">Atributos incluidos en la suscripción</span><button class="linkbtn" data-planes>Ver planes</button></div>
+          <div class="fld"><span class="lbl">Atributos del lote <span class="pro">PRO</span></span><div class="attrs" id="attrs"></div></div>
+          <div class="prohint" id="attrHint"><span><span class="pro">PRO</span> Atributos de la versión PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>
         </div></details>
         <div class="listhead"><span id="count"></span>
           <span><select id="order" aria-label="Ordenar"><option value="fecha">Próxima fecha</option><option value="precio">Menor base</option><option value="area">Mayor área</option><option value="m2">Menor precio/m²</option><option value="score">Mejor índice</option></select>
@@ -305,7 +305,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
       </div></div>
 
       <div class="pane" id="p-cmp" role="tabpanel" hidden><div class="pad" id="cmpOut"></div></div>
-      <div class="pane" id="p-top" role="tabpanel" hidden><div class="pad" id="topOut"></div></div>
+      <div class="pane" id="p-top" role="tabpanel" hidden><div class="pad"><div id="proHub" class="pad" style="padding:0"></div><div id="topOut" class="pad" style="padding:0"></div></div></div>
     </aside>
 
     <div class="mapwrap">
@@ -331,6 +331,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/proj4@2.9.0/dist/proj4.js" integrity="sha256-tsjlDiRXDSAsuQALr13ta74LzDw1fOf0yfPGMB2FmfU=" crossorigin=""></script>
 <script src="assets/core.js"></script>
+<script src="assets/pro.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

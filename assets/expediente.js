@@ -118,6 +118,14 @@
         <div class="foot">Bases de remate vigentes en el mismo cantón, no precios de venta. Sirven para ubicar el precio en su contexto.</div>`);
     }
 
+    if (PX.isPro()) {
+      const rs = PX.pro.riesgos(r), lv = ['', 'Información', 'Medio', 'Alto'];
+      h += sec(N(), 'Riesgos del proceso ' + PX.PRO, `<div class="rlist">${rs.map(x => `<div class="rk r${x.n}"><i></i><div><b>${esc(x.t)}</b><span class="tag">${lv[x.n]}</span><p>${esc(x.d)}</p></div></div>`).join('') || '<p>No se detectaron riesgos en los datos disponibles.</p>'}</div>
+        <div class="lbl">Antes de ofertar</div><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul>`);
+      const pv = PX.pro.potDefaults(r), pc = PX.pro.potCalc(pv);
+      if (pv.area) h += sec(N(), 'Potencial constructivo ' + PX.PRO, `<div class="kpi"><div><small>Huella (${pv.cob} % de cobertura)</small><b class="num">${fnum(pc.huella, 0)} m²</b></div><div><small>Construible en ${pv.pisos} pisos</small><b class="num">${fnum(pc.total, 0)} m²</b></div><div><small>Unidades de ${pv.unidad} m²</small><b class="num">${pc.unidades}</b></div><div><small>Lotes de ${pv.loteMin} m²</small><b class="num">${pc.lotes}</b></div></div>
+        <div class="foot">Supuestos generales (${pv.util} % aprovechable, ${pv.circ} % de circulaciones). Ajústelos en el mapa con la herramienta PRO; los valores reales los fija el plan regulador.</div>`);
+    }
     if (!r.isPlano && r.txt) h += sec(N(), 'Texto del edicto', `<div class="edicto">${esc(r.txt)}</div><div class="foot">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y números de cédula.</div>`, 'long');
 
     h += sec(N(), 'Fuentes', `<ul style="margin:0;padding-left:18px;font-size:12.5px;display:grid;gap:3px">

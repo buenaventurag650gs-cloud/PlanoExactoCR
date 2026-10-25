@@ -25,7 +25,7 @@
   $('kpis').innerHTML = `<span><b class="num">${live.length}</b> remates de fincas vigentes</span>
     <span title="Tipo de cambio de referencia de venta del BCCR">TC BCCR ${PX.mh(PX.tc.venta, 'CRC')} · ${esc(PX.tc.fecha)}</span>`;
   function paintPlan() {
-    const b = $('planBadge'); b.textContent = PX.isPro() ? 'Suscripción' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : '');
+    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : '');
     $('attrHint').hidden = PX.isPro();
   }
 
@@ -85,7 +85,7 @@
   }
   function setCur(c) {
     if (c !== PX.cur) { $('fMin').value = ''; $('fMax').value = ''; }
-    PX.setCur(c); setCurUI(); apply(); if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop();
+    PX.setCur(c); setCurUI(); apply(); drawVectors(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop();
   }
   $('cCRC').onclick = () => setCur('CRC'); $('cUSD').onclick = () => setCur('USD');
 
@@ -242,13 +242,14 @@
     { id: 'curvas', n: 'Curvas de nivel cada 10 m', z: 15, lg: [['ln', CURV, 'Curva de nivel']], mk: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:curvas_5000', { minZoom: 15, zIndex: 5, sld_body: sld('IGN_5:curvas_5000', lineRule(CURV, 0.7, 0.75)), attribution: 'Curvas &copy; IGN' }) },
     { id: 'prot', n: 'Franjas de protección de ríos', note: 'GAM, no oficial', z: 13, lg: [['', PROT, 'Franja de protección']], mk: () => wms(SINIA + 'PNUD_TEVU/wms', 'areas_proteccion_no_oficial', { minZoom: 13, zIndex: 4, sld_body: sld('areas_proteccion_no_oficial', polyRule(PROT, 0.22, PROT, 0.8)), attribution: 'Protección de ríos (no oficial) &copy; PNUD-TEVU' }) },
     { id: 'psa', n: 'Pago por servicios ambientales 2025', lg: [['', PSA, 'Contrato PSA']], mk: () => wms(SINIA + 'FONAFIFO/wms', 'psa2025', { zIndex: 4, sld_body: sld('psa2025', polyRule(PSA, 0.3, '#386641', 0.8)), attribution: 'PSA &copy; FONAFIFO' }) },
+    { g: 'Mercado', id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
     { g: 'Infraestructura', id: 'vias', n: 'Vías públicas', z: 13, mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, opacity: 0.8, zIndex: 7, attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
     { id: 'zmt', n: 'Zona pública costera', z: 13, mk: () => wms('https://geos.snitcr.go.cr/be/IGN/wms', 'IGN:lineas_digitales,IGN:mojones', { minZoom: 13, zIndex: 7, attribution: 'Zona pública &copy; IGN' }) }
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base', 'calles'); if (!base[baseId]) baseId = 'calles';
-  const vec = { cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
+  const vec = { precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   function syncLayers() {
@@ -262,7 +263,7 @@
       if (l.g) h += `<h4>${l.g}</h4>`;
       const ok = allowed(l), on = lyrState[l.id] && ok;
       h += `<label class="lyr${ok ? '' : ' locked'}" data-id="${l.id}"><input type="checkbox"${on ? ' checked' : ''}${ok ? '' : ' disabled'}>
-        <span>${l.n}${l.note ? ` <small>${l.note}</small>` : ''}${l.z ? ` <small>zoom ${l.z}+</small>` : ''}</span>${ok ? (l.hover && on ? '<small>pasa el mouse</small>' : '') : '<span class="lock">Suscripción</span>'}
+        <span>${l.n}${l.note ? ` <small>${l.note}</small>` : ''}${l.z ? ` <small>zoom ${l.z}+</small>` : ''}</span><span>${l.free ? '' : PX.PRO}${ok && l.hover && on ? ' <small>pasa el mouse</small>' : ''}</span>
         ${on && l.lg ? `<span class="lg">${l.lg.map(([t, c, n]) => `<span><i class="${t}" style="--c:${c}"></i>${esc(n)}</span>`).join('')}</span>` : ''}</label>`;
     }
     h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, MINAE, INVU y CCSS con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar.</div>`;
@@ -280,6 +281,16 @@
 
   // Vectores locales
   function prepZV() { if (!ZV) return; for (const f of ZV.features) { const g = zvGroup(f.properties.n); f.properties.col = g[2]; f.bb = bbox(f.geometry); } if (CANT) CANT.features.forEach(f => f.bb = bbox(f.geometry)); if (PX.ctx.planes) PX.ctx.planes.features.forEach(f => f.bb = bbox(f.geometry)); }
+  // Mediana de US$/m² de remates vigentes por cantón (código de cantón: provincia = primer dígito)
+  const medCant = f => PX.medC[Math.floor(f.properties.c / 100) + '|' + f.properties.k];
+  function priceClasses() {
+    const brks = PX.cur === 'USD' ? [10, 25, 50, 100, 200] : [5000, 12000, 25000, 50000, 100000];
+    const cols = ['#FFF3C4', '#F9D57E', '#F0A64A', '#D9733A', '#B04A2E', '#7A2E25'];
+    const col = v => cols[brks.findIndex(b => v < b) < 0 ? brks.length : brks.findIndex(b => v < b)];
+    const u = PX.cur === 'USD' ? 'US$' : '₡', f = v => v.toLocaleString('es-CR');
+    const leg = cols.map((c, i) => ['', c, i === 0 ? `menos de ${u} ${f(brks[0])}/m²` : i === brks.length ? `${u} ${f(brks[i - 1])}/m² o más` : `${u} ${f(brks[i - 1])} – ${f(brks[i])}/m²`]).concat([['', 'var(--chip)', 'Menos de 3 remates con área']]);
+    return { col, leg };
+  }
   function bbox(g) { let a = [180, 90, -180, -90]; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates; for (const p of polys) for (const [x, y] of p[0]) { if (x < a[0]) a[0] = x; if (y < a[1]) a[1] = y; if (x > a[2]) a[2] = x; if (y > a[3]) a[3] = y; } return a; }
   const hit = (fc, x, y) => fc && fc.features.find(f => (!f.bb || (x >= f.bb[0] && x <= f.bb[2] && y >= f.bb[1] && y <= f.bb[3])) && PX.inGeom(x, y, f.geometry));
   function drawVectors() {
@@ -289,6 +300,11 @@
     vec.distritos.addLayer(L.geoJSON(DIST, Object.assign({ style: { color: css('--dline'), weight: 0.7, opacity: 0.9, dashArray: '2 3', fill: false }, attribution: 'Límites &copy; IGN (SNIT)' }, o)));
     if (CANT) vec.cantones.addLayer(L.geoJSON(CANT, Object.assign({ style: { color: css('--muted'), weight: 1.3, opacity: 0.7, fill: false } }, o)));
     if (PX.ctx.planes) vec.planes.addLayer(L.geoJSON(PX.ctx.planes, Object.assign({ style: f => { const c = prClass(f.properties.cat)[2]; return { color: c, weight: 1, opacity: 0.8, fillColor: c, fillOpacity: 0.2 }; }, attribution: 'Planes reguladores &copy; INVU' }, o)));
+    if (CANT) {
+      const PC = priceClasses();
+      LY.find(l => l.id === 'precios').lg = PC.leg;
+      vec.precios.addLayer(L.geoJSON(CANT, Object.assign({ style: f => { const m = medCant(f); const c = m ? PC.col(PX.conv(m.v, 'USD', PX.cur)) : null; return { color: css('--panel'), weight: 0.6, fillColor: c || css('--chip'), fillOpacity: c ? 0.62 : 0.25 }; } }, o)));
+    }
     if (ZV) vec.zv.addLayer(L.geoJSON(ZV, Object.assign({ style: f => ({ color: f.properties.col, weight: 0.5, opacity: 0.6, fillColor: f.properties.col, fillOpacity: 0.38 }), attribution: 'Zonas de vida &copy; CENIGA (MINAE)' }, o)));
     for (const s of PX.ctx.salud || []) vec.salud.addLayer(L.circleMarker([s.ll[1], s.ll[0]], { renderer: ctxR, pane: 'ctx', radius: s.c === 'EBAIS' ? 3 : 5, color: css('--panel'), weight: 1, fillColor: css('--accent'), fillOpacity: 0.9, interactive: false }));
     syncLayers();
@@ -313,6 +329,7 @@
       else { rows.push(['Uso del suelo', '…']); clearTimeout(cobT); cobT = setTimeout(async () => { const v = await PX.cobertura(x.toFixed(5), y.toFixed(5)); lastCob = { k, v: v || 'Sin dato en este punto' }; hover(e); }, 380); }
     }
     if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador · ' + f.properties.canton, PX.prText(f.properties)]); }
+    if (on('precios')) { const f = hit(CANT, x, y); if (f) { const m = medCant(f); rows.push(['Precio por m² · ' + f.properties.k, m ? `${PX.mt(PX.conv(m.v, 'USD', PX.cur), PX.cur)} por m² (mediana de ${m.n} remates)` : 'Menos de 3 remates con área']); } }
     if (on('cantones')) { const f = hit(CANT, x, y); const d = hit(DIST, x, y); if (f) rows.push(['Ubicación', [d && d.properties.d, f.properties.k].filter(Boolean).join(', ')]); }
     if (!rows.length) { hb.hidden = true; return; }
     hb.innerHTML = rows.map(([k, v]) => `<div><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('');
@@ -362,9 +379,17 @@
     return `<div class="expbox">
       <div class="p"><b>Expediente del lote</b>${has ? '<span class="tag ok">Disponible</span>' : PX.isPro() ? '<span class="tag gold">Incluido en tu suscripción</span>' : `<span>${PX.usdH(PX.PRECIOS.expediente)} por lote</span>`}</div>
       <ul><li>Texto del edicto${r.isPlano ? ' (si está en remate)' : ''}, datos registrales y despacho</li><li>Gravámenes y servidumbres explicados en lenguaje claro</li><li>Entorno: ríos, relieve, cobertura, salud, escuela y zona de vida</li><li>Análisis multidimensional y comparables de la zona</li><li>Versión imprimible con mapa del predio</li></ul>
-      <div class="acts"><button class="btn primary" data-act="exp">${label}</button>${!has && !PX.isPro() ? '<button class="btn gold" data-planes>Suscripción: 200 al mes</button>' : ''}</div>
+      <div class="acts"><button class="btn primary" data-act="exp">${label}</button>${!has && !PX.isPro() ? '<button class="btn gold" data-planes>PRO: 200 al mes</button>' : ''}</div>
       <div class="foot">No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div>`;
   }
+  function proBox(r) {
+    const rs = PX.pro.riesgos(r), alto = rs.filter(x => x.n === 3).length, med = rs.filter(x => x.n === 2).length, pro = PX.isPro();
+    const pot = PX.pro.potCalc(PX.pro.potDefaults(r));
+    return `<div class="procard"><h3>${PX.PRO} Herramientas</h3>
+      <p>${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : 'Potencial constructivo, prefactibilidad financiera, riesgos del proceso y alertas de este lote.'}</p>
+      <div class="acts"><button class="btn sm" data-protool="potencial">Potencial constructivo</button><button class="btn sm" data-protool="prefa">Prefactibilidad</button><button class="btn sm" data-protool="riesgos">Riesgos${pro ? ` <span class="tag${alto ? ' warn' : ''}">${alto + med}</span>` : ''}</button><button class="btn sm" data-protool="alertas">Alertas</button></div></div>`;
+  }
+  const openPro = (r, t) => PX.pro.open(r, t, $('layer'), { changed: () => { renderList(); if (open) openFicha(open, false); } });
   function listMenu(r) {
     return `<div class="menu" id="lmenu" hidden>${PX.acct.listas.map(l => `<label><input type="checkbox" data-l="${l.id}"${l.items.some(i => i.k === r.key) ? ' checked' : ''}> ${esc(l.n)} <span class="muted">(${l.items.length})</span></label>`).join('')}
       <div class="row2"><input type="text" id="lnew" placeholder="Nueva lista" aria-label="Nombre de la nueva lista"><button class="btn sm" id="lnewb">Crear</button></div></div>`;
@@ -412,7 +437,7 @@
       <div class="sect"><h3>Índice PlanoExacto</h3>
         <div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Promedio ponderado de sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div style="margin-top:10px" class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
-        ${full ? '' : '<div class="prohint" style="margin-top:6px"><span class="lock">Desglose en el expediente o la suscripción</span><button class="linkbtn" data-planes>Ver planes</button></div>'}</div>
+        ${full ? '' : '<div class="prohint" style="margin-top:6px"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>'}</div>
       <div class="sect"><h3>Resumen</h3><dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
@@ -423,8 +448,9 @@
         ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n)}<small class="sub">${PX.dist(e.salud.d)}</small></dd>` : ''}
         ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span> <small class="sub">Explicadas en el expediente</small>` : 'Ninguna citada en el edicto'}</dd>`}
       </dl></div>
-      ${r.isPlano ? '' : `<div class="sect"><h3>Atributos del lote ${pro ? '' : '<span class="tag gold">Suscripción</span>'}</h3>
+      ${r.isPlano ? '' : `<div class="sect"><h3>Atributos del lote ${PX.PRO}</h3>
         <div class="chips${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="chip">${esc(t)}</span>`).join('') || '<span class="chip">Sin atributos destacados</span>'}</div></div>`}
+      ${proBox(r)}
       ${expBox(r)}
       <div class="foot">Información orientativa extraída de fuentes públicas. No sustituye la certificación del Registro Nacional ni la revisión del expediente judicial.</div>
     </div>`;
@@ -444,11 +470,13 @@
       }
     }
     try { history.replaceState(null, '', '#' + key); } catch (err) {}
+    if (tab === 'top') renderHub();
     f.scrollTop = 0;
   }
-  function closeFicha() { $('ficha').hidden = true; open = null; selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+  function closeFicha() { $('ficha').hidden = true; open = null; if (tab === 'top') renderHub(); selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.querySelector('#layer > *')) closeLayer(); else if (open) closeFicha(); } });
   $('ficha').addEventListener('click', e => {
+    const pt = e.target.closest('[data-protool]'); if (pt && open) { openPro(PX.item(open), pt.dataset.protool); return; }
     const b = e.target.closest('[data-act]'); if (!b || !open) return;
     const r = PX.item(open), act = b.dataset.act;
     if (act === 'exp') return goExpediente(r);
@@ -482,14 +510,14 @@
       <div><b>${esc(r.nom)}</b><div class="muted">${esc(r.lugar)}</div></div>
       <div class="plans" style="grid-template-columns:1fr 1fr">
         <div class="plan"><h3>Solo este lote</h3><div class="pr">${PX.usdH(PX.PRECIOS.expediente)}</div><ul><li>Expediente completo e imprimible</li><li>Queda disponible en Mi cuenta</li></ul><button class="btn primary" data-buy="${r.key}">Comprar expediente</button></div>
-        <div class="plan hl"><h3>Suscripción</h3><div class="pr">${PX.usdH(PX.PRECIOS.suscripcion)} <small>al mes</small></div><ul><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Top 10 por provincia, atributos y todas las capas</li></ul><button class="btn" data-sub>Suscribirme</button></div>
+        <div class="plan hl"><h3>Suscripción ${PX.PRO}</h3><div class="pr">${PX.usdH(PX.PRECIOS.suscripcion)} <small>al mes</small></div><ul><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Top 10 por provincia, atributos y todas las capas</li></ul><button class="btn" data-sub>Suscribirme</button></div>
       </div>
       <div class="demo">Modo demostración: el pago aún no está conectado. Al confirmar se activa el acceso en este navegador.</div>`, true);
   }
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-buy]');
     if (b) { const r = PX.item(b.dataset.buy); PX.comprar(r.key, r.nom); closeLayer(); location.href = 'expediente.html?k=' + encodeURIComponent(r.key); }
-    if (e.target.closest('[data-sub]')) { PX.acct.plan = 'pro'; PX.saveAcct(); closeLayer(); toast('Suscripción activada (demostración)'); }
+    if (e.target.closest('[data-sub]')) { PX.acct.plan = 'pro'; PX.saveAcct(); closeLayer(); toast('PRO activado (demostración)'); }
     if (e.target.closest('[data-free]')) { PX.acct.plan = 'free'; PX.saveAcct(); closeLayer(); toast('Volviste al plan gratuito'); }
     if (e.target.closest('[data-close]') || e.target.classList.contains('scrim')) closeLayer();
   });
@@ -515,8 +543,8 @@
         <div class="plan"><h3>Expediente por lote</h3><div class="pr">${PX.usdH(PX.PRECIOS.expediente)} <small>por lote</small></div>
           <ul><li>Texto del edicto y datos registrales</li><li>Gravámenes y servidumbres explicados</li><li>Entorno completo: ríos, relieve, cobertura, salud, escuela</li><li>Análisis multidimensional y comparables</li><li>Versión imprimible con nota legal</li></ul>
           <span class="muted" style="font-size:12.5px">Se compra desde la ficha de cada lote.</span></div>
-        <div class="plan${pro ? ' hl' : ''}"><h3>Suscripción</h3><div class="pr">${PX.usdH(PX.PRECIOS.suscripcion)} <small>al mes</small></div>
-          <ul><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Top 10 del mes por provincia</li><li>Atributos del lote: plano, construcción, frente a vía, urbano…</li><li>Todas las capas: zonas de vida, uso del suelo, ríos, curvas, PSA, vías, salud</li><li>Comparar hasta 4 lotes con pesos propios</li></ul>
+        <div class="plan${pro ? ' hl' : ''}"><h3>Suscripción ${PX.PRO}</h3><div class="pr">${PX.usdH(PX.PRECIOS.suscripcion)} <small>al mes</small></div>
+          <ul><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Top 10 del mes por provincia</li><li>Atributos del lote: plano, construcción, frente a vía, urbano…</li><li>Todas las capas: zonas de vida, uso del suelo, ríos, curvas, PSA, vías, salud</li><li>Comparar hasta 4 lotes con pesos propios</li><li>Herramientas PRO: potencial constructivo, prefactibilidad financiera, riesgos del proceso, alertas y mapa de precios</li></ul>
           ${pro ? '<span class="tag gold">Tu plan actual</span>' : '<button class="btn primary" data-sub>Suscribirme</button>'}</div>
       </div>
       <div class="foot">Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Modo demostración: los pagos aún no están conectados.</div>`);
@@ -534,7 +562,7 @@
       <div class="dbody">
         <div class="demo">Modo demostración: tu cuenta se guarda solo en este navegador y los pagos no están conectados.</div>
         <section class="acc"><h3>Plan</h3>
-          <div class="li"><div><b>${pro ? 'Suscripción' : 'Gratis'}</b><br><small>${pro ? `${PX.mt(PX.PRECIOS.suscripcion, 'USD')} al mes · hasta ${PX.PRECIOS.cupo} expedientes` : `Expedientes a ${PX.mt(PX.PRECIOS.expediente, 'USD')} por lote`}</small></div>
+          <div class="li"><div><b>${pro ? 'Suscripción ' + PX.PRO : 'Gratis'}</b><br><small>${pro ? `${PX.mt(PX.PRECIOS.suscripcion, 'USD')} al mes · hasta ${PX.PRECIOS.cupo} expedientes` : `Expedientes a ${PX.mt(PX.PRECIOS.expediente, 'USD')} por lote`}</small></div>
             <div>${pro ? '<button class="btn sm" data-free>Pasar a Gratis</button>' : '<button class="btn sm primary" data-sub>Suscribirme</button>'}</div></div>
           ${pro ? `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados en ${PX.MESL[PX.now.getMonth()]}: <b class="num">${uso}</b> de ${PX.PRECIOS.cupo}</small><div class="meter"><i style="width:${uso / PX.PRECIOS.cupo * 100}%"></i></div></div>` : ''}
         </section>
@@ -661,9 +689,9 @@
       </div>
       <div class="foot">Sin precio, el índice de un plano consultado se calcula con las dimensiones disponibles. Orientativo: no es un avalúo.</div>`;
     }
-    h += `<div class="card"><h3>Pesos de cada parámetro ${pro ? '' : '<span class="tag gold">Suscripción</span>'}</h3><div class="wts">
+    h += `<div class="card"><h3>Pesos de cada parámetro ${PX.PRO}</h3><div class="wts">
       ${PX.DIMS.map(d => `<label class="wt"><span>${d.n}<br><small class="muted">${d.d}</small></span><b>${Wu[d.k]}</b><input type="range" min="0" max="100" step="5" value="${Wu[d.k]}" data-w="${d.k}"${pro ? '' : ' disabled'}></label>`).join('')}</div>
-      ${pro ? '<button class="btn sm" id="wReset">Restablecer pesos</button>' : '<div class="prohint"><span class="lock">Con la suscripción ajustas los pesos y comparas hasta 4 lotes</span><button class="linkbtn" data-planes>Ver planes</button></div>'}</div>`;
+      ${pro ? '<button class="btn sm" id="wReset">Restablecer pesos</button>' : '<div class="prohint"><span>Con PRO ajustas los pesos y comparas hasta 4 lotes</span><button class="linkbtn" data-planes>Ver planes</button></div>'}</div>`;
     $('cmpOut').innerHTML = h;
   }
   $('cmpOut').addEventListener('input', e => { const k = e.target.dataset.w; if (!k) return; W[k] = +e.target.value; PX.store.set('px-w', W); renderCmp(); const el = document.querySelector(`[data-w="${k}"]`); if (el) el.focus(); });
@@ -675,9 +703,26 @@
   // ---------- Top 10 del mes por provincia ----------
   const WTOP = { juridica: 40, precio: 35, servicios: 25, restricciones: 0 };
   let topProv = PX.store.get('px-topprov', 1), topMes = 0;
+  function renderHub() {
+    const r = open ? PX.item(open) : null, pro = PX.isPro();
+    $('proHub').innerHTML = `<div class="procard"><h3>${PX.PRO} Herramientas de la versión PRO</h3>
+        <p>${pro ? 'Tu suscripción PRO está activa.' : 'Puedes abrirlas como vista previa. Con la suscripción PRO las usas completas.'}</p>
+        <p>${r ? `Lote abierto: <b>${esc(r.nom)}</b>` : 'Abre un lote en el mapa o busca un plano para usar las herramientas de lote.'}</p></div>
+      ${PX.pro.TOOLS.map(t => `<div class="procard${t.st === 'soon' ? ' soon' : ''}"><h3>${PX.PRO} ${t.n} ${t.st === 'soon' ? '<span class="tag">Próximamente</span>' : ''}</h3><p>${t.q}</p>
+        ${t.st === 'soon' ? '' : t.map ? `<div class="acts"><button class="btn sm" data-hubmap>${lyrState.precios && pro ? 'Ver en el mapa' : 'Activar en el mapa'}</button></div>` : t.list ? '' : `<div class="acts"><button class="btn sm" data-hubtool="${t.k}"${r ? '' : ' disabled'}>${r ? 'Abrir para este lote' : 'Primero abre un lote'}</button></div>`}</div>`).join('')}
+      <h3 style="margin:8px 0 0;font:600 16px/1.2 var(--f-display);display:flex;gap:8px;align-items:center">${PX.PRO} Top 10 del mes</h3>`;
+  }
+  $('proHub').addEventListener('click', e => {
+    const t = e.target.closest('[data-hubtool]'); if (t && open) { openPro(PX.item(open), t.dataset.hubtool); return; }
+    if (e.target.closest('[data-hubmap]')) {
+      if (!PX.isPro()) return lockMsg('El mapa de precios por m² es una herramienta PRO.');
+      lyrState.precios = true; syncLayers(); map.setView([9.8, -84.2], 8); renderHub(); toast('Mapa de precios activado: pasa el mouse por un cantón');
+    }
+  });
   function renderTop() {
+    renderHub();
     if (!PX.isPro()) {
-      $('topOut').innerHTML = `<div class="teaser"><h3>Top 10 del mes por provincia</h3><span>Los 10 remates con mejor combinación de:</span>
+      $('topOut').innerHTML = `<div class="teaser"><h3>Los 10 mejores remates de cada provincia</h3><span>Los 10 remates con mejor combinación de:</span>
         <ul><li><b>Sanidad jurídica</b> (${WTOP.juridica} %): servidumbres, gravámenes, derechos y certeza de ubicación</li><li><b>Precio por m²</b> (${WTOP.precio} %) frente a la mediana de la zona</li><li><b>Potencial por servicios</b> (${WTOP.servicios} %): plan regulador, acceso, salud, escuela, zona urbana</li></ul>
         <div class="acts"><button class="btn primary" data-sub>Suscribirme · ${PX.mt(PX.PRECIOS.suscripcion, 'USD')} al mes</button><button class="btn" data-planes>Ver planes</button></div></div>
         <div class="blur" aria-hidden="true">${[1, 2, 3].map(i => `<div class="item"><span></span><span class="mid"><div class="t1">Lote destacado ${i}</div><div class="t2">Cantón · 1 000 m²</div></span><span class="rt">₡ 00 M</span></div>`).join('')}</div>`;
