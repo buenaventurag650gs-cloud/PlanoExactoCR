@@ -6,7 +6,7 @@
 <meta name="description" content="Remates judiciales de fincas en Costa Rica, ubicados por plano y finca sobre el catastro.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<title>Remates en el Catastro</title>
+<title>PlanoExactoCR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -49,6 +49,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px
   background: var(--panel); border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .brand h1 { margin: 0; font: 700 19px/1.1 var(--f-display); letter-spacing: -.01em; }
+.brand h1 .cr { color: var(--accent); margin-left: 1px; }
 .brand .src { color: var(--muted); font-size: 12.5px; }
 .kpis { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-left: auto; color: var(--muted); font-size: 12.5px; }
 .kpis b { color: var(--ink); font-weight: 600; }
@@ -176,7 +177,7 @@ details.edicto p { font-size: 12.5px; line-height: 1.55; color: var(--muted); ma
 
 <div class="app">
   <header class="top">
-    <div class="brand"><h1>Remates en el Catastro</h1><span class="src" id="src"></span></div>
+    <div class="brand"><h1>PlanoExacto<span class="cr">CR</span></h1><span class="src" id="src"></span></div>
     <div class="kpis" id="kpis"></div>
     <div class="cur" role="group" aria-label="Moneda">
       <button id="cCRC" aria-pressed="true">₡</button><button id="cUSD" aria-pressed="false">US$</button>

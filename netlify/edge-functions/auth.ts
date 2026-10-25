@@ -16,7 +16,7 @@ export default async (request: Request, context: { next: () => Promise<Response>
   }
   return new Response("Acceso restringido. Escribe cualquier usuario y la contraseña de prueba.", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Remates en el Catastro", charset="UTF-8"', "content-type": "text/plain; charset=utf-8" },
+    headers: { "WWW-Authenticate": 'Basic realm="PlanoExactoCR", charset="UTF-8"', "content-type": "text/plain; charset=utf-8" },
   });
 };
 

@@ -1,6 +1,6 @@
-# Remates en el Catastro
+# PlanoExactoCR
 
-Visor de remates judiciales de fincas en Costa Rica, ubicados por número de plano o de finca sobre el catastro del Registro Inmobiliario.
+PlanoExactoCR: visor de remates judiciales de fincas en Costa Rica, ubicados por número de plano o de finca sobre el catastro del Registro Inmobiliario.
 
 ## Estructura
 - `index.html` — el visor (Leaflet).
