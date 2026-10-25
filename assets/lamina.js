@@ -24,7 +24,8 @@
 
   function variables(r) {
     const e = r.ent || {}, v = [];
-    v.push(['Plan regulador', e.pr ? (e.pr.si ? `Vigente${e.pr.anno ? ' desde ' + e.pr.anno : ''}` : 'Sin plan vigente') : 'Sin dato', e.pr && !e.pr.si]);
+    v.push(['Normativa', e.pr && e.pr.si ? `Plan regulador${e.pr.anno ? ' ' + e.pr.anno : ''}` : 'Nacional INVU (sin plan)', !(e.pr && e.pr.si)]);
+    const dm = PX.pro.dims(r); if (dm) v.push(['Dimensiones', `≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m`, dm.corto < 6]);
     if (e.cob) v.push(['Uso del suelo 2020', e.cob, e.cob === 'Cobertura forestal']);
     if (e.agua !== undefined) v.push(['Cauce más cercano', e.agua == null ? 'Ninguno a menos de 400 m' : PX.dist(e.agua), e.agua != null && e.agua <= 50]);
     if (e.via) v.push(['Vía más cercana', e.via.d <= 10 ? `${e.via.t}, al frente` : `${e.via.t} a ${PX.dist(e.via.d)}`]);
@@ -34,7 +35,7 @@
     if (e.costa != null && e.costa < 3000) v.push(['Costa', `a ${PX.dist(e.costa)}`, e.costa <= 250]);
     if (e.zv) v.push(['Zona de vida', e.zv]);
     if (e.cu) v.push(['Cuenca', e.cu]);
-    return v.slice(0, 9);
+    return v.slice(0, 12);
   }
 
   L_.html = (r, s, meta) => {

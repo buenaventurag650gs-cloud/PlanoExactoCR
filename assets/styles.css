@@ -152,3 +152,9 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .duo { display: inline-grid; gap: 1px; justify-items: inherit; }
 .duo .eq, .eqi { font-size: .78em; font-weight: 500; color: var(--muted); }
 .duo .eq .u, .eqi .u { color: var(--muted); }
+
+.normbox { display: grid; gap: 5px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 12.5px; }
+.normbox b { font-size: 13px; }
+.normbox dl { margin: 2px 0; display: grid; grid-template-columns: 150px 1fr; gap: 3px 10px; }
+.normbox dt { color: var(--muted); } .normbox dd { margin: 0; }
+.normbox .na { color: var(--warn); }

@@ -42,7 +42,8 @@
     if (e.cob === 'Cobertura forestal') add(2, 'Cobertura forestal', 'El cambio de uso de suelo en bosque está prohibido por la Ley Forestal.');
     if (e.prot) add(2, 'Franja de protección de ríos', 'El predio toca una franja de protección (delimitación no oficial).');
     if (e.psa) add(1, 'Contrato de pago por servicios ambientales', 'Si el contrato está vigente, trae compromisos de conservación.');
-    if (e.pr && !e.pr.si) add(1, 'Cantón sin plan regulador vigente', 'Rigen los reglamentos nacionales del INVU. Pida el certificado de uso de suelo a la municipalidad.');
+    if (e.pr && !e.pr.si) { add(1, 'Cantón sin plan regulador vigente', 'Rige la normativa nacional del INVU (lote mínimo 90 a 120 m², frente mínimo 6 m). Pida el certificado de uso de suelo a la municipalidad.'); const nv = P.normativa(r); if (nv.dims && (nv.dims.corto < P.NAC.frenteMin || nv.dims.rel > P.NAC.fondoMax)) add(2, 'Forma del lote fuera de la norma nacional', nv.alertas[0]); }
+    if (!r.isPlano && (r.tg || []).includes('frente') && /servidumbre/.test(g)) add(2, 'Acceso a confirmar', 'El edicto menciona servidumbre: verifique que la calle del frente esté en el inventario de caminos de la municipalidad y no sea una servidumbre.');
     if (r.st === 2) add(1, 'Tercer remate', 'La base es el 25 %: suele haber más competencia y es la última oportunidad del proceso.');
     if (r.next && PX.days(r.next) <= 7) add(1, 'Poco tiempo para estudiar', `El remate es ${PX.when(r.next)}.`);
     out.sort((a, b) => b.n - a.n);
@@ -71,9 +72,63 @@
   P.CHECK = ['Certificación literal de la finca en el Registro Nacional', 'Plano catastrado y su ubicación en el sitio', 'Revisión del expediente judicial: condiciones, depósito y suspensiones', 'Certificado de uso de suelo en la municipalidad', 'Visita al sitio: accesos, ocupantes y servicios', 'Deudas municipales y, si es filial, cuotas de condominio'];
 
   // ---------- Potencial constructivo ----------
+  // ---------- Dimensiones aproximadas del predio (rectángulo mínimo que lo contiene) ----------
+  P.dims = r => {
+    if (!r.poly) return null;
+    const ring = r.poly.reduce((a, p) => p[0].length > a.length ? p[0] : a, []), lat0 = ring[0][1] * Math.PI / 180;
+    const pts = ring.map(([x, y]) => [x * 111320 * Math.cos(lat0), y * 110574]);
+    let best = null;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1], L = Math.hypot(dx, dy); if (L < 0.5) continue;
+      const ux = dx / L, uy = dy / L; let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const [x, y] of pts) { const a = x * ux + y * uy, b = -x * uy + y * ux; a0 = Math.min(a0, a); a1 = Math.max(a1, a); b0 = Math.min(b0, b); b1 = Math.max(b1, b); }
+      const w = a1 - a0, h = b1 - b0; if (!best || w * h < best.w * best.h) best = { w, h };
+    }
+    if (!best) return null;
+    const corto = Math.min(best.w, best.h), largo = Math.max(best.w, best.h);
+    return { corto, largo, rel: largo / Math.max(corto, 0.1) };
+  };
+
+  // ---------- Normativa aplicable ----------
+  // Con plan regulador vigente rige el plan del cantón. Sin plan vigente rigen supletoriamente los reglamentos nacionales del INVU:
+  // Reglamento de Fraccionamiento y Urbanizaciones (RFU, actualización 2019 y reforma 2020) y Reglamento de Construcciones (2018).
+  P.NAC = {
+    loteMin: 90, loteMinSin: 120, frenteMin: 6, fondoMax: 7,
+    serv: { ancho: 6, largo: 60, lotes: 6 },
+    agro: 5000, agroGAM: 7000,
+    fuente: 'INVU: Reglamento de Fraccionamiento y Urbanizaciones (arts. 15, 16, 20, 25 y 30) y Reglamento de Construcciones (2018)'
+  };
+  P.normativa = r => {
+    const e = r.ent || {}, pr = e.pr, vig = !!(pr && pr.si), d = P.dims(r), a = PX.prof(r) || 0, N = P.NAC;
+    const urb = (r.tg || []).includes('urbano') || e.cob === 'Zona urbana';
+    const out = { vigente: vig, parcial: vig && pr.escala === 'Parcial', reglas: [], alertas: [], dims: d };
+    if (vig) {
+      out.titulo = `Plan regulador de ${pr.canton || r.cn || 'el cantón'}${pr.anno ? ' (' + pr.anno + ')' : ''}`;
+      out.texto = 'Rigen la zonificación, los usos, la cobertura, la altura, los retiros y el lote mínimo del plan regulador. Confírmelos con el certificado de uso de suelo de la municipalidad.' + (out.parcial ? ' El plan cubre solo parte del cantón: si el lote queda fuera de su área, aplica la normativa nacional del INVU.' : '');
+      out.loteMin = urb ? 200 : 1000; out.supuesto = true;
+    } else {
+      out.titulo = 'Normativa nacional del INVU (aplicación supletoria)';
+      out.texto = 'El cantón no tiene plan regulador vigente, así que rigen los reglamentos nacionales del INVU. Igual se requiere el certificado de uso de suelo municipal.';
+      out.loteMin = N.loteMinSin; out.supuesto = false;
+      out.reglas.push(['Lote mínimo', `${N.loteMin} m² con alcantarillado sanitario o planta de tratamiento; ${N.loteMinSin} m² con tanque séptico`]);
+      out.reglas.push(['Frente mínimo', `${N.frenteMin} m a calle pública`]);
+      out.reglas.push(['Fondo máximo', `${N.fondoMax} veces el frente`]);
+      out.reglas.push(['Acceso por servidumbre', `${N.serv.ancho} m de ancho, hasta ${N.serv.largo} m de largo y ${N.serv.lotes} lotes como máximo (solo en cuadrantes urbanos y sus áreas de expansión)`]);
+      out.reglas.push(['Parcelas agropecuarias', `${fnum(N.agro)} m² como mínimo (${fnum(N.agroGAM)} m² dentro de la GAM), con estudio de capacidad de uso`]);
+      if (d && d.corto < N.frenteMin) out.alertas.push(`El lado corto mide unos ${fnum(d.corto, 1)} m: menos que el frente mínimo de ${N.frenteMin} m.`);
+      if (d && d.rel > N.fondoMax) out.alertas.push(`La relación fondo/frente es de 1:${fnum(d.rel, 1)}: supera el máximo de 1:${N.fondoMax}.`);
+      if (a && a < N.loteMin) out.alertas.push(`El área (${fnum(a)} m²) es menor que el lote mínimo nacional de ${N.loteMin} m².`);
+      if (Math.floor(a * 0.8 / N.loteMinSin) >= 2) out.alertas.push(`Por área podría segregarse en unos ${Math.floor(a * 0.8 / N.loteMinSin)} lotes de ${N.loteMinSin} m² si cumple frente a calle pública (o hasta ${N.serv.lotes} con servidumbre).`);
+    }
+    // Protección de cauces y costa (Ley Forestal art. 33 y Ley de la Zona Marítimo Terrestre)
+    if (e.agua != null && e.agua <= 50) out.alertas.push(`Cauce a ${PX.dist(e.agua)}: la Ley Forestal (art. 33) protege 10 m en zona urbana y 15 m en zona rural si el terreno es plano, y 50 m si es quebrado.`);
+    if (e.costa != null && e.costa <= 250) out.alertas.push('Cerca de la costa: los primeros 50 m son zona pública y los 150 m siguientes zona restringida (Ley 6043), en concesión y no en propiedad.');
+    return out;
+  };
+
   P.potDefaults = r => {
     const urb = (r.tg || []).includes('urbano') || (r.ent && r.ent.cob === 'Zona urbana');
-    return { area: Math.round(PX.prof(r) || 0), cob: urb ? 70 : 50, pisos: urb ? 3 : 2, util: 90, unidad: 90, circ: 15, loteMin: urb ? 200 : 1000 };
+    return { area: Math.round(PX.prof(r) || 0), cob: urb ? 70 : 50, pisos: urb ? 3 : 2, util: 90, unidad: 90, circ: 15, loteMin: P.normativa(r).loteMin };
   };
   P.potCalc = v => {
     const huella = v.area * v.util / 100 * v.cob / 100;
@@ -140,7 +195,9 @@
   P.view = {
     potencial(r, st) {
       const v = st.pot = st.pot || P.potDefaults(r), c = P.potCalc(v), dis = !PX.isPro();
-      return `<p class="lead">Cálculo rápido con supuestos editables. La cobertura, la altura y el lote mínimo reales los fija el plan regulador del cantón (${esc(PX.prText(r.ent && r.ent.pr))}).</p>
+      const nv = P.normativa(r);
+      return `<div class="normbox"><b>${esc(nv.titulo)}</b><span>${esc(nv.texto)}</span>${nv.reglas.length ? `<dl>${nv.reglas.map(([k, t]) => `<dt>${k}</dt><dd>${esc(t)}</dd>`).join('')}</dl>` : ''}${nv.dims ? `<span>Dimensiones aproximadas del predio: <b>${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)} m</b> (relación 1:${fnum(nv.dims.rel, 1)}).</span>` : ''}${nv.alertas.map(t => `<span class="na">⚠ ${esc(t)}</span>`).join('')}</div>
+        <p class="lead">Cobertura y pisos son supuestos editables${nv.vigente ? '; los valores reales los fija el plan regulador' : '; confírmelos con el Reglamento de Construcciones y la municipalidad'}.</p>
         <div class="pgrid"><div class="pform">
           ${num('area', 'Área del lote', v.area, 'm²', { dis })}${num('util', 'Área aprovechable (sin retiros)', v.util, '%', { dis, step: 5 })}
           ${num('cob', 'Cobertura máxima', v.cob, '%', { dis, step: 5 })}${num('pisos', 'Pisos', v.pisos, '', { dis, step: 1 })}

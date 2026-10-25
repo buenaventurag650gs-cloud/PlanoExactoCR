@@ -37,6 +37,7 @@
   function render() {
     const s = PX.score(r), e = r.ent || {}, a = PX.prof(r);
     const pots = PX.pro.potencialidades(r), ries = PX.pro.riesgos(r);
+    const nv = PX.pro.normativa(r);
     const lv = ['', 'Informativo', 'Medio', 'Alto'];
     let h = PX.lamina.html(r, s, { folio });
 
@@ -51,6 +52,7 @@
       <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : 'No indicado'))}</dd>
       ${r.nat ? `<dt>Naturaleza</dt><dd>${esc(r.nat)}</dd>` : ''}
       <dt>Área</dt><dd>${r.area ? `<span class="num">${fnum(r.area)}</span> m² en edicto` : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? `<span class="num">${fnum(r.areaCat)}</span> m² en catastro` : ''}${diff != null && Math.abs(diff) > 0.1 ? ` <span class="tag warn">${diff > 0 ? '+' : ''}${Math.round(diff * 100)} %</span>` : ''}</dd>
+      ${nv.dims ? `<dt>Dimensiones</dt><dd>≈ <span class="num">${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)}</span> m <small class="sub">relación frente/fondo 1:${fnum(nv.dims.rel, 1)}, medida sobre el polígono catastral</small></dd>` : ''}
       <dt>Ubicación</dt><dd>${esc(r.lugar || '—')}${r.ll ? `<small class="sub num">${r.ll[1].toFixed(5)}, ${r.ll[0].toFixed(5)}</small>` : ''}</dd>
       ${r.rev ? `<dt>Revisión</dt><dd>${esc(r.rev)}</dd>` : ''}</dl></section>`;
     const gl = r.isPlano ? [] : PX.explicar(r.grav, r.serv);
@@ -58,10 +60,14 @@
       ${(r.serv || []).length ? `<div class="chips">${r.serv.map(x => `<span class="chip warn">${esc(PX.cap(x))}</span>`).join('')}</div>` : '<p class="ok">El edicto no cita servidumbres.</p>'}
       ${r.grav ? `<p class="raw">${esc(r.grav)}</p>` : ''}
       ${gl.length ? `<div class="gl">${gl.map(g => `<div><b>${esc(g.n)}.</b> ${esc(g.d)}</div>`).join('')}</div>` : ''}</section>`;
+    const norm = `<section class="blk"><h2>Normativa aplicable</h2><p><b>${esc(nv.titulo)}.</b> ${esc(nv.texto)}</p>
+      ${nv.reglas.length ? `<dl class="kv sm">${nv.reglas.map(([k, t]) => `<dt>${k}</dt><dd>${esc(t)}</dd>`).join('')}</dl>` : ''}
+      ${nv.alertas.length ? `<div class="gl">${nv.alertas.map(t => `<div>${esc(t)}</div>`).join('')}</div>` : ''}
+      ${nv.vigente ? '' : `<p class="note2">Fuente: ${esc(PX.pro.NAC.fuente)}.</p>`}</section>`;
     const pv = PX.pro.potDefaults(r), pc = PX.pro.potCalc(pv);
     const potc = pv.area ? `<section class="blk"><h2>Potencial constructivo <small>supuestos generales</small></h2>
       <div class="k4"><div><small>Huella (${pv.cob} %)</small><b class="num">${fnum(pc.huella, 0)} m²</b></div><div><small>En ${pv.pisos} pisos</small><b class="num">${fnum(pc.total, 0)} m²</b></div><div><small>Unidades de ${pv.unidad} m²</small><b class="num">${pc.unidades}</b></div><div><small>Lotes de ${fnum(pv.loteMin)} m²</small><b class="num">${pc.lotes}</b></div></div>
-      <p class="note2">Los valores reales los fija el plan regulador: ${esc(PX.prText(e.pr).toLowerCase())}.</p></section>` : '';
+      <p class="note2">Lote mínimo usado: ${fnum(pv.loteMin)} m² (${nv.vigente ? 'supuesto; confirme la zona del plan regulador' : 'normativa nacional sin alcantarillado sanitario'}). Cobertura y pisos son supuestos.</p></section>` : '';
     const ana = `<section class="blk"><h2>Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
       ${PX.DIMS.map(d => `<div class="dm"><div class="dmh"><b>${d.n}</b><span class="num">${s[d.k] ?? '–'}</span></div><span class="track"><i style="width:${s[d.k] || 0}%"></i></span>
         <p>${(s.why[d.k] || []).slice(0, 3).map(([p, t]) => esc(t)).join(' · ')}</p></div>`).join('')}</section>`;
@@ -71,12 +77,13 @@
 
     h += `<section class="page">${head('Ficha del lote')}<div class="cols">
         <div class="col">${tl}${reg}${grav}</div>
-        <div class="col">${ana}${potl}${potc}</div></div>${foot(2)}</section>`;
+        <div class="col">${ana}${potl}</div></div>${foot(2)}</section>`;
+    h += `<section class="page">${head('Normativa y potencial')}<div class="cols"><div class="col">${norm}</div><div class="col">${potc}</div></div>${foot(3)}</section>`;
     h += `<section class="page">${head('Riesgos y verificación')}<div class="cols">
         <div class="col">${riesg}</div><div class="col">${chk}
         <section class="blk"><h2>Fuentes</h2><p class="note2">Boletín Judicial (Poder Judicial) · Catastro del Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas · INVU: planes reguladores · MINAE: cobertura 2020, zonas de vida, cuencas · CCSS: sedes de salud · BCCR: tipo de cambio ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>
-        </div></div>${foot(3)}</section>`;
-    if (!r.isPlano && r.txt) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
+        </div></div>${foot(4)}</section>`;
+    if (!r.isPlano && r.txt) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(5)}</section>`;
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
     PX.lamina.init(r);
