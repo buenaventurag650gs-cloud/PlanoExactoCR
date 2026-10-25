@@ -5,8 +5,10 @@ from shapely.geometry import shape, Point, Polygon, MultiPolygon, mapping
 from shapely.ops import transform as stransform
 
 UP = '/mnt/user-data/uploads/Downloads/'
-rem = json.load(open(UP + 'remates_activos.json'))
-geo = json.load(open(UP + 'predios_catastro.json'))
+REM = sys.argv[1] if len(sys.argv) > 1 else UP + 'remates_activos.json'
+GEO = sys.argv[2] if len(sys.argv) > 2 else UP + 'predios_catastro.json'
+rem = json.load(open(REM))
+geo = json.load(open(GEO))
 dist_raw = json.load(open(UP + 'distritos_ign.json'))
 
 # EPSG:8908 (CR-SIRGAS / CRTM05) -> WGS84 lon/lat
