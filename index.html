@@ -3,223 +3,317 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Remates judiciales de fincas en Costa Rica, ubicados por plano y finca sobre el catastro.">
+<meta name="description" content="Remates judiciales de fincas en Costa Rica, ubicados por plano y finca sobre el catastro, con entorno y análisis de cada lote.">
 <meta name="robots" content="noindex, nofollow">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <title>PlanoExactoCR</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
 <style>
-/* Layout: panel de búsqueda a la izquierda, mapa catastral a la derecha, ficha flotante sobre el mapa. En celular: mapa arriba, lista abajo, ficha a pantalla completa. */
-:root {
-  --bg: #EDF0EC; --panel: #FBFCFA; --ink: #17201D; --muted: #56635E; --faint: #8A9690; --line: #D6DDD8;
-  --sea: #D9E3E4; --land: #F6F7F2; --dline: #C2CBC5; --accent: #0F5C57; --accent-ink: #FFFFFF; --accent-soft: #DCEBE8;
-  --s1: #2B5C8A; --s2: #B7791F; --s3: #B42318; --warn: #8A4B00; --warnbg: #FFF3DC; --chip: #EEF2EF;
-  --shadow: 0 10px 30px rgba(20, 35, 30, .14);
-  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
-  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #9AA8A2; --faint: #6E7C76; --line: #28332F;
-  --sea: #0B1315; --land: #1A2320; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #16302C;
-  --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #1F2925;
-  --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #9AA8A2; --faint: #6E7C76; --line: #28332F;
-  --sea: #0B1315; --land: #1A2320; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #16302C;
-  --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #1F2925;
-  --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; }
-
-:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-body { margin: 0; }
-[hidden] { display: none !important; }
-
-html, body { height: 100%; }
-body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
-* { box-sizing: border-box; }
-button, input, select { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
-
+/* Mapa: barra izquierda con pestañas (Remates, Buscar plano, Comparar, Top 10), mapa a la derecha, ficha flotante. En celular: mapa arriba y barra abajo. */
 .app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
-header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding-block: 10px;
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 9px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: var(--panel); border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .brand h1 { margin: 0; font: 700 19px/1.1 var(--f-display); letter-spacing: -.01em; }
 .brand h1 .cr { color: var(--accent); margin-left: 1px; }
 .brand .src { color: var(--muted); font-size: 12.5px; }
-.kpis { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-left: auto; color: var(--muted); font-size: 12.5px; }
+.kpis { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 12.5px; }
 .kpis b { color: var(--ink); font-weight: 600; }
+.nav { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.badge { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.badge.pro { background: var(--goldbg); color: var(--gold); }
 .cur { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
-.cur button { border: 0; background: transparent; padding: 4px 11px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
+.cur button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
 .cur button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.money { white-space: nowrap; }
+.money .sx { font-family: var(--f-body); font-size: .72em; font-weight: 600; color: var(--muted); margin-left: .25em; }
 
-.body { display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
+.body { display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
 aside.side { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
-.filters { padding: 14px 16px 12px; display: grid; gap: 10px; border-bottom: 1px solid var(--line); }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); flex: none; }
+.tabs button { border: 0; background: transparent; padding: 11px 4px 9px; font-weight: 600; font-size: 12.5px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs button .n { font-family: var(--f-mono); font-size: 11px; background: var(--chip); color: var(--muted); border-radius: 999px; padding: 0 6px; margin-left: 3px; }
+.pane { overflow: auto; min-height: 0; flex: 1; }
+.pad { padding: 14px 16px; display: grid; gap: 12px; align-content: start; }
+
+details.grp { border-bottom: 1px solid var(--line); }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 11px 16px; font: 600 12px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+details.grp[open] > summary::after { transform: rotate(-135deg); }
+details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0; text-transform: none; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 999px; }
+.gbody { padding: 0 16px 14px; display: grid; gap: 10px; }
 .search { position: relative; }
-.search input { width: 100%; padding: 10px 12px 10px 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--faint); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.fld { display: grid; gap: 3px; min-width: 0; }
-.fld label, .lbl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.fld select, .fld input { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); min-width: 0; }
+.fld { display: grid; gap: 4px; min-width: 0; }
+.fld > label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.fld select, .fld input:not([type=checkbox]):not([type=radio]):not([type=range]) { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); min-width: 0; }
+.amt { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); overflow: hidden; }
+.amt .u { display: grid; place-items: center; padding: 0 8px; margin: 0; background: var(--chip); font-size: 12px; }
+.amt input { border: 0 !important; border-radius: 0 !important; padding: 7px 6px !important; flex: 1; min-width: 0; background: transparent !important; }
+.amt .sfx { display: grid; place-items: center; padding: 0 8px; font-size: 11.5px; color: var(--muted); }
 .stages { display: flex; gap: 6px; flex-wrap: wrap; }
 .stg { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; font-size: 12.5px; }
 .stg i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
 .stg[aria-pressed="false"] { opacity: .45; }
-.toggles { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
-.toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-.listhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 16px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
-.listhead select { border: 0; background: transparent; color: var(--ink); font-weight: 600; cursor: pointer; }
-.list { overflow: auto; min-height: 0; flex: 1; }
-.item { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 12px; padding: 11px 16px 11px 0; border-bottom: 1px solid var(--line); cursor: pointer; background: transparent; border-left: 0; border-right: 0; border-top: 0; width: 100%; text-align: left; }
+.toggles { display: grid; gap: 6px; font-size: 13px; }
+.toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.attrs { display: flex; flex-wrap: wrap; gap: 6px; }
+.attr { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 12.5px; }
+.attr[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.attr.locked { color: var(--muted); border-style: dashed; }
+.attr .c { font-family: var(--f-mono); font-size: 11px; color: var(--faint); }
+.prohint { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--gold); }
+.listhead { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 16px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12.5px; color: var(--muted); }
+.listhead select { border: 0; background: transparent; color: var(--ink); font-weight: 600; cursor: pointer; max-width: 130px; }
+.item { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 12px; padding: 11px 16px 11px 0; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; background: transparent; width: 100%; text-align: left; }
 .item:hover, .item[aria-current="true"] { background: var(--chip); }
-.item .bar { background: var(--c); border-radius: 0 3px 3px 0; }
+.item .sb { background: var(--c); border-radius: 0 3px 3px 0; }
 .item .t1 { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .t2 { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .mid { min-width: 0; padding-left: 12px; }
 .item .rt { text-align: right; }
-.item .price { font-weight: 600; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.item .price { font-weight: 600; }
 .item .when { font-size: 12px; color: var(--muted); }
 .tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
-.tag { font-size: 10.5px; font-weight: 600; letter-spacing: .03em; padding: 1px 6px; border-radius: 4px; background: var(--chip); color: var(--muted); }
-.tag.ok { background: var(--accent-soft); color: var(--accent); }
-.tag.warn { background: var(--warnbg); color: var(--warn); }
 .more { width: 100%; padding: 12px; border: 0; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; }
-.empty { padding: 28px 16px; color: var(--muted); }
+.empty { padding: 24px 16px; color: var(--muted); }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; background: var(--panel); }
+.card h3 { margin: 0; font: 600 15px/1.25 var(--f-display); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.err { color: var(--bad); font-size: 13px; }
+.muted { color: var(--muted); }
+.cmp { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 12.5px; }
+.cmp .r { display: grid; grid-template-columns: 104px repeat(var(--n), 1fr); border-top: 1px solid var(--line); }
+.cmp .r:first-child { border-top: 0; }
+.cmp .r > div { padding: 7px 8px; min-width: 0; overflow-wrap: anywhere; }
+.cmp .r > div:first-child { color: var(--muted); background: var(--chip); }
+.cmp .r.h > div { font-weight: 600; }
+.cmp .best { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cmp .tot > div { font: 600 15px/1.2 var(--f-mono); }
+.cmp .rm { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 11.5px; padding: 0; text-decoration: underline; }
+.winner { padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--ink); display: grid; gap: 4px; }
+.winner b { color: var(--accent); font: 600 15px/1.25 var(--f-display); }
+.wts { display: grid; gap: 8px; }
+.wt { display: grid; grid-template-columns: 1fr 40px; gap: 2px 10px; align-items: center; font-size: 12.5px; }
+.wt input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.wt b { text-align: right; font-family: var(--f-mono); font-weight: 500; }
+.top { counter-reset: t; display: grid; }
+.top .item { grid-template-columns: 34px 1fr auto; padding-left: 12px; }
+.top .rk { font: 600 18px/1 var(--f-mono); color: var(--accent); align-self: center; }
+.mini { display: flex; gap: 8px; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.mini b { font-family: var(--f-mono); color: var(--ink); font-weight: 500; }
+.teaser { display: grid; gap: 10px; padding: 16px; border-radius: 12px; background: var(--goldbg); color: var(--ink); }
+.teaser h3 { margin: 0; font: 600 16px/1.25 var(--f-display); color: var(--gold); }
+.teaser ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; }
 
 .mapwrap { position: relative; min-height: 0; }
 #map { position: absolute; inset: 0; background: var(--sea); }
-.legend { position: absolute; left: 12px; bottom: 12px; z-index: 500; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font-size: 12px; display: grid; gap: 5px; box-shadow: var(--shadow); }
+.legend { position: absolute; left: 12px; bottom: 28px; z-index: 500; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font-size: 12px; display: grid; gap: 5px; box-shadow: var(--shadow); }
 .legend .r { display: flex; align-items: center; gap: 7px; }
 .legend i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 .legend i.ring { background: transparent; border: 1.5px dashed var(--muted); }
 .legend .sep { height: 1px; background: var(--line); }
-.mapnote { position: absolute; right: 12px; bottom: 12px; z-index: 500; font-size: 11px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; max-width: 260px; }
+.lyrbtn { position: absolute; top: 12px; left: 12px; z-index: 600; box-shadow: var(--shadow); }
+.lyrpanel { position: absolute; top: 56px; left: 12px; z-index: 600; width: 300px; max-height: calc(100% - 80px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px 0 10px; }
+.lyrpanel h4 { margin: 10px 14px 4px; font: 600 11px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.lyr { display: grid; grid-template-columns: 18px 1fr auto; gap: 2px 8px; align-items: center; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+.lyr:hover { background: var(--chip); }
+.lyr small { color: var(--faint); font-size: 11px; }
+.lyr .lg { grid-column: 2 / -1; display: grid; gap: 3px; margin-top: 4px; }
+.lyr .lg span { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+.lyr .lg i { width: 12px; height: 10px; border-radius: 2px; background: var(--c); flex: none; }
+.lyr .lg i.ln { height: 3px; border-radius: 2px; }
+.lyr.locked { color: var(--muted); }
+.lyr.locked .lock { color: var(--gold); font-size: 11px; font-weight: 600; }
+.hoverbox { position: absolute; z-index: 650; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 6px 9px; font-size: 12px; max-width: 260px; display: grid; gap: 2px; }
+.hoverbox span { color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
 
 /* Ficha */
-.ficha { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(440px, calc(100% - 24px)); z-index: 1000; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0; }
-.ficha[hidden] { display: none !important; }
+.ficha { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(450px, calc(100% - 24px)); z-index: 1000; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0; }
 .fhead { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--line); }
-.fhead .seal { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+.seal { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
 .seal.ok { background: var(--accent-soft); color: var(--accent); }
 .seal.aprox { background: var(--warnbg); color: var(--warn); }
-.fhead .x { margin-left: auto; border: 0; background: var(--chip); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 18px; line-height: 1; }
-.fbody { overflow: auto; padding: 16px 18px 22px; display: grid; gap: 18px; min-height: 0; }
+.x { margin-left: auto; border: 0; background: var(--chip); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 18px; line-height: 1; flex: none; }
+.fbody { overflow: auto; padding: 16px 18px 22px; display: grid; gap: 16px; min-height: 0; align-content: start; }
 .ftitle h2 { margin: 0 0 3px; font: 600 19px/1.2 var(--f-display); text-wrap: balance; }
 .ftitle .where { color: var(--muted); }
-.pricebox { display: grid; gap: 2px; padding: 14px; border-radius: 10px; background: var(--chip); }
-.pricebox .big { font: 600 28px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.pricebox .alt { color: var(--muted); font-size: 12.5px; }
-.timeline { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.pricebox { display: grid; gap: 3px; padding: 14px; border-radius: 10px; background: var(--chip); }
+.pricebox .big { font-size: 28px; line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
+.pricebox .big .u { font-size: 15px; }
+.pricebox .alt { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.timeline { display: grid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .tl { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); }
 .tl:first-child { border-top: 0; }
 .tl i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 .tl .d { font-size: 13px; } .tl .d small { display: block; color: var(--muted); font-size: 11.5px; }
 .tl.past { color: var(--faint); } .tl.past i { opacity: .35; } .tl.past .b { text-decoration: line-through; }
 .tl.now { background: var(--accent-soft); }
-.tl .b { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
 .sect h3 { margin: 0 0 8px; font: 600 12px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-dl.kv { margin: 0; display: grid; grid-template-columns: 128px 1fr; gap: 6px 12px; }
-dl.kv dt { color: var(--muted); font-size: 12.5px; }
-dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.note { padding: 10px 12px; border-radius: 8px; background: var(--warnbg); color: var(--warn); font-size: 12.5px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); }
-.chip.warn { border-color: transparent; background: var(--warnbg); color: var(--warn); font-weight: 600; }
-.grav { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
-dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
-.leaflet-control-layers-expanded { max-height: 60vh; overflow: auto; }
-.leaflet-control-layers label small { color: var(--muted); }
-details.edicto summary { cursor: pointer; font-weight: 600; color: var(--accent); }
-details.edicto p { font-size: 12.5px; line-height: 1.55; color: var(--muted); max-width: 65ch; }
-.links { display: flex; flex-wrap: wrap; gap: 8px; }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); text-decoration: none; font-weight: 500; font-size: 13px; cursor: pointer; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.mods { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.mod { border: 1px dashed var(--dline); border-radius: 10px; padding: 10px; display: grid; gap: 4px; }
-.mod b { font-size: 13px; } .mod span { font-size: 11.5px; color: var(--muted); }
-.mod em { font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); }
-.foot { font-size: 11.5px; color: var(--faint); }
+.sect h3 .tag { vertical-align: 1px; margin-left: 6px; letter-spacing: .03em; }
+.idx { display: flex; align-items: center; gap: 12px; }
+.idx .lab b { display: block; font-size: 14px; }
+.idx .lab span { color: var(--muted); font-size: 12px; }
+.blur { filter: blur(4px); user-select: none; pointer-events: none; }
+.expbox { border: 1px solid var(--gold); background: var(--goldbg); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+.expbox ul { margin: 0; padding-left: 18px; font-size: 12.5px; display: grid; gap: 2px; }
+.expbox .p { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.menu { border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 8px; background: var(--bg); }
+.menu label { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+.menu .row2 { display: flex; gap: 6px; }
+.menu input[type=text] { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+
+/* Ventanas */
+.scrim { position: fixed; inset: 0; z-index: 3000; background: rgba(10, 18, 16, .45); display: grid; place-items: center; padding: 16px; }
+.dlg { background: var(--panel); border-radius: 16px; box-shadow: var(--shadow); width: min(920px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 20px 22px 22px; display: grid; gap: 16px; }
+.dlg.sm { width: min(460px, 100%); }
+.dlg .hd { display: flex; align-items: center; gap: 10px; }
+.dlg h2 { margin: 0; font: 600 21px/1.2 var(--f-display); }
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.plan { border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+.plan.hl { border: 2px solid var(--accent); }
+.plan h3 { margin: 0; font: 600 16px/1.2 var(--f-display); }
+.plan .pr { font-size: 30px; font-weight: 600; }
+.plan .pr .u { font-size: 14px; } .plan .pr small { font-size: 13px; color: var(--muted); font-weight: 500; font-family: var(--f-body); }
+.plan ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 3000; width: min(480px, 100%); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; border-left: 1px solid var(--line); }
+.drawer .dbody { overflow: auto; padding: 4px 18px 24px; display: grid; gap: 18px; align-content: start; }
+.acc h3 { margin: 0 0 8px; font: 600 12px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.acc .li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.acc .li:first-of-type { border-top: 0; }
+.acc .li a, .linkbtn { color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; font: inherit; text-align: left; text-decoration: none; font-weight: 600; }
+.acc .li small { color: var(--muted); }
+.acc textarea { width: 100%; min-height: 34px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); font-size: 12.5px; resize: vertical; grid-column: 1 / -1; }
+.meter { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.demo { font-size: 12px; color: var(--warn); background: var(--warnbg); border-radius: 8px; padding: 8px 10px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 4000; background: var(--ink); color: var(--panel); padding: 9px 14px; border-radius: 10px; font-size: 13px; box-shadow: var(--shadow); }
 
 .leaflet-container { font: inherit; background: var(--sea); }
-.leaflet-control-layers { background: var(--panel); color: var(--ink); border: 1px solid var(--line) !important; border-radius: 10px !important; box-shadow: var(--shadow) !important; font-size: 12.5px; }
 .leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent) !important; color: var(--muted); font-size: 10.5px; }
 .leaflet-control-attribution a { color: var(--accent); }
-.legend { bottom: 28px; }
-.leaflet-tooltip { background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
+.leaflet-tooltip { background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 8px; padding: 7px 10px; font-size: 12px; }
 .leaflet-tooltip-top:before { border-top-color: var(--panel); }
 .leaflet-bar a, .leaflet-bar a:hover { background: var(--panel); color: var(--ink); border-bottom-color: var(--line); }
 .leaflet-bar { border: 1px solid var(--line) !important; box-shadow: var(--shadow) !important; }
+.tipn { font-weight: 600; font-size: 12.5px; display: block; margin-bottom: 2px; }
+.tipm { color: var(--muted); }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .app { height: auto; display: block; }
   .body { display: flex; flex-direction: column-reverse; }
-  .mapwrap { height: 52vh; height: 52svh; position: sticky; top: 0; z-index: 1; }
+  .mapwrap { height: 50vh; height: 50svh; position: sticky; top: 0; z-index: 1; }
+  .mapwrap:has(.ficha:not([hidden])) { z-index: 2100; }
+  .listhead { z-index: 0; }
   aside.side { border-right: 0; }
-  .list { overflow: visible; }
-  .kpis { margin-left: 0; }
-  .ficha { position: fixed; inset: 0; width: auto; border-radius: 0; border: 0; z-index: 2000;
-    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .fhead { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
-  .fbody { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .legend { left: 8px; bottom: 8px; right: 8px; padding: 6px 9px; font-size: 11px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .pane { overflow: visible; }
+  .nav { margin-left: 0; }
+  .ficha { position: fixed; inset: 0; width: auto; border-radius: 0; border: 0; z-index: 2000; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .legend { left: 8px; bottom: 22px; padding: 6px 9px; font-size: 11px; }
   .legend .sep, .legend .r.loc { display: none; }
-  .mapnote { display: none; }
-  dl.kv { grid-template-columns: 110px 1fr; }
+  .lyrpanel { width: auto; right: 12px; }
+  .plans { grid-template-columns: 1fr; }
+  dl.kv { grid-template-columns: 112px 1fr; }
 }
-@media (max-width: 420px) { .mods { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media print { .app, .scrim, .drawer { display: none !important; } }
 </style>
 </head>
 <body>
-
 <div class="app">
   <header class="top">
     <div class="brand"><h1>PlanoExacto<span class="cr">CR</span></h1><span class="src" id="src"></span></div>
     <div class="kpis" id="kpis"></div>
-    <div class="cur" role="group" aria-label="Moneda">
-      <button id="cCRC" aria-pressed="true">₡</button><button id="cUSD" aria-pressed="false">US$</button>
-    </div>
+    <nav class="nav" aria-label="Cuenta">
+      <button class="btn sm" id="bPlanes">Planes</button>
+      <button class="btn sm" id="bCuenta">Mi cuenta <span class="badge" id="planBadge">Gratis</span></button>
+      <div class="cur" role="group" aria-label="Moneda"><button id="cCRC" aria-pressed="true">₡</button><button id="cUSD" aria-pressed="false">US$</button></div>
+    </nav>
   </header>
   <div class="body">
     <aside class="side">
-      <div class="filters">
-        <div class="search">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="q" type="search" placeholder="Plano (P-1311611-2008), finca (6-169321), expediente o lugar" aria-label="Buscar">
-        </div>
-        <div class="row">
-          <div class="fld"><label for="fProv">Provincia</label><select id="fProv"><option value="">Todas</option></select></div>
-          <div class="fld"><label for="fCanton">Cantón</label><select id="fCanton"><option value="">Todos</option></select></div>
-        </div>
-        <div class="row">
-          <div class="fld"><label for="fTipo">Tipo</label><select id="fTipo"><option value="">Todos</option><option>Lote</option><option>Con construcción</option><option>Agrícola</option><option>Filial</option></select></div>
-          <div class="fld"><label for="fMax" id="lMax">Base vigente máx. (millones ₡)</label><input id="fMax" type="number" min="0" step="1" inputmode="decimal" placeholder="Sin límite"></div>
-        </div>
-        <div>
-          <div class="lbl" style="margin-bottom:5px">Etapa del próximo remate</div>
-          <div class="stages" id="stages"></div>
-        </div>
-        <div class="toggles">
-          <label><input type="checkbox" id="fExact"> Solo ubicación exacta</label>
-          <label><input type="checkbox" id="fNoServ"> Sin servidumbres</label>
-          <label><input type="checkbox" id="fSemana"> Remate en los próximos 7 días</label>
-          <label><input type="checkbox" id="fPR"> Cantón con plan regulador vigente</label>
-          <label><input type="checkbox" id="fAgua"> Sin ríos ni quebradas a menos de 50 m</label>
-        </div>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-t="rem" aria-selected="true">Remates</button>
+        <button role="tab" data-t="pla" aria-selected="false">Buscar plano</button>
+        <button role="tab" data-t="cmp" aria-selected="false">Comparar<span class="n" id="cmpN">0</span></button>
+        <button role="tab" data-t="top" aria-selected="false">Top 10</button>
       </div>
-      <div class="listhead"><span id="count"></span>
-        <label>Ordenar: <select id="order"><option value="fecha">Próxima fecha</option><option value="precio">Menor base</option><option value="area">Mayor área</option><option value="m2">Menor ₡/m²</option></select></label>
+
+      <div class="pane" id="p-rem" role="tabpanel">
+        <details class="grp" open><summary>Ubicación <span class="on" id="onU" hidden></span></summary><div class="gbody">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="q" type="search" placeholder="Lugar, barrio, finca, plano o expediente" aria-label="Buscar remates">
+          </div>
+          <div class="row">
+            <div class="fld"><label for="fProv">Provincia</label><select id="fProv"><option value="">Todas</option></select></div>
+            <div class="fld"><label for="fCanton">Cantón</label><select id="fCanton"><option value="">Todos</option></select></div>
+          </div>
+        </div></details>
+        <details class="grp" open><summary>Remate <span class="on" id="onR" hidden></span></summary><div class="gbody">
+          <div class="fld"><span class="lbl">Etapa del próximo remate</span><div class="stages" id="stages"></div></div>
+          <div class="fld"><span class="lbl">Base vigente</span>
+            <div class="row">
+              <div class="amt"><span class="u cu">₡</span><input id="fMin" type="number" min="0" step="any" inputmode="decimal" placeholder="Mínimo" aria-label="Base mínima"><span class="sfx cs">millones</span></div>
+              <div class="amt"><span class="u cu">₡</span><input id="fMax" type="number" min="0" step="any" inputmode="decimal" placeholder="Máximo" aria-label="Base máxima"><span class="sfx cs">millones</span></div>
+            </div></div>
+          <div class="toggles"><label><input type="checkbox" id="fSemana"> Remate en los próximos 7 días</label></div>
+        </div></details>
+        <details class="grp"><summary>Características <span class="on" id="onC" hidden></span></summary><div class="gbody">
+          <div class="fld"><label for="fTipo">Tipo de propiedad</label><select id="fTipo"><option value="">Todos</option><option>Lote</option><option>Con construcción</option><option>Agrícola</option><option>Filial</option></select></div>
+          <div class="toggles">
+            <label><input type="checkbox" id="fExact"> Solo ubicación exacta en el catastro</label>
+            <label><input type="checkbox" id="fNoServ"> Sin servidumbres</label>
+            <label><input type="checkbox" id="fPR"> Cantón con plan regulador vigente</label>
+            <label><input type="checkbox" id="fAgua"> Sin ríos ni quebradas a menos de 50 m</label>
+          </div>
+          <div class="fld"><span class="lbl">Atributos del lote</span><div class="attrs" id="attrs"></div></div>
+          <div class="prohint" id="attrHint"><span class="lock">Atributos incluidos en la suscripción</span><button class="linkbtn" data-planes>Ver planes</button></div>
+        </div></details>
+        <div class="listhead"><span id="count"></span>
+          <span><select id="order" aria-label="Ordenar"><option value="fecha">Próxima fecha</option><option value="precio">Menor base</option><option value="area">Mayor área</option><option value="m2">Menor precio/m²</option><option value="score">Mejor índice</option></select>
+          <button class="btn sm" id="saveSearch" title="Guardar esta búsqueda en Mi cuenta">Guardar</button></span>
+        </div>
+        <div id="list" role="list"></div>
       </div>
-      <div class="list" id="list" role="list"></div>
+
+      <div class="pane" id="p-pla" role="tabpanel" hidden><div class="pad">
+        <div class="card">
+          <div class="seg" role="group" aria-label="Buscar por"><button id="byPlano" aria-pressed="true">Por plano</button><button id="byFinca" aria-pressed="false">Por finca</button></div>
+          <form id="plaForm" class="fld" autocomplete="off">
+            <div class="row">
+              <div class="fld"><label for="plaProv">Provincia</label><select id="plaProv"><option value="">—</option></select></div>
+              <div class="fld"><label for="plaV" id="plaL">Número de plano</label><input id="plaV" placeholder="P-1311611-2008"></div>
+            </div>
+            <button class="btn primary" type="submit" id="plaGo">Buscar en el catastro</button>
+          </form>
+          <div class="foot" id="plaHelp">Escribe el plano como aparece en el documento (P-1311611-2008, SJ-0123456-2010) o elige la provincia y escribe número y año. Consulta el Registro Inmobiliario en vivo.</div>
+        </div>
+        <div id="plaOut"></div>
+        <div id="plaHist"></div>
+      </div></div>
+
+      <div class="pane" id="p-cmp" role="tabpanel" hidden><div class="pad" id="cmpOut"></div></div>
+      <div class="pane" id="p-top" role="tabpanel" hidden><div class="pad" id="topOut"></div></div>
     </aside>
+
     <div class="mapwrap">
       <div id="map" aria-label="Mapa de remates"></div>
+      <button class="btn lyrbtn" id="lyrBtn" aria-expanded="false" aria-controls="lyrPanel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>Capas</button>
+      <div class="lyrpanel" id="lyrPanel" hidden></div>
+      <div class="hoverbox" id="hoverbox" hidden></div>
       <div class="legend" aria-hidden="true">
         <div class="r"><i style="--c:var(--s1)"></i>1.er remate · base completa</div>
         <div class="r"><i style="--c:var(--s2)"></i>2.º remate · 75 %</div>
@@ -228,357 +322,15 @@ details.edicto p { font-size: 12.5px; line-height: 1.55; color: var(--muted); ma
         <div class="r loc"><i style="--c:var(--ink)"></i>Predio exacto (polígono al acercar)</div>
         <div class="r loc"><i class="ring"></i>Aproximado al distrito</div>
       </div>
-            <section class="ficha" id="ficha" hidden aria-label="Ficha de la propiedad"></section>
+      <section class="ficha" id="ficha" hidden aria-label="Ficha de la propiedad"></section>
     </div>
   </div>
 </div>
+<div id="layer"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script>
-(async function () {
-  const get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u); return r.json(); });
-  let R, DIST, META, PLANES = null, SALUD = [];
-  try { [R, DIST, META] = await Promise.all([get('data/remates.json'), get('data/distritos.geojson'), get('data/meta.json')]); }
-  catch (e) { document.getElementById('list').innerHTML = '<div class="empty">No se pudieron cargar los datos. Recarga la página.</div>'; return; }
-  try { [PLANES, SALUD] = await Promise.all([get('data/planes_reguladores.geojson'), get('data/salud.json')]); } catch (e) {}
-  const TC = META.tc;
-  const PCT = [1, 0.75, 0.25];
-  const ETAPA = ['1.er remate', '2.º remate', '3.er remate'];
-  const SC = ['--s1', '--s2', '--s3'];
-  const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
-  const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
-  const $ = id => document.getElementById(id);
-  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
-
-  let cur = store.get('rc-cur') === 'USD' ? 'USD' : 'CRC';
-  const now = new Date();
-
-  // ---- Modelo ----
-  for (const r of R) {
-    r.fd = (r.f || []).map(s => new Date(s));
-    let i = r.fd.findIndex(d => d >= now);
-    r.st = i; // -1 = todas pasadas
-    r.next = i >= 0 ? r.fd[i] : null;
-    r.bases = (r.f || []).map((_, k) => r.base * PCT[k]);
-    r.bv = i >= 0 ? r.base * PCT[i] : null;
-    r.exact = r.loc === 'plano' || r.loc === 'finca';
-    r.fincaTxt = (r.prov ? r.prov + '-' : '') + (r.finca || '') + (r.filial ? '-F' : '') + (r.der ? '-' + r.der : '');
-    r.search = [r.plano, r.planoCat, r.fincaTxt, String(r.finca), r.exp, r.dn, r.cn, r.pn, r.nat, r.juz].join(' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    r.searchDigits = [r.plano, r.fincaTxt, r.exp].join(' ').replace(/\D/g, '');
-  }
-  const live = R.filter(r => r.st >= 0);
-
-  function toCur(v, from) { if (v == null) return null; if (from === cur) return v; return from === 'CRC' ? v / TC.venta : v * TC.venta; }
-  function fmt(v, c, compact) {
-    if (v == null || isNaN(v)) return '—';
-    const sym = c === 'USD' ? 'US$' : '₡';
-    if (compact) {
-      if (v >= 1e9) return sym + (v / 1e9).toLocaleString('es-CR', { maximumFractionDigits: 2 }) + ' mil M';
-      if (v >= 1e6) return sym + (v / 1e6).toLocaleString('es-CR', { maximumFractionDigits: v >= 1e8 ? 0 : 1 }) + ' M';
-      if (v >= 1e4) return sym + Math.round(v / 1e3).toLocaleString('es-CR') + ' mil';
-    }
-    return sym + v.toLocaleString('es-CR', { maximumFractionDigits: c === 'USD' && v < 1e5 ? 2 : 0, minimumFractionDigits: 0 });
-  }
-  const money = (v, from, compact) => fmt(toCur(v, from), cur, compact);
-  const other = (v, from) => { const o = cur === 'CRC' ? 'USD' : 'CRC'; const x = from === o ? v : (o === 'USD' ? v / TC.venta : v * TC.venta); return fmt(x, o, true); };
-  const fdate = (d, withTime) => d ? `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()}` + (withTime ? ` · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '') : '—';
-  const fnum = v => v == null ? '—' : v.toLocaleString('es-CR', { maximumFractionDigits: v < 100 ? 2 : 0 });
-  const days = d => Math.ceil((d - now) / 864e5);
-
-  // ---- Encabezado ----
-  const nEx = live.filter(r => r.exact).length;
-  const bmin = Math.min(...R.map(r => r.bol)), bmax = Math.max(...R.map(r => r.bol));
-  $('src').textContent = `Boletín Judicial Nº ${bmin}–${bmax} · ${META.periodo}`;
-  $('kpis').innerHTML = `<span><b class="num">${live.length}</b> remates de fincas vigentes</span>
-    <span><b class="num">${Math.round(nEx / live.length * 100)} %</b> con predio exacto</span>
-    <span title="Tipo de cambio de referencia de venta del BCCR">TC BCCR <b class="num">₡${TC.venta.toLocaleString('es-CR', { minimumFractionDigits: 2 })}</b> · ${TC.fecha}</span>`;
-
-  // ---- Filtros ----
-  const PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
-  PROVS.forEach((p, i) => $('fProv').insertAdjacentHTML('beforeend', `<option value="${i + 1}">${p} (${live.filter(r => r.prov === i + 1).length})</option>`));
-  function fillCantones() {
-    const p = +$('fProv').value; const sel = $('fCanton'); const keep = sel.value;
-    const cs = {}; live.filter(r => !p || r.prov === p).forEach(r => { if (r.cn) cs[r.cn] = (cs[r.cn] || 0) + 1; });
-    sel.innerHTML = '<option value="">Todos</option>' + Object.keys(cs).sort((a, b) => a.localeCompare(b, 'es')).map(c => `<option${c === keep ? ' selected' : ''}>${esc(c)}</option>`).join('');
-    sel.disabled = !Object.keys(cs).length;
-  }
-  fillCantones();
-  const stOn = [true, true, true];
-  $('stages').innerHTML = [0, 1, 2].map(i => `<button class="stg" aria-pressed="true" data-i="${i}" style="--c:var(${SC[i]})"><i></i>${ETAPA[i]} <span class="num">${live.filter(r => r.st === i).length}</span></button>`).join('');
-  $('stages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (!b) return; const i = +b.dataset.i; stOn[i] = !stOn[i]; b.setAttribute('aria-pressed', stOn[i]); apply(); });
-
-  function setCur(c) {
-    cur = c; store.set('rc-cur', c);
-    $('cCRC').setAttribute('aria-pressed', c === 'CRC'); $('cUSD').setAttribute('aria-pressed', c === 'USD');
-    $('lMax').textContent = c === 'CRC' ? 'Base vigente máx. (millones ₡)' : 'Base vigente máx. (miles US$)';
-    $('order').options[3].text = c === 'CRC' ? 'Menor ₡/m²' : 'Menor US$/m²';
-    $('fMax').value = '';
-    apply(); if (openId != null) openFicha(openId, false);
-  }
-  $('cCRC').onclick = () => setCur('CRC'); $('cUSD').onclick = () => setCur('USD');
-
-  let shown = [], limit = 120;
-  function apply() {
-    const qRaw = $('q').value.trim();
-    const q = qRaw.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    const qd = qRaw.replace(/\D/g, '');
-    const p = +$('fProv').value, c = $('fCanton').value, t = $('fTipo').value;
-    const mx = parseFloat($('fMax').value); const mxV = isNaN(mx) ? null : mx * (cur === 'CRC' ? 1e6 : 1e3);
-    const ex = $('fExact').checked, ns = $('fNoServ').checked, wk = $('fSemana').checked, pr = $('fPR').checked, ag = $('fAgua').checked;
-    shown = live.filter(r => {
-      if (!stOn[r.st]) return false;
-      if (p && r.prov !== p) return false;
-      if (c && r.cn !== c) return false;
-      if (t && r.tipo !== t) return false;
-      if (ex && !r.exact) return false;
-      if (ns && r.serv && r.serv.length) return false;
-      if (wk && days(r.next) > 7) return false;
-      if (pr && !(r.ent && r.ent.pr && r.ent.pr.si)) return false;
-      if (ag && (!r.ent || r.ent.agua == null || r.ent.agua <= 50)) return false;
-      if (mxV != null && toCur(r.bv, r.mon) > mxV) return false;
-      if (q) {
-        const words = q.split(/\s+/).filter(Boolean);
-        const textHit = words.every(w => r.search.includes(w));
-        const digitHit = qd.length >= 4 && r.searchDigits.includes(qd);
-        if (!textHit && !digitHit) return false;
-      }
-      return true;
-    });
-    const o = $('order').value;
-    const m2 = r => r.area ? toCur(r.bv, r.mon) / r.area : Infinity;
-    shown.sort(o === 'precio' ? (a, b) => toCur(a.bv, a.mon) - toCur(b.bv, b.mon)
-      : o === 'area' ? (a, b) => (b.area || 0) - (a.area || 0)
-      : o === 'm2' ? (a, b) => m2(a) - m2(b)
-      : (a, b) => a.next - b.next);
-    limit = 120; renderList(); renderMarkers();
-  }
-  ['q', 'fMax'].forEach(id => $(id).addEventListener('input', apply));
-  ['fCanton', 'fTipo', 'fExact', 'fNoServ', 'fSemana', 'fPR', 'fAgua', 'order'].forEach(id => $(id).addEventListener('change', apply));
-  $('fProv').addEventListener('change', () => { fillCantones(); $('fCanton').value = ''; apply(); fitShown(); });
-  $('fCanton').addEventListener('change', fitShown);
-
-  // ---- Lista ----
-  function itemHTML(r) {
-    const tags = [];
-    tags.push(r.exact ? `<span class="tag ok">Exacta por ${r.loc}</span>` : `<span class="tag warn">Aproximada</span>`);
-    tags.push(`<span class="tag">${esc(r.tipo)}</span>`);
-    if (r.serv && r.serv.length) tags.push(`<span class="tag warn">Servidumbre</span>`);
-    const dd = days(r.next);
-    return `<button class="item" role="listitem" data-id="${r.id}" style="--c:var(${SC[r.st]})"${r.id === openId ? ' aria-current="true"' : ''}>
-      <span class="bar"></span>
-      <span class="mid"><div class="t1">${esc(r.dn || r.cn || r.pn || 'Ubicación por definir')}${r.cn && r.dn ? ', ' + esc(r.cn) : ''}</div>
-        <div class="t2">${esc(r.nat || r.tipo)} · ${r.area ? fnum(r.area) + ' m²' : 'área s/d'}</div>
-        <div class="tags">${tags.join('')}</div></span>
-      <span class="rt"><div class="price">${money(r.bv, r.mon, true)}</div>
-        <div class="when">${ETAPA[r.st]}</div><div class="when">${dd <= 0 ? 'hoy' : dd === 1 ? 'mañana' : 'en ' + dd + ' días'}</div></span>
-    </button>`;
-  }
-  function renderList() {
-    $('count').innerHTML = `<b class="num">${shown.length}</b> de ${live.length} remates`;
-    if (!shown.length) { $('list').innerHTML = '<div class="empty">Ningún remate cumple esos filtros. Prueba quitar alguno o ampliar el precio máximo.</div>'; return; }
-    $('list').innerHTML = shown.slice(0, limit).map(itemHTML).join('') + (shown.length > limit ? `<button class="more" id="more">Mostrar ${Math.min(120, shown.length - limit)} más</button>` : '');
-  }
-  $('list').addEventListener('click', e => {
-    if (e.target.id === 'more') { limit += 120; renderList(); return; }
-    const b = e.target.closest('.item'); if (b) openFicha(+b.dataset.id, true);
-  });
-
-  // ---- Mapa ----
-  const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).setView([9.8, -84.2], 8);
-  map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
-  map.attributionControl.setPrefix(false);
-  const dark = () => matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light' || document.documentElement.dataset.theme === 'dark';
-  const cartoAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
-  const calles = L.tileLayer('https://{s}.basemaps.cartocdn.com/{v}/{z}/{x}/{y}{r}.png', { v: 'light_all', subdomains: 'abcd', maxZoom: 19, attribution: cartoAttr });
-  const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imágenes &copy; Esri, Maxar, Earthstar Geographics' });
-  const catastro = L.tileLayer.wms('https://siri.snitcr.go.cr/Geoservicios/wms', { layers: 'catastro,catastro_aldia', version: '1.1.1', format: 'image/png', transparent: true, minZoom: 15, maxZoom: 19, attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' });
-  const wms = (url, layers, o) => L.tileLayer.wms(url, Object.assign({ layers, version: '1.1.1', format: 'image/png', transparent: true, maxZoom: 19 }, o));
-  const SINIA = 'https://geodatos.sinia.go.cr/geoserver/';
-  const ctx = {
-    vias: wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, attribution: 'Vías públicas &copy; Registro Inmobiliario' }),
-    hidro: wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:hidrografia_5000', { minZoom: 13, attribution: 'Hidrografía 1:5 000 &copy; IGN' }),
-    curvas: wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:curvas_5000', { minZoom: 15, attribution: 'Curvas de nivel &copy; IGN' }),
-    zmt: wms('https://geos.snitcr.go.cr/be/IGN/wms', 'IGN:lineas_digitales,IGN:mojones', { minZoom: 13, attribution: 'Zona pública &copy; IGN' }),
-    cobertura: wms(SINIA + 'MAF2020/wms', 'MAF2020:MAF2020', { opacity: 0.55, attribution: 'Mapa agropecuario y forestal 2020 &copy; MINAE' }),
-    psa: wms(SINIA + 'FONAFIFO/wms', 'FONAFIFO:psa2025', { opacity: 0.7, attribution: 'PSA 2025 &copy; FONAFIFO' }),
-    proteccion: wms(SINIA + 'PNUD_TEVU/wms', 'PNUD_TEVU:areas_proteccion_no_oficial', { opacity: 0.6, minZoom: 13, attribution: 'Áreas de protección de ríos (no oficial) &copy; PNUD-TEVU' }),
-    zonasvida: wms(SINIA + 'CENIGA/wms', 'CENIGA:zonasdevida', { opacity: 0.45, attribution: 'Zonas de vida &copy; CENIGA' }),
-    planes: L.layerGroup(), salud: L.layerGroup()
-  };
-  calles.addTo(map); catastro.addTo(map);
-  let distGroup, distLayer, markers = L.layerGroup().addTo(map), polys = L.layerGroup().addTo(map), selLayer = L.layerGroup().addTo(map);
-  L.control.layers({ 'Calles': calles, 'Satélite': satelite }, {
-    'Predios del catastro <small>(zoom 15+)</small>': catastro,
-    'Vías públicas <small>(zoom 13+)</small>': ctx.vias,
-    'Ríos y quebradas IGN <small>(zoom 13+)</small>': ctx.hidro,
-    'Curvas de nivel 10 m <small>(zoom 15+)</small>': ctx.curvas,
-    'Zona pública costera <small>(zoom 13+)</small>': ctx.zmt,
-    'Franjas de protección de ríos <small>(GAM, no oficial)</small>': ctx.proteccion,
-    'Cobertura del suelo 2020': ctx.cobertura,
-    'Pago por Servicios Ambientales 2025': ctx.psa,
-    'Zonas de vida': ctx.zonasvida,
-    'Estado del plan regulador (INVU)': ctx.planes,
-    'Centros de salud CCSS': ctx.salud,
-    'Límites distritales': (distGroup = L.layerGroup().addTo(map))
-  }, { position: 'topright', collapsed: true }).addTo(map);
-  const PRCOL = c => /^PR Vigente|^Vigente/.test(c) ? '--s1' : /elaboraci|revisi|Aprobado/.test(c) ? '--s2' : '--s3';
-  function drawContext() {
-    ctx.planes.clearLayers(); ctx.salud.clearLayers();
-    if (PLANES) ctx.planes.addLayer(L.geoJSON(PLANES, {
-      style: f => ({ color: css(PRCOL(f.properties.cat)), weight: 1, fillColor: css(PRCOL(f.properties.cat)), fillOpacity: 0.16 }),
-      onEachFeature: (f, l) => l.bindTooltip(`<b>${esc(f.properties.canton)}</b><br>${esc(prText(f.properties))}`, { sticky: true })
-    }));
-    for (const s of SALUD) ctx.salud.addLayer(L.circleMarker([s.ll[1], s.ll[0]], { radius: s.c === 'EBAIS' ? 3.5 : 5, color: css('--panel'), weight: 1, fillColor: css('--accent'), fillOpacity: 0.9 }).bindTooltip(`<b>${esc(s.n)}</b><br>${esc(s.c)}`));
-  }
-  function prText(p) {
-    if (!p) return 'Sin dato';
-    if (p.si) return `Plan regulador vigente${p.anno ? ' desde ' + p.anno : ''}${p.escala === 'Parcial' ? ', cubre parte del cantón' : ''}`;
-    return /elaboraci/.test(p.cat) ? 'Sin plan regulador vigente; en elaboración' : 'Sin plan regulador vigente';
-  }
-  function drawDistricts() {
-    calles.options.v = dark() ? 'dark_all' : 'light_all'; calles.redraw(); drawContext();
-    if (distLayer) distLayer.remove();
-    distLayer = L.geoJSON(DIST, { interactive: false, attribution: 'Límites &copy; IGN (SNIT)', style: { color: css('--muted'), weight: 0.6, opacity: 0.55, fill: false } }).addTo(distGroup);
-  }
-  function renderMarkers() {
-    markers.clearLayers(); polys.clearLayers();
-    const z = map.getZoom();
-    for (const r of shown) {
-      if (!r.ll) continue;
-      const col = css(SC[r.st]);
-      const ll = [r.ll[1], r.ll[0]];
-      if (r.exact && r.poly && z >= 14) {
-        const pg = L.polygon(r.poly.map(p => p[0].map(([x, y]) => [y, x])), { color: col, weight: 2, fillColor: col, fillOpacity: 0.28 });
-        pg.on('click', () => openFicha(r.id, true)); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
-      }
-      const m = r.exact
-        ? L.circleMarker(ll, { radius: z >= 14 ? 4 : 6, color: css('--panel'), weight: 1.5, fillColor: col, fillOpacity: 1 })
-        : L.circleMarker(ll, { radius: 9, color: col, weight: 1.5, dashArray: '3 3', fillColor: col, fillOpacity: 0.12 });
-      m.on('click', () => openFicha(r.id, true));
-      m.bindTooltip(tip(r), { direction: 'top', offset: [0, -6] });
-      markers.addLayer(m);
-    }
-  }
-  function tip(r) { return `<b>${money(r.bv, r.mon, true)}</b> · ${ETAPA[r.st]}<br>${esc(r.dn || '')}${r.cn ? ', ' + esc(r.cn) : ''}<br><span style="opacity:.7">${fdate(r.next)}</span>`; }
-  map.on('zoomend', renderMarkers);
-  function fitShown() {
-    const pts = shown.filter(r => r.ll).map(r => [r.ll[1], r.ll[0]]);
-    if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 13 });
-  }
-
-  // ---- Entorno ----
-  const dist = m => m == null ? '—' : m < 1000 ? Math.round(m / 5) * 5 + ' m' : (m / 1000).toLocaleString('es-CR', { maximumFractionDigits: 1 }) + ' km';
-  function entornoHTML(r) {
-    const e = r.ent; if (!e) return '';
-    const rows = [];
-    const warn = t => ` <span class="tag warn">${t}</span>`;
-    if (e.pr) rows.push(['Plan regulador', esc(prText(e.pr)) + (e.pr.pub && e.pr.si ? `<small class="sub">${esc(e.pr.pub)}</small>` : '') + (e.pr.si && /actualizaci|revisi/.test(e.pr.cat) ? '<small class="sub">En proceso de actualización</small>' : '')]);
-    if (r.exact) {
-      if (e.cob) rows.push(['Cobertura 2020', esc(e.cob)]);
-      if (e.agua !== undefined) rows.push(['Ríos y quebradas', e.agua == null ? 'Ninguno a menos de 400 m en la cartografía 1:5 000' : `Cauce a ${dist(e.agua)}${e.agua <= 15 ? warn('dentro de franja de protección') : e.agua <= 50 ? warn('posible franja de protección') : ''}`]);
-      if (e.elev != null || e.pend != null || e.suave) rows.push(['Relieve', [e.elev != null ? `≈ ${Math.round(e.elev)} m s. n. m.` : null, e.pend != null ? `pendiente ≈ ${Math.round(e.pend)} %${e.pend >= 30 ? warn('fuerte') : ''}` : e.suave ? 'pendiente suave' : null].filter(Boolean).join(' · ')]);
-      if (e.via) rows.push(['Vía más cercana', e.via.d <= 10 ? `${esc(e.via.t)}, al frente del predio` : `${esc(e.via.t)} a ${dist(e.via.d)}`]);
-      if (e.prot) rows.push(['Protección de ríos', 'El predio toca una franja de protección de cauces' + warn('delimitación no oficial')]);
-      if (e.psa) rows.push(['Servicios ambientales', 'Toca un área con contrato de PSA de FONAFIFO (2025)' + warn('revisar')]);
-      if (e.costa != null && e.costa < 2000) rows.push(['Costa', `A ${dist(e.costa)} de la línea de costa${e.costa <= 250 ? warn('posible zona marítimo terrestre') : ''}`]);
-    }
-    if (e.salud) rows.push(['Salud', `${esc(e.salud.n)} <small class="sub">${esc(e.salud.c)} · ${dist(e.salud.d)}</small>`]);
-    if (e.esc) rows.push(['Escuela', `A ${dist(e.esc)} <small class="sub">según el nomenclátor del IGN</small>`]);
-    if (e.zv || e.cu) rows.push(['Ambiente', [e.zv, e.cu ? 'cuenca ' + e.cu : null].filter(Boolean).map(esc).join(' · ')]);
-    if (!rows.length) return '';
-    return `<div class="sect"><h3>Entorno</h3><dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
-      <div class="foot" style="margin-top:6px">${r.exact ? 'Medido desde el borde del predio' : 'Medido desde el centro del distrito, porque el predio no está ubicado con exactitud'}. Fuentes: INVU, IGN, MINAE y CCSS vía SNIT. Orientativo: no sustituye el certificado de uso de suelo.</div></div>`;
-  }
-
-  // ---- Ficha ----
-  let openId = null;
-  function openFicha(id, fly) {
-    const r = R.find(x => x.id === id); if (!r) return;
-    openId = id;
-    document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current'));
-    const li = document.querySelector(`.item[data-id="${id}"]`); if (li) li.setAttribute('aria-current', 'true');
-    const f = $('ficha');
-    const seal = r.exact ? `<span class="seal ok">● Exacta por ${r.loc === 'plano' ? 'plano' : 'finca'}</span>` : `<span class="seal aprox">◌ Aproximada al distrito</span>`;
-    const tl = r.fd.map((d, k) => `<div class="tl ${k < r.st ? 'past' : ''} ${k === r.st ? 'now' : ''}" style="--c:var(${SC[k]})"><i></i>
-        <span class="d">${ETAPA[k]}${k ? ` · ${PCT[k] * 100} %` : ''}<small>${fdate(d, true)}</small></span><span class="b">${money(r.bases[k], r.mon)}</span></div>`).join('');
-    const diff = r.area && r.areaCat ? (r.areaCat - r.area) / r.area : null;
-    const servChips = (r.serv || []).map(s => `<span class="chip warn">${esc(s.charAt(0) + s.slice(1).toLowerCase())}</span>`).join('');
-    const m2 = r.area ? toCur(r.bv, r.mon) / r.area : null;
-    f.innerHTML = `<div class="fhead">${seal}<span class="tag">${esc(r.tipo)}</span><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
-    <div class="fbody">
-      <div class="ftitle"><h2>${esc(r.nat || r.tipo)}</h2><div class="where">${esc([r.dn, r.cn, r.pn].filter(Boolean).join(', '))}</div></div>
-      <div class="pricebox"><span class="lbl">Base vigente · ${ETAPA[r.st]} · ${fdate(r.next)}</span>
-        <span class="big">${money(r.bv, r.mon)}</span>
-        <span class="alt">≈ ${other(r.bv, r.mon)} · edicto en ${r.mon === 'USD' ? 'dólares' : 'colones'}${m2 ? ' · ' + fmt(m2, cur) + '/m²' : ''}</span></div>
-      <div class="sect"><h3>Fechas y bases</h3><div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div></div>
-      ${r.rev ? `<div class="note">${esc(r.rev)}</div>` : ''}
-      ${!r.exact && !r.rev ? `<div class="note">${r.plano ? 'El catastro no devolvió un predio para este plano ni para la finca.' : 'El edicto no cita plano y el catastro no devolvió la finca.'} El punto marca el distrito declarado.</div>` : ''}
-      ${entornoHTML(r)}
-      <div class="sect"><h3>Datos registrales</h3><dl class="kv">
-        <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
-        <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? r.planoCat + ' (catastro)' : 'No indicado'))}</dd>
-        <dt>Área en edicto</dt><dd class="num">${r.area ? fnum(r.area) + ' m²' : '—'}</dd>
-        ${r.areaCat ? `<dt>Área en catastro</dt><dd class="num">${fnum(r.areaCat)} m²${diff != null && Math.abs(diff) > 0.1 ? ` <span class="tag warn">${diff > 0 ? '+' : ''}${Math.round(diff * 100)} %</span>` : ''}</dd>` : ''}
-        <dt>Proceso</dt><dd>${esc(r.proc ? r.proc.charAt(0) + r.proc.slice(1).toLowerCase() : '—')}</dd>
-        <dt>Expediente</dt><dd class="num">${esc(r.exp || '—')}</dd>
-        <dt>Despacho</dt><dd>${esc(r.juz || '—')}</dd>
-        <dt>Publicado en</dt><dd>Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')} de 2026</dd>
-      </dl></div>
-      <div class="sect"><h3>Gravámenes y servidumbres</h3>
-        ${servChips ? `<div class="chips">${servChips}</div>` : `<div class="chips"><span class="chip">${/libre de grav/i.test(r.grav || '') && !/soportando/i.test(r.grav || '') ? 'Libre de gravámenes según el edicto' : 'Sin servidumbres citadas'}</span></div>`}
-        ${r.grav ? `<div class="grav">${esc(r.grav)}</div>` : ''}</div>
-      <div class="sect"><h3>Estudios de la propiedad</h3><div class="mods">
-        <div class="mod"><em>Paquete Pro</em><b>Valor de referencia</b><span>Zona homogénea de Hacienda frente a la base</span></div>
-        <div class="mod"><em>Paquete Pro</em><b>Zonificación del lote</b><span>Zona del plan, usos, cobertura y altura</span></div>
-        <div class="mod"><em>Paquete Pro</em><b>Afectaciones a detalle</b><span>Franjas, áreas protegidas, amenazas</span></div>
-        <div class="mod"><em>Paquete Decisión</em><b>Capa jurídica</b><span>Servidumbres y gravámenes explicados</span></div>
-      </div><div class="foot" style="margin-top:6px">Vista previa: estos módulos aún no están activos.</div></div>
-      <details class="edicto"><summary>Texto del edicto</summary><p>${esc(r.txt || '')}</p><p class="foot">Se omiten nombres de personas deudoras y números de cédula.</p></details>
-      <div class="links">
-        ${r.ll ? `<a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Ver en Google Maps</a>` : ''}
-        ${r.exp ? `<a class="btn" href="https://nexuspj.poder-judicial.go.cr/search?q=%22${encodeURIComponent(r.exp)}%22" target="_blank" rel="noopener">Buscar expediente en Nexus</a>` : ''}
-        <button class="btn" id="fcopy">Copiar datos</button>
-      </div>
-      <div class="foot">Información orientativa extraída del Boletín Judicial. No sustituye la certificación del Registro Nacional ni la revisión del expediente.</div>
-    </div>`;
-    f.hidden = false;
-    $('fx').onclick = closeFicha;
-    $('fcopy').onclick = () => {
-      const txt = `Remate ${ETAPA[r.st]} ${fdate(r.next, true)} · Base ${money(r.bv, r.mon)} · Finca ${r.fincaTxt} · Plano ${r.plano || '—'} · ${[r.dn, r.cn, r.pn].filter(Boolean).join(', ')} · Exp. ${r.exp || '—'}`;
-      const btn = $('fcopy');
-      navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copiado'; }, () => { btn.textContent = 'No se pudo copiar'; });
-    };
-    // mapa
-    selLayer.clearLayers();
-    if (r.ll) {
-      const col = css(SC[r.st]);
-      if (r.poly) {
-        const pg = L.polygon(r.poly.map(p => p[0].map(([x, y]) => [y, x])), { color: css('--ink'), weight: 2.5, fillColor: col, fillOpacity: 0.35 });
-        selLayer.addLayer(pg);
-        if (fly !== false) map.fitBounds(pg.getBounds(), { padding: [60, 60], maxZoom: 16, paddingBottomRight: window.innerWidth > 860 ? [470, 60] : [60, 60] });
-      } else {
-        selLayer.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false }));
-        if (fly !== false) map.setView([r.ll[1], r.ll[0]], 12);
-      }
-    }
-    try { history.replaceState(null, '', '#r' + id); } catch (e) {}
-    if (window.innerWidth <= 860) f.scrollTop = 0;
-  }
-  function closeFicha() { $('ficha').hidden = true; openId = null; selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', '#'); } catch (e) {} }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId != null) closeFicha(); });
-
-  // ---- Tema ----
-  function retheme() { drawDistricts(); renderMarkers(); if (openId != null) openFicha(openId, false); }
-  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); } catch (e) {}
-  new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-
-  drawDistricts();
-  setCur(cur);
-  const h = (location.hash || '').match(/^#r(\d+)$/);
-  if (h) openFicha(+h[1], true);
-})();
-</script>
+<script src="https://unpkg.com/proj4@2.9.0/dist/proj4.js" integrity="sha256-tsjlDiRXDSAsuQALr13ta74LzDw1fOf0yfPGMB2FmfU=" crossorigin=""></script>
+<script src="assets/core.js"></script>
+<script src="assets/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,320 @@
+/* PlanoExactoCR — lógica común: datos, formato, puntajes y cuenta (demo en este navegador). */
+(function (W) {
+  'use strict';
+  const PX = W.PX = {};
+  PX.PCT = [1, 0.75, 0.25];
+  PX.ETAPA = ['1.er remate', '2.º remate', '3.er remate'];
+  PX.SC = ['--s1', '--s2', '--s3'];
+  PX.PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
+  PX.PRECIOS = { expediente: 20, suscripcion: 200, cupo: 200 };
+  const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+  const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+  const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  PX.now = new Date();
+
+  // ---------- utilidades ----------
+  PX.$ = id => document.getElementById(id);
+  PX.esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  PX.css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  PX.norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  PX.cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s;
+  PX.store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  PX.get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); });
+  PX.fdate = (d, withTime) => d ? `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()}` + (withTime ? ` · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '') : '—';
+  PX.fnum = (v, dec) => v == null || isNaN(v) ? '—' : v.toLocaleString('es-CR', { maximumFractionDigits: dec != null ? dec : v < 100 ? 2 : 0 });
+  PX.days = d => d ? Math.ceil((d - PX.now) / 864e5) : null;
+  PX.dist = m => m == null ? '—' : m < 1000 ? Math.round(m / 5) * 5 + ' m' : (m / 1000).toLocaleString('es-CR', { maximumFractionDigits: 1 }) + ' km';
+  PX.when = d => { const n = PX.days(d); return n == null ? '' : n <= 0 ? 'hoy' : n === 1 ? 'mañana' : 'en ' + n + ' días'; };
+
+  // ---------- moneda: la unidad va separada del valor ----------
+  PX.cur = PX.store.get('px-cur', 'CRC') === 'USD' ? 'USD' : 'CRC';
+  PX.tc = { venta: 456.32, compra: 450.04, fecha: '' };
+  PX.setCur = c => { PX.cur = c; PX.store.set('px-cur', c); };
+  PX.conv = (v, from, to) => v == null ? null : from === to ? v : from === 'CRC' ? v / PX.tc.venta : v * PX.tc.venta;
+  PX.usd = (v, from) => PX.conv(v, from, 'USD');
+  function parts(v, c, compact) {
+    if (v == null || isNaN(v)) return { u: c === 'USD' ? 'US$' : '₡', n: '—', s: '' };
+    const u = c === 'USD' ? 'US$' : '₡';
+    const f = (x, d) => x.toLocaleString('es-CR', { maximumFractionDigits: d, minimumFractionDigits: 0 });
+    if (compact) {
+      if (v >= 1e9) return { u, n: f(v / 1e9, 2), s: 'mil M' };
+      if (v >= 1e6) return { u, n: f(v / 1e6, v >= 1e8 ? 0 : 1), s: 'M' };
+      if (v >= 1e4) return { u, n: f(v / 1e3, 0), s: 'mil' };
+    }
+    return { u, n: f(v, c === 'USD' && v < 1000 ? 2 : 0), s: '' };
+  }
+  // HTML con la unidad en su propio elemento
+  PX.mh = (v, c, compact) => { const p = parts(v, c, compact); return `<span class="money"><span class="u">${p.u}</span><span class="num">${p.n}</span>${p.s ? `<span class="sx">${p.s}</span>` : ''}</span>`; };
+  PX.mt = (v, c, compact) => { const p = parts(v, c, compact); return `${p.u} ${p.n}${p.s ? ' ' + p.s : ''}`; };
+  PX.money = (v, from, compact) => PX.mh(PX.conv(v, from, PX.cur), PX.cur, compact);
+  PX.moneyT = (v, from, compact) => PX.mt(PX.conv(v, from, PX.cur), PX.cur, compact);
+  PX.other = (v, from) => { const o = PX.cur === 'CRC' ? 'USD' : 'CRC'; return PX.mh(PX.conv(v, from, o), o, true); };
+  PX.usdH = v => PX.mh(v, 'USD');
+
+  // ---------- datos ----------
+  PX.prText = p => {
+    if (!p) return 'Sin dato del INVU';
+    if (p.si) return `Plan regulador vigente${p.anno ? ' desde ' + p.anno : ''}${p.escala === 'Parcial' ? ', cubre parte del cantón' : ''}`;
+    return /elaboraci/.test(p.cat) ? 'Sin plan regulador vigente; en elaboración' : 'Sin plan regulador vigente';
+  };
+  PX.prof = r => r.area || r.areaCat || null;
+  PX.prepare = function (R) {
+    for (const r of R) {
+      r.key = 'r' + r.id;
+      r.fd = (r.f || []).map(s => new Date(s));
+      const i = r.fd.findIndex(d => d >= PX.now);
+      r.st = i; r.next = i >= 0 ? r.fd[i] : null;
+      r.bases = (r.f || []).map((_, k) => r.base * PX.PCT[k]);
+      r.bv = i >= 0 ? r.base * PX.PCT[i] : null;
+      r.exact = r.loc === 'plano' || r.loc === 'finca';
+      r.tg = r.tg || [];
+      r.fincaTxt = (r.prov ? r.prov + '-' : '') + (r.finca || '') + (r.filial ? '-F' : '') + (r.der ? '-' + r.der : '');
+      r.nom = r.nom || r.tipo;
+      r.lugar = [r.dn, r.cn, r.pn].filter(Boolean).join(', ');
+      r.search = PX.norm([r.nom, r.bar, r.plano, r.planoCat, r.fincaTxt, String(r.finca), r.exp, r.dn, r.cn, r.pn, r.nat, r.juz].join(' '));
+      r.searchDigits = [r.plano, r.fincaTxt, r.exp, r.planoCat].join(' ').replace(/\D/g, '');
+      r.usdm2 = r.bv && PX.prof(r) ? PX.usd(r.bv, r.mon) / PX.prof(r) : null;
+    }
+    // medianas de US$/m² por cantón y provincia (remates vigentes con área)
+    const med = a => { if (!a.length) return null; a = a.slice().sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+    const byC = {}, byP = {};
+    for (const r of R) if (r.st >= 0 && r.usdm2) { (byC[r.prov + '|' + r.cn] = byC[r.prov + '|' + r.cn] || []).push(r.usdm2); (byP[r.prov] = byP[r.prov] || []).push(r.usdm2); }
+    PX.medC = {}; PX.medP = {};
+    for (const k in byC) if (byC[k].length >= 3) PX.medC[k] = { v: med(byC[k]), n: byC[k].length };
+    for (const k in byP) PX.medP[k] = { v: med(byP[k]), n: byP[k].length };
+    PX.R = R; PX.byKey = {}; for (const r of R) PX.byKey[r.key] = r;
+    return R;
+  };
+  PX.medFor = r => PX.medC[r.prov + '|' + r.cn] ? Object.assign({ ref: 'cantón ' + r.cn }, PX.medC[r.prov + '|' + r.cn]) : PX.medP[r.prov] ? Object.assign({ ref: 'provincia de ' + PX.PROVS[r.prov - 1] }, PX.medP[r.prov]) : null;
+
+  // Quita las frases de "libre de …" para no confundirlas con cargas reales
+  PX.limpiarGrav = t => PX.norm(t).replace(/libres? de (gravamenes|anotaciones|hipotecas)( hipotecarios)?((,| y| e) (gravamenes|anotaciones|hipotecas))*/g, ' ');
+  // ---------- análisis multidimensional ----------
+  // Cada dimensión va de 0 a 100 (más alto = mejor para quien compra) y trae sus razones.
+  PX.DIMS = [
+    { k: 'juridica', n: 'Sanidad jurídica', d: 'Servidumbres, gravámenes, derechos y certeza de ubicación' },
+    { k: 'precio', n: 'Precio por m²', d: 'Base vigente frente a la mediana de remates de la zona' },
+    { k: 'servicios', n: 'Potencial por servicios', d: 'Plan regulador, acceso, salud, escuela y entorno urbano' },
+    { k: 'restricciones', n: 'Pocas restricciones', d: 'Ríos, pendiente, costa, bosque y protección' }
+  ];
+  PX.W0 = { juridica: 35, precio: 25, servicios: 25, restricciones: 15 };
+  const clamp = v => Math.max(0, Math.min(100, Math.round(v)));
+  PX.score = function (r, W) {
+    W = W || PX.W0;
+    const out = {}, why = {};
+    // Sanidad jurídica
+    let j = 100; const wj = [];
+    const sub = (p, t) => { j -= p; wj.push([-p, t]); };
+    const serv = r.serv || [];
+    if (serv.length) sub(Math.min(36, 12 * serv.length), serv.length === 1 ? 'Soporta una servidumbre' : `Soporta ${serv.length} servidumbres`);
+    const g = PX.limpiarGrav(r.grav);
+    if (/hipotec/.test(g) && !/libre de gravamenes hipotecarios|libre de hipotecas/.test(g)) sub(15, 'Hipoteca citada en el edicto');
+    if (/anotaci/.test(g)) sub(10, 'Tiene anotaciones');
+    if (/usufruct/.test(g)) sub(15, 'Usufructo citado');
+    if (/embargo/.test(g)) sub(5, 'Embargo inscrito');
+    if (r.der && r.der !== '000' && r.der !== '0') sub(15, `Se remata el derecho ${r.der}, no la finca completa`);
+    if (r.multi) sub(8, 'El edicto incluye varias fincas o derechos');
+    if (r.filial) sub(5, 'Filial de condominio: reglamento y cuotas');
+    if (r.isPlano) { /* plano consultado: sin edicto */ }
+    else if (!r.exact) sub(15, 'Ubicación aproximada: el catastro no confirmó el predio');
+    if (r.rev) sub(15, 'El catastro devolvió un predio que no coincide con el edicto');
+    if (r.area && r.areaCat && Math.abs(r.areaCat - r.area) / r.area > 0.1) sub(10, `Área del catastro difiere ${Math.round((r.areaCat - r.area) / r.area * 100)} % del edicto`);
+    if (!wj.length) wj.push([0, r.isPlano ? 'Sin edicto: solo se revisa la ubicación catastral' : 'Sin servidumbres ni gravámenes relevantes citados']);
+    out.juridica = r.isPlano ? null : clamp(j); why.juridica = wj;
+    // Precio por m²
+    const med = r.isPlano ? null : PX.medFor(r);
+    if (r.usdm2 && med) {
+      const ratio = r.usdm2 / med.v;
+      out.precio = clamp(50 - 50 * Math.log2(ratio));
+      why.precio = [[0, `${PX.mt(r.usdm2, 'USD')}/m² frente a una mediana de ${PX.mt(med.v, 'USD')}/m² en ${med.ref} (${med.n} remates)`], [0, ratio < 1 ? `${Math.round((1 - ratio) * 100)} % por debajo de la mediana` : `${Math.round((ratio - 1) * 100)} % por encima de la mediana`]];
+    } else { out.precio = null; why.precio = [[0, r.isPlano ? 'Sin precio: no está en remate' : 'Sin área o sin base vigente']]; }
+    // Potencial por servicios
+    const e = r.ent || {}; let s = 0; const ws = [];
+    const add = (p, t) => { s += p; ws.push([p, t]); };
+    if (e.pr && e.pr.si) add(20, 'Cantón con plan regulador vigente');
+    if (r.tg.includes('frente') || (e.via && e.via.d <= 10)) add(25, 'Frente a vía');
+    if (e.salud) { const d = e.salud.d; d <= 1000 ? add(20, `Centro de salud a ${PX.dist(d)}`) : d <= 3000 ? add(12, `Centro de salud a ${PX.dist(d)}`) : d <= 6000 ? add(5, `Centro de salud a ${PX.dist(d)}`) : ws.push([0, `Centro de salud a ${PX.dist(d)}`]); }
+    if (e.esc != null) { e.esc <= 1000 ? add(15, `Escuela a ${PX.dist(e.esc)}`) : e.esc <= 2000 ? add(8, `Escuela a ${PX.dist(e.esc)}`) : ws.push([0, `Escuela a ${PX.dist(e.esc)}`]); }
+    if (e.cob === 'Zona urbana' || r.tg.includes('urbano')) add(20, 'Zona urbana según cobertura 2020');
+    out.servicios = clamp(s); why.servicios = ws.length ? ws : [[0, 'Sin datos de servicios cercanos']];
+    // Restricciones (100 = ninguna detectada)
+    let x = 100; const wx = [];
+    const res = (p, t) => { x -= p; wx.push([-p, t]); };
+    const hasGeo = r.exact || r.isPlano;
+    if (!hasGeo) { x = 60; wx.push([0, 'Sin polígono exacto: valor neutro']); }
+    else {
+      if (e.agua != null) { e.agua <= 15 ? res(45, `Cauce a ${PX.dist(e.agua)}: dentro de la franja de protección`) : e.agua <= 50 ? res(25, `Cauce a ${PX.dist(e.agua)}: posible franja de protección`) : e.agua <= 100 ? res(10, `Cauce a ${PX.dist(e.agua)}`) : null; }
+      if (e.pend != null) { e.pend >= 30 ? res(30, `Pendiente fuerte (≈ ${e.pend} %)`) : e.pend >= 15 ? res(15, `Pendiente moderada (≈ ${e.pend} %)`) : null; }
+      if (e.costa != null && e.costa <= 250) res(30, `A ${PX.dist(e.costa)} de la costa: posible zona marítimo terrestre`);
+      if (e.cob === 'Cobertura forestal') res(20, 'Cobertura forestal: cambio de uso restringido');
+      if (e.prot) res(25, 'Toca una franja de protección de cauces');
+      if (e.psa) res(15, 'Toca un área con contrato de PSA');
+      if (!wx.length) wx.push([0, e.agua === undefined && e.pend == null ? 'Sin restricciones en los datos disponibles (cartografía 1:5 000 parcial)' : 'Sin restricciones detectadas']);
+    }
+    out.restricciones = clamp(x); why.restricciones = wx;
+    // total ponderado con las dimensiones disponibles
+    let sw = 0, sv = 0;
+    for (const d of PX.DIMS) if (out[d.k] != null && W[d.k] > 0) { sw += W[d.k]; sv += W[d.k] * out[d.k]; }
+    out.total = sw ? Math.round(sv / sw) : null;
+    out.why = why;
+    return out;
+  };
+  PX.scoreLabel = v => v == null ? 'Sin dato' : v >= 75 ? 'Muy favorable' : v >= 60 ? 'Favorable' : v >= 45 ? 'Intermedio' : v >= 30 ? 'Con reparos' : 'Desfavorable';
+
+  // ---------- cuenta del usuario (modo demostración, en este navegador) ----------
+  const A0 = { plan: 'free', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {} };
+  PX.acct = Object.assign({}, A0, PX.store.get('px-acct', {}));
+  PX.saveAcct = () => { PX.store.set('px-acct', PX.acct); document.dispatchEvent(new CustomEvent('px-acct')); };
+  PX.isPro = () => PX.acct.plan === 'pro';
+  PX.mesKey = () => PX.now.getFullYear() + '-' + String(PX.now.getMonth() + 1).padStart(2, '0');
+  PX.usoMes = () => PX.acct.usados[PX.mesKey()] || 0;
+  PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && x.via === 'pro');
+  PX.puedeGenerar = key => PX.tieneExp(key) || (PX.isPro() && PX.usoMes() < PX.PRECIOS.cupo);
+  // Registra la generación: con suscripción descuenta del cupo mensual la primera vez en el mes.
+  PX.registrarExp = (key, label) => {
+    const a = PX.acct;
+    if (!PX.tieneExp(key)) {
+      if (!(PX.isPro() && PX.usoMes() < PX.PRECIOS.cupo)) return false;
+      a.usados[PX.mesKey()] = PX.usoMes() + 1;
+      a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'pro' });
+    } else if (!a.expedientes.some(x => x.k === key)) a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'compra' });
+    PX.saveAcct(); return true;
+  };
+  PX.comprar = (key, label) => { if (!PX.acct.comprados.includes(key)) PX.acct.comprados.push(key); PX.saveAcct(); PX.registrarExp(key, label); };
+  PX.toggleSigo = key => { const s = PX.acct.sigo; const i = s.indexOf(key); i >= 0 ? s.splice(i, 1) : s.unshift(key); PX.saveAcct(); return i < 0; };
+  PX.sigo = key => PX.acct.sigo.includes(key);
+
+  // Planos consultados (para comparar, listas y expediente)
+  PX.planos = PX.store.get('px-planos', {});
+  PX.savePlano = o => { PX.planos[o.key] = o; const ks = Object.keys(PX.planos); if (ks.length > 40) delete PX.planos[ks[0]]; PX.store.set('px-planos', PX.planos); };
+  PX.item = key => key && key[0] === 'r' ? (PX.byKey || {})[key] : PX.planos[key] ? PX.hydratePlano(PX.planos[key]) : null;
+  PX.hydratePlano = o => { o.isPlano = true; o.tg = o.tg || []; return o; };
+
+  // ---------- geometría ----------
+  PX.CRTM05 = '+proj=tmerc +lat_0=0 +lon_0=-84 +k=0.9999 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs';
+  function inRing(x, y, ring) {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
+  PX.inGeom = (x, y, g) => {
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    return polys.some(p => inRing(x, y, p[0]) && !p.slice(1).some(h => inRing(x, y, h)));
+  };
+  PX.featAt = (fc, x, y) => fc && fc.features.find(f => PX.inGeom(x, y, f.geometry));
+  PX.haversine = (a, b) => { const R = 6371000, r = Math.PI / 180; const dLat = (b[1] - a[1]) * r, dLon = (b[0] - a[0]) * r; const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+  // Centroide simple del anillo exterior más grande
+  PX.centroid = polys => {
+    let best = null, ba = -1;
+    for (const p of polys) { const r = p[0]; let a = 0, cx = 0, cy = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const f = r[j][0] * r[i][1] - r[i][0] * r[j][1]; a += f; cx += (r[j][0] + r[i][0]) * f; cy += (r[j][1] + r[i][1]) * f; } if (Math.abs(a) > ba) { ba = Math.abs(a); best = a ? [cx / (3 * a), cy / (3 * a)] : r[0]; } }
+    return best;
+  };
+
+  // Número de plano: acepta P-1311611-2008, 6-1311611-2008, SJ-123456-2010 o 613116112008
+  const LET = { SJ: 1, A: 2, C: 3, H: 4, G: 5, P: 6, L: 7 };
+  PX.parsePlano = (txt, provSel) => {
+    const t = String(txt || '').toUpperCase().replace(/\s+/g, '');
+    let m = t.match(/^(SJ|A|C|H|G|P|L|[1-7])-?0*(\d{1,7})-?(\d{4})$/);
+    if (m) { const p = LET[m[1]] || +m[1]; return { code: p + m[2].padStart(7, '0') + m[3], prov: p, txt: `${Object.keys(LET)[p - 1]}-${m[2].padStart(7, '0')}-${m[3]}` }; }
+    m = t.match(/^(\d)(\d{7})(\d{4})$/);
+    if (m && +m[1] >= 1 && +m[1] <= 7) return { code: t, prov: +m[1], txt: `${Object.keys(LET)[+m[1] - 1]}-${m[2]}-${m[3]}` };
+    m = t.match(/^0*(\d{1,7})-?(\d{4})$/);
+    if (m && provSel) return { code: provSel + m[1].padStart(7, '0') + m[2], prov: +provSel, txt: `${Object.keys(LET)[provSel - 1]}-${m[1].padStart(7, '0')}-${m[2]}` };
+    return null;
+  };
+  PX.planoTxt = code => code && code.length === 12 ? `${Object.keys(LET)[+code[0] - 1] || code[0]}-${code.slice(1, 8)}-${code.slice(8)}` : code;
+
+  // Consulta de un plano o finca en el catastro, a través del puente /api del sitio.
+  // Devuelve objetos con la misma forma que un remate (sin precio) para reutilizar ficha, comparador y expediente.
+  PX.ctx = {};
+  PX.loadCtx = async () => {
+    if (PX.ctx.ready) return PX.ctx;
+    const [dist, planes, salud] = await Promise.all([PX.get('data/distritos.geojson'), PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => [])]);
+    Object.assign(PX.ctx, { dist, planes, salud, ready: true });
+    return PX.ctx;
+  };
+  PX.consultar = async (tipo, valor, prov) => {
+    const url = tipo === 'plano' ? `api/plano?v=${encodeURIComponent(valor)}` : `api/finca?v=${encodeURIComponent(valor)}&p=${encodeURIComponent(prov || '')}`;
+    const res = await fetch(url, { cache: 'no-cache' });
+    let j = null; try { j = await res.json(); } catch (e) {}
+    if (!res.ok || !j) throw new Error((j && j.error) || 'El servicio de búsqueda no está disponible en este momento.');
+    if (!j.result || !j.data) return [];
+    await PX.loadCtx();
+    const tr = W.proj4 ? W.proj4(PX.CRTM05, 'WGS84') : null;
+    if (!tr) throw new Error('No se cargó la librería de proyecciones.');
+    const out = [];
+    for (const z of ['zona_1', 'zona_2']) {
+      const fc = j.data[z]; if (!fc || !fc.features) continue;
+      for (const f of fc.features) {
+        if (!f.geometry) continue;
+        const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+        const ll = polys.map(p => p.map(ring => ring.map(c => tr.forward([c[0], c[1]]).map(v => Math.round(v * 1e6) / 1e6))));
+        out.push(PX.armarPlano(f.properties || {}, ll));
+      }
+    }
+    return out;
+  };
+  PX.armarPlano = (p, poly) => {
+    const c = PX.centroid(poly.map(x => [x[0]])) || poly[0][0][0];
+    const ctx = PX.ctx;
+    const d = PX.featAt(ctx.dist, c[0], c[1]);
+    const prf = PX.featAt(ctx.planes, c[0], c[1]);
+    let sal = null;
+    for (const s of ctx.salud || []) { const dd = PX.haversine(c, s.ll); if (!sal || dd < sal.d) sal = { n: s.n, c: s.c, d: Math.round(dd) }; }
+    const code = String(p.plano || '');
+    const prov = +p.provincia || (d ? +String(d.properties.c)[0] : null);
+    const o = {
+      key: 'p' + (code || (p.provincia + '-' + p.finca)), isPlano: true, plano: code ? PX.planoTxt(code) : null, planoCat: code,
+      prov, finca: p.finca ? String(+p.finca) : null, der: null, area: null, areaCat: p.area ? Math.round(p.area * 100) / 100 : null,
+      horizontal: p.horizontal === '1', poly, ll: [Math.round(c[0] * 1e6) / 1e6, Math.round(c[1] * 1e6) / 1e6],
+      dn: d ? d.properties.d : null, cn: d ? d.properties.k : null, pn: prov ? PX.PROVS[prov - 1] : null, dc: d ? d.properties.c : null,
+      ent: { pr: prf ? prf.properties : null, salud: sal }, tg: [], tipo: p.horizontal === '1' ? 'Filial' : 'Predio', exact: true, loc: 'plano'
+    };
+    o.fincaTxt = (o.prov ? o.prov + '-' : '') + (o.finca || '—');
+    o.lugar = [o.dn, o.cn, o.pn].filter(Boolean).join(', ');
+    o.nom = `Plano ${o.plano || o.fincaTxt}${o.dn ? ' · ' + o.dn : ''}`;
+    // ¿Está en remate?
+    const hit = (PX.R || []).find(r => (code && r.planoCat === code) || (o.finca && r.prov === o.prov && String(r.finca) === o.finca && r.exact));
+    if (hit) o.remate = hit.key;
+    return o;
+  };
+  PX.cobertura = async (lon, lat) => {
+    try { const r = await fetch(`api/cobertura?lon=${lon}&lat=${lat}`); if (!r.ok) return null; const j = await r.json(); return j.cat || null; } catch (e) { return null; }
+  };
+
+  // ---------- glosario jurídico (para el expediente) ----------
+  PX.GLOSARIO = [
+    [/servidumbre de paso|servidumbre trasladada|servidumbre de acceso/, 'Servidumbre de paso', 'Otra finca tiene derecho a pasar por este terreno, o este terreno pasa por otra. Limita cercar o construir sobre la franja.'],
+    [/servidumbre de (aguas|acueducto|desague|alcantarillado|tuberia)/, 'Servidumbre de aguas o tubería', 'Una franja queda reservada para conducir agua o aguas residuales. Normalmente no se puede construir encima.'],
+    [/servidumbre (electrica|de electroducto|de linea)|electroducto|ice|cnfl/, 'Servidumbre eléctrica', 'Paso de líneas eléctricas. Restringe construir bajo el tendido y exige retiros.'],
+    [/servidumbre/, 'Servidumbre (otra)', 'Un derecho a favor de otra finca o institución que limita el uso de una parte del terreno.'],
+    [/reservas? de ley de aguas/, 'Reservas de la Ley de Aguas', 'Reserva general de ley sobre el uso del agua y las franjas de cauces. Es común y no impide la compra.'],
+    [/reservas? de ley de caminos/, 'Reservas de la Ley de Caminos', 'Reserva general sobre el derecho de vía de caminos públicos. Es común; revise retiros frente a la vía.'],
+    [/hipotec/, 'Hipoteca', 'Garantía sobre la finca a favor de un acreedor. En remate, las hipotecas de grado inferior al que se ejecuta suelen cancelarse, pero debe verificarse en el expediente.'],
+    [/anotaci/, 'Anotación', 'Aviso registral de un proceso o trámite pendiente (por ejemplo una demanda) que puede afectar al nuevo dueño.'],
+    [/embargo/, 'Embargo', 'Bloqueo judicial de la finca para garantizar una deuda. El juzgado ordena su cancelación al aprobar el remate, según el caso.'],
+    [/usufruct/, 'Usufructo', 'Otra persona tiene derecho a usar y aprovechar la finca. Puede impedir ocuparla aunque se compre.'],
+    [/condiciones/, 'Condiciones', 'Restricciones inscritas al formar la finca (por ejemplo de un proyecto o de una institución). Conviene leerlas en el Registro.'],
+    [/plazo de convalidacion|convalidaci/, 'Plazo de convalidación', 'Limitación temporal ligada a la inscripción por información posesoria o titulación. Puede limitar traspasos.'],
+    [/afectacion a? ?patrimonio familiar|patrimonio familiar/, 'Patrimonio familiar', 'Protección de la vivienda familiar. Puede limitar el remate o exigir requisitos adicionales.'],
+    [/arrendamiento/, 'Arrendamiento', 'Contrato de alquiler inscrito. El inquilino podría mantener derechos.'],
+    [/demanda/, 'Demanda inscrita', 'Hay un proceso judicial anotado sobre la finca.']
+  ];
+  PX.explicar = (texto, serv) => {
+    const t = PX.limpiarGrav([texto].concat(serv || []).join(' '));
+    const out = [], seen = new Set();
+    for (const [re, n, d] of PX.GLOSARIO) if (re.test(t) && !seen.has(n)) {
+      if (n === 'Servidumbre (otra)' && [...seen].some(s => /Servidumbre/.test(s))) continue;
+      seen.add(n); out.push({ n, d });
+    }
+    return out;
+  };
+
+  PX.DISCLAIMER = 'Este documento <b>no es un certificado de uso de suelo</b>, ni una certificación registral o catastral, ni un avalúo, ni un estudio de título. Es un <b>compendio de información pública</b> (Boletín Judicial, Registro Inmobiliario, IGN, INVU, MINAE, CCSS) y un <b>análisis multidimensional orientativo</b> generado de forma automática. Antes de ofertar, verifique en el expediente judicial, el Registro Nacional y la municipalidad.';
+})(window);

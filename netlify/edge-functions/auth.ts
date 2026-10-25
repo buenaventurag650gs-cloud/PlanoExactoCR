@@ -20,4 +20,3 @@ export default async (request: Request, context: { next: () => Promise<Response>
   });
 };
 
-export const config = { path: "/*" };

@@ -12,3 +12,12 @@
   for = "/data/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# Orden: primero la contraseña, después el puente a los servicios.
+[[edge_functions]]
+  path = "/*"
+  function = "auth"
+
+[[edge_functions]]
+  path = "/api/*"
+  function = "api"
