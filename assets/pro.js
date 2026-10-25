@@ -120,7 +120,8 @@
   const pct = v => (v * 100).toLocaleString('es-CR', { maximumFractionDigits: 1 }) + ' %';
   const num = (id, label, val, unit, o) => `<label class="pf"><span>${label}</span><span class="pin">${o && o.pre ? `<span class="u">${o.pre}</span>` : ''}<input type="number" data-v="${id}" value="${val}" step="${(o && o.step) || 'any'}" min="0" inputmode="decimal"${o && o.dis ? ' disabled' : ''}>${unit ? `<span class="sfx">${unit}</span>` : ''}</span></label>`;
   const curU = () => PX.cur === 'USD' ? 'US$' : '₡';
-  const M = (v, c) => PX.mh(v, PX.cur, c);
+  const M = v => PX.duo(v, PX.cur);
+  const I = v => PX.duoI(v, PX.cur);
 
   function lotSVG(v, c) {
     // Lote cuadrado proporcional, huella centrada y pisos apilados
@@ -168,7 +169,7 @@
           <div class="${c.util >= 0 ? 'good' : 'bad'}"><small>Utilidad</small><b>${M(c.util, true)}</b></div><div><small>Margen sobre ventas</small><b class="num">${pct(c.margen)}</b></div>
           <div><small>Retorno sobre inversión</small><b class="num">${pct(c.roi)}</b></div><div><small>Rendimiento anualizado</small><b class="num">${pct(c.anual)}</b></div></div>
           <div class="wf">${bars.map(b => `<div class="wfr"><span>${b[0]}</span><span class="track"><i style="width:${b[1] / mx * 100}%;background:${b[2]}"></i></span><b>${M(b[1], true)}</b></div>`).join('')}</div>
-          <div class="foot">${v.modo === 'reventa' ? `Punto de equilibrio: vender en ${M(c.equilibrio, true)} o más.${v.ref && !r.isPlano ? ' El precio de venta parte de la mediana de remates del cantón por el área: ajústelo con su conocimiento del mercado.' : ''}` : `Punto de equilibrio: ${M(c.equilibrio)} por m² construido. La obra incluye 12 % de indirectos, diseño y permisos.`} Gastos de adjudicación aproximados: ${M(c.gastos, true)}.</div></div></div>`;
+          <div class="foot">${v.modo === 'reventa' ? `Punto de equilibrio: vender en ${I(c.equilibrio, true)} o más.${v.ref && !r.isPlano ? ' El precio de venta parte de la mediana de remates del cantón por el área: ajústelo con su conocimiento del mercado.' : ''}` : `Punto de equilibrio: ${I(c.equilibrio)} por m² construido. La obra incluye 12 % de indirectos, diseño y permisos.`} Gastos de adjudicación aproximados: ${I(c.gastos, true)}.</div></div></div>`;
     },
     riesgos(r) {
       const rs = P.riesgos(r), lv = ['', 'Información', 'Medio', 'Alto'];
@@ -205,7 +206,7 @@
       const pro = PX.isPro();
       layer.innerHTML = `<div class="scrim"><div class="dlg prows" role="dialog" aria-modal="true" aria-label="Herramientas PRO">
         <div class="hd">${PX.PRO}<h2>Herramientas PRO</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-        <div class="prolot"><b>${esc(r.nom)}</b><span class="muted">${esc(r.lugar || '')}${r.bv ? ' · base ' + PX.moneyT(r.bv, r.mon, true) : ''}${PX.prof(r) ? ' · ' + fnum(PX.prof(r)) + ' m²' : ''}</span></div>
+        <div class="prolot"><b>${esc(r.nom)}</b><span class="muted">${esc(r.lugar || '')}${r.bv ? ' · base ' + PX.duoT(r.bv, r.mon) : ''}${PX.prof(r) ? ' · ' + fnum(PX.prof(r)) + ' m²' : ''}</span></div>
         ${pro ? '' : `<div class="probar">${PX.PRO}<span>Estás viendo una <b>vista previa</b>. Con la suscripción PRO editas los supuestos y ves todos los resultados.</span><button class="btn sm primary" data-sub>Activar PRO</button></div>`}
         <div class="pnav" role="tablist">${tools.map(t => `<button role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n}</button>`).join('')}</div>
         <div class="pbody${pro ? '' : ' preview'}" data-tool-body>${P.view[cur](r, st)}</div>

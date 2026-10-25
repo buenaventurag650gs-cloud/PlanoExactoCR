@@ -147,3 +147,8 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .fav[aria-pressed="true"] svg, .favbtn[aria-pressed="true"] svg { fill: currentColor; }
 .favbtn[aria-pressed="true"] { background: #FBE9E3; border-color: #E9B8A8; }
 .rk.rp i { background: #2E7D5B; }
+
+/* Doble moneda: la principal arriba y su equivalente debajo */
+.duo { display: inline-grid; gap: 1px; justify-items: inherit; }
+.duo .eq, .eqi { font-size: .78em; font-weight: 500; color: var(--muted); }
+.duo .eq .u, .eqi .u { color: var(--muted); }

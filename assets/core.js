@@ -39,19 +39,24 @@
     if (v == null || isNaN(v)) return { u: c === 'USD' ? 'US$' : '₡', n: '—', s: '' };
     const u = c === 'USD' ? 'US$' : '₡';
     const f = (x, d) => x.toLocaleString('es-CR', { maximumFractionDigits: d, minimumFractionDigits: 0 });
-    if (compact) {
+    if (false) { // siempre cifras completas, sin «mil» ni «M»
       if (v >= 1e9) return { u, n: f(v / 1e9, 2), s: 'mil M' };
       if (v >= 1e6) return { u, n: f(v / 1e6, v >= 1e8 ? 0 : 1), s: 'M' };
       if (v >= 1e4) return { u, n: f(v / 1e3, 0), s: 'mil' };
     }
-    return { u, n: f(v, c === 'USD' && v < 1000 ? 2 : 0), s: '' };
+    return { u, n: f(v, c === 'USD' && Math.abs(v) < 1000 ? 2 : 0), s: '' };
   }
   // HTML con la unidad en su propio elemento
   PX.mh = (v, c, compact) => { const p = parts(v, c, compact); return `<span class="money"><span class="u">${p.u}</span><span class="num">${p.n}</span>${p.s ? `<span class="sx">${p.s}</span>` : ''}</span>`; };
   PX.mt = (v, c, compact) => { const p = parts(v, c, compact); return `${p.u} ${p.n}${p.s ? ' ' + p.s : ''}`; };
   PX.money = (v, from, compact) => PX.mh(PX.conv(v, from, PX.cur), PX.cur, compact);
   PX.moneyT = (v, from, compact) => PX.mt(PX.conv(v, from, PX.cur), PX.cur, compact);
-  PX.other = (v, from) => { const o = PX.cur === 'CRC' ? 'USD' : 'CRC'; return PX.mh(PX.conv(v, from, o), o, true); };
+  PX.other = (v, from) => { const o = PX.cur === 'CRC' ? 'USD' : 'CRC'; return PX.mh(PX.conv(v, from, o), o); };
+  PX.otherT = (v, from) => { const o = PX.cur === 'CRC' ? 'USD' : 'CRC'; return PX.mt(PX.conv(v, from, o), o); };
+  // Toda cifra va con su equivalente en la otra moneda
+  PX.duo = (v, from, suf) => v == null ? '—' : `<span class="duo">${PX.money(v, from)}${suf || ''}<span class="eq">${PX.other(v, from)}${suf || ''}</span></span>`;
+  PX.duoI = (v, from, suf) => v == null ? '—' : `${PX.money(v, from)}${suf || ''} <span class="eqi">· ${PX.other(v, from)}${suf || ''}</span>`;
+  PX.duoT = (v, from, suf) => v == null ? '—' : `${PX.moneyT(v, from)}${suf || ''} (${PX.otherT(v, from)}${suf || ''})`;
   PX.usdH = v => PX.mh(v, 'USD');
 
   // ---------- datos ----------
@@ -129,7 +134,7 @@
     if (r.usdm2 && med) {
       const ratio = r.usdm2 / med.v;
       out.precio = clamp(50 - 50 * Math.log2(ratio));
-      why.precio = [[0, `${PX.mt(r.usdm2, 'USD')}/m² frente a una mediana de ${PX.mt(med.v, 'USD')}/m² en ${med.ref} (${med.n} remates)`], [0, ratio < 1 ? `${Math.round((1 - ratio) * 100)} % por debajo de la mediana` : `${Math.round((ratio - 1) * 100)} % por encima de la mediana`]];
+      why.precio = [[0, `${PX.duoT(r.usdm2, 'USD', '/m²')} frente a una mediana de ${PX.duoT(med.v, 'USD', '/m²')} en ${med.ref}`], [0, ratio < 1 ? `${Math.round((1 - ratio) * 100)} % por debajo de la mediana` : `${Math.round((ratio - 1) * 100)} % por encima de la mediana`]];
     } else { out.precio = null; why.precio = [[0, r.isPlano ? 'Sin precio: no está en remate' : 'Sin área o sin base vigente']]; }
     // Potencial por servicios
     const e = r.ent || {}; let s = 0; const ws = [];
@@ -165,8 +170,9 @@
   PX.scoreLabel = v => v == null ? 'Sin dato' : v >= 75 ? 'Muy favorable' : v >= 60 ? 'Favorable' : v >= 45 ? 'Intermedio' : v >= 30 ? 'Con reparos' : 'Desfavorable';
 
   // ---------- cuenta del usuario (modo demostración, en este navegador) ----------
-  const A0 = { plan: 'free', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {} };
+  const A0 = { plan: 'pro', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {} };
   PX.acct = Object.assign({}, A0, PX.store.get('px-acct', {}));
+  if (!PX.store.get('px-v3')) { PX.acct.plan = 'pro'; PX.store.set('px-v3', 1); PX.store.set('px-acct', PX.acct); } // etapa de prueba: PRO activo
   PX.saveAcct = () => { PX.store.set('px-acct', PX.acct); document.dispatchEvent(new CustomEvent('px-acct')); };
   PX.isPro = () => PX.acct.plan === 'pro';
   PX.mesKey = () => PX.now.getFullYear() + '-' + String(PX.now.getMonth() + 1).padStart(2, '0');
