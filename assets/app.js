@@ -188,10 +188,20 @@
   const ctxR = L.canvas({ pane: 'ctx' });
   const dark = () => (matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark';
   const cartoAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const osmAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+  const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 19 }, o));
+  const carto = (v, o) => L.tileLayer('https://{s}.basemaps.cartocdn.com/{v}/{z}/{x}/{y}{r}.png', Object.assign({ v, subdomains: 'abcd', maxZoom: 19, attribution: cartoAttr }, o));
+  // Mapas base: Calles (CARTO Voyager, con color), OpenStreetMap estándar, topográfico, gris claro y satélite con nombres
+  const voyager = carto('rastertiles/voyager');
   const base = {
-    calles: L.tileLayer('https://{s}.basemaps.cartocdn.com/{v}/{z}/{x}/{y}{r}.png', { v: 'light_all', subdomains: 'abcd', maxZoom: 19, attribution: cartoAttr }),
-    sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imágenes &copy; Esri, Maxar, Earthstar Geographics' })
+    calles: L.layerGroup([voyager]),
+    osm: L.layerGroup([L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osmAttr })]),
+    topo: L.layerGroup([esri('World_Topo_Map', { attribution: 'Mapa &copy; Esri, HERE, Garmin, USGS, OpenStreetMap' })]),
+    gris: L.layerGroup([carto('light_all')]),
+    sat: L.layerGroup([esri('World_Imagery', { attribution: 'Imágenes &copy; Esri, Maxar, Earthstar Geographics' }),
+      esri('Reference/World_Transportation', { opacity: 0.85 }), esri('Reference/World_Boundaries_and_Places', { attribution: 'Nombres &copy; Esri' })])
   };
+  const BASES = [['calles', 'Calles'], ['osm', 'OpenStreetMap'], ['topo', 'Topográfico'], ['gris', 'Gris claro'], ['sat', 'Satélite con nombres']];
 
   // Estilos propios para los servicios WMS (SLD), en lugar de los colores originales
   const sld = (name, rules) => `<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>${name}</Name><UserStyle><FeatureTypeStyle>${rules}</FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
@@ -237,7 +247,7 @@
     { id: 'zmt', n: 'Zona pública costera', z: 13, mk: () => wms('https://geos.snitcr.go.cr/be/IGN/wms', 'IGN:lineas_digitales,IGN:mojones', { minZoom: 13, zIndex: 7, attribution: 'Zona pública &copy; IGN' }) }
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
-  let baseId = PX.store.get('px-base', 'calles');
+  let baseId = PX.store.get('px-base', 'calles'); if (!base[baseId]) baseId = 'calles';
   const vec = { cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
@@ -247,7 +257,7 @@
     PX.store.set('px-layers', lyrState); PX.store.set('px-base', baseId);
   }
   function renderLyrPanel() {
-    let h = `<h4>Mapa base</h4><div class="lyr" style="grid-template-columns:1fr 1fr"><label><input type="radio" name="base" value="calles"${baseId === 'calles' ? ' checked' : ''}> Calles</label><label><input type="radio" name="base" value="sat"${baseId === 'sat' ? ' checked' : ''}> Satélite</label></div>`;
+    let h = `<h4>Mapa base</h4><div class="lyr" style="grid-template-columns:1fr 1fr;gap:6px 8px">${BASES.map(([k, n]) => `<label><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}> ${n}</label>`).join('')}</div>`;
     for (const l of LY) {
       if (l.g) h += `<h4>${l.g}</h4>`;
       const ok = allowed(l), on = lyrState[l.id] && ok;
@@ -273,7 +283,7 @@
   function bbox(g) { let a = [180, 90, -180, -90]; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates; for (const p of polys) for (const [x, y] of p[0]) { if (x < a[0]) a[0] = x; if (y < a[1]) a[1] = y; if (x > a[2]) a[2] = x; if (y > a[3]) a[3] = y; } return a; }
   const hit = (fc, x, y) => fc && fc.features.find(f => (!f.bb || (x >= f.bb[0] && x <= f.bb[2] && y >= f.bb[1] && y <= f.bb[3])) && PX.inGeom(x, y, f.geometry));
   function drawVectors() {
-    base.calles.options.v = dark() ? 'dark_all' : 'light_all'; base.calles.redraw();
+    voyager.options.v = dark() ? 'dark_all' : 'rastertiles/voyager'; voyager.redraw();
     for (const k in vec) vec[k].clearLayers();
     const o = { renderer: ctxR, pane: 'ctx', interactive: false };
     vec.distritos.addLayer(L.geoJSON(DIST, Object.assign({ style: { color: css('--dline'), weight: 0.7, opacity: 0.9, dashArray: '2 3', fill: false }, attribution: 'Límites &copy; IGN (SNIT)' }, o)));
