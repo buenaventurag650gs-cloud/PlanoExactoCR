@@ -113,6 +113,7 @@
     const ex = $('fExact').checked, ns = $('fNoServ').checked, wk = $('fSemana').checked, pr = $('fPR').checked, ag = $('fAgua').checked;
     const af = ATTR.filter(a => attrOn.has(a[0]));
     shown = live.filter(r => {
+      if (onlyFav && !PX.isFav(r.key)) return false;
       if (!stOn[r.st]) return false;
       if (p && r.prov !== p) return false;
       if (c && r.cn !== c) return false;
@@ -166,9 +167,20 @@
         <div class="t2">${esc([r.cn, r.pn].filter(Boolean).join(', ') || 'Ubicación por definir')} · ${a ? fnum(a) + ' m²' : 'área s/d'}</div>
         <div class="tags">${tags.join('')}</div></span>
       <span class="rt"><div class="price">${PX.money(r.bv, r.mon, true)}</div>
-        <div class="when">${PX.ETAPA[r.st]}</div><div class="when">${when(r.next)}</div></span>
+        <div class="when">${PX.ETAPA[r.st]}</div><div class="when">${when(r.next)}</div>
+        <span class="fav" data-fav="${r.key}" role="button" aria-label="${PX.isFav(r.key) ? 'Quitar de favoritos' : 'Agregar a favoritos'}" aria-pressed="${PX.isFav(r.key)}" title="${PX.isFav(r.key) ? 'En favoritos' : 'Agregar a favoritos'}">${PX.HEART}</span></span>
     </button>`;
   }
+  function favToggle(key) {
+    const r = PX.item(key); if (!r) return;
+    if (r.isPlano) PX.savePlano(r);
+    const on = PX.toggleFav(key, r.nom);
+    toast(on ? 'Agregado a favoritos' : 'Quitado de favoritos');
+    if (onlyFav) apply(); else renderList();
+    if (open === key) openFicha(open, false);
+  }
+  let onlyFav = false;
+  $('favOnly').onclick = () => { onlyFav = !onlyFav; $('favOnly').setAttribute('aria-pressed', onlyFav); apply(); };
   function renderList() {
     $('count').innerHTML = `<b class="num">${shown.length}</b> de ${live.length}`;
     if (!shown.length) { $('list').innerHTML = '<div class="empty">Ningún remate cumple esos filtros. Prueba quitar alguno o ampliar el rango de precio.</div>'; return; }
@@ -176,6 +188,7 @@
   }
   $('list').addEventListener('click', e => {
     if (e.target.id === 'more') { limit += 100; renderList(); return; }
+    const fv = e.target.closest('[data-fav]'); if (fv) { e.stopPropagation(); favToggle(fv.dataset.fav); return; }
     const b = e.target.closest('.item'); if (b) openFicha(b.dataset.k, true);
   });
 
@@ -343,7 +356,7 @@
   function tip(r) {
     const a = PX.prof(r);
     if (r.isPlano) return `<span class="tipn">${esc(r.nom)}</span>${a ? fnum(a) + ' m²' : ''}<br><span class="tipm">${esc(r.lugar)}</span>`;
-    return `<span class="tipn">${esc(r.nom)}</span>${PX.money(r.bv, r.mon, true)} · ${a ? fnum(a) + ' m²' : 'área s/d'}<br><span class="tipm">${PX.ETAPA[r.st]} · ${fdate(r.next)}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
+    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.money(r.bv, r.mon, true)} · ${a ? fnum(a) + ' m²' : 'área s/d'}<br><span class="tipm">${PX.ETAPA[r.st]} · ${fdate(r.next)}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
   }
   const ringLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
   function renderMarkers() {
@@ -426,7 +439,8 @@
         <span class="d">${PX.ETAPA[k]}${k ? ` · ${PX.PCT[k] * 100} %` : ''}<small>${fdate(d, true)}</small></span><span class="b">${PX.money(r.bases[k], r.mon)}</span></div>`).join('');
     const attrs = ATTR.filter(x => x[2](r)).map(x => x[1]);
     const nserv = (r.serv || []).length;
-    f.innerHTML = `<div class="fhead">${seal}<span class="tag">${esc(r.tipo)}</span><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
+    const fav = PX.isFav(r.key);
+    f.innerHTML = `<div class="fhead">${seal}<span class="tag">${esc(r.tipo)}</span><button class="btn sm favbtn" data-act="fav" aria-pressed="${fav}">${PX.HEART}${fav ? 'En favoritos' : 'Favorito'}</button><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
     <div class="fbody">
       <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
       ${top}
@@ -437,7 +451,7 @@
       <div class="sect"><h3>Índice PlanoExacto</h3>
         <div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Promedio ponderado de sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div style="margin-top:10px" class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
-        ${full ? '' : '<div class="prohint" style="margin-top:6px"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>'}</div>
+        ${full ? '' : `<div class="prohint" style="margin-top:6px"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>`}</div>
       <div class="sect"><h3>Resumen</h3><dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
@@ -480,6 +494,7 @@
     const b = e.target.closest('[data-act]'); if (!b || !open) return;
     const r = PX.item(open), act = b.dataset.act;
     if (act === 'exp') return goExpediente(r);
+    if (act === 'fav') return favToggle(r.key);
     if (act === 'cmp') { toggleCmp(r.key); openFicha(open, false); return; }
     if (act === 'sigo') { const on = PX.toggleSigo(r.key); if (on) { PX.acct.snap = PX.acct.snap || {}; PX.acct.snap[r.key] = { st: r.st, bv: r.bv }; PX.saveAcct(); } toast(on ? 'Lo verás en Mi cuenta → Seguimiento' : 'Dejaste de seguir este remate'); openFicha(open, false); renderList(); return; }
     if (act === 'lista') { $('lmenu').hidden = !$('lmenu').hidden; return; }
@@ -534,7 +549,7 @@
   }
   function openPlanes(why) {
     const pro = PX.isPro();
-    modal(`<div class="hd"><h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+    modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
       ${why ? `<div class="note">${esc(why)}</div>` : ''}
       <div class="plans">
         <div class="plan${pro ? '' : ' hl'}"><h3>Gratis</h3><div class="pr">${PX.usdH(0)}</div>

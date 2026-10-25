@@ -186,6 +186,11 @@
   PX.comprar = (key, label) => { if (!PX.acct.comprados.includes(key)) PX.acct.comprados.push(key); PX.saveAcct(); PX.registrarExp(key, label); };
   PX.toggleSigo = key => { const s = PX.acct.sigo; const i = s.indexOf(key); i >= 0 ? s.splice(i, 1) : s.unshift(key); PX.saveAcct(); return i < 0; };
   PX.sigo = key => PX.acct.sigo.includes(key);
+  // Favoritos = la primera lista de Mi cuenta («Mis favoritos»)
+  PX.favList = () => { let l = PX.acct.listas.find(x => x.id === 'l1'); if (!l) { l = { id: 'l1', n: 'Mis favoritos', items: [] }; PX.acct.listas.unshift(l); } return l; };
+  PX.isFav = key => PX.favList().items.some(i => i.k === key);
+  PX.toggleFav = (key, name) => { const l = PX.favList(), on = !PX.isFav(key); if (on) l.items.unshift({ k: key, n: name, t: Date.now(), nota: '' }); else l.items = l.items.filter(i => i.k !== key); PX.saveAcct(); return on; };
+  PX.HEART = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>';
 
   // Planos consultados (para comparar, listas y expediente)
   PX.planos = PX.store.get('px-planos', {});

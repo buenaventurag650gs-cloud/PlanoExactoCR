@@ -1,9 +1,11 @@
 /* PlanoExactoCR — estilos comunes (mapa y expediente) */
 :root {
-  --bg: #EDF0EC; --panel: #FBFCFA; --ink: #17201D; --muted: #56635E; --faint: #8A9690; --line: #D6DDD8;
-  --sea: #D9E3E4; --land: #F6F7F2; --dline: #C2CBC5; --accent: #0F5C57; --accent-ink: #FFFFFF; --accent-soft: #DCEBE8;
-  --s1: #2B5C8A; --s2: #B7791F; --s3: #B42318; --warn: #8A4B00; --warnbg: #FFF3DC; --chip: #EEF2EF;
-  --gold: #8A6A00; --goldbg: #FFF6D6; --good: #2E7D4F; --bad: #B42318;
+  /* Paleta tomada del logo: papel, verde profundo del texto, verde medio de CR, terracota del lote */
+  --bg: #F1EEE7; --panel: #FCFBF8; --ink: #15302A; --muted: #55635D; --faint: #8A948F; --line: #DCD8CE;
+  --sea: #DCE5E2; --land: #F6F5F0; --dline: #C9C6BB; --accent: #1F5A47; --accent-ink: #FFFFFF; --accent-soft: #DFEDE6;
+  --s1: #2B5C8A; --s2: #B7791F; --s3: #B42318; --warn: #8A4B00; --warnbg: #FCF1DE; --chip: #ECE9E1;
+  --gold: #8A6A00; --goldbg: #FBF3DA; --good: #2E7D4F; --bad: #B42318;
+  --brand: #15302A; --brand-green: #539279; --brand-terra: #D9906E; --mark-bg: transparent;
   --shadow: 0 10px 30px rgba(20, 35, 30, .14);
   --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
@@ -15,12 +17,14 @@
   --sea: #0B1315; --land: #1A2320; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #16302C;
   --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #1F2925;
   --gold: #F0CF62; --goldbg: #2B2611; --good: #6CC694; --bad: #F2735F;
+  --brand: #E5ECE8; --brand-green: #7CC3A4; --mark-bg: #F1EEE7;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #9AA8A2; --faint: #6E7C76; --line: #28332F;
   --sea: #0B1315; --land: #1A2320; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #16302C;
   --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #1F2925;
   --gold: #F0CF62; --goldbg: #2B2611; --good: #6CC694; --bad: #F2735F;
+  --brand: #E5ECE8; --brand-green: #7CC3A4; --mark-bg: #F1EEE7;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; }
 
 * { box-sizing: border-box; }
@@ -32,6 +36,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 .u { font-family: var(--f-body); font-size: .72em; font-weight: 600; color: var(--muted); letter-spacing: .02em; margin-right: .28em; }
+/* Símbolo de moneda: grande y en color de marca para distinguir ₡ de US$ de un vistazo */
+.money .u { font-size: 1em; font-weight: 700; color: var(--accent); letter-spacing: 0; margin-right: .22em; }
+.money .num { font-weight: inherit; }
 .lbl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .foot { font-size: 11.5px; color: var(--faint); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); text-decoration: none; font-weight: 500; font-size: 13px; cursor: pointer; white-space: nowrap; }
@@ -123,3 +130,19 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .preview .pres, .preview .rlist, .preview .sem { filter: blur(5px); user-select: none; pointer-events: none; }
 .preview input, .preview .seg button { opacity: .65; }
 @media (max-width: 760px) { .pgrid { grid-template-columns: 1fr; } .pf { grid-template-columns: 1fr 130px; } }
+
+/* ---------- Identidad (logo) ---------- */
+.wm { margin: 0; font: 300 19px/1 "Montserrat", var(--f-body); letter-spacing: .1em; color: var(--brand); white-space: nowrap; }
+.wm .w2 { font-weight: 700; }
+.wm .w3 { color: var(--brand-green); }
+.tagl { font: 500 9.5px/1 "Montserrat", var(--f-body); letter-spacing: .28em; text-transform: uppercase; color: var(--muted); }
+.mark { display: inline-grid; place-items: center; border-radius: 9px; background: var(--mark-bg); padding: 2px 3px; flex: none; }
+.mark img { display: block; width: 52px; height: auto; }
+.dlgmark { width: 52px; height: auto; border-radius: 8px; background: var(--mark-bg); padding: 2px; }
+/* Favoritos */
+.fav { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-top: 2px; border-radius: 50%; color: var(--faint); cursor: pointer; }
+.fav:hover { background: var(--panel); color: var(--brand-terra); }
+.fav svg, .favbtn svg { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.fav[aria-pressed="true"], .favbtn[aria-pressed="true"] { color: #C8553D; }
+.fav[aria-pressed="true"] svg, .favbtn[aria-pressed="true"] svg { fill: currentColor; }
+.favbtn[aria-pressed="true"] { background: #FBE9E3; border-color: #E9B8A8; }

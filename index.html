@@ -5,21 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Remates judiciales de fincas en Costa Rica, ubicados por plano y finca sobre el catastro, con entorno y análisis de cada lote.">
 <meta name="robots" content="noindex, nofollow">
-<title>PlanoExactoCR</title>
+<title>PlanoExactoCR · Ubica, comprende, decide</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Montserrat:wght@300;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<meta name="theme-color" content="#F1EEE7">
 <style>
 /* Mapa: barra izquierda con pestañas (Remates, Buscar plano, Comparar, PRO), mapa a la derecha, ficha flotante. En celular: mapa arriba y barra abajo. */
 .app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
 header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 9px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: var(--panel); border-bottom: 1px solid var(--line); }
-.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.brand h1 { margin: 0; font: 700 19px/1.1 var(--f-display); letter-spacing: -.01em; }
-.brand h1 .cr { color: var(--accent); margin-left: 1px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand .bt { display: grid; gap: 1px; }
+.brand .src { align-self: center; }
 .brand .src { color: var(--muted); font-size: 12.5px; }
 .kpis { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 12.5px; }
 .kpis b { color: var(--ink); font-weight: 600; }
@@ -150,7 +153,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .ftitle .where { color: var(--muted); }
 .pricebox { display: grid; gap: 3px; padding: 14px; border-radius: 10px; background: var(--chip); }
 .pricebox .big { font-size: 28px; line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
-.pricebox .big .u { font-size: 15px; }
+.pricebox .big .u { font-size: 24px; }
 .pricebox .alt { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .timeline { display: grid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -233,7 +236,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1>PlanoExacto<span class="cr">CR</span></h1><span class="src" id="src"></span></div>
+    <div class="brand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="52" height="37"></span><div class="bt"><h1 class="wm" aria-label="PlanoExactoCR"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></h1><span class="tagl">Ubica · Comprende · Decide</span></div><span class="src" id="src"></span></div>
     <div class="kpis" id="kpis"></div>
     <nav class="nav" aria-label="Cuenta">
       <button class="btn sm" id="bPlanes">Planes</button>
@@ -281,7 +284,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
           <div class="fld"><span class="lbl">Atributos del lote <span class="pro">PRO</span></span><div class="attrs" id="attrs"></div></div>
           <div class="prohint" id="attrHint"><span><span class="pro">PRO</span> Atributos de la versión PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>
         </div></details>
-        <div class="listhead"><span id="count"></span>
+        <div class="listhead"><span><span id="count"></span> <button class="btn sm favbtn" id="favOnly" aria-pressed="false" title="Mostrar solo favoritos"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>Favoritos</button></span>
           <span><select id="order" aria-label="Ordenar"><option value="fecha">Próxima fecha</option><option value="precio">Menor base</option><option value="area">Mayor área</option><option value="m2">Menor precio/m²</option><option value="score">Mejor índice</option></select>
           <button class="btn sm" id="saveSearch" title="Guardar esta búsqueda en Mi cuenta">Guardar</button></span>
         </div>
