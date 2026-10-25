@@ -1,0 +1,17 @@
+# Remates en el Catastro
+
+Visor de remates judiciales de fincas en Costa Rica, ubicados por número de plano o de finca sobre el catastro del Registro Inmobiliario.
+
+## Estructura
+- `index.html` — el visor (Leaflet).
+- `data/remates.json` — remates vigentes extraídos del Boletín Judicial, con polígono del predio cuando se encontró.
+- `data/distritos.geojson` — límites distritales del IGN (SNIT).
+- `data/meta.json` — tipo de cambio de referencia del BCCR y fecha de los datos.
+- `netlify/edge-functions/auth.ts` — contraseña de la etapa de prueba (variable `SITE_PASSWORD` en Netlify).
+- `scripts/` — extractor de edictos y armado de datos (base del robot diario, fase siguiente).
+
+## Fuentes
+Boletín Judicial (Nexus, Poder Judicial) · Catastro, Registro Inmobiliario (SNIT) · Límites, IGN (SNIT) · Tipo de cambio, BCCR.
+Mapas base: © OpenStreetMap, © CARTO; imágenes © Esri.
+
+Información orientativa. No sustituye la certificación del Registro Nacional ni la revisión del expediente.
