@@ -68,6 +68,76 @@ tr.me td { background: var(--goldbg); font-weight: 600; }
 .acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .demo { font-size: 12px; color: var(--warn); background: var(--warnbg); border-radius: 8px; padding: 8px 10px; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+/* ---------- Lámina (primera página, horizontal) ---------- */
+.doc { max-width: 1080px; }
+.doc > .sheet, .doc > .legal, .doc > .wall { width: 100%; max-width: 880px; justify-self: center; }
+.lamina { background: #FCFBF8; color: #15302A; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px 10px; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; width: 1000px; height: 760px; justify-self: center; font-size: 11.5px; --mark-bg: transparent; }
+.lh { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; border-bottom: 2px solid #15302A; padding-bottom: 8px; }
+.lbrand { display: flex; align-items: center; gap: 6px; }
+.lbrand .mark img { width: 44px; }
+.lbrand .wm { font-size: 15px; color: #15302A; }
+.lt h1 { margin: 0; font: 600 19px/1.15 var(--f-display); }
+.lt span { color: #55635D; }
+.lmeta { text-align: right; display: grid; gap: 2px; color: #55635D; }
+.lmeta b { color: #15302A; font-size: 12px; }
+.lbody { display: grid; grid-template-columns: 60% 1fr; gap: 12px; min-height: 0; }
+.lmapcol { display: grid; grid-template-rows: 64% 1fr; gap: 10px; min-height: 0; }
+.lmapwrap { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #C9C6BB; min-height: 0; }
+.lmap { position: absolute; inset: 0; background: #DCE5E2; }
+.nflecha { position: absolute; top: 8px; left: 8px; z-index: 500; background: rgba(252, 251, 248, .92); border-radius: 6px; padding: 3px 5px 1px; }
+.lvars { position: absolute; top: 8px; right: 8px; z-index: 500; width: 196px; background: rgba(252, 251, 248, .94); border-radius: 8px; padding: 7px 9px; display: grid; gap: 3px; font-size: 10.5px; }
+.lvars b { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #55635D; }
+.lvars div { display: grid; grid-template-columns: 82px 1fr; gap: 6px; }
+.lvars span { color: #55635D; } .lvars em { font-style: normal; font-weight: 600; }
+.lvars .w em { color: #B5603D; }
+.lleg { position: absolute; left: 8px; bottom: 8px; z-index: 500; background: rgba(21, 48, 42, .82); color: #fff; border-radius: 8px; padding: 6px 9px; display: grid; gap: 3px; font-size: 10.5px; }
+.lleg span { display: flex; align-items: center; gap: 6px; }
+.lleg .sw { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+.lleg .ln { width: 16px; height: 0; display: inline-block; }
+.lsmall { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-height: 0; }
+.lmini { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #C9C6BB; min-height: 0; background: #F6F5F0; }
+.lloc { position: absolute; inset: 0 0 30% 0; background: #DCE5E2; }
+.lmini .lmap { bottom: 30%; }
+.lcap { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; padding: 5px 8px; display: grid; align-content: start; gap: 2px; font-size: 10.5px; background: #FCFBF8; border-top: 1px solid #DCD8CE; overflow: hidden; }
+.lcap b { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #55635D; }
+.lcap span { display: flex; gap: 5px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #15302A; color: #fff; font: 700 9px/1 var(--f-body); font-style: normal; flex: none; }
+.lnum { display: grid !important; place-items: center; border-radius: 50%; background: #15302A; color: #fff; font: 700 11px/1 var(--f-body); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.lnum.p { background: #D9906E; }
+.lrad { color: #fff; font: 600 10px/14px var(--f-body); text-align: center; text-shadow: 0 0 3px rgba(0,0,0,.8); }
+.lside { display: grid; grid-template-rows: auto auto 1fr 1fr; gap: 9px; min-height: 0; }
+.ldatos { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.ldatos div { background: #ECE9E1; border-radius: 7px; padding: 5px 8px; display: grid; gap: 1px; min-width: 0; }
+.ldatos small { color: #55635D; font-size: 10px; }
+.ldatos b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ldatos .money .u { color: #1F5A47; }
+.lidx { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; border: 1px solid #DCD8CE; border-radius: 8px; padding: 6px 8px; }
+.lscore { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.lscore .score.big { width: 72px; height: 72px; font-size: 24px; --accent: #1F5A47; }
+.lscore .score.big::after { inset: 7px; background: #FCFBF8; }
+.lscore b { font-size: 12px; } .lscore small { color: #55635D; font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; }
+.radar { width: 100%; max-height: 150px; }
+.radar .rg { fill: none; stroke: #C9C6BB; stroke-width: .6; }
+.radar .rv { fill: rgba(83, 146, 121, .35); stroke: #1F5A47; stroke-width: 1.6; }
+.radar .rl { font: 600 7.5px var(--f-body); fill: #55635D; }
+.radar .rn { fill: #15302A; font-family: var(--f-mono); }
+.lpot, .lrie { border-radius: 8px; padding: 7px 9px; display: grid; gap: 4px; align-content: start; min-height: 0; overflow: hidden; }
+.lpot { background: #E7F2EC; } .lrie { background: #FBEDE6; }
+.lpot h3, .lrie h3 { margin: 0 0 2px; font: 700 10.5px/1.2 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: #1F5A47; }
+.lrie h3 { color: #A2462A; } .lrie h3 small { font-weight: 600; letter-spacing: 0; text-transform: none; color: #55635D; margin-left: 4px; }
+.lpot div, .lrie div { display: grid; grid-template-columns: 16px 1fr; gap: 6px; line-height: 1.35; font-size: 10.8px; }
+.lpot i, .lrie i { display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; font: 700 10px/1 var(--f-body); font-style: normal; color: #fff; background: #2E7D5B; margin-top: 1px; }
+.lrie i { background: #C8553D; } .lrie .n2 i { background: #D9906E; } .lrie .n1 i { background: #8A948F; }
+.lf { font-size: 9.5px; color: #8A948F; border-top: 1px solid #DCD8CE; padding-top: 5px; }
+.lamina .leaflet-control-scale-line { font-size: 9px; background: rgba(252, 251, 248, .9); border-color: #15302A; color: #15302A; }
+@media screen and (max-width: 1040px) {
+  .lamina { width: 100%; height: auto; }
+  .lbody { grid-template-columns: 1fr; }
+  .lmapcol { grid-template-rows: 380px 220px; }
+  .lh { grid-template-columns: 1fr; } .lmeta { text-align: left; }
+}
+@page { size: letter landscape; margin: 8mm; }
 @media (max-width: 720px) { .kpi { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } .sum { grid-template-columns: 1fr; } .sheet { padding: 18px 16px; } dl.kv { grid-template-columns: 116px 1fr; } }
 @media print {
   :root, :root[data-theme] { --bg: #fff; --panel: #fff; --ink: #111; --muted: #4a5551; --faint: #7b8782; --line: #d3d9d5; --chip: #f1f4f2; --accent: #0F5C57; --accent-soft: #e2efec; --warn: #7a4300; --warnbg: #fff4df; --goldbg: #fff7da; --sea: #e3eaeb; color-scheme: light; }
@@ -75,6 +145,9 @@ tr.me td { background: var(--goldbg); font-weight: 600; }
   .doc { margin: 0; max-width: none; padding: 0; gap: 10px; }
   .sheet { border: 0; border-radius: 0; padding: 8px 0; break-inside: avoid-page; }
   .sheet.long { break-inside: auto; }
+  .lamina { break-after: page; width: 994px; height: 750px; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+  .doc > .sheet, .doc > .legal { max-width: 900px; }
+  .lamina * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   #emap { height: 300px; }
   a { color: inherit; }
 }
@@ -91,6 +164,7 @@ tr.me td { background: var(--goldbg); font-weight: 600; }
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="assets/core.js"></script>
 <script src="assets/pro.js"></script>
+<script src="assets/lamina.js"></script>
 <script src="assets/expediente.js"></script>
 </body>
 </html>

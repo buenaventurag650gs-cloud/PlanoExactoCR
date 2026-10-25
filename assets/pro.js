@@ -48,6 +48,26 @@
     out.sort((a, b) => b.n - a.n);
     return out;
   };
+  // ---------- Potencialidades (lo que juega a favor) ----------
+  P.potencialidades = r => {
+    const out = [], e = r.ent || {}, sc = PX.score(r), add = (w, t, d) => out.push({ w, t, d });
+    if (sc.precio != null && sc.precio >= 60 && r.usdm2) { const med = PX.medFor(r); add(9, 'Precio por m² bajo la zona', `${Math.round((1 - r.usdm2 / med.v) * 100)} % por debajo de la mediana de remates en ${med.ref}.`); }
+    if (r.st === 1) add(7, 'Segundo remate', 'La base bajó al 75 % de la original.');
+    if (r.st === 2) add(8, 'Tercer remate', 'La base es el 25 % de la original.');
+    if ((r.tg || []).includes('frente') || (e.via && e.via.d <= 10)) add(8, 'Frente a vía', e.via ? `${e.via.t} al frente del predio.` : 'El edicto o la cartografía indican frente a calle.');
+    if (e.pr && e.pr.si) add(7, 'Plan regulador vigente', `Reglas urbanísticas definidas desde ${e.pr.anno || 'hace años'}; trámites más previsibles.`);
+    if (e.cob === 'Zona urbana' || (r.tg || []).includes('urbano')) add(7, 'Entorno urbano', 'La cobertura 2020 la clasifica como zona urbana: servicios y demanda cercanos.');
+    if (e.salud && e.salud.d <= 2000) add(5, 'Salud cerca', `${e.salud.n} a ${PX.dist(e.salud.d)}.`);
+    if (e.esc != null && e.esc <= 1000) add(5, 'Escuela cerca', `A ${PX.dist(e.esc)}.`);
+    if (e.suave || (e.pend != null && e.pend < 10)) add(6, 'Terreno plano o de pendiente suave', e.pend != null ? `Pendiente aproximada de ${e.pend} %.` : 'Pocas curvas de nivel alrededor.');
+    if ((r.exact || r.isPlano) && e.agua === null) add(5, 'Sin cauces cercanos', 'Ningún río o quebrada a menos de 400 m en la cartografía 1:5 000.');
+    if (!r.isPlano && !(r.serv || []).length && sc.juridica >= 90) add(8, 'Situación registral limpia', 'Sin servidumbres ni cargas relevantes citadas en el edicto.');
+    if (r.exact && !r.isPlano) add(4, 'Ubicación confirmada', `El catastro ubicó el predio por ${r.loc}.`);
+    const pot = P.potCalc(P.potDefaults(r));
+    if (PX.prof(r) >= 1000) add(6, 'Área amplia', `${fnum(PX.prof(r))} m²${pot.lotes >= 2 ? `: podría segregarse en unos ${pot.lotes} lotes` : ''}; cabrían unas ${pot.unidades} unidades de vivienda (supuestos generales).`);
+    else if (pot.total > 0) add(3, 'Potencial constructivo', `Alrededor de ${fnum(pot.total, 0)} m² construibles con supuestos generales.`);
+    return out.sort((a, b) => b.w - a.w);
+  };
   P.CHECK = ['Certificación literal de la finca en el Registro Nacional', 'Plano catastrado y su ubicación en el sitio', 'Revisión del expediente judicial: condiciones, depósito y suspensiones', 'Certificado de uso de suelo en la municipalidad', 'Visita al sitio: accesos, ocupantes y servicios', 'Deudas municipales y, si es filial, cuotas de condominio'];
 
   // ---------- Potencial constructivo ----------

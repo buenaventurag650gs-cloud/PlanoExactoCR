@@ -40,7 +40,8 @@
     const kpi = r.isPlano
       ? `<div><small>Área catastro</small><b><span class="num">${fnum(a)}</span> <span class="u">m²</span></b></div><div><small>Finca</small><b class="num">${esc(r.fincaTxt)}</b></div><div><small>Plano</small><b class="num">${esc(r.plano || '—')}</b></div><div><small>Remate</small><b>${r.remate ? 'Sí, vigente' : 'No'}</b></div>`
       : `<div><small>Base vigente · ${PX.ETAPA[r.st]}</small><b>${PX.money(r.bv, r.mon)}</b></div><div><small>Próximo remate</small><b>${fdate(r.next)}</b></div><div><small>Área</small><b><span class="num">${a ? fnum(a) : '—'}</span> <span class="u">m²</span></b></div><div><small>Precio por m²</small><b>${m2 ? PX.mh(m2, PX.cur) : '—'}</b></div>`;
-    let h = `<div class="legal">${PX.DISCLAIMER}</div>
+    const pv0 = PX.pro.potencialidades(r), rs0 = PX.pro.riesgos(r);
+    let h = PX.lamina.html(r, s, { folio }) + `<div class="legal">${PX.DISCLAIMER}</div>
     <section class="sheet hdr"><img class="logo" src="assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="481"><div class="meta"><span>Expediente <b class="num">${folio}</b></span><span>Generado el ${fdate(new Date(), true)}</span><span>Datos del ${esc(META.generado || '')} · TC BCCR ${PX.mt(PX.tc.venta, 'CRC')}</span></div>
       <h1>${esc(r.nom)}</h1><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div>
       <div class="chips"><span class="chip">${esc(r.tipo)}</span>${r.isPlano ? '<span class="chip">Plano consultado en el catastro</span>' : r.exact ? `<span class="chip">Ubicación exacta por ${r.loc}</span>` : '<span class="chip warn">Ubicación aproximada al distrito</span>'}${r.multi ? '<span class="chip warn">Varias fincas o derechos</span>' : ''}</div>
@@ -49,9 +50,6 @@
     h += sec(N(), 'Resumen del análisis', `<div class="sum"><span class="score big" style="--p:${s.total || 0}" data-v="${s.total ?? '–'}"></span>
       <div style="display:grid;gap:10px"><div><b style="font-size:17px">${PX.scoreLabel(s.total)}</b><div class="muted" style="font-size:12.5px">Índice PlanoExacto de 0 a 100: promedio ponderado de cuatro dimensiones (pesos ${PX.DIMS.map(d => d.n.toLowerCase() + ' ' + PX.W0[d.k] + ' %').join(', ')}).</div></div>
       <div class="bars">${PX.DIMS.map(d => `<div class="bar"><span>${d.n}</span><b>${s[d.k] ?? '–'}</b><span class="track"><i style="width:${s[d.k] || 0}%"></i></span></div>`).join('')}</div></div></div>`);
-
-    h += sec(N(), 'Ubicación del predio', `<div id="emap" role="img" aria-label="Mapa del predio"></div>
-      <div class="foot">${r.poly ? 'Polígono del Registro Inmobiliario (catastro) sobre imagen satelital.' : 'El catastro no confirmó el predio: el círculo marca el distrito declarado en el edicto.'} Coordenadas del centro: <span class="num">${r.ll ? r.ll[1].toFixed(6) + ', ' + r.ll[0].toFixed(6) : '—'}</span>${r.ll ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a>` : ''}</div>`);
 
     if (!r.isPlano) {
       const rows = r.fd.map((d, k) => `<tr class="${k < r.st ? 'past' : ''} ${k === r.st ? 'now' : ''}"><td>${PX.ETAPA[k]}${k ? ` (${PX.PCT[k] * 100} % de la base)` : ''}</td><td>${fdate(d, true)}</td><td class="n">${PX.money(r.bases[k], r.mon)}</td><td class="n">${PX.other(r.bases[k], r.mon)}</td></tr>`).join('');
@@ -118,13 +116,15 @@
         <div class="foot">Bases de remate vigentes en el mismo cantón, no precios de venta. Sirven para ubicar el precio en su contexto.</div>`);
     }
 
-    if (PX.isPro()) {
-      const rs = PX.pro.riesgos(r), lv = ['', 'Información', 'Medio', 'Alto'];
-      h += sec(N(), 'Riesgos del proceso ' + PX.PRO, `<div class="rlist">${rs.map(x => `<div class="rk r${x.n}"><i></i><div><b>${esc(x.t)}</b><span class="tag">${lv[x.n]}</span><p>${esc(x.d)}</p></div></div>`).join('') || '<p>No se detectaron riesgos en los datos disponibles.</p>'}</div>
-        <div class="lbl">Antes de ofertar</div><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul>`);
+    {
+      const lv = ['', 'Información', 'Medio', 'Alto'];
+      h += sec(N(), 'Potencialidades', `<div class="rlist">${pv0.map(x => `<div class="rk rp"><i></i><div><b>${esc(x.t)}</b><p>${esc(x.d)}</p></div></div>`).join('') || '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div>`);
+      h += sec(N(), 'Riesgos posibles', `<div class="rlist">${rs0.map(x => `<div class="rk r${x.n}"><i></i><div><b>${esc(x.t)}</b><span class="tag">${lv[x.n]}</span><p>${esc(x.d)}</p></div></div>`).join('') || '<p>No se detectaron riesgos en los datos disponibles.</p>'}</div>
+        <div class="lbl">Antes de ofertar</div><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul>
+        <div class="foot">Detección automática a partir del edicto y de capas públicas. No es asesoría legal.</div>`, 'long');
       const pv = PX.pro.potDefaults(r), pc = PX.pro.potCalc(pv);
       if (pv.area) h += sec(N(), 'Potencial constructivo ' + PX.PRO, `<div class="kpi"><div><small>Huella (${pv.cob} % de cobertura)</small><b class="num">${fnum(pc.huella, 0)} m²</b></div><div><small>Construible en ${pv.pisos} pisos</small><b class="num">${fnum(pc.total, 0)} m²</b></div><div><small>Unidades de ${pv.unidad} m²</small><b class="num">${pc.unidades}</b></div><div><small>Lotes de ${pv.loteMin} m²</small><b class="num">${pc.lotes}</b></div></div>
-        <div class="foot">Supuestos generales (${pv.util} % aprovechable, ${pv.circ} % de circulaciones). Ajústelos en el mapa con la herramienta PRO; los valores reales los fija el plan regulador.</div>`);
+        <div class="foot">Supuestos generales (${pv.util} % aprovechable, ${pv.circ} % de circulaciones). Ajústelos con la herramienta PRO en el mapa; los valores reales los fija el plan regulador.</div>`);
     }
     if (!r.isPlano && r.txt) h += sec(N(), 'Texto del edicto', `<div class="edicto">${esc(r.txt)}</div><div class="foot">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y números de cédula.</div>`, 'long');
 
@@ -136,17 +136,7 @@
     h += `<div class="legal">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
 
-    // Mapa
-    if (r.ll && W.L) {
-      const map = L.map('emap', { zoomControl: true, attributionControl: true, scrollWheelZoom: false });
-      map.attributionControl.setPrefix(false);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imágenes &copy; Esri, Maxar' }).addTo(map);
-      L.tileLayer.wms('https://siri.snitcr.go.cr/Geoservicios/wms', { layers: 'catastro,catastro_aldia', version: '1.1.1', format: 'image/png', transparent: true, minZoom: 15, maxZoom: 19, opacity: 0.7, attribution: 'Catastro &copy; Registro Inmobiliario' }).addTo(map);
-      if (r.poly) {
-        const pg = L.polygon(r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x]))), { color: '#FFD166', weight: 3, fillColor: '#FFD166', fillOpacity: 0.18 }).addTo(map);
-        map.fitBounds(pg.getBounds(), { padding: [40, 40], maxZoom: 18 });
-      } else { L.circle([r.ll[1], r.ll[0]], { radius: 1200, color: '#FFD166', weight: 2, dashArray: '5 5', fill: false }).addTo(map); map.setView([r.ll[1], r.ll[0]], 13); }
-    }
+    PX.lamina.init(r);
   }
   const W = window;
   function setCur(c) { PX.setCur(c); $('cCRC').setAttribute('aria-pressed', c === 'CRC'); $('cUSD').setAttribute('aria-pressed', c === 'USD'); render(); }
