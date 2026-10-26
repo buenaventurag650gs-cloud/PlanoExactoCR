@@ -111,7 +111,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .seg.vw button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; }
 .dayh { position: sticky; top: 86px; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 6px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font: 700 11.5px/1.2 var(--f-body); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .dayh b { font-family: var(--f-mono); font-weight: 600; color: var(--faint); }
-.dayh.hoy, .dayh.manana { color: #A2462A; background: #FBEDE6; }
+.dayh.hoy, .dayh.manana { color: var(--soon); background: var(--soonbg); }
 /* Calendario */
 .calw { padding: 10px 16px 12px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
 .calh { display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
@@ -126,7 +126,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .calg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .calg button[aria-pressed="true"] i { color: var(--accent-ink); }
 .item { display: grid; grid-template-columns: 34px 1fr auto; gap: 0 10px; padding: 11px 16px 11px 12px; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; background: transparent; width: 100%; text-align: left; align-items: start; }
-.item.tomorrow { background: linear-gradient(90deg, #FBEDE6, transparent 70%); }
+.item.tomorrow { background: var(--soonbg); }
 .item .ti { margin-top: 1px; }
 .item:hover, .item[aria-current="true"] { background: var(--chip); }
 .item .rt { display: grid; justify-items: end; gap: 3px; }
