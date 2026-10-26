@@ -728,65 +728,94 @@
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
   function guideHTML() {
-    const I = PX.ICON, cupo = PX.PRECIOS.cupo;
-    const sec = (id, ic, t, pro, body) => `<section class="gsec" id="g-${id}"><h3><span class="gi">${ic || ''}</span>${t}${pro ? ' ' + PX.PRO : ''}</h3>${body}</section>`;
-    const toc = [['inicio', 'Primeros pasos'], ['mapa', 'Mapa y capas'], ['filtros', 'Filtros y lista'], ['ficha', 'Ficha del lote'], ['herr', 'Herramientas PRO'], ['cmp', 'Comparar'], ['exp', 'Expediente PDF'], ['cuenta', 'Seguimiento y alertas'], ['gloss', 'Glosario']];
+    const I = PX.ICON, cupo = PX.PRECIOS.cupo, P_ = PX.PRO;
+    // Bloques didácticos: tarjeta con «para qué sirve», pasos numerados y un ejemplo
+    const steps = arr => `<ol class="gsteps">${arr.map(t => `<li><span>${t}</span></li>`).join('')}</ol>`;
+    const card = (ic, t, pro, para, pasos, ej) => `<div class="gcard"><h4><span class="gi">${ic || ''}</span>${t}${pro ? ' ' + P_ : ''}</h4>
+      <p class="gpara"><b>¿Para qué sirve?</b> ${para}</p>${pasos ? `<div class="glbl">Cómo se usa</div>${steps(pasos)}` : ''}${ej ? `<p class="gej"><b>Ejemplo:</b> ${ej}</p>` : ''}</div>`;
+    const tip = t => `<p class="gtip"><b>Consejo</b> ${t}</p>`;
+    const sec = (id, t, intro, body) => `<section class="gsec" id="g-${id}"><h3>${t}</h3>${intro ? `<p class="gintro">${intro}</p>` : ''}${body}</section>`;
+    const toc = [['inicio', 'En 5 pasos'], ['mapa', 'El mapa'], ['buscar', 'Buscar y filtrar'], ['ficha', 'La ficha'], ['herr', 'Herramientas PRO'], ['exp', 'Expediente'], ['gloss', 'Palabras clave']];
+    const flow = [[I.pin, 'Mira el mapa', 'Cada cruz es una propiedad en remate.'], [I.list, 'Filtra', 'Elige zona, precio, tamaño o tipo.'], [I.Lote, 'Abre la ficha', 'Haz clic en una cruz o en la lista.'], [I.valor, 'Analiza', 'Usa las herramientas PRO.'], [I.gavel, 'Decide', 'Descarga el expediente y verifica.']];
     return `<div class="about guide">
       <nav class="gtoc" aria-label="Contenido">${toc.map(([k, t]) => `<button class="chip" data-gto="${k}">${t}</button>`).join('')}</nav>
-      ${sec('inicio', I.pin, 'Primeros pasos', false, `<ol>
-        <li><b>Ubica.</b> Cada cruz en el mapa es una propiedad en remate. El color indica la etapa: ${PX.stageBadge(0, true)} primer remate con la base completa, ${PX.stageBadge(1, true)} segundo al 75 % y ${PX.stageBadge(2, true)} tercero al 25 %. Un punto terracota en el centro marca tus favoritos.</li>
-        <li><b>Comprende.</b> Haz clic en una cruz o en un lote de la lista para abrir su ficha: precio, fechas, terreno, servicios, normativa y registro.</li>
-        <li><b>Decide.</b> Con PRO, abre las herramientas del lote (valor de referencia, potencial, prefactibilidad y riesgos), compáralo con otros y descarga su expediente en PDF.</li></ol>
-        <p>Arriba puedes cambiar la moneda principal (₡ o US$); todos los montos muestran siempre su equivalente en la otra moneda con el tipo de cambio de venta del BCCR. El botón <b>Vista Gratis / PRO</b> muestra cómo ve el sitio cada tipo de usuario.</p>`)}
-      ${sec('mapa', I.entorno, 'Mapa y capas', false, `<ul>
-        <li><b>Zoom.</b> El control de arriba a la derecha muestra el nivel (7 = país, 19 = detalle de lote). Desde el nivel 15 se dibuja el polígono del predio cuando su ubicación es exacta.</li>
-        <li><b>Mouse.</b> Al pasar el mouse ves el distrito, cantón y provincia.</li>
-        <li><b>Clic en el mapa.</b> Muestra los datos de las capas encendidas en ese punto: zona homogénea, agua potable, uso del suelo, zona de vida, plan regulador o precio por m².</li>
-        <li><b>Capas.</b> El botón <b>Capas</b> abre el panel por grupos. Gratis: mapas base, límites, catastro, nombres de ríos y estado del plan regulador. ${PX.PRO}: todas las demás.</li></ul>
-        <table class="gtab"><tr><th>Grupo</th><th>Capas ${PX.PRO}</th></tr>
-        <tr><td>Valor y mercado</td><td><b>Zonas homogéneas de Hacienda</b> con el valor del terreno en ₡ y US$ por m² (desde zoom 13) y <b>precio por m² de remates</b>, mediana por cantón.</td></tr>
-        <tr><td>Servicios e infraestructura</td><td><b>Cobertura de agua potable</b> por operador (AyA, ESPH, ASADA, municipal) con su nombre, <b>vías</b>, <b>puertos y aeropuertos</b> y <b>centros de salud</b>.</td></tr>
-        <tr><td>Ambiente y restricciones</td><td>Zonas de vida, uso y cobertura del suelo 2020, ríos y quebradas, curvas de nivel, áreas protegidas, pago por servicios ambientales y <b>zona marítimo terrestre</b> sombreada (pública 0–50 m y restringida 50–200 m).</td></tr></table>`)}
-      ${sec('filtros', I.list, 'Filtros y lista', false, `<ul>
-        <li><b>Ubicación:</b> texto libre (lugar, finca, plano o expediente), provincia y cantón.</li>
-        <li><b>Remate:</b> etapa, remates en los próximos 7 días, publicados en el último mes y rango de base.</li>
-        <li><b>Características:</b> tipo de inmueble, área mínima y máxima, sin servidumbres, con plan regulador, con agua del AyA.</li>
-        <li>${PX.PRO} <b>Atributos del lote:</b> terreno plano, con construcción, frente a vía pública, zona urbana y más, calculados con las capas del sitio.</li>
-        <li><b>Restablecer</b> quita todos los filtros. <b>Favoritos</b> muestra solo los lotes marcados con el corazón.</li>
-        <li><b>Lista o Calendario:</b> la lista se agrupa por día y resalta los remates de mañana; el calendario muestra cuántos remates hay cada día.</li>
-        <li><b>Guardar búsqueda</b> guarda los filtros en Mi cuenta para volver a ellos y recibir alertas.</li></ul>`)}
-      ${sec('ficha', I.Lote, 'Ficha del lote', false, `<p>La ficha se divide en secciones:</p><ul>
-        <li><b>Remate:</b> base vigente y las tres fechas con su etapa.</li>
-        <li><b>Valor y mercado</b> ${PX.PRO}: zona homogénea de Hacienda, base frente al valor de Hacienda y la <b>escala PECR</b> (nivel 1 a 8) con su rango de valor por m².</li>
-        <li><b>Terreno:</b> área, dimensiones aproximadas, <b>topografía</b> calculada con las curvas de nivel, uso del suelo y zona de vida.</li>
-        <li><b>Servicios y entorno:</b> agua potable, vía, salud, escuela, ríos y costa.</li>
-        <li><b>Normativa:</b> plan regulador vigente o normativa nacional supletoria.</li>
-        <li><b>Registro y ubicación:</b> finca, plano, precisión de la ubicación y fecha de publicación.</li>
-        <li><b>Índice PlanoExacto</b> y ${PX.PRO} <b>atributos del lote</b>.</li></ul>
-        <p>Botones de la ficha: Comparar, Seguir, Guardar en lista, Google Maps, Favorito y Generar expediente.</p>`)}
-      ${sec('herr', I.valor, 'Herramientas PRO', true, `<p>Se abren desde la ficha de un lote (recuadro PRO) o desde la pestaña ${PX.PRO} de la barra lateral. Todos los supuestos son editables y los resultados se recalculan al instante.</p>
-        <dl class="gdl">
-          <dt>Valor de referencia</dt><dd>Terreno = área × valor de la zona homogénea de Hacienda. Construcción = área construida × valor de la tipología de la ONT (2023), depreciada por edad y estado de conservación (Ross-Heidecke). Compara el total con la base del remate.</dd>
-          <dt>Potencial constructivo</dt><dd>Con el área, el área aprovechable, la cobertura, los pisos y el tamaño de unidad calcula la huella, el área total construible, las unidades y los lotes posibles si se segrega. Muestra la normativa aplicable y un esquema del lote.</dd>
-          <dt>Prefactibilidad financiera</dt><dd>Dos escenarios: <b>comprar y revender</b> o <b>desarrollar y vender</b>. Suma oferta, traspaso, timbres, honorarios y otros gastos; calcula inversión, ingreso, utilidad, margen, retorno, rendimiento anual y punto de equilibrio. El área a construir se toma del potencial constructivo.</dd>
-          <dt>Riesgos del proceso</dt><dd>Lista de riesgos del lote (gravámenes, servidumbres, ocupación, restricciones ambientales, ZMT…) con su nivel y qué revisar antes de ofertar.</dd>
-          <dt>Alertas del remate</dt><dd>Avisos por correo o WhatsApp cuando un lote que sigues cambia de etapa, se suspende o se reprograma, y cuando salen remates nuevos que cumplen tus búsquedas guardadas.</dd>
-          <dt>Mapa de precios por m²</dt><dd>Colorea cada cantón con la mediana del precio por m² de las bases de remate.</dd>
-          <dt>Top 10 del mes</dt><dd>Los mejores remates por provincia según el índice PlanoExacto.</dd>
-        </dl><p class="muted">Próximamente: normativa por zona del plan regulador, amenazas naturales (CNE) e historia del sitio con ortofotos del IGN.</p>`)}
-      ${sec('cmp', I.registro, 'Comparar', false, `<p>Desde la ficha, pulsa <b>Comparar</b> y abre la pestaña Comparar. Gratis comparas 2 lotes con el índice; ${PX.PRO} hasta 4 lotes y ajustas el peso de cada dimensión (precio, jurídica, servicios, entorno, restricciones) para ver cuál gana.</p>`)}
-      ${sec('exp', I.gavel, 'Expediente PDF', false, `<p>Desde la ficha, <b>Generar expediente</b> arma un informe de 4 hojas listo para imprimir o guardar en PDF:</p><ol>
-        <li>Mapa del lote con su entorno, detalle satelital y ubicación en el país.</li><li>Ficha del lote: fechas, registro, gravámenes, valor y análisis por dimensión.</li><li>Normativa, potencialidades, riesgos y lista de verificación.</li><li>Texto del edicto.</li></ol>
-        <p>Se compra por lote o se incluye en ${PX.PRO} (hasta ${cupo} al mes).</p>`)}
-      ${sec('cuenta', I.cal, 'Seguimiento, listas y alertas', false, `<ul><li><b>Seguir</b> un lote lo agrega a tu seguimiento y a las alertas.</li><li><b>Guardar en lista</b> organiza lotes en listas propias.</li><li><b>Mi cuenta</b> reúne búsquedas guardadas, listas, seguimiento, expedientes y la configuración de alertas ${PX.PRO}.</li></ul>`)}
-      ${sec('gloss', I.norma, 'Glosario', false, `<dl class="gdl">
-        <dt>Base</dt><dd>Precio mínimo para ofertar en el remate. Baja al 75 % en el segundo y al 25 % en el tercero.</dd>
-        <dt>Zona homogénea</dt><dd>Área con un valor de terreno por m² definido por el Ministerio de Hacienda (ONT) para fines tributarios.</dd>
-        <dt>Escala PECR</dt><dd>Nivel de 1 (rural aislado) a 8 (urbano consolidado) según acceso, servicios y entorno, calibrado con los valores de Hacienda. Cada nivel tiene un rango orientativo en US$/m².</dd>
-        <dt>Índice PlanoExacto</dt><dd>Puntaje de 0 a 100 que combina precio por m², sanidad jurídica, servicios, entorno y restricciones.</dd>
-        <dt>Ubicación aproximada</dt><dd>Cuando el plano o la finca no se encontró en el catastro, el lote se ubica en el centro de su distrito o poblado. La ficha lo indica.</dd>
-        <dt>ZMT</dt><dd>Zona marítimo terrestre: 200 m desde la pleamar; los primeros 50 m son zona pública.</dd></dl>
-        <p class="muted">Toda la información es orientativa. Consulte los Términos y descargo.</p>`)}
+
+      ${sec('inicio', 'PlanoExactoCR en 5 pasos', 'PlanoExactoCR te muestra en un mapa las propiedades que salen a remate judicial en Costa Rica y te ayuda a entender cada una antes de ofertar.',
+        `<div class="gflow">${flow.map(([ic, t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><span class="gi">${ic}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
+        ${tip('¿Prefieres ver los montos en dólares? Cambia la moneda arriba a la derecha (₡ / US$). Siempre verás también el equivalente en la otra moneda.')}`)}
+
+      ${sec('mapa', 'Cómo leer el mapa', '',
+        `<div class="ggrid">
+          <div class="gcard"><h4>Las cruces y sus colores</h4><p class="gpara">El color dice en qué remate va la propiedad. Mientras más avanza, más baja el precio mínimo (la <b>base</b>).</p>
+            <ul class="gkey"><li>${PX.stageBadge(0, true)} <span><b>Primer remate</b>: precio completo</span></li><li>${PX.stageBadge(1, true)} <span><b>Segundo remate</b>: 75 % del precio</span></li><li>${PX.stageBadge(2, true)} <span><b>Tercer remate</b>: 25 % del precio</span></li><li><i class="gfav"></i> <span>Punto rojizo al centro: <b>tu favorito</b></span></li></ul></div>
+          <div class="gcard"><h4>Moverte por el mapa</h4><ul class="gkey">
+            <li><span class="gk">+ / −</span><span>Acerca o aleja. El número indica el nivel: <b>8</b> ves el país, <b>17</b> ves la calle.</span></li>
+            <li><span class="gk">Mouse</span><span>Al pasarlo te dice en qué distrito y cantón estás.</span></li>
+            <li><span class="gk">Clic</span><span>En el mapa: te muestra los datos de las capas que tengas encendidas en ese punto.</span></li></ul></div>
+        </div>
+        ${card(I.entorno, 'Capas: información sobre el mapa', false, 'Encender información extra encima del mapa, como el valor del terreno, el agua potable o los ríos.',
+          ['Pulsa <b>Capas</b> (arriba a la izquierda).', 'Abre un grupo, por ejemplo <b>Valor y mercado</b>.', 'Marca la capa que quieras ver. Para quitarla, desmárcala.'],
+          'enciende <b>Zonas homogéneas de Hacienda</b> y acércate a una ciudad: verás cuánto vale el m² de terreno en cada zona, en colones y dólares.')}
+        <p class="gmini">Gratis: mapas base, límites, catastro, nombres de ríos y estado del plan regulador. ${P_}: valor del terreno, precios por m², agua potable, vías, puertos y aeropuertos, salud, zonas de vida, uso del suelo, curvas de nivel, áreas protegidas y zona marítimo terrestre.</p>`)}
+
+      ${sec('buscar', 'Buscar y filtrar', 'Hay más de 800 remates. Los filtros te ayudan a quedarte solo con los que te interesan.',
+        `${card(I.list, 'Filtros', false, 'Reducir la lista a lo que buscas.',
+          ['En <b>Ubicación</b> escribe un lugar o elige provincia y cantón.', 'En <b>Remate</b> elige la etapa, las fechas y cuánto quieres pagar como máximo.', 'En <b>Características</b> elige el tipo (lote, casa, finca agrícola…) y el tamaño en m².'],
+          'lotes en Guanacaste, de 500 a 2&nbsp;000&nbsp;m², con base menor a ₡20&nbsp;millones.')}
+        <div class="ggrid">
+          <div class="gcard"><h4>Botones útiles</h4><ul class="gkey">
+            <li><span class="gk">Restablecer</span><span>Borra todos los filtros de una vez.</span></li>
+            <li><span class="gk">Favoritos</span><span>Muestra solo los que marcaste con ♥.</span></li>
+            <li><span class="gk">Calendario</span><span>Ve los remates día por día. Los de <b>mañana</b> salen resaltados.</span></li>
+            <li><span class="gk">Guardar búsqueda</span><span>Guarda tus filtros para usarlos otra vez.</span></li></ul></div>
+          ${card(I.registro, 'Buscar un plano', false, 'Consultar cualquier terreno del país, esté o no en remate.', ['Abre la pestaña <b>Buscar plano</b>.', 'Escribe el número de plano (por ejemplo P-1311611-2008) o el de finca.', 'Pulsa <b>Buscar en el catastro</b> y luego <b>Ver en el mapa</b>.'], '')}
+        </div>
+        ${tip(`Con ${P_} tienes filtros extra por <b>atributos del lote</b>: terreno plano, con construcción, frente a calle pública, zona urbana y más.`)}`)}
+
+      ${sec('ficha', 'La ficha de cada propiedad', 'Al abrir una propiedad ves su ficha a la derecha. Está ordenada como una historia: primero cuánto y cuándo, después cómo es el terreno y al final los datos legales.',
+        `<div class="gtable">
+          <div><b>Remate</b><span>Precio mínimo (base) y las fechas de los tres remates.</span></div>
+          <div><b>Valor y mercado</b> ${P_}<span>Cuánto vale el terreno según Hacienda y si la base está por encima o por debajo. Incluye la <b>escala PECR</b> (del 1 al 8).</span></div>
+          <div><b>Terreno</b><span>Tamaño, forma aproximada, si es plano o quebrado, y uso actual del suelo.</span></div>
+          <div><b>Servicios y entorno</b><span>Agua potable, calle, salud, escuela, ríos y costa cercanos.</span></div>
+          <div><b>Normativa</b><span>Qué plan regulador aplica (o las normas nacionales si el cantón no tiene).</span></div>
+          <div><b>Registro y ubicación</b><span>Número de finca y plano, y qué tan exacta es la ubicación en el mapa.</span></div>
+        </div>
+        ${tip('Usa ♥ <b>Favorito</b> para marcarla, <b>Seguir</b> para recibir avisos y <b>Comparar</b> para ponerla junto a otras.')}`)}
+
+      ${sec('herr', `Herramientas ${P_}`, `Responden las preguntas que todo comprador se hace. Se abren desde la ficha (recuadro dorado) o desde la pestaña ${P_} de la izquierda. Todos los números se pueden cambiar y el resultado se actualiza solo.`,
+        `<div class="ggrid">
+        ${card(I.valor, '¿Cuánto vale realmente?', true, '<b>Valor de referencia.</b> Estima el valor de la propiedad para saber si la base es buena oportunidad.',
+          ['Revisa el área del terreno y el valor de Hacienda (ya vienen llenos).', 'Si tiene casa, ajusta el área construida, el tipo de construcción, la edad y el estado.', 'Mira el resultado: <b>Base frente a referencia</b>.'],
+          'si dice <b>60 %</b>, la base es un 40 % menor que el valor de referencia.')}
+        ${card(I.Lote, '¿Cuánto puedo construir?', true, '<b>Potencial constructivo.</b> Calcula cuántos m² y cuántas casas o apartamentos caben en el lote.',
+          ['Revisa cobertura (qué porcentaje del lote se puede techar) y número de pisos.', 'Indica el tamaño de cada unidad (por ejemplo 80 m²).', 'Lee cuántas unidades caben y cuántos lotes saldrían si se divide.'], '')}
+        ${card(I.valor, '¿Es buen negocio?', true, '<b>Prefactibilidad financiera.</b> Calcula cuánto invertirías, cuánto podrías ganar y en cuánto tiempo.',
+          ['Elige: <b>comprar y revender</b> el terreno o <b>construir y vender</b>.', 'Escribe tu oferta y revisa los gastos (traspaso, abogado, timbres).', 'Mira la <b>utilidad</b> y el <b>retorno</b>. En verde, gana; en rojo, pierde.'],
+          'el <b>punto de equilibrio</b> te dice el precio mínimo al que tendrías que vender para no perder.')}
+        ${card(I.norma, '¿Qué puede salir mal?', true, '<b>Riesgos del proceso.</b> Lista los problemas posibles de esa propiedad y qué revisar antes de ofertar.', '', 'hipotecas que siguen vigentes, servidumbres, gente viviendo en la casa o restricciones ambientales.')}
+        </div>
+        <div class="gtable">
+          <div><b>Alertas</b><span>Te avisa por correo o WhatsApp si un remate que sigues cambia de fecha o etapa, o si sale uno nuevo que cumple tu búsqueda guardada.</span></div>
+          <div><b>Mapa de precios</b><span>Pinta cada cantón según el precio típico por m² de los remates.</span></div>
+          <div><b>Top 10 del mes</b><span>Los remates mejor calificados de cada provincia.</span></div>
+          <div><b>Comparar</b><span>Gratis comparas 2 propiedades; con ${P_}, hasta 4, y decides qué pesa más para ti (precio, servicios, entorno…).</span></div>
+        </div>`)}
+
+      ${sec('exp', 'El expediente en PDF', 'Un informe de 4 hojas con todo lo importante de una propiedad, listo para imprimir, guardar o compartir con tu abogado.',
+        `<div class="gflow g4">${[['Mapa', 'El lote, su entorno y una vista satelital.'], ['Ficha', 'Fechas, registro, valor y análisis.'], ['Normativa y riesgos', 'Lo que se puede hacer y lo que hay que revisar.'], ['Edicto', 'El texto oficial del remate.']].map(([t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
+        <p class="gmini">Se genera con el botón <b>Generar expediente</b> de la ficha. Se compra por propiedad o viene incluido en ${P_} (hasta ${cupo} al mes).</p>`)}
+
+      ${sec('gloss', 'Palabras clave', '',
+        `<div class="gtable">
+          <div><b>Base</b><span>Precio mínimo para ofertar. Baja en cada remate: 100 %, 75 % y 25 %.</span></div>
+          <div><b>Zona homogénea</b><span>Zona donde Hacienda fija un mismo valor del terreno por m².</span></div>
+          <div><b>Escala PECR</b><span>Nota del 1 al 8: 1 es campo aislado sin servicios y 8 es ciudad con todo. Cada nivel trae un rango de precio por m².</span></div>
+          <div><b>Índice PlanoExacto</b><span>Nota de 0 a 100 que resume precio, situación legal, servicios y entorno.</span></div>
+          <div><b>Ubicación aproximada</b><span>Cuando no encontramos el plano exacto, la cruz va al centro del distrito o poblado. La ficha lo indica.</span></div>
+          <div><b>ZMT</b><span>Zona marítimo terrestre: los 200 m desde la playa. Los primeros 50 m son públicos.</span></div>
+        </div>
+        <p class="muted">Recuerda: todo es información orientativa. Antes de ofertar, revisa el expediente judicial y consulta con un abogado. Ver <button class="linkbtn" data-about="terms">Términos y descargo</button>.</p>`)}
     </div>`;
   }
   // ---------- Quiénes somos y descargo de responsabilidad ----------
