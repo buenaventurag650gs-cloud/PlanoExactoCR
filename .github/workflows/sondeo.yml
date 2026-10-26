@@ -4,17 +4,11 @@ jobs:
   sondeo:
     runs-on: ubuntu-latest
     steps:
-      - name: Probar acceso a las fuentes públicas
+      - name: Probar el catastro del SNIT
         run: |
-          for u in \
-            "https://nexuspj.poder-judicial.go.cr/document/avi-1-0155-15851" \
-            "https://boletinjudicial.poder-judicial.go.cr/" \
-            "https://www.snitcr.go.cr/Visor/services/siri?tipoquery=plano&plano=SJ0975627-2005" \
-            "https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer?f=json" \
-            "https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer/0?f=json" \
-            "https://geodatos.sinia.go.cr/geoserver/MAF2020/wms?service=WMS&request=GetCapabilities" \
-            "https://geos.snitcr.go.cr/be/IGN_5/wms?service=WMS&request=GetCapabilities" \
-            "https://gee.bccr.fi.cr/indicadoreseconomicos/" ; do
-            code=$(curl -s -o /tmp/r -w "%{http_code} %{time_total}s %{size_download}B" --max-time 40 -A "PlanoExactoCR/1.0" "$u" || echo "fallo")
-            echo "::notice title=sondeo::$code  $u  $(head -c 100 /tmp/r 2>/dev/null | tr -d '\n\r:' )"
+          U="www.snitcr.go.cr/Visor/services/siri?tipoquery=plano&plano=613116112008"
+          for v in "https://$U" "http://$U" "-k https://$U" "https://geos.snitcr.go.cr/be/IGN_5/wms?service=WMS&request=GetCapabilities"; do
+            err=$(curl -sS -o /tmp/r -w "%{http_code}" --max-time 40 $v 2>&1 | tr -d '\n' | tr ':' ' ')
+            echo "::notice title=sondeo::[$v] $err $(head -c 120 /tmp/r 2>/dev/null | tr -d '\n\r:')"
           done
+          echo | openssl s_client -connect www.snitcr.go.cr:443 -servername www.snitcr.go.cr 2>/dev/null | grep -E "Verify return|depth|s:|i:" | head -8 | tr ':' ' ' | while read l; do echo "::notice title=tls::$l"; done
