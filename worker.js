@@ -95,6 +95,37 @@ async function api(u) {
   }
 }
 
+// ---------- Catastro desde Costa Rica ----------
+// El SNIT no responde a servidores fuera del país. El botón «Ubicar remates» corre en el navegador del
+// administrador sobre www.snitcr.go.cr: pide la lista de pendientes, consulta el catastro y devuelve los
+// resultados aquí; el Worker los guarda en GitHub (data/catastro_resultados.json) y lanza la actualización.
+const REPO = "buenaventurag650gs-cloud/PlanoExactoCR";
+const ORIGENES_SNIT = new Set(["https://www.snitcr.go.cr", "https://snitcr.go.cr"]);
+function cors(request) {
+  const o = request.headers.get("origin") || "";
+  return ORIGENES_SNIT.has(o) ? { "Access-Control-Allow-Origin": o, "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Vary": "Origin" } : {};
+}
+const b64 = (s) => { const b = new TextEncoder().encode(s); let t = ""; for (let i = 0; i < b.length; i += 0x8000) t += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(t); };
+const deb64 = (s) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), (c) => c.charCodeAt(0)));
+async function gh(env, ruta, opts) {
+  return fetch("https://api.github.com/repos/" + REPO + ruta, Object.assign({}, opts, { headers: { "Authorization": "Bearer " + env.GH_TOKEN, "Accept": "application/vnd.github+json", "User-Agent": "PlanoExactoCR", "Content-Type": "application/json" } }));
+}
+async function guardarCatastro(request, env) {
+  const h = cors(request);
+  if (!env.GH_TOKEN) return new Response(JSON.stringify({ error: "Falta el token de GitHub (GH_TOKEN) en Cloudflare" }), { status: 500, headers: Object.assign({ "content-type": "application/json" }, h) });
+  const nuevos = await request.json().catch(() => null);
+  if (!nuevos || typeof nuevos !== "object") return new Response(JSON.stringify({ error: "Datos inválidos" }), { status: 400, headers: Object.assign({ "content-type": "application/json" }, h) });
+  const ruta = "/contents/data/catastro_resultados.json";
+  const actual = await gh(env, ruta + "?ref=main");
+  let previo = {}, sha;
+  if (actual.ok) { const j = await actual.json(); sha = j.sha; try { previo = JSON.parse(deb64(j.content)); } catch (_) {} }
+  const total = Object.assign(previo, nuevos);
+  const put = await gh(env, ruta, { method: "PUT", body: JSON.stringify({ message: "Catastro: " + Object.keys(nuevos).length + " consultas desde el SNIT", content: b64(JSON.stringify(total)), sha, branch: "main" }) });
+  if (!put.ok) return new Response(JSON.stringify({ error: "GitHub no aceptó el archivo (" + put.status + ")" }), { status: 502, headers: Object.assign({ "content-type": "application/json" }, h) });
+  await gh(env, "/actions/workflows/actualizar.yml/dispatches", { method: "POST", body: JSON.stringify({ ref: "main" }) });
+  return new Response(JSON.stringify({ ok: true, guardados: Object.keys(nuevos).length }), { headers: Object.assign({ "content-type": "application/json" }, h) });
+}
+
 // Archivos que la página de acceso necesita antes de iniciar sesión
 const PUBLICOS = new Set(["/assets/img/logo.webp", "/assets/img/favicon.png", "/robots.txt"]);
 
@@ -103,6 +134,17 @@ export default {
     const pw = env.SITE_PASSWORD;
     if (!pw) return txt("Sitio en configuración.", 503);
     const u = new URL(request.url);
+    if (u.pathname.startsWith("/api/catastro/")) {
+      const h = cors(request);
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
+      if (!(await autorizado(request, pw))) return new Response(JSON.stringify({ error: "Contraseña incorrecta" }), { status: 401, headers: Object.assign({ "content-type": "application/json" }, h) });
+      if (u.pathname === "/api/catastro/pendientes") {
+        const r = await env.ASSETS.fetch(new Request(new URL("/data/pendientes.json", u), request));
+        return new Response(r.body, { status: r.status, headers: Object.assign({ "content-type": "application/json", "cache-control": "no-store" }, h) });
+      }
+      if (u.pathname === "/api/catastro/resultados" && request.method === "POST") return guardarCatastro(request, env);
+      return new Response("{}", { status: 404, headers: h });
+    }
     if (u.pathname === "/__acceso" && request.method === "POST") {
       const f = await request.formData().catch(() => null);
       const clave = f ? String(f.get("clave") || "") : "";

@@ -982,6 +982,9 @@
         <section class="acc"><h3>Búsquedas guardadas</h3>
           ${a.busquedas.length ? a.busquedas.map((b, i) => `<div class="li"><div><button class="linkbtn" data-bus="${i}">${esc(b.n)}</button><br><small>${fdate(new Date(b.t))}</small></div><div><button class="linkbtn" data-delb="${i}" style="font-weight:500;font-size:12px">Eliminar</button></div></div>`).join('') : '<small class="muted">Usa «Guardar» sobre la lista de remates para volver a una búsqueda.</small>'}
         </section>
+        <section class="acc"><h3>Administración</h3>
+          <div class="li"><div><a href="catastro.html">Ubicar remates en el catastro</a><br><small>Botón para consultar el SNIT desde Costa Rica los remates nuevos que quedaron ubicados por distrito.</small></div></div>
+        </section>
       </div></aside></div>`;
   }
   $('bCuenta').onclick = renderCuenta;

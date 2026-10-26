@@ -16,7 +16,8 @@ for r in R:
     z = (r.get('ent') or {}).get('zh') or {}
     a = r.get('pecrA')
     if not z.get('v'):
-        if a: r['pecr'] = 9 if a == 8 else a
+        # Sin valor de Hacienda (lote sin ubicar en el catastro): no se asigna nivel para no mostrar uno engañoso
+        for k in ('pecr', 'pecrV'): r.pop(k, None)
         continue
     usd = z['v'] / TC
     v = nivel_valor(usd)
