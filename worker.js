@@ -1,9 +1,21 @@
-// Cloudflare Pages: puente hacia servicios públicos del SNIT y del MINAE (solo destinos permitidos).
-// /api/plano?v=613116112008         -> predio por número de plano (catastro, Registro Inmobiliario)
-// /api/finca?v=0169321&p=6          -> predio por finca y provincia
-// /api/cobertura?lon=-84.1&lat=9.9  -> categoría de cobertura 2020 (MAF, MINAE) en un punto
+// PlanoExactoCR en Cloudflare Workers (con archivos estáticos).
+// 1) Contraseña de la etapa de prueba: variable secreta SITE_PASSWORD del Worker (nunca en el código).
+//    Si la variable no existe, el sitio queda cerrado (falla de forma segura).
+// 2) Puente /api hacia servicios públicos del SNIT y del MINAE (solo destinos permitidos).
+// 3) El resto se sirve desde los archivos estáticos del repositorio (binding ASSETS).
+
+const txt = (t, status, extra) => new Response(t, { status, headers: Object.assign({ "content-type": "text/plain; charset=utf-8" }, extra || {}) });
 const json = (o, status = 200, cache = 3600) =>
   new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": `public, max-age=${cache}` } });
+
+function autorizado(request, pw) {
+  const h = request.headers.get("authorization") || "";
+  if (!h.startsWith("Basic ")) return false;
+  try {
+    const decoded = new TextDecoder().decode(Uint8Array.from(atob(h.slice(6)), (c) => c.charCodeAt(0)));
+    return decoded.slice(decoded.indexOf(":") + 1) === pw;
+  } catch (_) { return false; }
+}
 
 async function get(url, ms = 20000) {
   const ctl = new AbortController();
@@ -12,8 +24,7 @@ async function get(url, ms = 20000) {
   finally { clearTimeout(t); }
 }
 
-export async function onRequestGet({ request }) {
-  const u = new URL(request.url);
+async function api(u) {
   const q = u.searchParams;
   try {
     if (u.pathname === "/api/plano" || u.pathname === "/api/finca") {
@@ -42,3 +53,21 @@ export async function onRequestGet({ request }) {
     return json({ error: "Servicio no disponible" }, 504, 0);
   }
 }
+
+export default {
+  async fetch(request, env) {
+    const pw = env.SITE_PASSWORD;
+    if (!pw) return txt("Sitio en configuración.", 503);
+    if (!autorizado(request, pw)) {
+      return txt("Acceso restringido. Escribe cualquier usuario y la contraseña de prueba.", 401, { "WWW-Authenticate": 'Basic realm="PlanoExactoCR", charset="UTF-8"' });
+    }
+    const u = new URL(request.url);
+    const res = u.pathname.startsWith("/api/") ? await api(u) : await env.ASSETS.fetch(request);
+    const out = new Response(res.body, res);
+    out.headers.set("X-Robots-Tag", "noindex, nofollow");
+    out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    out.headers.set("X-Content-Type-Options", "nosniff");
+    if (u.pathname.startsWith("/data/")) out.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+    return out;
+  }
+};

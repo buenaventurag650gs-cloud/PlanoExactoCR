@@ -1,4 +1,11 @@
-# Cloudflare Pages: sitio estático publicado desde la raíz del repositorio, sin paso de compilación.
+# Cloudflare Workers con archivos estáticos: worker.js protege con contraseña y atiende /api;
+# el resto se sirve desde la raíz del repositorio (lo listado en .assetsignore no se publica).
 name = "planoexactocr"
-pages_build_output_dir = "."
+main = "worker.js"
 compatibility_date = "2026-10-01"
+
+[assets]
+directory = "."
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "none"

@@ -25,10 +25,9 @@ Planes: Gratis · Expediente por lote US$20 · Suscripción US$200/mes (200 expe
 
 Información orientativa: no es certificado de uso de suelo, certificación registral ni avalúo. No sustituye la certificación del Registro Nacional ni la revisión del expediente.
 
-## Publicación en Cloudflare Pages
+## Publicación en Cloudflare (Workers con archivos estáticos)
 
-- Sitio estático sin compilación: Cloudflare publica la raíz del repositorio (`wrangler.toml` → `pages_build_output_dir = "."`).
-- `functions/_middleware.js`: contraseña de la etapa de prueba (variable `SITE_PASSWORD` en Cloudflare) y bloqueo de carpetas internas.
-- `functions/api/[[path]].js`: puente a los servicios del SNIT y del MINAE (`/api/plano`, `/api/finca`, `/api/cobertura`).
-- `_headers`: cabeceras (no indexar, caché de `/data`).
-- La carpeta `netlify/` y `netlify.toml` quedan mientras se completa la mudanza.
+- `wrangler.toml`: Worker `planoexactocr`; publica la raíz del repositorio como archivos estáticos (lo listado en `.assetsignore` no se publica).
+- `worker.js`: contraseña de la etapa de prueba (secreto `SITE_PASSWORD` del Worker), puente `/api` al SNIT y al MINAE, y cabeceras (no indexar, caché de `/data`).
+- Cloudflare publica solo con cada envío a `main` (Workers Builds, comando `npx wrangler deploy`).
+- `netlify/` y `netlify.toml` quedan mientras se completa la mudanza.

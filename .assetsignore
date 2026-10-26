@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.assetsignore
+.dev.vars
+.wrangler
+node_modules
+netlify
+netlify.toml
+scripts
+README.md
+worker.js
+wrangler.toml
