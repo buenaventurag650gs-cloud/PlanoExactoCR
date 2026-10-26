@@ -91,6 +91,7 @@ async function api(u) {
     }
     return json({ error: "Ruta desconocida" }, 404, 0);
   } catch (_) {
+    if (u.pathname === "/api/plano" || u.pathname === "/api/finca") return json({ error: "El catastro del SNIT solo responde a consultas hechas desde Costa Rica, y este servidor está fuera del país. La búsqueda por plano o finca no está disponible por ahora; los remates del mapa sí están ubicados." }, 502, 0);
     return json({ error: "Servicio no disponible" }, 504, 0);
   }
 }
