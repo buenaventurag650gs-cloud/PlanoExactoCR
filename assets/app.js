@@ -518,16 +518,16 @@
     if (jobs.length) { const vals = await Promise.all(jobs.map(j => j[1].catch(() => null))); if (map.hasLayer(idPop) && idPop.getLatLng().equals(e.latlng)) paint(vals); }
   });
 
-  // Bloque de la escala PECR en la ficha: nivel, escala de 8 colores y dónde cae la base frente al rango del nivel
-  const PECR_COL = ['#D8C79A', '#C4BE85', '#A7B474', '#84A66A', '#5F9562', '#418258', '#2A6B4D', '#1A5140'];
+  // Bloque de la escala PECR en la ficha: nivel, escala de colores y dónde cae la base frente al rango del nivel
+  const PECR_COL = ['#E0CFA3', '#CFC48D', '#B8BA7C', '#9DAE70', '#80A068', '#619060', '#477F57', '#316C4E', '#1F5843', '#123F31'];
   function pecrHTML(r, pc) {
     const z = (r.ent || {}).zh, zu = z && z.v ? z.v / PX.tc.venta : null, bu = r.usdm2;
     const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de US$1 a US$1 000 por m²
     const pos = bu == null ? '' : bu < pc[2] ? 'por debajo del rango' : bu >= pc[3] ? 'por encima del rango' : 'dentro del rango';
     return `<div class="pecrb emph">
-      <div class="iphh"><span class="iphn${pc[0] <= 3 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/8</small></span><div><b>Nivel ${pc[0]} de 8</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
+      <div class="iphh"><span class="iphn${pc[0] <= 4 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/${PX.PECR_N}</small></span><div><b>Nivel ${pc[0]} de ${PX.PECR_N}</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
       <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (${PX.pecrRango(x)})">${x[0]}</span>`).join('')}</div>
-      <div class="lv"><span>Rural aislado</span><span>Urbano consolidado</span></div>
+      <div class="lv"><span>Rural aislado</span><span>Centralidad urbana</span></div>
       <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
         <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">US$${v}</span>`).join('')}</div></div>
       ${PX.pecrTable(pc, bu, zu, PECR_COL[pc[0] - 1])}</div>`;
@@ -829,7 +829,7 @@
       ${sec('ficha', 'La ficha de cada propiedad', 'Al abrir una propiedad ves su ficha a la derecha. Está ordenada como una historia: primero cuánto y cuándo, después cómo es el terreno y al final los datos legales.',
         `<div class="gtable">
           <div><b>Remate</b><span>Precio mínimo (base) y las fechas de los tres remates.</span></div>
-          <div><b>Valor y mercado</b> ${P_}<span>Cuánto vale la propiedad según Hacienda, el <b>Índice Puja/Hacienda</b> y la <b>escala PECR</b> (del 1 al 8).</span></div>
+          <div><b>Valor y mercado</b> ${P_}<span>Cuánto vale la propiedad según Hacienda, el <b>Índice Puja/Hacienda</b> y la <b>escala PECR</b> (del 1 al 10).</span></div>
           <div><b>Terreno</b><span>Tamaño, forma aproximada, si es plano o quebrado, y uso actual del suelo.</span></div>
           <div><b>Servicios y entorno</b><span>Agua potable, calle, salud, escuela, ríos y costa cercanos.</span></div>
           <div><b>Normativa</b><span>Qué plan regulador aplica (o las normas nacionales si el cantón no tiene).</span></div>
@@ -868,9 +868,9 @@
         <p class="gmini">${PX.iphBar(45)}</p>
         ${tip('Hacienda suele valorar por debajo del mercado, así que un IPH bajo es una señal fuerte. Un IPH muy bajo (menos de 10) también puede indicar que se remata solo una parte de la finca (derechos) o que el área del edicto no coincide: la ficha lo advierte.')}
 
-        ${card(I.entorno, 'Escala PECR (niveles 1 a 8)', false, 'Ubicar el lote en una escala de valor según su acceso, servicios y entorno, con un rango orientativo de precio por m².', '', '')}
+        ${card(I.entorno, 'Escala PECR (niveles 1 a 10)', false, 'Ubicar el lote en una escala de valor según su acceso, servicios y entorno, con un rango orientativo de precio por m².', '', '')}
         <div class="gtable pecrtab">${PX.PECR.map(x => `<div><b><span class="pn">${x[0]}</span>${PX.pecrRango(x)}</b><span>${esc(x[1])}</span></div>`).join('')}</div>
-        <p class="gmini"><b>Cómo se calibra:</b> los rangos son contiguos y no se traslapan: cada nivel empieza donde termina el anterior, desde US$0 hasta el nivel 8, que no tiene tope. Se ajustaron con el valor de zona homogénea de Hacienda de los 801 remates (en dólares). El nivel de cada lote es el rango donde cae su valor de Hacienda; las reglas del sitio (frente a vía pública, agua, distancia a salud y escuela, zona urbana o rural) lo suben o bajan un nivel solo cuando apuntan claramente a otro (diferencia de 3 niveles o más). Así, en 8 de cada 10 lotes el valor de Hacienda cae dentro del rango de su nivel.</p>
+        <p class="gmini"><b>Cómo se calibra:</b> los rangos son contiguos y no se traslapan: cada nivel empieza donde termina el anterior, desde US$0 hasta el nivel 10, que no tiene tope. Se ajustaron con el valor de zona homogénea de Hacienda de los 801 remates (en dólares). El nivel de cada lote es el rango donde cae su valor de Hacienda; las reglas del sitio (frente a vía pública, agua, distancia a salud y escuela, zona urbana o rural) lo suben o bajan un nivel solo cuando apuntan claramente a otro (diferencia de 3 niveles o más). Así, en casi 8 de cada 10 lotes (77 %) el valor de Hacienda cae dentro del rango de su nivel.</p>
 
         <div class="gcard"><h4><span class="gi">${I.gavel}</span>Índice PlanoExacto (0 a 100)</h4><p class="gpara"><b>¿Para qué sirve?</b> Comparar remates entre sí con una nota general. Suma cuatro dimensiones con estos pesos:</p>
           <ul class="gkey">${PX.DIMS.map(d => `<li><span class="gk">${PX.W0[d.k]} %</span><span><b>${esc(d.n)}:</b> ${esc(d.d)}.</span></li>`).join('')}</ul><p class="gmini">Con ${P_} puedes cambiar los pesos al comparar.</p></div>
@@ -902,7 +902,7 @@
         `<div class="gtable">
           <div><b>Base</b><span>Precio mínimo para ofertar. Baja en cada remate: 100 %, 75 % y 25 %.</span></div>
           <div><b>Zona homogénea</b><span>Zona donde Hacienda fija un mismo valor del terreno por m².</span></div>
-          <div><b>Escala PECR</b><span>Nota del 1 al 8: 1 es campo aislado sin servicios y 8 es ciudad con todo. Cada nivel trae un rango de precio por m².</span></div>
+          <div><b>Escala PECR</b><span>Nota del 1 al 10: 1 es campo aislado sin servicios y 10 es una centralidad urbana de alto valor. Cada nivel trae un rango de precio por m².</span></div>
           <div><b>Índice PlanoExacto</b><span>Nota de 0 a 100 que resume precio, situación legal, servicios y entorno.</span></div>
           <div><b>IPH</b><span>Índice Puja/Hacienda: en qué porcentaje del valor de Hacienda arranca la puja. 50 = a la mitad.</span></div>
           <div><b>Ubicación aproximada</b><span>Cuando no encontramos el plano exacto, la cruz va al centro del distrito o poblado. La ficha lo indica.</span></div>

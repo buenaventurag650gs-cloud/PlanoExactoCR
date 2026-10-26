@@ -167,7 +167,7 @@
   };
 
   // ---------- Escala PECR de valor por accesibilidad y dotación ----------
-  // Escala PECR: rangos contiguos y sin traslape en US$/m² (desde 0; el nivel 8 no tiene tope).
+  // Escala PECR: 10 niveles con rangos contiguos y sin traslape en US$/m² (desde 0; el último no tiene tope).
   // Calibrada el 26 oct 2026 con el valor de zona homogénea de Hacienda de los 801 remates.
   PX.PECR = [
     [1, 'Rural aislado, acceso difícil, sin servicios disponibles', 0, 4],
@@ -176,13 +176,15 @@
     [4, 'Acceso consolidado, electricidad disponible, agua no confirmada', 15, 25],
     [5, 'Acceso consolidado y disponibilidad de agua potable y electricidad', 25, 40],
     [6, 'Entorno rural residencial, lote aprovechable y servicios disponibles', 40, 70],
-    [7, 'Periurbano, proximidad a centros poblados y equipamientos', 70, 150],
-    [8, 'Suelo urbano consolidado, infraestructura y potencial edificatorio', 150, Infinity]
+    [7, 'Periurbano, proximidad a centros poblados y equipamientos', 70, 120],
+    [8, 'Urbano en consolidación: centro de distrito, servicios completos', 120, 200],
+    [9, 'Suelo urbano consolidado, infraestructura y potencial edificatorio', 200, 350],
+    [10, 'Centralidad urbana de alto valor: centros y ejes comerciales, alta densidad', 350, Infinity]
   ];
-  // Texto del rango: "US$15–25/m²" o "US$150/m² o más"
+  PX.PECR_N = PX.PECR.length;
   PX.pecrRango = x => x[3] === Infinity ? `US$${x[2]}/m² o más` : `US$${x[2]}–${x[3]}/m²`;
   // Nivel según el valor: el rango que lo contiene (límite inferior incluido)
-  PX.pecrNivelValor = usd => (PX.PECR.find(x => usd >= x[2] && usd < x[3]) || PX.PECR[7])[0];
+  PX.pecrNivelValor = usd => (PX.PECR.find(x => usd >= x[2] && usd < x[3]) || PX.PECR[PX.PECR_N - 1])[0];
   // Nivel PECR: reglas de acceso y dotación, calibradas con el valor de la zona homogénea de Hacienda (60 % valor, 40 % reglas)
   PX.pecrCalc = r => {
     const e = r.ent || {}, z = e.zh || {}, tg = r.tg || [];
@@ -193,8 +195,8 @@
     if (!z.v) return a;
     const usd = z.v / PX.tc.venta;
     // El valor de Hacienda define el nivel; las reglas del sitio lo mueven un nivel solo si difieren en 3 o más
-    const b = PX.pecrNivelValor(usd), d = a - b;
-    return Math.max(1, Math.min(8, b + (d >= 3 ? 1 : d <= -3 ? -1 : 0)));
+    const b = PX.pecrNivelValor(usd), d = (a === 8 ? 9 : a) - b;   // reglas en escala de 8; su nivel 8 (urbano consolidado) es el 9 de la escala de 10
+    return Math.max(1, Math.min(PX.PECR_N, b + (d >= 3 ? 1 : d <= -3 ? -1 : 0)));
   };
   PX.pecr = r => r.pecr ? PX.PECR[r.pecr - 1] : null;
   // Tablita comparativa: mínimo y máximo del nivel frente a la base vigente y Hacienda, en ₡ y US$ por m²
