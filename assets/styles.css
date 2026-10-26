@@ -391,3 +391,15 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .emph .pscale span:nth-child(-n+3) { color: #24221A; }
 .emph .pscale span.me { opacity: 1; }
 .emph .iphst span.past { opacity: .6; }
+
+/* Tablita comparativa del PECR */
+.ptab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ptab th, .ptab td { padding: 5px 6px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-family: var(--f-mono); }
+.ptab thead th { border-top: 0; font: 600 11px/1 var(--f-body); color: var(--muted); padding-bottom: 6px; }
+.ptab tbody th { text-align: left; font: 600 12.5px/1.2 var(--f-body); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ptab tr.me th, .ptab tr.me td { color: var(--ink); font-weight: 700; }
+.ptab td:last-child { text-align: left; }
+.vd { display: inline-block; padding: 2px 7px; border-radius: 999px; font: 700 11px/1.3 var(--f-body); }
+.vd.in { background: rgba(108, 196, 184, .2); color: #6CC4B8; }
+.vd.lo { background: rgba(108, 198, 148, .2); color: #7FD3A5; }
+.vd.hi { background: rgba(242, 115, 95, .2); color: #F49A89; }

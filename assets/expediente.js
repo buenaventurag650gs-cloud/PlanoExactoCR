@@ -77,7 +77,7 @@
       ${e.aguaS ? `<dt>Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}</dd>` : `<dt>Agua potable</dt><dd>Sin cobertura registrada (AyA)</dd>`}
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de 8</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
-        <p class="note2">Rango ${PX.duoI(pcr[2], 'USD', '/m²')} a ${PX.duoI(pcr[3], 'USD', '/m²')}${r.usdm2 != null ? `; base vigente ${PX.duoI(r.usdm2, 'USD', '/m²')}, ${r.usdm2 < pcr[2] ? 'por debajo' : r.usdm2 > pcr[3] ? 'por encima' : 'dentro'} del rango` : ''}.</p></div>` : ''}
+        ${PX.pecrTable(pcr, r.usdm2, z && z.v ? z.v / PX.tc.venta : null, '#2A6B4D')}</div>` : ''}
       <p class="note2">Referencias orientativas, no avalúo. Construcción estimada con supuestos editables en la herramienta PRO «Valor de referencia».</p></section>`;
     const ana = `<section class="blk"><h2>Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
       ${PX.DIMS.map(d => `<div class="dm"><div class="dmh"><b>${d.n}</b><span class="num">${s[d.k] ?? '–'}</span></div><span class="track"><i style="width:${s[d.k] || 0}%"></i></span>

@@ -190,6 +190,18 @@
     return Math.max(1, Math.min(8, Math.round(0.4 * a + 0.6 * b)));
   };
   PX.pecr = r => r.pecr ? PX.PECR[r.pecr - 1] : null;
+  // Tablita comparativa: mínimo y máximo del nivel frente a la base vigente y Hacienda, en ₡ y US$ por m²
+  PX.pecrTable = (pc, bu, zu, col) => {
+    const tc = PX.tc.venta, c = v => Math.round(v * tc).toLocaleString('es-CR'), d = v => (v < 10 ? v.toLocaleString('es-CR', { maximumFractionDigits: 1 }) : Math.round(v).toLocaleString('es-CR'));
+    const ver = v => v < pc[2] ? ['por debajo', 'lo'] : v > pc[3] ? ['por encima', 'hi'] : ['dentro', 'in'];
+    let h = `<table class="ptab"><thead><tr><th></th><th>₡/m²</th><th>US$/m²</th><th></th></tr></thead><tbody>
+      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Mínimo del nivel</th><td>₡${c(pc[2])}</td><td>US$${d(pc[2])}</td><td></td></tr>
+      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Máximo del nivel</th><td>₡${c(pc[3])}${pc[0] === 8 ? '+' : ''}</td><td>US$${d(pc[3])}${pc[0] === 8 ? '+' : ''}</td><td></td></tr>`;
+    if (bu != null) { const v = ver(bu); h += `<tr class="me"><th><i class="sw mk"></i>Base vigente</th><td>₡${c(bu)}</td><td>US$${d(bu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
+    if (zu) { const v = ver(zu); h += `<tr><th><i class="sw zh"></i>Hacienda</th><td>₡${c(zu)}</td><td>US$${d(zu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
+    return h + '</tbody></table>';
+  };
+
 
   // ---------- Valor de referencia: zona homogénea de Hacienda + construcción por tipología (ONT) ----------
   // Manual de valores base unitarios por tipología constructiva, ONT, valores a marzo de 2023 (Alcance 187, La Gaceta 178, 28/09/2023).

@@ -1,0 +1,4 @@
+# Cloudflare Pages: sitio estático publicado desde la raíz del repositorio, sin paso de compilación.
+name = "planoexactocr"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-01"

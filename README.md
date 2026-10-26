@@ -24,3 +24,11 @@ Mapas base: © OpenStreetMap, © CARTO; imágenes © Esri.
 Planes: Gratis · Expediente por lote US$20 · Suscripción US$200/mes (200 expedientes). Pagos y cuentas en modo demostración (localStorage).
 
 Información orientativa: no es certificado de uso de suelo, certificación registral ni avalúo. No sustituye la certificación del Registro Nacional ni la revisión del expediente.
+
+## Publicación en Cloudflare Pages
+
+- Sitio estático sin compilación: Cloudflare publica la raíz del repositorio (`wrangler.toml` → `pages_build_output_dir = "."`).
+- `functions/_middleware.js`: contraseña de la etapa de prueba (variable `SITE_PASSWORD` en Cloudflare) y bloqueo de carpetas internas.
+- `functions/api/[[path]].js`: puente a los servicios del SNIT y del MINAE (`/api/plano`, `/api/finca`, `/api/cobertura`).
+- `_headers`: cabeceras (no indexar, caché de `/data`).
+- La carpeta `netlify/` y `netlify.toml` quedan mientras se completa la mudanza.

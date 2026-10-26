@@ -530,9 +530,7 @@
       <div class="lv"><span>Rural aislado</span><span>Urbano consolidado</span></div>
       <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
         <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">US$${v}</span>`).join('')}</div></div>
-      <dl class="pkv"><dt><i class="sw" style="background:${PECR_COL[pc[0] - 1]}"></i>Rango del nivel</dt><dd>${PX.duoI(pc[2], 'USD', '/m²')} a ${PX.duoI(pc[3], 'USD', '/m²')}${pc[0] === 8 ? ' o más' : ''}</dd>
-        ${bu != null ? `<dt><i class="sw mk"></i>Base vigente</dt><dd>${PX.duoI(bu, 'USD', '/m²')} · <b>${pos}</b></dd>` : ''}
-        ${zu ? `<dt><i class="sw zh"></i>Valor de Hacienda</dt><dd>${PX.duoI(zu, 'USD', '/m²')}</dd>` : ''}</dl></div>`;
+      ${PX.pecrTable(pc, bu, zu, PECR_COL[pc[0] - 1])}</div>`;
   }
 
   // Bloque del Índice Puja/Hacienda en la ficha
