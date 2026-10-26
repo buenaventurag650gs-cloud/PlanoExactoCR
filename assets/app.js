@@ -246,6 +246,7 @@
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
   map.attributionControl.setPrefix(false);
   map.zoomControl.setPosition('bottomright');
+  PX.map = map;
   // Indicador del nivel de zoom entre + y −
   const zc = map.zoomControl.getContainer();
   const zr = L.DomUtil.create('div', 'zread');
@@ -282,12 +283,48 @@
       return this._url + '/export?' + q;
     }
   });
-  const ags = (url, o) => new AGS(url, Object.assign({ maxZoom: 19, tileSize: 256 }, o));
+  // Imagen única por vista (no teselas): las etiquetas de Hacienda y AyA no se cortan ni se repiten
+  map.createPane('ags').style.zIndex = 300; map.getPane('ags').style.pointerEvents = 'none';
+  const AGSImg = L.Layer.extend({
+    options: { pane: 'ags', opacity: 1, minZoom: 0 },
+    initialize(url, o) { this._url = url; L.setOptions(this, o); },
+    getAttribution() { return this.options.attribution; },
+    onAdd(m) { this._m = m; this._upd = L.Util.throttle(this._update, 300, this); m.on('moveend zoomend resize', this._upd, this); this._update(); },
+    onRemove(m) { m.off('moveend zoomend resize', this._upd, this); if (this._img) this._img.remove(); this._img = null; this._seq = (this._seq || 0) + 1; },
+    _update() {
+      const m = this._m; if (!m) return;
+      if (m.getZoom() < this.options.minZoom) { if (this._img) { this._img.remove(); this._img = null; } return; }
+      const b = m.getBounds(), sz = m.getSize(), dpr = Math.min(2, window.devicePixelRatio || 1);
+      const sw = L.CRS.EPSG3857.project(b.getSouthWest()), ne = L.CRS.EPSG3857.project(b.getNorthEast());
+      const q = new URLSearchParams({ bbox: [sw.x, sw.y, ne.x, ne.y].join(','), bboxSR: 3857, imageSR: 3857, size: Math.round(sz.x * dpr) + ',' + Math.round(sz.y * dpr), dpi: Math.round(96 * dpr), format: 'png32', transparent: 'true', f: 'image', dynamicLayers: JSON.stringify(this.options.dyn) });
+      const seq = this._seq = (this._seq || 0) + 1, url = this._url + '/export?' + q, pre = new Image();
+      pre.onload = () => {
+        if (seq !== this._seq || !this._m) return;
+        const ov = L.imageOverlay(url, b, { pane: this.options.pane, opacity: this.options.opacity, interactive: false }).addTo(m);
+        if (this._img) this._img.remove(); this._img = ov;
+      };
+      pre.src = url;
+    }
+  });
+  const ags = (url, o) => new AGSImg(url, o);
   const sfs = (fill, line, w) => ({ type: 'esriSFS', style: 'esriSFSSolid', color: fill, outline: { type: 'esriSLS', style: 'esriSLSSolid', color: line, width: w || 0.8 } });
   const ZH_DYN = [{ id: 0, source: { type: 'mapLayer', mapLayerId: 0 }, drawingInfo: { renderer: { type: 'simple', symbol: sfs([233, 196, 106, 38], [176, 120, 40, 210], 0.9) }, showLabels: true,
-    labelingInfo: [{ labelExpression: '[COD_ZONAH]', labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal', symbol: { type: 'esriTS', color: [120, 72, 20, 255], haloColor: [255, 255, 255, 230], haloSize: 1.5, font: { family: 'Arial', size: 8, weight: 'bold' } } }] } }];
+    labelingInfo: zhLabels() } }];
+  // Etiquetas de zona homogénea: valor en colones y dólares por m²; el código se agrega al acercarse
+  function zhLabels() {
+    const tc = (PX.tc && PX.tc.venta) || 456.32, ts = sz => ({ type: 'esriTS', color: [110, 64, 16, 255], haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: sz, weight: 'bold' } });
+    const crc = "'₡' + Replace(Text($feature.VALOR, '#,###'), ',', ' ') + '/m²'", usd = `'US$' + Text(Round($feature.VALOR / ${tc}, 0), '#,###') + '/m²'`;
+    const pl = 'esriServerPolygonPlacementAlwaysHorizontal';
+    return [
+      { labelExpressionInfo: { expression: `${crc} + TextFormatting.NewLine + ${usd}` }, labelPlacement: pl, minScale: 100000, maxScale: 25000, symbol: ts(7.5) },
+      { labelExpressionInfo: { expression: `$feature.COD_ZONAH + TextFormatting.NewLine + ${crc} + TextFormatting.NewLine + ${usd}` }, labelPlacement: pl, minScale: 25000, maxScale: 0, symbol: ts(8.5) }
+    ];
+  }
   const AG_COL = [['AyA', [59, 139, 217]], ['ESPH', [42, 157, 143]], ['ASADA', [106, 153, 78]], ['Municipal', [157, 141, 201]]];
-  const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(60), AG_COL[i][1].concat(170), 0.7) } } }));
+  // Agua: color por tipo de operador y etiqueta con el nombre del operador y el sistema (desde zoom 12)
+  const AG_LBL = ["'AyA · ' + $feature.sistema", "'ESPH'", "$feature.Operador + IIf(IsEmpty(Trim($feature.Sistema)), '', ' · ' + $feature.Sistema)", "$feature.Operador + IIf(IsEmpty(Trim($feature.Sistema)), '', ' · ' + $feature.Sistema)"];
+  const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(70), AG_COL[i][1].concat(200), 0.9) }, showLabels: true,
+    labelingInfo: [{ labelExpressionInfo: { expression: AG_LBL[i] }, labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal', minScale: 150000, maxScale: 0, symbol: { type: 'esriTS', color: AG_COL[i][1].map(c => Math.round(c * 0.55)).concat(255), haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: 8, weight: 'bold' } } }] } }));
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   const BASES = [['calles', 'Calles'], ['osm', 'OpenStreetMap'], ['topo', 'Topográfico'], ['gris', 'Gris claro'], ['sat', 'Satélite con nombres']];
 
@@ -325,7 +362,7 @@
     { id: 'catastro', n: 'Predios del catastro', z: 15, free: true, on: true, lg: [['ln', '#8A948F', 'Lindero de predio']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { minZoom: 15, zIndex: 8, className: 'tl-cat', attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' }) },
     { id: 'rios_n', n: 'Nombres de ríos', z: 13, free: true, on: true, mk: () => wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', minZoom: 13, zIndex: 6, sld_body: sld('IGN_NG:hidronimos_25k', `<Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule>`), attribution: 'Hidrónimos &copy; IGN' }) },
     { id: 'planes', n: 'Estado del plan regulador', free: true, hover: true, lg: PRC.map(p => ['', p[2], p[1]]) },
-    { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea (código y valor al pasar el mouse)']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
+    { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea: valor del terreno en ₡ y US$ por m²']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
     { id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
     { g: 'Servicios e infraestructura', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
     { id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
@@ -359,7 +396,7 @@
       if (l.g) { if (open_) h += '</details>'; const nOn = LY.filter(x => x.g === l.g).length; h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`; open_ = true; }
       const ok = allowed(l), on = lyrState[l.id] && ok;
       h += `<label class="lyr${ok ? '' : ' locked'}" data-id="${l.id}"><input type="checkbox"${on ? ' checked' : ''}${ok ? '' : ' disabled'}>
-        <span>${l.n}${l.note ? ` <small>${l.note}</small>` : ''}${l.z ? ` <small>zoom ${l.z}+</small>` : ''}</span><span>${l.free ? '' : PX.PRO}${ok && l.hover && on ? ' <small>pasa el mouse</small>' : ''}</span>
+        <span>${l.n}${l.note ? ` <small>${l.note}</small>` : ''}${l.z ? ` <small>zoom ${l.z}+</small>` : ''}</span><span>${l.free ? '' : PX.PRO}${ok && l.hover && on ? ' <small>clic en el mapa</small>' : ''}</span>
         ${on && l.lg && l.lg.length ? `<span class="lg">${l.lg.map(([t, c, n]) => `<span><i class="${t}" style="--c:${c}"></i>${esc(n)}</span>`).join('')}</span>` : ''}</label>`;
     }
     if (open_) h += '</details>';
@@ -378,7 +415,7 @@
   });
 
   // Vectores locales
-  function prepZV() { if (!ZV) return; for (const f of ZV.features) { const g = zvGroup(f.properties.n); f.properties.col = g[2]; f.bb = bbox(f.geometry); } if (CANT) CANT.features.forEach(f => f.bb = bbox(f.geometry)); if (PX.ctx.planes) PX.ctx.planes.features.forEach(f => f.bb = bbox(f.geometry)); }
+  function prepZV() { if (!ZV) return; for (const f of ZV.features) { const g = zvGroup(f.properties.n); f.properties.col = g[2]; f.bb = bbox(f.geometry); } if (CANT) CANT.features.forEach(f => f.bb = bbox(f.geometry)); if (DIST) DIST.features.forEach(f => f.bb = f.bb || bbox(f.geometry)); if (PX.ctx.planes) PX.ctx.planes.features.forEach(f => f.bb = bbox(f.geometry)); }
   // Mediana de US$/m² de remates vigentes por cantón (código de cantón: provincia = primer dígito)
   const medCant = f => PX.medC[Math.floor(f.properties.c / 100) + '|' + f.properties.k];
   function priceClasses() {
@@ -412,42 +449,45 @@
     syncLayers();
   }
 
-  // Información al pasar el mouse por las capas temáticas
-  let overMarker = false, hovT = null, cobT = null, lastCob = { k: null, v: null };
+  // Al pasar el mouse: solo distrito, cantón y provincia
+  let overMarker = false, hovT = null;
   const hb = $('hoverbox');
+  const PROV = ['', 'San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
+  const where = (x, y) => { const d = hit(DIST, x, y); return d ? { d: d.properties.d, k: d.properties.k, p: PROV[String(d.properties.c)[0]] || '' } : null; };
   map.on('mousemove', e => {
     if (hovT) return;
     hovT = requestAnimationFrame(() => { hovT = null; hover(e); });
   });
   map.on('mouseout', () => { hb.hidden = true; });
-  const aCache = {}, aT = {};
-  function asyncRow(k, x, y, e, rows, label, fn) {
-    const key = k + x.toFixed(4) + ',' + y.toFixed(4);
-    if (key in aCache) { rows.push([label, aCache[key]]); return; }
-    rows.push([label, '…']); clearTimeout(aT[k]);
-    aT[k] = setTimeout(async () => { aCache[key] = (await fn(x, y)) || 'Sin dato en este punto'; hover(e); }, 380);
-  }
   function hover(e) {
     if (overMarker || window.innerWidth <= 900) { hb.hidden = true; return; }
-    const x = e.latlng.lng, y = e.latlng.lat, rows = [];
-    const on = id => lyrState[id] && allowed(LY.find(l => l.id === id));
-    if (on('zv')) { const f = hit(ZV, x, y); if (f) rows.push(['Zona de vida', f.properties.n]); }
-    if (on('cob')) {
-      const k = x.toFixed(3) + ',' + y.toFixed(3);
-      if (lastCob.k === k) rows.push(['Uso del suelo', lastCob.v || 'Sin dato']);
-      else { rows.push(['Uso del suelo', '…']); clearTimeout(cobT); cobT = setTimeout(async () => { const v = await PX.cobertura(x.toFixed(5), y.toFixed(5)); lastCob = { k, v: v || 'Sin dato en este punto' }; hover(e); }, 380); }
-    }
-    if (on('zh') && map.getZoom() >= 13) asyncRow('zh', x, y, e, rows, 'Zona homogénea', PX.zhAt);
-    if (on('agua')) asyncRow('ag', x, y, e, rows, 'Agua potable', PX.aguaAt);
-    if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador · ' + f.properties.canton, PX.prText(f.properties)]); }
-    if (on('precios')) { const f = hit(CANT, x, y); if (f) { const m = medCant(f); rows.push(['Precio por m² · ' + f.properties.k, m ? `${PX.duoT(m.v, 'USD', '/m²')}, mediana de ${m.n} remates` : 'Menos de 3 remates con área']); } }
-    if (on('cantones')) { const f = hit(CANT, x, y); const d = hit(DIST, x, y); if (f) rows.push(['Ubicación', [d && d.properties.d, f.properties.k].filter(Boolean).join(', ')]); }
-    if (!rows.length) { hb.hidden = true; return; }
-    hb.innerHTML = rows.map(([k, v]) => `<div><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('');
+    const w = where(e.latlng.lng, e.latlng.lat);
+    if (!w) { hb.hidden = true; return; }
+    hb.innerHTML = `<div><b>${esc(w.d)}</b><div>${esc(w.k)}, ${esc(w.p)}</div></div>`;
     const pt = e.containerPoint, W = map.getSize();
-    hb.style.left = Math.min(pt.x + 14, W.x - 270) + 'px'; hb.style.top = Math.min(pt.y + 14, W.y - 120) + 'px';
+    hb.style.left = Math.min(pt.x + 14, W.x - 230) + 'px'; hb.style.top = Math.min(pt.y + 14, W.y - 70) + 'px';
     hb.hidden = false;
   }
+
+  // Clic en el mapa: datos de las capas temáticas activas en ese punto
+  const idPop = L.popup({ className: 'idpop', maxWidth: 300, autoPanPadding: [20, 20] });
+  map.on('click', async e => {
+    if (overMarker) return;
+    const x = e.latlng.lng, y = e.latlng.lat;
+    const on = id => lyrState[id] && allowed(LY.find(l => l.id === id));
+    const rows = [], w = where(x, y), jobs = [];
+    if (w) rows.push(['Ubicación', `${w.d}, ${w.k}, ${w.p}`]);
+    if (on('zh')) jobs.push(['Zona homogénea', PX.zhAt(x, y)]);
+    if (on('agua')) jobs.push(['Agua potable', PX.aguaAt(x, y)]);
+    if (on('cob')) jobs.push(['Uso del suelo', PX.cobertura(x.toFixed(5), y.toFixed(5))]);
+    if (on('zv')) { const f = hit(ZV, x, y); if (f) rows.push(['Zona de vida', f.properties.n]); }
+    if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador', PX.prText(f.properties)]); }
+    if (on('precios')) { const f = hit(CANT, x, y); if (f) { const m = medCant(f); rows.push(['Precio por m² en ' + f.properties.k, m ? `${PX.duoT(m.v, 'USD', '/m²')}, mediana de ${m.n} remates` : 'Menos de 3 remates con área']); } }
+    if (!jobs.length && rows.length < 2 && (window.innerWidth > 900 || !w)) return; // sin capas temáticas activas el recuadro del mouse ya basta
+    const paint = vals => idPop.setContent(`<div class="idrows">${rows.concat(jobs.map(([k], i) => [k, vals ? (vals[i] || 'Sin dato en este punto') : 'Consultando…'])).map(([k, v]) => `<div><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('')}</div>`);
+    paint(null); idPop.setLatLng(e.latlng).openOn(map);
+    if (jobs.length) { const vals = await Promise.all(jobs.map(j => j[1].catch(() => null))); if (map.hasLayer(idPop) && idPop.getLatLng().equals(e.latlng)) paint(vals); }
+  });
 
   // Remates en el mapa
   const markers = L.layerGroup().addTo(map), polys = L.layerGroup().addTo(map), selLayer = L.layerGroup().addTo(map);
