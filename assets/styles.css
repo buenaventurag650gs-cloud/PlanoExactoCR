@@ -193,3 +193,7 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .about p, .about ul { margin: 0; }
 .about ul { padding-left: 18px; display: grid; gap: 4px; }
 .pin select { border: 0; background: transparent; padding: 6px; flex: 1; min-width: 0; font-size: 12px; }
+
+/* Lectura del nivel de zoom dentro del control */
+.leaflet-control-zoom .zread { width: 30px; padding: 4px 0; text-align: center; background: var(--panel); color: var(--ink); border-bottom: 1px solid var(--line); font: 600 11.5px/1.1 var(--f-mono); cursor: default; user-select: none; }
+.leaflet-control-zoom .zread::before { content: "z"; display: block; font: 600 8.5px/1 var(--f-body); letter-spacing: .06em; color: var(--faint); margin-bottom: 1px; }

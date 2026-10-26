@@ -246,6 +246,13 @@
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
   map.attributionControl.setPrefix(false);
   map.zoomControl.setPosition('bottomright');
+  // Indicador del nivel de zoom entre + y −
+  const zc = map.zoomControl.getContainer();
+  const zr = L.DomUtil.create('div', 'zread');
+  zr.title = 'Nivel de zoom'; zr.setAttribute('aria-live', 'polite');
+  zc.insertBefore(zr, zc.querySelector('.leaflet-control-zoom-out'));
+  const paintZ = () => { const z = map.getZoom(); zr.textContent = Number.isInteger(z) ? z : z.toFixed(1).replace('.', ','); };
+  map.on('zoomend', paintZ); paintZ();
   map.createPane('ctx').style.zIndex = 350;
   const ctxR = L.canvas({ pane: 'ctx' });
   const dark = () => (matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark';
