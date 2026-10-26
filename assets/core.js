@@ -167,16 +167,22 @@
   };
 
   // ---------- Escala PECR de valor por accesibilidad y dotación ----------
+  // Escala PECR: rangos contiguos y sin traslape en US$/m² (desde 0; el nivel 8 no tiene tope).
+  // Calibrada el 26 oct 2026 con el valor de zona homogénea de Hacienda de los 801 remates.
   PX.PECR = [
-    [1, 'Rural aislado, acceso difícil, sin servicios disponibles', 1, 5],
-    [2, 'Rural, acceso limitado por camino de lastre o servidumbre', 3, 10],
-    [3, 'Acceso razonable, frente a camino público, sin servicios confirmados', 8, 20],
-    [4, 'Acceso consolidado, electricidad disponible, agua no confirmada', 12, 30],
-    [5, 'Acceso consolidado y disponibilidad de agua potable y electricidad', 20, 50],
-    [6, 'Entorno rural residencial, lote aprovechable y servicios disponibles', 35, 85],
-    [7, 'Periurbano, proximidad a centros poblados y equipamientos', 50, 150],
-    [8, 'Suelo urbano consolidado, infraestructura y potencial edificatorio', 80, 500]
+    [1, 'Rural aislado, acceso difícil, sin servicios disponibles', 0, 4],
+    [2, 'Rural, acceso limitado por camino de lastre o servidumbre', 4, 8],
+    [3, 'Acceso razonable, frente a camino público, sin servicios confirmados', 8, 15],
+    [4, 'Acceso consolidado, electricidad disponible, agua no confirmada', 15, 25],
+    [5, 'Acceso consolidado y disponibilidad de agua potable y electricidad', 25, 40],
+    [6, 'Entorno rural residencial, lote aprovechable y servicios disponibles', 40, 70],
+    [7, 'Periurbano, proximidad a centros poblados y equipamientos', 70, 150],
+    [8, 'Suelo urbano consolidado, infraestructura y potencial edificatorio', 150, Infinity]
   ];
+  // Texto del rango: "US$15–25/m²" o "US$150/m² o más"
+  PX.pecrRango = x => x[3] === Infinity ? `US$${x[2]}/m² o más` : `US$${x[2]}–${x[3]}/m²`;
+  // Nivel según el valor: el rango que lo contiene (límite inferior incluido)
+  PX.pecrNivelValor = usd => (PX.PECR.find(x => usd >= x[2] && usd < x[3]) || PX.PECR[7])[0];
   // Nivel PECR: reglas de acceso y dotación, calibradas con el valor de la zona homogénea de Hacienda (60 % valor, 40 % reglas)
   PX.pecrCalc = r => {
     const e = r.ent || {}, z = e.zh || {}, tg = r.tg || [];
@@ -186,17 +192,18 @@
     const a = z.k === 'U' && urb && frente && agua ? 8 : (z.k === 'U' || urb) && (sal <= 3000 || esc <= 1000) ? 7 : agua && frente && (r.area || PX.prof(r) || 0) <= 5000 ? 6 : agua && frente ? 5 : frente && sal <= 6000 ? 4 : frente ? 3 : (serv || /vereda|lastre/.test(vt) || vd <= 200) ? 2 : 1;
     if (!z.v) return a;
     const usd = z.v / PX.tc.venta;
-    const b = PX.PECR.reduce((m, x) => Math.abs(Math.log(usd / Math.sqrt(x[2] * x[3]))) < Math.abs(Math.log(usd / Math.sqrt(m[2] * m[3]))) ? x : m)[0];
-    return Math.max(1, Math.min(8, Math.round(0.4 * a + 0.6 * b)));
+    // El valor de Hacienda define el nivel; las reglas del sitio lo mueven un nivel solo si difieren en 3 o más
+    const b = PX.pecrNivelValor(usd), d = a - b;
+    return Math.max(1, Math.min(8, b + (d >= 3 ? 1 : d <= -3 ? -1 : 0)));
   };
   PX.pecr = r => r.pecr ? PX.PECR[r.pecr - 1] : null;
   // Tablita comparativa: mínimo y máximo del nivel frente a la base vigente y Hacienda, en ₡ y US$ por m²
   PX.pecrTable = (pc, bu, zu, col) => {
     const tc = PX.tc.venta, c = v => Math.round(v * tc).toLocaleString('es-CR'), d = v => (v < 10 ? v.toLocaleString('es-CR', { maximumFractionDigits: 1 }) : Math.round(v).toLocaleString('es-CR'));
-    const ver = v => v < pc[2] ? ['por debajo', 'lo'] : v > pc[3] ? ['por encima', 'hi'] : ['dentro', 'in'];
+    const ver = v => v < pc[2] ? ['por debajo', 'lo'] : v >= pc[3] ? ['por encima', 'hi'] : ['dentro', 'in'];
     let h = `<table class="ptab"><thead><tr><th></th><th>₡/m²</th><th>US$/m²</th><th></th></tr></thead><tbody>
       <tr class="lim"><th><i class="sw" style="background:${col}"></i>Mínimo del nivel</th><td>₡${c(pc[2])}</td><td>US$${d(pc[2])}</td><td></td></tr>
-      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Máximo del nivel</th><td>₡${c(pc[3])}${pc[0] === 8 ? '+' : ''}</td><td>US$${d(pc[3])}${pc[0] === 8 ? '+' : ''}</td><td></td></tr>`;
+      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Máximo del nivel</th>${pc[3] === Infinity ? '<td>sin tope</td><td>sin tope</td>' : `<td>₡${c(pc[3])}</td><td>US$${d(pc[3])}</td>`}<td></td></tr>`;
     if (bu != null) { const v = ver(bu); h += `<tr class="me"><th><i class="sw mk"></i>Base vigente</th><td>₡${c(bu)}</td><td>US$${d(bu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
     if (zu) { const v = ver(zu); h += `<tr><th><i class="sw zh"></i>Hacienda</th><td>₡${c(zu)}</td><td>US$${d(zu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
     return h + '</tbody></table>';

@@ -1,3 +1,4 @@
+# Nota: la escala PECR se recalcula después con scripts/pecr_calibrar.py (rangos contiguos, oct 2026).
 """Zonas homogeneas (Hacienda), cobertura de agua (AyA/ASADAS/ESPH/municipal), fecha de publicacion y nivel PECR."""
 import json, statistics as st, datetime as dt, collections
 SITE='/home/claude/remates-catastro/data/'; UP='/mnt/user-data/uploads/Downloads/'
