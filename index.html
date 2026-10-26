@@ -14,6 +14,7 @@
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <meta name="theme-color" content="#F1EEE7">
+<script>try { var t = localStorage.getItem('px-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <style>
 /* Mapa: barra izquierda con pestañas (Remates, Buscar plano, Comparar, PRO), mapa a la derecha, ficha flotante. En celular: mapa arriba y barra abajo. */
 .app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
@@ -27,7 +28,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
 .kpis { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 12.5px; }
 .kpis b { color: var(--ink); font-weight: 600; }
 .nav { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.badge { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.badge { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--chip); color: var(--muted); }
 .badge.pro { background: var(--goldbg); color: var(--gold); }
 .vista { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; font-size: 12.5px; }
 .vista span { padding: 0 8px 0 11px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
@@ -78,7 +79,7 @@ details.grp[open] > summary .chev { transform: rotate(180deg); }
 .tipo[aria-pressed="true"] svg { color: var(--accent); }
 .tipo.agro[aria-pressed="true"], .tipo.agro:hover { border-color: #3E8E5A; color: #2E7D4F; }
 .tipo.agro svg { color: #4C9A68; }
-details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0; text-transform: none; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 999px; }
+details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; text-transform: none; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 999px; }
 .gbody { padding: 0 16px 14px; display: grid; gap: 10px; }
 .search { position: relative; }
 .search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
@@ -117,10 +118,10 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .calh { display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
 .calh button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; width: 30px; height: 28px; cursor: pointer; font-size: 15px; }
 .calg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-.calg .dw { font-size: 10.5px; color: var(--faint); text-align: center; font-weight: 600; text-transform: uppercase; }
+.calg .dw { font-size: 11px; color: var(--faint); text-align: center; font-weight: 600; text-transform: uppercase; }
 .calg button { aspect-ratio: 1 / 0.9; border: 1px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; display: grid; place-items: center; align-content: center; gap: 1px; font-size: 12px; color: var(--faint); padding: 0; }
 .calg button.has { background: var(--chip); color: var(--ink); font-weight: 600; }
-.calg button.has i { font: 600 9.5px/1 var(--f-mono); font-style: normal; color: var(--accent); }
+.calg button.has i { font: 600 10.5px/1 var(--f-mono); font-style: normal; color: var(--accent); }
 .calg button.today { border-color: var(--accent); }
 .calg button.tom { box-shadow: inset 0 0 0 2px #E8956F; }
 .calg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
@@ -210,8 +211,8 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .idpop .leaflet-popup-tip { background: var(--panel); }
 .idpop .leaflet-popup-content { margin: 10px 14px; font: 12.5px/1.35 var(--f-body); }
 .idrows { display: grid; gap: 7px; }
-.idrows span { display: block; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 1px; }
-.hoverbox span { color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.idrows span { display: block; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 1px; }
+.hoverbox span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
 
 /* Ficha */
 /* Con la ficha abierta, el control de zoom se corre a su izquierda */
@@ -279,7 +280,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 4000; background: var(--ink); color: var(--panel); padding: 9px 14px; border-radius: 10px; font-size: 13px; box-shadow: var(--shadow); }
 
 .leaflet-container { font: inherit; background: var(--sea); }
-.leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent) !important; color: var(--muted); font-size: 10.5px; }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent) !important; color: var(--muted); font-size: 11px; }
 .leaflet-control-attribution a { color: var(--accent); }
 .leaflet-tooltip { background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 8px; padding: 7px 10px; font-size: 12px; }
 .leaflet-tooltip-top:before { border-top-color: var(--panel); }
@@ -320,6 +321,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
       <button class="btn sm ib" data-about="us" title="Quiénes somos"><i data-ic="info"></i><span>Quiénes somos</span></button>
       <button class="btn sm ib" id="bPlanes" title="Planes y precios"><i data-ic="tag"></i><span>Planes</span></button>
       <button class="btn sm ib" id="bCuenta" title="Mi cuenta"><i data-ic="user"></i><span>Mi cuenta</span> <span class="badge" id="planBadge">Gratis</span></button>
+      <button class="btn sm ib themeb" id="bTheme" title="Cambiar colores"></button>
       <div class="cur" role="group" aria-label="Moneda"><button id="cCRC" aria-pressed="true">₡</button><button id="cUSD" aria-pressed="false">US$</button></div>
     </nav>
   </header>

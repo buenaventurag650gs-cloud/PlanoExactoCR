@@ -524,8 +524,8 @@
     const z = (r.ent || {}).zh, zu = z && z.v ? z.v / PX.tc.venta : null, bu = r.usdm2;
     const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de US$1 a US$1 000 por m²
     const pos = bu == null ? '' : bu < pc[2] ? 'por debajo del rango' : bu > pc[3] ? 'por encima del rango' : 'dentro del rango';
-    return `<div class="pecrb">
-      <div class="iphh"><span class="iphn${pc[0] <= 3 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/8</small></span><div><b>Escala PECR</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
+    return `<div class="pecrb emph">
+      <div class="iphh"><span class="iphn${pc[0] <= 3 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/8</small></span><div><b>Nivel ${pc[0]} de 8</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
       <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (US$${x[2]}–${x[3]}/m²)">${x[0]}</span>`).join('')}</div>
       <div class="lv"><span>Rural aislado</span><span>Urbano consolidado</span></div>
       <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
@@ -539,7 +539,7 @@
   function iphHTML(r) {
     const x = PX.iph(r); if (!x) return '';
     const st = r.st != null ? r.st : 0;
-    return `<div class="iph"><div class="iphh"><span class="iphn" style="--c:${x.band[2]}">${Math.round(x.v)}</span><div><b>Índice Puja/Hacienda</b><span>${esc(x.band[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
+    return `<div class="iph emph"><div class="iphh"><span class="iphn" style="--c:${x.band[2]}">${Math.round(x.v)}</span><div><b>${esc(x.band[1])}</b><span>IPH ${Math.round(x.v)}: la puja arranca en el ${Math.round(x.v)} % del valor de Hacienda</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
       ${PX.iphBar(x.v)}
       <p class="note2">La puja arranca en <b>${PX.duoI(x.base, 'CRC')}</b>; el valor según Hacienda es <b>${PX.duoI(x.hac, 'CRC')}</b>${x.constr ? ` (terreno ${PX.duoI(x.terreno, 'CRC')} + construcción estimada ${PX.duoI(x.constr, 'CRC')})` : ' (solo terreno)'}.</p>
       <div class="iphst">${x.etapas.map((v, i) => `<span class="${i === st ? 'cur' : i < st ? 'past' : ''}">${PX.stageBadge(i, true)} <b style="color:${PX.iphBand(v)[2]}">${Math.round(v)}</b></span>`).join('')}</div>
@@ -649,9 +649,10 @@
       ${actionsHTML(r)}
       ${r.rev ? `<div class="note">${esc(r.rev)}</div>` : ''}
       ${r.isPlano ? '' : sec(PX.ICON.gavel, 'Remate', `<div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div>`, PX.whenTag(r.next))}
-      ${sec(I.valor, 'Valor y mercado', `<dl class="kv">
+      ${sec(I.moneda, PX.iph(r) ? 'Índice Puja/Hacienda' : 'Valor y mercado', `<dl class="kv">
         ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
-      </dl>${iphHTML(r)}${pecrH}`)}
+      </dl>${iphHTML(r)}`)}
+      ${pecrH ? sec(I.valor, 'Escala de valor PECR', pecrH) : ''}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
@@ -1146,7 +1147,16 @@
   $('topOut').addEventListener('click', e => { const b = e.target.closest('.item[data-k]'); if (b) openFicha(b.dataset.k, true); });
 
   // ---------- tema ----------
-  function retheme() { drawVectors(); renderMarkers(); if (open) openFicha(open, false); }
+  function retheme() { drawVectors(); renderMarkers(); if (open) openFicha(open, false); paintTheme(); }
+  // Botón de tema claro / oscuro en la barra superior
+  function paintTheme() { const d = dark(), b = $('bTheme'); if (!b) return; b.innerHTML = `<span class="ic" aria-hidden="true">${d ? PX.ICON.sol : PX.ICON.luna}</span>`; b.title = d ? 'Cambiar a colores claros' : 'Cambiar a colores oscuros'; b.setAttribute('aria-label', b.title); document.querySelector('meta[name=theme-color]').content = d ? '#151C1A' : '#FCFBF8'; }
+  $('bTheme').onclick = () => {
+    const t = dark() ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t; try { localStorage.setItem('px-theme', t); } catch (e) {}
+    if (baseId === 'claro' && t === 'dark') baseId = 'oscuro'; else if (baseId === 'oscuro' && t === 'light') baseId = 'claro';
+    syncLayers();
+  };
+  paintTheme();
   try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); } catch (e) {}
   new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
