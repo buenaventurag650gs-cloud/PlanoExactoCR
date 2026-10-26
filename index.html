@@ -214,6 +214,8 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .hoverbox span { color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
 
 /* Ficha */
+/* Con la ficha abierta, el control de zoom se corre a su izquierda */
+@media (min-width: 901px) { .mapwrap:has(.ficha:not([hidden])) .leaflet-top.leaflet-right { right: calc(min(450px, 100% - 24px) + 12px); } }
 .ficha { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(450px, calc(100% - 24px)); z-index: 1000; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0; }
 .fhead { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--line); }
 .seal { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }

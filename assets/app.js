@@ -245,7 +245,7 @@
   const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).setView([9.8, -84.2], 8);
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
   map.attributionControl.setPrefix(false);
-  map.zoomControl.setPosition('bottomright');
+  map.zoomControl.setPosition('topright');
   PX.map = map;
   // Indicador del nivel de zoom entre + y −
   const zc = map.zoomControl.getContainer();
@@ -499,7 +499,8 @@
   const ringLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
   // Marcador en cruz: dos líneas que se cruzan sobre el punto; color según la etapa del remate
   const XC = ['#2B5C8A', '#B7791F', '#B42318'];
-  const xIcon = (st, big, fav) => { const c = XC[st] || '#15302A', s2 = big === 2 ? 26 : big ? 20 : 14, h = s2 / 2, g = 2.5; return L.divIcon({ className: 'xh', iconSize: [s2, s2], iconAnchor: [h, h], html: `<svg width="${s2}" height="${s2}" viewBox="0 0 ${s2} ${s2}"><path d="M${h} 0V${h - g}M${h} ${h + g}V${s2}M0 ${h}H${h - g}M${h + g} ${h}H${s2}" stroke="${c}" stroke-width="${big === 2 ? 3 : big ? 2.4 : 2}" stroke-linecap="round"/>${fav ? `<circle cx="${h}" cy="${h}" r="3.2" fill="#C8553D"/>` : `<circle cx="${h}" cy="${h}" r="1.6" fill="${c}"/>`}</svg>` }); };
+  // Tamaños 30 % mayores que la primera versión: 18 / 26 / 34 px según el zoom
+  const xIcon = (st, big, fav) => { const c = XC[st] || '#15302A', s2 = big === 2 ? 34 : big ? 26 : 18, h = s2 / 2, g = 3.2; return L.divIcon({ className: 'xh', iconSize: [s2, s2], iconAnchor: [h, h], html: `<svg width="${s2}" height="${s2}" viewBox="0 0 ${s2} ${s2}"><path d="M${h} 0V${h - g}M${h} ${h + g}V${s2}M0 ${h}H${h - g}M${h + g} ${h}H${s2}" stroke="${c}" stroke-width="${big === 2 ? 3.9 : big ? 3.1 : 2.6}" stroke-linecap="round"/>${fav ? `<circle cx="${h}" cy="${h}" r="4.2" fill="#C8553D"/>` : `<circle cx="${h}" cy="${h}" r="2.1" fill="${c}"/>`}</svg>` }); };
   function renderMarkers() {
     markers.clearLayers(); polys.clearLayers();
     const z = map.getZoom();
