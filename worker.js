@@ -75,7 +75,7 @@ async function api(u) {
         ? new URLSearchParams({ tipoquery: "plano", plano: v })
         : new URLSearchParams({ tipoquery: "finca", finca: v.padStart(7, "0"), provincia: (q.get("p") || "").replace(/\D/g, "").slice(0, 1) });
       const r = await get("https://www.snitcr.go.cr/Visor/services/siri?" + params);
-      if (!r.ok) return json({ error: "El catastro no respondió" }, 502, 0);
+      if (!r.ok) return json({ error: "El catastro del SNIT solo responde a consultas hechas desde Costa Rica, y este servidor está fuera del país. La búsqueda por plano o finca no está disponible por ahora; los remates del mapa sí están ubicados." }, 502, 0);
       return json(await r.json());
     }
     if (u.pathname === "/api/cobertura") {
