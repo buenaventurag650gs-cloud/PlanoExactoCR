@@ -159,6 +159,7 @@
       : o === 'm2' ? (a, b) => m2(a) - m2(b)
       : o === 'score' ? (a, b) => (sc(b).total || 0) - (sc(a).total || 0)
       : o === 'pub' ? (a, b) => (b.pub || 0) - (a.pub || 0)
+      : o === 'iph' ? (a, b) => (a.iphV ?? Infinity) - (b.iphV ?? Infinity)
       : (a, b) => a.next - b.next);
     // contadores por grupo
     const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size;
@@ -182,6 +183,7 @@
     if (r.serv && r.serv.length) tags.push(`<span class="tag warn">Servidumbre</span>`);
     if (r.pub && PX.now - r.pub < 7 * 864e5) tags.push(`<span class="tag ok">Nuevo</span>`);
     if (PX.sigo(r.key)) tags.push(`<span class="tag gold">Siguiendo</span>`);
+    if (r.iphV != null) { const b = PX.iphBand(r.iphV); tags.push(`<span class="tag iphtag" style="--c:${b[2]}" title="Índice Puja/Hacienda: ${esc(b[1])}">IPH ${Math.round(r.iphV)}</span>`); }
     const a = PX.prof(r), dd = PX.days(r.next);
     return `<button class="item${dd != null && dd <= 1 ? ' tomorrow' : ''}" role="listitem" data-k="${r.key}"${open === r.key ? ' aria-current="true"' : ''}>
       ${PX.tipoIcon(r)}
@@ -489,6 +491,17 @@
     if (jobs.length) { const vals = await Promise.all(jobs.map(j => j[1].catch(() => null))); if (map.hasLayer(idPop) && idPop.getLatLng().equals(e.latlng)) paint(vals); }
   });
 
+  // Bloque del Índice Puja/Hacienda en la ficha
+  function iphHTML(r) {
+    const x = PX.iph(r); if (!x) return '';
+    const st = r.st != null ? r.st : 0;
+    return `<div class="iph"><div class="iphh"><span class="iphn" style="--c:${x.band[2]}">${Math.round(x.v)}</span><div><b>Índice Puja/Hacienda</b><span>${esc(x.band[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
+      ${PX.iphBar(x.v)}
+      <p class="note2">La puja arranca en <b>${PX.duoI(x.base, 'CRC')}</b>; el valor según Hacienda es <b>${PX.duoI(x.hac, 'CRC')}</b>${x.constr ? ` (terreno ${PX.duoI(x.terreno, 'CRC')} + construcción estimada ${PX.duoI(x.constr, 'CRC')})` : ' (solo terreno)'}.</p>
+      <div class="iphst">${x.etapas.map((v, i) => `<span class="${i === st ? 'cur' : i < st ? 'past' : ''}">${PX.stageBadge(i, true)} <b style="color:${PX.iphBand(v)[2]}">${Math.round(v)}</b></span>`).join('')}</div>
+      ${x.aviso ? `<p class="note2 warnt">⚠ ${esc(x.aviso)}</p>` : ''}</div>`;
+  }
+
   // Remates en el mapa
   const markers = L.layerGroup().addTo(map), polys = L.layerGroup().addTo(map), selLayer = L.layerGroup().addTo(map);
   function tip(r) {
@@ -583,7 +596,6 @@
     const fav = PX.isFav(r.key);
     const I = PX.ICON, sec = (icon, t, body, right) => `<section class="fs"><h3>${icon}${t}${right ? `<span class="r">${right}</span>` : ''}</h3><div class="fb">${body}</div></section>`;
     const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
-    const zhRatio = z && z.v && a && r.bv ? PX.conv(r.bv, r.mon, 'CRC') / (z.v * a) : null;
     const pecrH = pc ? `<div class="pecr"><div><b>Nivel PECR ${pc[0]} de 8</b> · ${esc(pc[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pc[0] ? 'me' : x[0] < pc[0] ? 'on' : ''}"></span>`).join('')}</div><div class="lv"><span>1 rural aislado</span><span>8 urbano consolidado</span></div>
       <div class="muted" style="font-size:12px">Rango de referencia ${PX.duoI(pc[2], 'USD', '/m²')} a ${PX.duoI(pc[3], 'USD', '/m²')}${pc[0] === 8 ? ' o más' : ''}.${r.usdm2 != null ? ` La base vigente equivale a ${PX.duoI(r.usdm2, 'USD', '/m²')}: <b>${r.usdm2 < pc[2] ? 'por debajo del rango' : r.usdm2 > pc[3] ? 'por encima del rango' : 'dentro del rango'}</b>.` : ''}</div></div>` : '';
     const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
@@ -596,8 +608,7 @@
       ${r.isPlano ? '' : sec(PX.ICON.gavel, 'Remate', `<div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div>`, PX.whenTag(r.next))}
       ${sec(I.valor, 'Valor y mercado', `<dl class="kv">
         ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
-        ${zhRatio ? `<dt>Base frente a Hacienda</dt><dd><b>${Math.round(zhRatio * 100)} %</b> del valor del terreno<small class="sub">${r.tipo === 'Con construcción' ? 'Incluye construcción: use la herramienta PRO «Valor de referencia»' : 'Valor de zona × área del terreno'}</small></dd>` : ''}
-      </dl>${pecrH}`)}
+      </dl>${iphHTML(r)}${pecrH}`)}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
@@ -735,7 +746,7 @@
       <p class="gpara"><b>¿Para qué sirve?</b> ${para}</p>${pasos ? `<div class="glbl">Cómo se usa</div>${steps(pasos)}` : ''}${ej ? `<p class="gej"><b>Ejemplo:</b> ${ej}</p>` : ''}</div>`;
     const tip = t => `<p class="gtip"><b>Consejo</b> ${t}</p>`;
     const sec = (id, t, intro, body) => `<section class="gsec" id="g-${id}"><h3>${t}</h3>${intro ? `<p class="gintro">${intro}</p>` : ''}${body}</section>`;
-    const toc = [['inicio', 'En 5 pasos'], ['mapa', 'El mapa'], ['buscar', 'Buscar y filtrar'], ['ficha', 'La ficha'], ['herr', 'Herramientas PRO'], ['exp', 'Expediente'], ['gloss', 'Palabras clave']];
+    const toc = [['inicio', 'En 5 pasos'], ['mapa', 'El mapa'], ['buscar', 'Buscar y filtrar'], ['ficha', 'La ficha'], ['herr', 'Herramientas PRO'], ['exp', 'Expediente'], ['met', 'Índices y metodología'], ['fuentes', 'Origen de los datos'], ['gloss', 'Palabras clave']];
     const flow = [[I.pin, 'Mira el mapa', 'Cada cruz es una propiedad en remate.'], [I.list, 'Filtra', 'Elige zona, precio, tamaño o tipo.'], [I.Lote, 'Abre la ficha', 'Haz clic en una cruz o en la lista.'], [I.valor, 'Analiza', 'Usa las herramientas PRO.'], [I.gavel, 'Decide', 'Descarga el expediente y verifica.']];
     return `<div class="about guide">
       <nav class="gtoc" aria-label="Contenido">${toc.map(([k, t]) => `<button class="chip" data-gto="${k}">${t}</button>`).join('')}</nav>
@@ -775,7 +786,7 @@
       ${sec('ficha', 'La ficha de cada propiedad', 'Al abrir una propiedad ves su ficha a la derecha. Está ordenada como una historia: primero cuánto y cuándo, después cómo es el terreno y al final los datos legales.',
         `<div class="gtable">
           <div><b>Remate</b><span>Precio mínimo (base) y las fechas de los tres remates.</span></div>
-          <div><b>Valor y mercado</b> ${P_}<span>Cuánto vale el terreno según Hacienda y si la base está por encima o por debajo. Incluye la <b>escala PECR</b> (del 1 al 8).</span></div>
+          <div><b>Valor y mercado</b> ${P_}<span>Cuánto vale la propiedad según Hacienda, el <b>Índice Puja/Hacienda</b> y la <b>escala PECR</b> (del 1 al 8).</span></div>
           <div><b>Terreno</b><span>Tamaño, forma aproximada, si es plano o quebrado, y uso actual del suelo.</span></div>
           <div><b>Servicios y entorno</b><span>Agua potable, calle, salud, escuela, ríos y costa cercanos.</span></div>
           <div><b>Normativa</b><span>Qué plan regulador aplica (o las normas nacionales si el cantón no tiene).</span></div>
@@ -806,12 +817,51 @@
         `<div class="gflow g4">${[['Mapa', 'El lote, su entorno y una vista satelital.'], ['Ficha', 'Fechas, registro, valor y análisis.'], ['Normativa y riesgos', 'Lo que se puede hacer y lo que hay que revisar.'], ['Edicto', 'El texto oficial del remate.']].map(([t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
         <p class="gmini">Se genera con el botón <b>Generar expediente</b> de la ficha. Se compra por propiedad o viene incluido en ${P_} (hasta ${cupo} al mes).</p>`)}
 
+      ${sec('met', 'Índices y metodología', 'Cómo se calcula cada número que ves en la ficha y en el expediente. Son referencias para comparar, no avalúos.',
+        `${card(I.valor, 'Índice Puja/Hacienda (IPH)', false, 'Saber en un solo número si el precio con que arranca la puja es bajo o alto frente al valor que Hacienda le da a la propiedad.',
+          ['Se toma la <b>base vigente</b>: el precio con que arranca la puja en el remate que sigue.', 'Se calcula el <b>valor según Hacienda</b>: área × valor de la zona homogénea; si hay casa, se suma la construcción estimada con el manual de tipologías de la ONT.', '<b>IPH = base vigente ÷ valor según Hacienda × 100.</b>'],
+          'IPH <b>45</b> quiere decir que la puja arranca en el 45 % del valor de Hacienda. Si el remate pasa a la siguiente etapa, el índice baja: la ficha muestra el IPH del 1.º, 2.º y 3.º remate.')}
+        <div class="gtable">${PX.IPH.map((b, i) => `<div><b><span class="iphdot" style="--c:${b[2]}"></span>${i ? 'de ' + PX.IPH[i - 1][0] + ' ' : 'menos de '}${b[0] === Infinity ? 'o más' : (i ? 'a ' : '') + b[0]}</b><span><b>${b[1]}.</b> ${b[3]}</span></div>`).join('')}</div>
+        <p class="gmini">${PX.iphBar(45)}</p>
+        ${tip('Hacienda suele valorar por debajo del mercado, así que un IPH bajo es una señal fuerte. Un IPH muy bajo (menos de 10) también puede indicar que se remata solo una parte de la finca (derechos) o que el área del edicto no coincide: la ficha lo advierte.')}
+
+        ${card(I.entorno, 'Escala PECR (niveles 1 a 8)', false, 'Ubicar el lote en una escala de valor según su acceso, servicios y entorno, con un rango orientativo de precio por m².', '', '')}
+        <div class="gtable pecrtab">${PX.PECR.map(x => `<div><b><span class="pn">${x[0]}</span>US$${x[2]}–${x[3]}${x[0] === 8 ? '+' : ''}/m²</b><span>${esc(x[1])}</span></div>`).join('')}</div>
+        <p class="gmini"><b>Cómo se calibra:</b> el nivel combina dos lecturas. 40 % viene de reglas del sitio (frente a vía pública, agua potable, electricidad, distancia a salud y escuela, zona urbana o rural). 60 % viene del valor de la zona homogénea de Hacienda convertido a dólares: se elige el nivel cuyo rango está más cerca de ese valor. Los rangos son los propuestos por PlanoExactoCR.</p>
+
+        <div class="gcard"><h4><span class="gi">${I.gavel}</span>Índice PlanoExacto (0 a 100)</h4><p class="gpara"><b>¿Para qué sirve?</b> Comparar remates entre sí con una nota general. Suma cuatro dimensiones con estos pesos:</p>
+          <ul class="gkey">${PX.DIMS.map(d => `<li><span class="gk">${PX.W0[d.k]} %</span><span><b>${esc(d.n)}:</b> ${esc(d.d)}.</span></li>`).join('')}</ul><p class="gmini">Con ${P_} puedes cambiar los pesos al comparar.</p></div>
+        <div class="gtable">
+          <div><b>Valor de referencia</b><span>Terreno = área × valor de la zona homogénea. Construcción = m² × valor de la tipología ONT 2023 (Alcance 187, La Gaceta 178), con depreciación por edad (método de Ross) y estado de conservación (Heidecke). Por defecto se suponen 20 años y estado intermedio.</span></div>
+          <div><b>Topografía</b><span>Pendiente media calculada con las curvas de nivel del IGN: <b>plana</b> menos de 5 %, <b>ondulada</b> 5 a 15 %, <b>quebrada</b> 15 a 30 %, <b>muy quebrada</b> más de 30 %.</span></div>
+          <div><b>Precio por m²</b><span>Base vigente ÷ área (del catastro si existe, si no del edicto). La mediana por cantón usa al menos 3 remates.</span></div>
+          <div><b>Ubicación exacta o aproximada</b><span><b>Exacta</b>: el plano o la finca se encontró en el catastro del Registro Inmobiliario. <b>Aproximada</b>: no se encontró y la cruz va al distrito o poblado del edicto.</span></div>
+          <div><b>Zona marítimo terrestre</b><span>Franjas de 50 y 200 m trazadas desde la línea de costa del IGN. Es un cálculo propio, no el amojonamiento oficial.</span></div>
+          <div><b>Tipo de cambio</b><span>Tipo de cambio de referencia de venta del BCCR del día de la actualización.</span></div>
+        </div>`)}
+
+      ${sec('fuentes', 'Origen de los datos', 'Toda la información viene de fuentes públicas. PlanoExactoCR la reúne, la cruza y le da estilo propio.',
+        `<div class="gtable srctab">
+          <div><b>Remates</b><span>Edictos del <b>Boletín Judicial</b> (Imprenta Nacional): fechas, bases, gravámenes y expediente. Se omiten nombres y cédulas.</span></div>
+          <div><b>Catastro y planos</b><span><b>Registro Inmobiliario</b>, servicios del SNIT: predios, planos catastrados y vías públicas.</span></div>
+          <div><b>Límites, ríos, curvas e infraestructura</b><span><b>Instituto Geográfico Nacional (IGN)</b>, SNIT: cantones y distritos, hidrografía y nombres de ríos, curvas de nivel, línea de costa, aeropuertos, aeródromos y muelles (escalas 1:5 000 a 1:200 000).</span></div>
+          <div><b>Valor del terreno</b><span><b>Ministerio de Hacienda, Órgano de Normalización Técnica (ONT)</b>: zonas homogéneas y manual de tipologías constructivas 2023.</span></div>
+          <div><b>Agua potable</b><span><b>AyA</b>: áreas de cobertura del AyA, la ESPH, las ASADAS y los acueductos municipales.</span></div>
+          <div><b>Planes reguladores</b><span><b>INVU</b>: estado y año de publicación de cada plan regulador.</span></div>
+          <div><b>Ambiente</b><span><b>MINAE</b>: mapa agropecuario y forestal 2020 y zonas de vida (CENIGA). <b>FONAFIFO</b>: pago por servicios ambientales 2025. Franjas de protección de ríos: PNUD-TEVU (referencia no oficial).</span></div>
+          <div><b>Salud y educación</b><span><b>CCSS</b>: EBAIS, áreas de salud y hospitales. Escuelas y colegios: puntos de interés del <b>IGN</b>.</span></div>
+          <div><b>Tipo de cambio</b><span><b>Banco Central de Costa Rica (BCCR)</b>.</span></div>
+          <div><b>Mapas base</b><span>OpenStreetMap, CARTO y Esri (imagen satelital de Maxar y Earthstar Geographics).</span></div>
+        </div>
+        <p class="gmini">Cada fuente tiene su propia escala y fecha de actualización. Puede haber diferencias entre capas; ante cualquier duda, la fuente oficial manda.</p>`)}
+
       ${sec('gloss', 'Palabras clave', '',
         `<div class="gtable">
           <div><b>Base</b><span>Precio mínimo para ofertar. Baja en cada remate: 100 %, 75 % y 25 %.</span></div>
           <div><b>Zona homogénea</b><span>Zona donde Hacienda fija un mismo valor del terreno por m².</span></div>
           <div><b>Escala PECR</b><span>Nota del 1 al 8: 1 es campo aislado sin servicios y 8 es ciudad con todo. Cada nivel trae un rango de precio por m².</span></div>
           <div><b>Índice PlanoExacto</b><span>Nota de 0 a 100 que resume precio, situación legal, servicios y entorno.</span></div>
+          <div><b>IPH</b><span>Índice Puja/Hacienda: en qué porcentaje del valor de Hacienda arranca la puja. 50 = a la mitad.</span></div>
           <div><b>Ubicación aproximada</b><span>Cuando no encontramos el plano exacto, la cruz va al centro del distrito o poblado. La ficha lo indica.</span></div>
           <div><b>ZMT</b><span>Zona marítimo terrestre: los 200 m desde la playa. Los primeros 50 m son públicos.</span></div>
         </div>
@@ -851,7 +901,8 @@
       ${which === 'terms' ? terms : which === 'guia' ? guideHTML() : us}`);
   }
   document.addEventListener('click', e => {
-    const a = e.target.closest('[data-about]'); if (a) return openAbout(a.dataset.about);
+    const a = e.target.closest('[data-about]');
+    if (a) { openAbout(a.dataset.about); if (a.dataset.gsec) setTimeout(() => { const t = document.getElementById('g-' + a.dataset.gsec); if (t) t.scrollIntoView({ block: 'start' }); }, 60); return; }
     const g = e.target.closest('[data-gto]'); if (g) { const t = document.getElementById('g-' + g.dataset.gto); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
   const setVista = p => { if ((p === 'pro') === PX.isPro()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : 'Vista gratis: así la ve un usuario sin suscripción'); };

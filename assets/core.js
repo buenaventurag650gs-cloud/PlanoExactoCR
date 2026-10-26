@@ -83,6 +83,7 @@
       r.searchDigits = [r.plano, r.fincaTxt, r.exp, r.planoCat].join(' ').replace(/\D/g, '');
       r.pub = r.pubF ? new Date(r.pubF + 'T12:00') : null;
       r.usdm2 = r.bv && PX.prof(r) ? PX.usd(r.bv, r.mon) / PX.prof(r) : null;
+      const ip = r.st >= 0 && PX.tc ? PX.iph(r) : null; r.iphV = ip ? ip.v : null;
     }
     // medianas de US$/m² por cantón y provincia (remates vigentes con área)
     const med = a => { if (!a.length) return null; a = a.slice().sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
@@ -179,6 +180,47 @@
     const fd = 1 - 0.5 * (x + x * x);           // Ross
     const vnr = vrn * fd * (v.est || 1);          // Heidecke (estado de conservación)
     return { terreno, vrn, fd, vnr, total: terreno + vnr, tip: t };
+  };
+
+  // Supuestos por defecto del valor de referencia (los usa la ficha, el expediente y la herramienta PRO)
+  PX.valDefaults = r => {
+    const e = r.ent || {}, z = e.zh || {}, constr = r.tipo === 'Con construcción' || (r.tg || []).includes('constr');
+    const tip = PX.TIPOLOGIAS.some(t => t[0] === z.u) ? z.u : 'VC02';
+    return { area: Math.round(PX.prof(r) || 0), zh: z.v || 0, ac: constr ? Math.min(120, Math.round((PX.prof(r) || 200) * 0.45)) : 0, tip, edad: 20, est: 0.8 };
+  };
+
+  // ---------- Índice Puja/Hacienda (IPH) ----------
+  // IPH = base vigente de la puja ÷ valor según Hacienda × 100.
+  // Valor según Hacienda = área × valor de la zona homogénea (ONT) + construcción estimada por tipología ONT, depreciada.
+  // 100 = la puja arranca en el valor de Hacienda; 50 = a la mitad; 200 = al doble.
+  PX.IPH = [
+    [30, 'Muy por debajo de Hacienda', '#1E7A4C', 'La puja arranca en menos de un tercio del valor de Hacienda.'],
+    [60, 'Por debajo de Hacienda', '#5E9E4A', 'La puja arranca entre un tercio y dos tercios del valor de Hacienda.'],
+    [100, 'Cerca del valor de Hacienda', '#C9A227', 'La puja arranca un poco por debajo del valor de Hacienda.'],
+    [200, 'Por encima de Hacienda', '#D9822B', 'La puja arranca por encima del valor de Hacienda, hasta el doble.'],
+    [Infinity, 'Muy por encima de Hacienda', '#B42318', 'La puja arranca en más del doble del valor de Hacienda.']
+  ];
+  PX.iphBand = v => PX.IPH.find(b => v < b[0]);
+  PX.iph = r => {
+    const z = (r.ent || {}).zh;
+    if (!z || !z.v || !r.base || !(PX.prof(r) > 0)) return null;
+    const ref = PX.valorRef(PX.valDefaults(r)), hac = ref.total;
+    if (!hac) return null;
+    const crc = v => PX.conv(v, r.mon, 'CRC');
+    const etapas = PX.PCT.map(p => crc(r.base * p) / hac * 100);
+    const base = r.bv != null ? crc(r.bv) : crc(r.base);
+    const v = base / hac * 100;
+    const aviso = r.der && r.der !== '000' ? `La finca está en derechos (derecho ${r.der}): si se remata solo una parte, el índice puede verse más bajo de lo real.`
+      : r.multi ? 'El remate incluye varias fincas: el índice usa solo el área de una.'
+      : v < 10 ? 'Índice muy bajo: revise el área y la naturaleza en el edicto antes de sacar conclusiones.' : '';
+    return { v, base, hac, terreno: ref.terreno, constr: ref.vnr, etapas, band: PX.iphBand(v), aviso };
+  };
+  // Medidor del IPH en escala logarítmica de 10 a 400
+  PX.iphBar = (v, small) => {
+    const pos = x => Math.max(0, Math.min(100, (Math.log10(Math.max(10, Math.min(400, x))) - 1) / Math.log10(40) * 100));
+    let prev = 10;
+    const segs = PX.IPH.map(b => { const a = pos(prev), z = pos(Math.min(b[0], 400)); prev = b[0]; return `<i style="left:${a}%;width:${z - a}%;background:${b[2]}"></i>`; }).join('');
+    return `<div class="iphbar${small ? ' sm' : ''}">${segs}<b style="left:${pos(v)}%"></b></div>${small ? '' : `<div class="iphax">${[10, 30, 60, 100, 200, 400].map(x => `<span style="left:${pos(x)}%">${x === 400 ? '400+' : x}</span>`).join('')}</div>`}`;
   };
 
   // ---------- análisis multidimensional ----------

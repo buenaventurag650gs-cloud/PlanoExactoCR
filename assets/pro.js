@@ -172,11 +172,7 @@
   };
 
   // ---------- Valor de referencia ----------
-  P.valDefaults = r => {
-    const e = r.ent || {}, z = e.zh || {}, constr = r.tipo === 'Con construcción' || (r.tg || []).includes('constr');
-    const tip = PX.TIPOLOGIAS.some(t => t[0] === z.u) ? z.u : 'VC02';
-    return { area: Math.round(PX.prof(r) || 0), zh: z.v || 0, ac: constr ? Math.min(120, Math.round((PX.prof(r) || 200) * 0.45)) : 0, tip, edad: 20, est: 0.8 };
-  };
+  P.valDefaults = r => PX.valDefaults(r);
   P.valCalc = (r, v) => {
     const c = PX.valorRef(v), base = r.bv ? PX.conv(r.bv, r.mon, 'CRC') : null;
     return Object.assign(c, { base, ratio: base && c.total ? base / c.total : null });

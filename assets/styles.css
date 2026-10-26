@@ -259,3 +259,29 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
   .ggrid { grid-template-columns: 1fr; }
   .gtable > div { grid-template-columns: 1fr; gap: 2px; }
 }
+
+/* Índice Puja/Hacienda */
+.iph { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.iphh { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.iphh > div { display: grid; gap: 1px; }
+.iphh > div span { color: var(--muted); font-size: 12.5px; }
+.iphn { display: inline-grid; place-items: center; min-width: 46px; height: 34px; padding: 0 6px; border-radius: 8px; background: var(--c); color: #fff; font: 700 17px/1 var(--f-mono); }
+.iphbar { position: relative; height: 10px; border-radius: 5px; overflow: visible; }
+.iphbar i { position: absolute; top: 0; bottom: 0; opacity: .85; }
+.iphbar i:first-child { border-radius: 5px 0 0 5px; } .iphbar i:last-of-type { border-radius: 0 5px 5px 0; }
+.iphbar b { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--panel); }
+.iphbar.sm { height: 6px; } .iphbar.sm b { top: -3px; height: 12px; width: 3px; }
+.iphax { position: relative; height: 12px; font: 500 10px/1 var(--f-mono); color: var(--faint); }
+.iphax span { position: absolute; transform: translateX(-50%); }
+.iphax span:first-child { transform: none; } .iphax span:last-child { transform: translateX(-100%); }
+.iphst { display: flex; flex-wrap: wrap; gap: 6px; }
+.iphst span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px 3px 4px; border: 1px solid var(--line); border-radius: 7px; font: 600 12.5px/1 var(--f-mono); background: var(--panel); }
+.iphst span.cur { border-color: var(--ink); }
+.iphst span.past { opacity: .45; }
+.warnt { color: var(--warn); }
+.tag.iphtag { background: color-mix(in srgb, var(--c) 14%, transparent); color: color-mix(in srgb, var(--c) 80%, var(--ink)); font-family: var(--f-mono); }
+
+.iphdot { display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 3px; background: var(--c); vertical-align: -1px; }
+.pecrtab .pn { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 11px/1 var(--f-body); vertical-align: 1px; }
+.pecrtab > div > b { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+.gsec .gcard + .gtable, .gsec .gtable + .gmini { margin-top: -2px; }

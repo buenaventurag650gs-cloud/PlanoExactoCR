@@ -69,11 +69,11 @@
     const potc = pv.area ? `<section class="blk"><h2>Potencial constructivo <small>supuestos generales</small></h2>
       <div class="k4"><div><small>Huella (${pv.cob} %)</small><b class="num">${fnum(pc.huella, 0)} m²</b></div><div><small>En ${pv.pisos} pisos</small><b class="num">${fnum(pc.total, 0)} m²</b></div><div><small>Unidades de ${pv.unidad} m²</small><b class="num">${pc.unidades}</b></div><div><small>Lotes de ${fnum(pv.loteMin)} m²</small><b class="num">${pc.lotes}</b></div></div>
       <p class="note2">${esc(nv.titulo)}. Lote mínimo usado: ${fnum(pv.loteMin)} m² (${nv.vigente ? 'supuesto; confirme la zona del plan regulador' : 'normativa nacional sin alcantarillado sanitario'}). Cobertura y pisos son supuestos.</p></section>` : '';
-    const z = e.zh, pcr = PX.pecr(r), vd = PX.pro.valDefaults(r), vc = PX.pro.valCalc(r, vd);
+    const z = e.zh, pcr = PX.pecr(r), vd = PX.pro.valDefaults(r), vc = PX.pro.valCalc(r, vd), ip = PX.iph(r);
     const val = `<section class="blk"><h2>Valor y mercado</h2><dl class="kv sm">
       ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : ''}
       ${vc.total ? `<dt>Valor de referencia</dt><dd>${PX.duoI(vc.total, 'CRC')}<small class="sub">Terreno ${PX.duoI(vc.terreno, 'CRC')}${vd.ac ? ` + construcción estimada ${fnum(vd.ac)} m² ${vd.tip} (${PX.duoI(vc.vnr, 'CRC')})` : ''}</small></dd>` : ''}
-      ${vc.ratio ? `<dt>Base frente a referencia</dt><dd><b>${Math.round(vc.ratio * 100)} %</b></dd>` : ''}
+      ${ip ? `<dt>Índice Puja/Hacienda</dt><dd><b>${Math.round(ip.v)}</b> · ${esc(ip.band[1])}<small class="sub">Base vigente ÷ valor según Hacienda × 100. Por etapa: ${ip.etapas.map((v, i) => ['1.º', '2.º', '3.º'][i] + ' ' + Math.round(v)).join(' · ')}${ip.aviso ? '. ' + esc(ip.aviso) : ''}</small>${PX.iphBar(ip.v, true)}</dd>` : ''}
       ${e.aguaS ? `<dt>Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}</dd>` : `<dt>Agua potable</dt><dd>Sin cobertura registrada (AyA)</dd>`}
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de 8</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
