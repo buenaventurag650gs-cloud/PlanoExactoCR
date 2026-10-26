@@ -15,6 +15,6 @@ jobs:
             "https://geodatos.sinia.go.cr/geoserver/MAF2020/wms?service=WMS&request=GetCapabilities" \
             "https://geos.snitcr.go.cr/be/IGN_5/wms?service=WMS&request=GetCapabilities" \
             "https://gee.bccr.fi.cr/indicadoreseconomicos/" ; do
-            code=$(curl -s -o /tmp/r -w "%{http_code} %{time_total}s %{size_download}B" --max-time 40 -A "PlanoExactoCR/1.0" "$u")
-            echo "$code  $u"; head -c 160 /tmp/r | tr '\n' ' '; echo; echo
+            code=$(curl -s -o /tmp/r -w "%{http_code} %{time_total}s %{size_download}B" --max-time 40 -A "PlanoExactoCR/1.0" "$u" || echo "fallo")
+            echo "::notice title=sondeo::$code  $u  $(head -c 100 /tmp/r 2>/dev/null | tr -d '\n\r:' )"
           done
