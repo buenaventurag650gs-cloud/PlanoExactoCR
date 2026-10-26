@@ -9,3 +9,7 @@ directory = "."
 binding = "ASSETS"
 run_worker_first = true
 not_found_handling = "none"
+
+# Registros del acceso anticipado (correo, perfil, cupón). Cloudflare crea el espacio la primera vez que se publica.
+[[kv_namespaces]]
+binding = "REGISTROS"

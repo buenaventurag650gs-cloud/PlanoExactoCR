@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PlanoExactoCR · Remates judiciales en el mapa</title>
+<meta name="description" content="Los remates judiciales de propiedades de Costa Rica, ubicados en el mapa y cruzados con catastro, plan regulador, valor de Hacienda, agua y entorno.">
+<meta property="og:title" content="PlanoExactoCR · Remates judiciales en el mapa">
+<meta property="og:description" content="Cada mañana leemos el Boletín Judicial, ubicamos cada finca y la analizamos para que decidas antes de ofertar.">
+<meta property="og:image" content="/assets/img/vista-app.webp">
+<link rel="icon" href="/assets/img/favicon.png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Montserrat:wght@300;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Página pública: cuadrícula de dos columnas (mensaje y vista del mapa) sobre papel; acento verde del logo y terracota del lote */
+:root {
+  --bg: #F1EEE7; --panel: #FCFBF8; --ink: #15302A; --muted: #4C5953; --line: #DCD8CE; --accent: #1F5A47; --accent-ink: #FFFFFF;
+  --soft: #DFEDE6; --terra: #C8553D; --terra-soft: #F7E4DD; --gold: #8A6A00;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif; --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --line: #28332F; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #16302C; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --line: #28332F; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #16302C; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--f-body); }
+a { color: var(--accent); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+.franja { height: 4px; background: linear-gradient(90deg, #15302A 0 46%, #539279 46% 82%, #D9906E 82%); }
+header { padding-block: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.marca { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.marca img { width: 54px; height: auto; background: #F1EEE7; border-radius: 8px; padding: 2px 3px; }
+.wm { font: 300 20px/1 "Montserrat", var(--f-body); letter-spacing: .09em; white-space: nowrap; } .wm b { font-weight: 700; } .wm i { font-style: normal; color: #539279; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 14.5px/1 var(--f-body); text-decoration: none; cursor: pointer; }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; padding-block: 34px 40px; }
+h1 { font: 800 clamp(32px, 4.6vw, 52px)/1.05 var(--f-display); letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--terra); }
+.lead { font-size: 18px; color: var(--muted); margin: 0 0 22px; max-width: 34em; }
+.datos { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0 0 24px; padding: 0; list-style: none; }
+.datos li { display: grid; } .datos b { font: 600 26px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; } .datos span { font-size: 12.5px; color: var(--muted); }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.vista { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(20, 35, 30, .16); background: var(--panel); }
+.vista img { display: block; width: 100%; height: auto; }
+.vista .sello { position: absolute; left: 12px; bottom: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(21, 48, 42, .88); color: #fff; font: 600 12px/1.2 var(--f-body); }
+section { padding-block: 34px; }
+h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--f-display); margin: 0 0 8px; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0 0 22px; max-width: 46em; }
+.rasgos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.rasgo { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; align-content: start; }
+.rasgo .ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.rasgo .ic svg { width: 18px; height: 18px; }
+.rasgo b { font: 600 16px/1.3 var(--f-display); } .rasgo span { font-size: 14px; color: var(--muted); }
+.para { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.para li { padding: 7px 12px; border-radius: 999px; background: var(--soft); font-size: 14px; font-weight: 600; }
+.registro { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 28px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
+.cupon { display: inline-block; padding: 4px 10px; border-radius: 8px; background: var(--terra-soft); color: var(--terra); font: 700 14px/1.3 var(--f-body); margin-bottom: 10px; }
+form { display: grid; gap: 12px; }
+.fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); }
+input, select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: 15px/1.3 var(--f-body); }
+.ok { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; font-weight: 400; color: var(--muted); }
+.ok input { width: auto; margin-top: 3px; }
+.resultado { padding: 16px; border-radius: 12px; background: var(--soft); display: grid; gap: 6px; }
+.resultado code { font: 700 22px/1.2 var(--f-mono); letter-spacing: .06em; color: var(--accent); }
+.error { color: var(--terra); font-size: 14px; margin: 0; }
+.acceso { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; padding: 16px; border: 1px dashed var(--line); border-radius: 12px; }
+.acceso label { flex: 1 1 220px; }
+footer { padding-block: 30px 40px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 13.5px; color: var(--muted); display: grid; gap: 10px; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+@media (max-width: 860px) { .hero, .registro { grid-template-columns: 1fr; } .rasgos { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .rasgos, .fila { grid-template-columns: 1fr; } .wm { font-size: 16px; } .registro { padding: 18px; } }
+@media (prefers-reduced-motion: no-preference) { .vista { transition: transform .4s ease; } .vista:hover { transform: translateY(-3px); } }
+</style>
+</head>
+<body>
+<div class="franja"></div>
+<div class="wrap">
+  <header>
+    <a class="marca" href="/"><img src="/assets/img/logo-mark.webp" alt="" width="54" height="37"><span class="wm">PLANO<b>EXACTO</b><i>CR</i></span></a>
+    <a class="btn" href="#acceso">Ya tengo acceso</a>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>Los remates judiciales de Costa Rica, <em>en un mapa</em>.</h1>
+      <p class="lead">Cada mañana leemos el Boletín Judicial, ubicamos cada finca en el catastro y la cruzamos con el plan regulador, el valor de Hacienda, el agua potable y su entorno. Para que sepas qué estás comprando antes de ofertar.</p>
+      <ul class="datos" id="datos" aria-live="polite">
+        <li><b data-k="remates">800+</b><span>remates vigentes</span></li>
+        <li><b data-k="nuevos7">—</b><span>nuevos esta semana</span></li>
+        <li><b data-k="ubicados">—</b><span>con predio exacto</span></li>
+        <li><b data-k="boletin">—</b><span>último Boletín Judicial</span></li>
+      </ul>
+      <div class="cta"><a class="btn pri" href="#registro">Quiero acceso y mi cupón</a><a class="btn" href="#que">Qué incluye</a></div>
+    </div>
+    <div class="vista"><img src="/assets/img/vista-app.webp" alt="Mapa de PlanoExactoCR con remates marcados en cruces y la ficha de una propiedad abierta" width="800" height="499"><span class="sello">Vista real de la versión de prueba</span></div>
+  </div>
+
+  <section id="que">
+    <h2>Qué ves en cada remate</h2>
+    <p class="sub">La información pública que normalmente está dispersa en una docena de sitios, en una sola ficha.</p>
+    <div class="rasgos">
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><b>Ubicación exacta</b><span>El predio del catastro dibujado en el mapa, con área y forma.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/></svg></span><b>Base y fechas</b><span>Primer, segundo y tercer remate, en colones y dólares.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>Puja frente a Hacienda</b><span>En qué porcentaje del valor de Hacienda arranca la puja.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><b>Plan regulador</b><span>Qué normativa aplica al lote y qué se puede construir.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><b>Agua y entorno</b><span>Cobertura de agua potable, salud, escuela, ríos y costa.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></span><b>Riesgos y expediente</b><span>Gravámenes explicados, riesgos y un informe PDF de 4 hojas.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Para quién</h2>
+    <ul class="para"><li>Compradores de vivienda</li><li>Inversionistas</li><li>Abogados</li><li>Corredores de bienes raíces</li><li>Desarrolladores</li><li>Topógrafos y valuadores</li></ul>
+  </section>
+
+  <section id="registro">
+    <div class="registro">
+      <div>
+        <span class="cupon">Cupón de lanzamiento · 30 % de descuento</span>
+        <h2>Regístrate para el acceso anticipado</h2>
+        <p class="sub">Estamos en etapa de prueba. Déjanos tu correo y te avisamos cuando abramos, con un cupón de 30 % en tu primer expediente o primer mes PRO.</p>
+      </div>
+      <div>
+        <form id="f" novalidate>
+          <label>Correo electrónico<input id="correo" name="correo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></label>
+          <div class="fila">
+            <label>Nombre (opcional)<input id="nombre" name="nombre" autocomplete="name" maxlength="80"></label>
+            <label>Te interesa como
+              <select id="perfil" name="perfil">
+                <option value="comprador">Comprador</option><option value="inversionista">Inversionista</option><option value="abogado">Abogado</option>
+                <option value="corredor">Corredor</option><option value="desarrollador">Desarrollador</option><option value="otro">Otro</option>
+              </select></label>
+          </div>
+          <label>Provincia de interés
+            <select id="prov" name="prov"><option value="">Todo el país</option><option>San José</option><option>Alajuela</option><option>Cartago</option><option>Heredia</option><option>Guanacaste</option><option>Puntarenas</option><option>Limón</option></select></label>
+          <label class="ok"><input id="acepto" type="checkbox" required> <span>Acepto que PlanoExactoCR guarde mi correo para avisarme del lanzamiento y enviarme el cupón, según la <a href="/privacidad.html">política de privacidad</a>. Puedo pedir que lo borren cuando quiera.</span></label>
+          <p class="error" id="err" hidden></p>
+          <button class="btn pri" type="submit" id="enviar">Registrarme y recibir mi cupón</button>
+        </form>
+        <div class="resultado" id="listo" hidden>
+          <b>¡Listo! Este es tu cupón:</b>
+          <code id="cod">—</code>
+          <span>Guárdalo. Te escribiremos al correo cuando abramos. Mientras tanto, síguenos en Instagram para ver los remates más interesantes de cada semana.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="acceso">
+    <form class="acceso" method="post" action="/__acceso">
+      <label>¿Ya tienes acceso de prueba? Contraseña<input type="password" name="clave" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Entrar al mapa</button>
+    </form>
+  </section>
+
+  <footer>
+    <nav><span>Instagram: <b>@planoexactocr</b></span><span>Correo: <b id="correo-contacto">hola@planoexacto.cr</b></span><a href="/privacidad.html">Privacidad</a></nav>
+    <span>PlanoExactoCR reúne información pública (Boletín Judicial, Registro Inmobiliario, IGN, Hacienda, AyA, INVU, MINAE) con fines orientativos. No es asesoría legal ni un avalúo; verifique siempre en el expediente judicial y el Registro Nacional.</span>
+  </footer>
+</div>
+<script>
+(() => {
+  const fmt = n => Number(n).toLocaleString('es-CR');
+  fetch('/data/resumen.json', { cache: 'no-store' }).then(r => r.json()).then(d => {
+    document.querySelectorAll('#datos [data-k]').forEach(b => { const k = b.dataset.k; if (d[k] != null) b.textContent = k === 'boletin' ? 'N.º ' + d[k] : fmt(d[k]); });
+  }).catch(() => {});
+  const q = new URLSearchParams(location.search), utm = {};
+  ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
+  const f = document.getElementById('f'), err = document.getElementById('err'), btn = document.getElementById('enviar');
+  f.addEventListener('submit', async e => {
+    e.preventDefault(); err.hidden = true;
+    const correo = document.getElementById('correo').value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) { err.textContent = 'Revisa el correo: parece incompleto.'; err.hidden = false; return; }
+    if (!document.getElementById('acepto').checked) { err.textContent = 'Para registrarte, marca la casilla de privacidad.'; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = 'Registrando…';
+    try {
+      const r = await fetch('/api/registro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, nombre: document.getElementById('nombre').value.trim(), perfil: document.getElementById('perfil').value, prov: document.getElementById('prov').value, utm }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'No se pudo registrar.');
+      document.getElementById('cod').textContent = j.cupon; f.hidden = true; document.getElementById('listo').hidden = false;
+    } catch (x) { err.textContent = x.message + ' Intenta de nuevo en un momento.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Registrarme y recibir mi cupón'; }
+  });
+})();
+</script>
+</body>
+</html>

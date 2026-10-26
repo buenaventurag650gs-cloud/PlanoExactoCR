@@ -508,6 +508,13 @@ def main():
     resumen['pendientes'] = len(pend)
     estado['actualizado'] = a.hoy
     escribir('estado.json', estado)
+    # Resumen público para la página de inicio (sin datos personales)
+    RR = leer('remates.json', [])
+    hace7 = (dt.date.fromisoformat(a.hoy[:10]) - dt.timedelta(days=7)).isoformat()
+    escribir('resumen.json', {'remates': len(RR), 'nuevos7': sum(1 for r in RR if (r.get('pubF') or '') >= hace7),
+                              'ubicados': sum(1 for r in RR if r.get('loc') in ('plano', 'finca')),
+                              'provincias': {PROV_NAME[p]: sum(1 for r in RR if r.get('prov') == p) for p in PROV_NAME},
+                              'boletin': estado['ultimo_boletin'], 'fecha': a.hoy[:10]})
     meta = leer('meta.json', {})
     meta['generado'] = a.hoy[:10]
     meta['ultimoBoletin'] = estado['ultimo_boletin']

@@ -1,2 +1,6 @@
 User-agent: *
+Allow: /$
+Allow: /inicio.html
+Allow: /privacidad.html
+Allow: /assets/img/
 Disallow: /

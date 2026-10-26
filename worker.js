@@ -128,7 +128,46 @@ async function guardarCatastro(request, env) {
 }
 
 // Archivos que la página de acceso necesita antes de iniciar sesión
-const PUBLICOS = new Set(["/assets/img/logo.webp", "/assets/img/favicon.png", "/robots.txt"]);
+const PUBLICOS = new Set(["/inicio.html", "/privacidad.html", "/data/resumen.json", "/robots.txt"]);
+const esPublico = (p) => PUBLICOS.has(p) || p.startsWith("/assets/img/");
+
+// ---------- Registro para acceso anticipado (público) ----------
+// Se guarda en Cloudflare KV (binding REGISTROS). Clave: "r:<correo>"; el registro va en los metadatos para poder exportarlo con una sola lista.
+const PERFILES = new Set(["comprador", "inversionista", "abogado", "corredor", "desarrollador", "otro"]);
+async function cupon(correo) {
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("pecr-cupon:" + correo)));
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return "PECR-" + [...h.slice(0, 5)].map((b) => A[b % A.length]).join("");
+}
+async function registrar(request, env) {
+  if (!env.REGISTROS) return json({ error: "El registro no está disponible en este momento." }, 503, 0);
+  const b = await request.json().catch(() => null);
+  const correo = String((b && b.correo) || "").trim().toLowerCase().slice(0, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) return json({ error: "El correo no es válido." }, 400, 0);
+  const clave = "r:" + correo;
+  const previo = await env.REGISTROS.getWithMetadata(clave);
+  if (previo && previo.metadata && previo.metadata.cupon) return json({ ok: true, cupon: previo.metadata.cupon, repetido: true }, 200, 0);
+  const utm = (b && b.utm) || {};
+  const meta = {
+    correo, cupon: await cupon(correo),
+    nombre: String(b.nombre || "").slice(0, 80), perfil: PERFILES.has(b.perfil) ? b.perfil : "otro", prov: String(b.prov || "").slice(0, 20),
+    fuente: [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.ref].filter(Boolean).join("/").slice(0, 120),
+    fecha: new Date().toISOString(), pais: (request.cf && request.cf.country) || ""
+  };
+  await env.REGISTROS.put(clave, "1", { metadata: meta });
+  return json({ ok: true, cupon: meta.cupon }, 200, 0);
+}
+async function exportarRegistros(env) {
+  const filas = [["fecha", "correo", "nombre", "perfil", "provincia", "fuente", "pais", "cupon"]];
+  let cursor;
+  do {
+    const l = await env.REGISTROS.list({ prefix: "r:", cursor });
+    for (const k of l.keys) { const m = k.metadata || {}; filas.push([m.fecha, m.correo, m.nombre, m.perfil, m.prov, m.fuente, m.pais, m.cupon]); }
+    cursor = l.list_complete ? null : l.cursor;
+  } while (cursor);
+  const csv = filas.map((f) => f.map((v) => '"' + String(v ?? "").replace(/"/g, '""') + '"').join(",")).join("\n");
+  return new Response("\ufeff" + csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="registros-planoexactocr.csv"', "cache-control": "no-store" } });
+}
 
 export default {
   async fetch(request, env) {
@@ -153,10 +192,17 @@ export default {
       return new Response(null, { status: 303, headers: { "Location": "/", "Set-Cookie": `${COOKIE}=${await firma(pw)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
     }
     if (u.pathname === "/__salir") return new Response(null, { status: 303, headers: { "Location": "/", "Set-Cookie": `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` } });
-    if (!PUBLICOS.has(u.pathname) && !(await autorizado(request, pw))) {
+    if (u.pathname === "/api/registro" && request.method === "POST") return registrar(request, env);
+    const dentro = await autorizado(request, pw);
+    if (!esPublico(u.pathname) && !dentro) {
       if (u.pathname.startsWith("/api/") || u.pathname.startsWith("/data/")) return json({ error: "Acceso restringido" }, 401, 0);
-      return paginaAcceso(false);
+      if (u.pathname === "/" || u.pathname === "/index.html") {   // visitantes: página pública con registro
+        const r = await env.ASSETS.fetch(new Request(new URL("/inicio.html", u), request));
+        return new Response(r.body, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "X-Robots-Tag": "noindex, nofollow" } });
+      }
+      return Response.redirect(new URL("/", u).toString(), 302);
     }
+    if (u.pathname === "/admin/registros.csv" && dentro) return env.REGISTROS ? exportarRegistros(env) : txt("Falta el almacenamiento de registros (KV).", 503);
     const res = u.pathname.startsWith("/api/") ? await api(u) : await env.ASSETS.fetch(request);
     const out = new Response(res.body, res);
     out.headers.set("X-Robots-Tag", "noindex, nofollow");
