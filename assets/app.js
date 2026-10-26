@@ -726,6 +726,69 @@
       <div class="foot">Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Modo demostración: los pagos aún no están conectados.</div>`);
   }
   $('bPlanes').onclick = () => openPlanes();
+  // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
+  function guideHTML() {
+    const I = PX.ICON, cupo = PX.PRECIOS.cupo;
+    const sec = (id, ic, t, pro, body) => `<section class="gsec" id="g-${id}"><h3><span class="gi">${ic || ''}</span>${t}${pro ? ' ' + PX.PRO : ''}</h3>${body}</section>`;
+    const toc = [['inicio', 'Primeros pasos'], ['mapa', 'Mapa y capas'], ['filtros', 'Filtros y lista'], ['ficha', 'Ficha del lote'], ['herr', 'Herramientas PRO'], ['cmp', 'Comparar'], ['exp', 'Expediente PDF'], ['cuenta', 'Seguimiento y alertas'], ['gloss', 'Glosario']];
+    return `<div class="about guide">
+      <nav class="gtoc" aria-label="Contenido">${toc.map(([k, t]) => `<button class="chip" data-gto="${k}">${t}</button>`).join('')}</nav>
+      ${sec('inicio', I.pin, 'Primeros pasos', false, `<ol>
+        <li><b>Ubica.</b> Cada cruz en el mapa es una propiedad en remate. El color indica la etapa: ${PX.stageBadge(0, true)} primer remate con la base completa, ${PX.stageBadge(1, true)} segundo al 75 % y ${PX.stageBadge(2, true)} tercero al 25 %. Un punto terracota en el centro marca tus favoritos.</li>
+        <li><b>Comprende.</b> Haz clic en una cruz o en un lote de la lista para abrir su ficha: precio, fechas, terreno, servicios, normativa y registro.</li>
+        <li><b>Decide.</b> Con PRO, abre las herramientas del lote (valor de referencia, potencial, prefactibilidad y riesgos), compáralo con otros y descarga su expediente en PDF.</li></ol>
+        <p>Arriba puedes cambiar la moneda principal (₡ o US$); todos los montos muestran siempre su equivalente en la otra moneda con el tipo de cambio de venta del BCCR. El botón <b>Vista Gratis / PRO</b> muestra cómo ve el sitio cada tipo de usuario.</p>`)}
+      ${sec('mapa', I.entorno, 'Mapa y capas', false, `<ul>
+        <li><b>Zoom.</b> El control de arriba a la derecha muestra el nivel (7 = país, 19 = detalle de lote). Desde el nivel 15 se dibuja el polígono del predio cuando su ubicación es exacta.</li>
+        <li><b>Mouse.</b> Al pasar el mouse ves el distrito, cantón y provincia.</li>
+        <li><b>Clic en el mapa.</b> Muestra los datos de las capas encendidas en ese punto: zona homogénea, agua potable, uso del suelo, zona de vida, plan regulador o precio por m².</li>
+        <li><b>Capas.</b> El botón <b>Capas</b> abre el panel por grupos. Gratis: mapas base, límites, catastro, nombres de ríos y estado del plan regulador. ${PX.PRO}: todas las demás.</li></ul>
+        <table class="gtab"><tr><th>Grupo</th><th>Capas ${PX.PRO}</th></tr>
+        <tr><td>Valor y mercado</td><td><b>Zonas homogéneas de Hacienda</b> con el valor del terreno en ₡ y US$ por m² (desde zoom 13) y <b>precio por m² de remates</b>, mediana por cantón.</td></tr>
+        <tr><td>Servicios e infraestructura</td><td><b>Cobertura de agua potable</b> por operador (AyA, ESPH, ASADA, municipal) con su nombre, <b>vías</b>, <b>puertos y aeropuertos</b> y <b>centros de salud</b>.</td></tr>
+        <tr><td>Ambiente y restricciones</td><td>Zonas de vida, uso y cobertura del suelo 2020, ríos y quebradas, curvas de nivel, áreas protegidas, pago por servicios ambientales y <b>zona marítimo terrestre</b> sombreada (pública 0–50 m y restringida 50–200 m).</td></tr></table>`)}
+      ${sec('filtros', I.list, 'Filtros y lista', false, `<ul>
+        <li><b>Ubicación:</b> texto libre (lugar, finca, plano o expediente), provincia y cantón.</li>
+        <li><b>Remate:</b> etapa, remates en los próximos 7 días, publicados en el último mes y rango de base.</li>
+        <li><b>Características:</b> tipo de inmueble, área mínima y máxima, sin servidumbres, con plan regulador, con agua del AyA.</li>
+        <li>${PX.PRO} <b>Atributos del lote:</b> terreno plano, con construcción, frente a vía pública, zona urbana y más, calculados con las capas del sitio.</li>
+        <li><b>Restablecer</b> quita todos los filtros. <b>Favoritos</b> muestra solo los lotes marcados con el corazón.</li>
+        <li><b>Lista o Calendario:</b> la lista se agrupa por día y resalta los remates de mañana; el calendario muestra cuántos remates hay cada día.</li>
+        <li><b>Guardar búsqueda</b> guarda los filtros en Mi cuenta para volver a ellos y recibir alertas.</li></ul>`)}
+      ${sec('ficha', I.Lote, 'Ficha del lote', false, `<p>La ficha se divide en secciones:</p><ul>
+        <li><b>Remate:</b> base vigente y las tres fechas con su etapa.</li>
+        <li><b>Valor y mercado</b> ${PX.PRO}: zona homogénea de Hacienda, base frente al valor de Hacienda y la <b>escala PECR</b> (nivel 1 a 8) con su rango de valor por m².</li>
+        <li><b>Terreno:</b> área, dimensiones aproximadas, <b>topografía</b> calculada con las curvas de nivel, uso del suelo y zona de vida.</li>
+        <li><b>Servicios y entorno:</b> agua potable, vía, salud, escuela, ríos y costa.</li>
+        <li><b>Normativa:</b> plan regulador vigente o normativa nacional supletoria.</li>
+        <li><b>Registro y ubicación:</b> finca, plano, precisión de la ubicación y fecha de publicación.</li>
+        <li><b>Índice PlanoExacto</b> y ${PX.PRO} <b>atributos del lote</b>.</li></ul>
+        <p>Botones de la ficha: Comparar, Seguir, Guardar en lista, Google Maps, Favorito y Generar expediente.</p>`)}
+      ${sec('herr', I.valor, 'Herramientas PRO', true, `<p>Se abren desde la ficha de un lote (recuadro PRO) o desde la pestaña ${PX.PRO} de la barra lateral. Todos los supuestos son editables y los resultados se recalculan al instante.</p>
+        <dl class="gdl">
+          <dt>Valor de referencia</dt><dd>Terreno = área × valor de la zona homogénea de Hacienda. Construcción = área construida × valor de la tipología de la ONT (2023), depreciada por edad y estado de conservación (Ross-Heidecke). Compara el total con la base del remate.</dd>
+          <dt>Potencial constructivo</dt><dd>Con el área, el área aprovechable, la cobertura, los pisos y el tamaño de unidad calcula la huella, el área total construible, las unidades y los lotes posibles si se segrega. Muestra la normativa aplicable y un esquema del lote.</dd>
+          <dt>Prefactibilidad financiera</dt><dd>Dos escenarios: <b>comprar y revender</b> o <b>desarrollar y vender</b>. Suma oferta, traspaso, timbres, honorarios y otros gastos; calcula inversión, ingreso, utilidad, margen, retorno, rendimiento anual y punto de equilibrio. El área a construir se toma del potencial constructivo.</dd>
+          <dt>Riesgos del proceso</dt><dd>Lista de riesgos del lote (gravámenes, servidumbres, ocupación, restricciones ambientales, ZMT…) con su nivel y qué revisar antes de ofertar.</dd>
+          <dt>Alertas del remate</dt><dd>Avisos por correo o WhatsApp cuando un lote que sigues cambia de etapa, se suspende o se reprograma, y cuando salen remates nuevos que cumplen tus búsquedas guardadas.</dd>
+          <dt>Mapa de precios por m²</dt><dd>Colorea cada cantón con la mediana del precio por m² de las bases de remate.</dd>
+          <dt>Top 10 del mes</dt><dd>Los mejores remates por provincia según el índice PlanoExacto.</dd>
+        </dl><p class="muted">Próximamente: normativa por zona del plan regulador, amenazas naturales (CNE) e historia del sitio con ortofotos del IGN.</p>`)}
+      ${sec('cmp', I.registro, 'Comparar', false, `<p>Desde la ficha, pulsa <b>Comparar</b> y abre la pestaña Comparar. Gratis comparas 2 lotes con el índice; ${PX.PRO} hasta 4 lotes y ajustas el peso de cada dimensión (precio, jurídica, servicios, entorno, restricciones) para ver cuál gana.</p>`)}
+      ${sec('exp', I.gavel, 'Expediente PDF', false, `<p>Desde la ficha, <b>Generar expediente</b> arma un informe de 4 hojas listo para imprimir o guardar en PDF:</p><ol>
+        <li>Mapa del lote con su entorno, detalle satelital y ubicación en el país.</li><li>Ficha del lote: fechas, registro, gravámenes, valor y análisis por dimensión.</li><li>Normativa, potencialidades, riesgos y lista de verificación.</li><li>Texto del edicto.</li></ol>
+        <p>Se compra por lote o se incluye en ${PX.PRO} (hasta ${cupo} al mes).</p>`)}
+      ${sec('cuenta', I.cal, 'Seguimiento, listas y alertas', false, `<ul><li><b>Seguir</b> un lote lo agrega a tu seguimiento y a las alertas.</li><li><b>Guardar en lista</b> organiza lotes en listas propias.</li><li><b>Mi cuenta</b> reúne búsquedas guardadas, listas, seguimiento, expedientes y la configuración de alertas ${PX.PRO}.</li></ul>`)}
+      ${sec('gloss', I.norma, 'Glosario', false, `<dl class="gdl">
+        <dt>Base</dt><dd>Precio mínimo para ofertar en el remate. Baja al 75 % en el segundo y al 25 % en el tercero.</dd>
+        <dt>Zona homogénea</dt><dd>Área con un valor de terreno por m² definido por el Ministerio de Hacienda (ONT) para fines tributarios.</dd>
+        <dt>Escala PECR</dt><dd>Nivel de 1 (rural aislado) a 8 (urbano consolidado) según acceso, servicios y entorno, calibrado con los valores de Hacienda. Cada nivel tiene un rango orientativo en US$/m².</dd>
+        <dt>Índice PlanoExacto</dt><dd>Puntaje de 0 a 100 que combina precio por m², sanidad jurídica, servicios, entorno y restricciones.</dd>
+        <dt>Ubicación aproximada</dt><dd>Cuando el plano o la finca no se encontró en el catastro, el lote se ubica en el centro de su distrito o poblado. La ficha lo indica.</dd>
+        <dt>ZMT</dt><dd>Zona marítimo terrestre: 200 m desde la pleamar; los primeros 50 m son zona pública.</dd></dl>
+        <p class="muted">Toda la información es orientativa. Consulte los Términos y descargo.</p>`)}
+    </div>`;
+  }
   // ---------- Quiénes somos y descargo de responsabilidad ----------
   function openAbout(which) {
     const us = `<div class="about">
@@ -752,11 +815,16 @@
         <li><b>Cambios.</b> El contenido, los precios y estos términos pueden cambiar sin previo aviso. En la etapa de prueba, las cuentas y los pagos funcionan en modo demostración.</li>
       </ul>
       <p class="muted">Última actualización: ${PX.fdate(PX.now)}. Este texto debe ser revisado por un abogado antes del lanzamiento comercial.</p></div>`;
-    modal(`<div class="hd"><h2>${which === 'terms' ? 'Términos y descargo' : 'Quiénes somos'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <div class="seg" role="group"><button data-about="us" aria-pressed="${which !== 'terms'}">Quiénes somos</button><button data-about="terms" aria-pressed="${which === 'terms'}">Términos y descargo</button></div>
-      ${which === 'terms' ? terms : us}`);
+    const T = { guia: 'Cómo usar PlanoExactoCR', us: 'Quiénes somos', terms: 'Términos y descargo' };
+    if (!T[which]) which = 'us';
+    modal(`<div class="hd"><h2>${T[which]}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      <div class="seg" role="group"><button data-about="guia" aria-pressed="${which === 'guia'}">Cómo usar</button><button data-about="us" aria-pressed="${which === 'us'}">Quiénes somos</button><button data-about="terms" aria-pressed="${which === 'terms'}">Términos y descargo</button></div>
+      ${which === 'terms' ? terms : which === 'guia' ? guideHTML() : us}`);
   }
-  document.addEventListener('click', e => { const a = e.target.closest('[data-about]'); if (a) openAbout(a.dataset.about); });
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-about]'); if (a) return openAbout(a.dataset.about);
+    const g = e.target.closest('[data-gto]'); if (g) { const t = document.getElementById('g-' + g.dataset.gto); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
   const setVista = p => { if ((p === 'pro') === PX.isPro()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : 'Vista gratis: así la ve un usuario sin suscripción'); };
   $('vFree').onclick = () => setVista('free'); $('vPro').onclick = () => setVista('pro');
 
@@ -917,7 +985,8 @@
     const r = open ? PX.item(open) : null, pro = PX.isPro();
     $('proHub').innerHTML = `<div class="procard"><h3>${PX.PRO} Herramientas de la versión PRO</h3>
         <p>${pro ? 'Tu suscripción PRO está activa.' : 'Puedes abrirlas como vista previa. Con la suscripción PRO las usas completas.'}</p>
-        <p>${r ? `Lote abierto: <b>${esc(r.nom)}</b>` : 'Abre un lote en el mapa o busca un plano para usar las herramientas de lote.'}</p></div>
+        <p>${r ? `Lote abierto: <b>${esc(r.nom)}</b>` : 'Abre un lote en el mapa o busca un plano para usar las herramientas de lote.'}</p>
+        <div class="acts"><button class="btn sm" data-about="guia">Cómo usar las herramientas</button></div></div>
       ${PX.pro.TOOLS.map(t => `<div class="procard${t.st === 'soon' ? ' soon' : ''}"><h3>${PX.PRO} ${t.n} ${t.st === 'soon' ? '<span class="tag">Próximamente</span>' : ''}</h3><p>${t.q}</p>
         ${t.st === 'soon' ? '' : t.map ? `<div class="acts"><button class="btn sm" data-hubmap>${lyrState.precios && pro ? 'Ver en el mapa' : 'Activar en el mapa'}</button></div>` : t.list ? '' : `<div class="acts"><button class="btn sm" data-hubtool="${t.k}"${r ? '' : ' disabled'}>${r ? 'Abrir para este lote' : 'Primero abre un lote'}</button></div>`}</div>`).join('')}
       <h3 style="margin:8px 0 0;font:600 16px/1.2 var(--f-display);display:flex;gap:8px;align-items:center">${PX.PRO} Top 10 del mes</h3>`;
