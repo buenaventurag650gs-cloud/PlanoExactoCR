@@ -248,7 +248,7 @@
   // ---------- mapa ----------
   const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
-  map.attributionControl.setPrefix(false);
+  map.attributionControl.setPrefix('<span class="attrb"><img src="assets/img/logo-mark.webp" alt="" width="18" height="12"><b>PlanoExacto</b>CR</span>');
   map.zoomControl.setPosition('topright');
   PX.map = map;
   // Indicador del nivel de zoom entre + y −
@@ -518,6 +518,23 @@
     if (jobs.length) { const vals = await Promise.all(jobs.map(j => j[1].catch(() => null))); if (map.hasLayer(idPop) && idPop.getLatLng().equals(e.latlng)) paint(vals); }
   });
 
+  // Bloque de la escala PECR en la ficha: nivel, escala de 8 colores y dónde cae la base frente al rango del nivel
+  const PECR_COL = ['#D8C79A', '#C4BE85', '#A7B474', '#84A66A', '#5F9562', '#418258', '#2A6B4D', '#1A5140'];
+  function pecrHTML(r, pc) {
+    const z = (r.ent || {}).zh, zu = z && z.v ? z.v / PX.tc.venta : null, bu = r.usdm2;
+    const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de US$1 a US$1 000 por m²
+    const pos = bu == null ? '' : bu < pc[2] ? 'por debajo del rango' : bu > pc[3] ? 'por encima del rango' : 'dentro del rango';
+    return `<div class="pecrb">
+      <div class="iphh"><span class="iphn${pc[0] <= 3 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/8</small></span><div><b>Escala PECR</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
+      <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (US$${x[2]}–${x[3]}/m²)">${x[0]}</span>`).join('')}</div>
+      <div class="lv"><span>Rural aislado</span><span>Urbano consolidado</span></div>
+      <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
+        <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">US$${v}</span>`).join('')}</div></div>
+      <dl class="pkv"><dt><i class="sw" style="background:${PECR_COL[pc[0] - 1]}"></i>Rango del nivel</dt><dd>${PX.duoI(pc[2], 'USD', '/m²')} a ${PX.duoI(pc[3], 'USD', '/m²')}${pc[0] === 8 ? ' o más' : ''}</dd>
+        ${bu != null ? `<dt><i class="sw mk"></i>Base vigente</dt><dd>${PX.duoI(bu, 'USD', '/m²')} · <b>${pos}</b></dd>` : ''}
+        ${zu ? `<dt><i class="sw zh"></i>Valor de Hacienda</dt><dd>${PX.duoI(zu, 'USD', '/m²')}</dd>` : ''}</dl></div>`;
+  }
+
   // Bloque del Índice Puja/Hacienda en la ficha
   function iphHTML(r) {
     const x = PX.iph(r); if (!x) return '';
@@ -623,8 +640,7 @@
     const fav = PX.isFav(r.key);
     const I = PX.ICON, sec = (icon, t, body, right) => `<section class="fs"><h3>${icon}${t}${right ? `<span class="r">${right}</span>` : ''}</h3><div class="fb">${body}</div></section>`;
     const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
-    const pecrH = pc ? `<div class="pecr"><div><b>Nivel PECR ${pc[0]} de 8</b> · ${esc(pc[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pc[0] ? 'me' : x[0] < pc[0] ? 'on' : ''}"></span>`).join('')}</div><div class="lv"><span>1 rural aislado</span><span>8 urbano consolidado</span></div>
-      <div class="muted" style="font-size:12px">Rango de referencia ${PX.duoI(pc[2], 'USD', '/m²')} a ${PX.duoI(pc[3], 'USD', '/m²')}${pc[0] === 8 ? ' o más' : ''}.${r.usdm2 != null ? ` La base vigente equivale a ${PX.duoI(r.usdm2, 'USD', '/m²')}: <b>${r.usdm2 < pc[2] ? 'por debajo del rango' : r.usdm2 > pc[3] ? 'por encima del rango' : 'dentro del rango'}</b>.` : ''}</div></div>` : '';
+    const pecrH = pc ? pecrHTML(r, pc) : '';
     const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
     f.innerHTML = `<div class="fhead">${PX.tipoIcon(r)}${r.isPlano ? '<span class="tag">Predio consultado</span>' : PX.stageBadge(r.st) + `<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span>`}<button class="btn sm favbtn" data-act="fav" aria-pressed="${fav}">${PX.HEART}${fav ? 'En favoritos' : 'Favorito'}</button><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
     <div class="fbody">
