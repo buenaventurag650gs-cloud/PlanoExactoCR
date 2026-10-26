@@ -24,17 +24,20 @@
 
   function variables(r) {
     const e = r.ent || {}, v = [];
+    const z = e.zh, pc = PX.pecr(r), tp = PX.topo(r);
+    if (z) v.push(['Zona homogénea', `${z.c} · ${PX.mt(z.v, 'CRC')}/m²`]);
+    if (pc) v.push(['Escala PECR', `Nivel ${pc[0]} de 8`]);
+    v.push(['Agua potable', e.aguaS ? e.aguaS.join(', ') : 'Sin cobertura registrada', !e.aguaS]);
+    if (tp) v.push(['Topografía', tp.clase + (e.pend != null ? ` (${e.pend} %)` : ''), tp.clase.includes('quebrada')]);
     v.push(['Normativa', e.pr && e.pr.si ? `Plan regulador${e.pr.anno ? ' ' + e.pr.anno : ''}` : 'Nacional INVU (sin plan)', !(e.pr && e.pr.si)]);
     const dm = PX.pro.dims(r); if (dm) v.push(['Dimensiones', `≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m`, dm.corto < 6]);
     if (e.cob) v.push(['Uso del suelo 2020', e.cob, e.cob === 'Cobertura forestal']);
     if (e.agua !== undefined) v.push(['Cauce más cercano', e.agua == null ? 'Ninguno a menos de 400 m' : PX.dist(e.agua), e.agua != null && e.agua <= 50]);
     if (e.via) v.push(['Vía más cercana', e.via.d <= 10 ? `${e.via.t}, al frente` : `${e.via.t} a ${PX.dist(e.via.d)}`]);
-    if (e.elev != null || e.pend != null || e.suave) v.push(['Relieve', [e.elev != null ? `${fnum(Math.round(e.elev))} m s. n. m.` : null, e.pend != null ? `pendiente ${e.pend} %` : e.suave ? 'pendiente suave' : null].filter(Boolean).join(' · '), e.pend >= 30]);
-    if (e.salud) v.push(['Salud', `${e.salud.c} a ${PX.dist(e.salud.d)}`]);
-    if (e.esc != null) v.push(['Escuela', `a ${PX.dist(e.esc)}`]);
+    if (false) v.push(['Relieve', [e.elev != null ? `${fnum(Math.round(e.elev))} m s. n. m.` : null, e.pend != null ? `pendiente ${e.pend} %` : e.suave ? 'pendiente suave' : null].filter(Boolean).join(' · '), e.pend >= 30]);
+
     if (e.costa != null && e.costa < 3000) v.push(['Costa', `a ${PX.dist(e.costa)}`, e.costa <= 250]);
     if (e.zv) v.push(['Zona de vida', e.zv]);
-    if (e.cu) v.push(['Cuenca', e.cu]);
     return v.slice(0, 12);
   }
 
@@ -54,11 +57,12 @@
             <div class="nflecha" aria-hidden="true"><svg viewBox="0 0 24 34" width="18" height="26"><path d="M12 2 L20 24 L12 19 L4 24 Z" fill="#15302A"/><text x="12" y="33" text-anchor="middle" font-size="9" font-weight="700" fill="#15302A">N</text></svg></div>
             <div class="inset det"><div id="ldet" class="lmap"></div><span class="ilab">Detalle del predio${a ? ` · <span class="num">${fnum(a)}</span> m²` : ''}</span></div>
             <div class="inset loc"><div id="lloc" class="lmap"></div><span class="ilab">${esc(r.cn || '')}, ${esc(r.pn || '')}</span></div>
-            <div class="lleg">
+            <div class="lleg lt">
               <span><i class="sw" style="background:${TERRA}88;border:2px solid ${TERRA_D}"></i>Predio${r.exact || r.isPlano ? '' : ' (aproximado)'}</span>
               <span><i class="ln" style="border-top:2px dashed #fff"></i>Radios 100, 250 y 500 m</span>
               <span><i class="ln" style="border-top:2.5px solid ${HIDRO}"></i>Ríos y quebradas</span>
-              <span><i class="ln" style="border-top:2px solid ${VIA}"></i>Vías públicas</span>
+              <span><i class="sw" style="background:#E6E3DC;border:1px solid #C9C6BB"></i>Vías públicas (Registro)</span>
+              <span><i class="sw" style="background:transparent;border:1px solid #7B8782"></i>Predios del catastro</span>
               <span><i class="ln" style="border-top:1px solid ${CURV}"></i>Curvas cada 10 m</span>
               <span><i class="ln" style="border-top:1.5px dashed #F4F1EA"></i>Límite distrital</span>
               <span><i class="nb">1</i>Salud${e.salud ? ' · ' + esc(e.salud.n) : ''}</span>
@@ -84,9 +88,10 @@
   const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 20, maxNativeZoom: 19 }, o));
   const ringsLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
   const num = (n, cls) => L.divIcon({ className: 'lnum ' + (cls || ''), html: n, iconSize: [22, 22], iconAnchor: [11, 11] });
+  const sldText = name => `<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>${name}</Name><UserStyle><FeatureTypeStyle><Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
   const SNIT = {
-    cat: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { opacity: 0.8 }),
-    vias: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { opacity: 0.85 }),
+    cat: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { className: 'tl-cat' }),
+    vias: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { className: 'tl-vias' }),
     hidro: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:hidrografia_5000', { sld_body: sldLine('IGN_5:hidrografia_5000', HIDRO, 2.4, 1) }),
     curvas: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:curvas_5000', { sld_body: sldLine('IGN_5:curvas_5000', CURV, 0.9, 0.85) })
   };
@@ -102,13 +107,17 @@
     const pg = r.poly ? L.polygon(ringsLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.4 }) : null;
 
     // Mapa principal: el sitio y su entorno inmediato
+    // Mapa principal sutil: fondo claro con relieve sombreado, predios y vías atenuados, ríos y nombres
     const m = L.map('lmap', opt).setView(c, 16);
-    esri('World_Imagery').addTo(m);
-    SNIT.curvas().addTo(m); SNIT.cat().addTo(m); SNIT.vias().addTo(m); SNIT.hidro().addTo(m);
-    esri('Reference/World_Transportation', { opacity: 0.7 }).addTo(m);
-    esri('Reference/World_Boundaries_and_Places').addTo(m);
+    m.createPane('lbl').style.zIndex = 450;
+    const carto = v => L.tileLayer(`https://{s}.basemaps.cartocdn.com/${v}/{z}/{x}/{y}{r}.png`, { subdomains: 'abcd', maxZoom: 20, maxNativeZoom: 19 });
+    carto('light_nolabels').addTo(m);
+    esri('Elevation/World_Hillshade', { opacity: 0.22, className: 'tl-hill' }).addTo(m);
+    SNIT.vias().addTo(m); SNIT.curvas().addTo(m); SNIT.cat().addTo(m); SNIT.hidro().addTo(m);
+    L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png`, { subdomains: 'abcd', maxZoom: 20, maxNativeZoom: 19, pane: 'lbl' }).addTo(m);
+    wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', sld_body: sldText('IGN_NG:hidronimos_25k') }).addTo(m);
     [100, 250, 500].forEach(rad => {
-      L.circle(c, { radius: rad, color: '#fff', weight: 1.4, dashArray: '5 6', fill: false, interactive: false, opacity: 0.9 }).addTo(m);
+      L.circle(c, { radius: rad, color: '#55635D', weight: 1, dashArray: '4 6', fill: false, interactive: false, opacity: 0.7 }).addTo(m);
       L.marker([c[0] + rad / 111320, c[1]], { icon: L.divIcon({ className: 'lrad', html: rad + ' m', iconSize: [48, 14], iconAnchor: [24, 7] }), interactive: false }).addTo(m);
     });
     if (pg) pg.addTo(m); else L.circle(c, { radius: 600, color: TERRA_D, weight: 2, dashArray: '6 5', fillColor: TERRA, fillOpacity: 0.12 }).addTo(m);
@@ -127,6 +136,7 @@
 
     // Recuadro: detalle del predio
     const d = L.map('ldet', opt).setView(c, 18);
+    d.getContainer().classList.add('on-sat');
     esri('World_Imagery').addTo(d); SNIT.curvas().addTo(d); SNIT.cat().addTo(d); SNIT.hidro().addTo(d);
     if (r.poly) L.polygon(ringsLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.3 }).addTo(d);
     else L.circle(c, { radius: 600, color: TERRA_D, weight: 2, dashArray: '6 5', fill: false }).addTo(d);

@@ -8,6 +8,7 @@
 
   // Catálogo de herramientas (las disponibles y las que vienen)
   P.TOOLS = [
+    { k: 'valor', n: 'Valor de referencia', q: 'Terreno según la zona homogénea de Hacienda y construcción por tipología, frente a la base', st: 'ok' },
     { k: 'potencial', n: 'Potencial constructivo', q: '¿Cuántos m² y unidades caben en el lote?', st: 'ok' },
     { k: 'prefa', n: 'Prefactibilidad financiera', q: '¿Cuánto invierto, cuánto podría valer y qué margen deja?', st: 'ok' },
     { k: 'riesgos', n: 'Riesgos del proceso', q: '¿Qué puede salir mal y qué revisar antes de ofertar?', st: 'ok' },
@@ -15,8 +16,8 @@
     { k: 'precios', n: 'Mapa de precios por m²', q: 'Mediana de las bases de remate por cantón, en el mapa', st: 'ok', map: true },
     { k: 'top', n: 'Top 10 del mes', q: 'Los mejores remates por provincia según el índice', st: 'ok', list: true },
     { k: 'normativa', n: 'Normativa urbana del lote', q: 'Zona del plan regulador, usos, cobertura, altura y lote mínimo', st: 'soon' },
-    { k: 'zh', n: 'Valor por zona homogénea', q: '¿La base está por debajo del valor de referencia de Hacienda?', st: 'soon' },
-    { k: 'historia', n: 'Historia del sitio', q: 'Imágenes satelitales antiguas y cambio de cobertura', st: 'soon' }
+    { k: 'amenazas', n: 'Amenazas naturales (CNE)', q: 'Inundación, deslizamiento y amenaza sísmica en el lote', st: 'soon' },
+    { k: 'historia', n: 'Historia del sitio', q: 'Ortofotos del IGN de distintos años y cambio de cobertura', st: 'soon' }
   ];
 
   // ---------- Riesgos del proceso ----------
@@ -53,6 +54,8 @@
   P.potencialidades = r => {
     const out = [], e = r.ent || {}, sc = PX.score(r), add = (w, t, d) => out.push({ w, t, d });
     if (sc.precio != null && sc.precio >= 60 && r.usdm2) { const med = PX.medFor(r); add(9, 'Precio por m² bajo la zona', `${Math.round((1 - r.usdm2 / med.v) * 100)} % por debajo de la mediana de remates en ${med.ref}.`); }
+    { const z = e.zh, a2 = PX.prof(r); if (z && z.v && a2 && r.bv && r.tipo !== 'Con construcción') { const ratio = PX.conv(r.bv, r.mon, 'CRC') / (z.v * a2); if (ratio < 0.85) add(9, 'Base bajo el valor de Hacienda', `La base equivale al ${Math.round(ratio * 100)} % del valor del terreno según la zona homogénea (${PX.duoT(z.v, 'CRC', '/m²')}).`); } }
+    if (e.aguaS && e.aguaS.length) add(6, 'Zona con servicio de agua', `Dentro del área de cobertura de ${e.aguaS.join(', ')} (AyA).`);
     if (r.st === 1) add(7, 'Segundo remate', 'La base bajó al 75 % de la original.');
     if (r.st === 2) add(8, 'Tercer remate', 'La base es el 25 % de la original.');
     if ((r.tg || []).includes('frente') || (e.via && e.via.d <= 10)) add(8, 'Frente a vía', e.via ? `${e.via.t} al frente del predio.` : 'El edicto o la cartografía indican frente a calle.');
@@ -168,6 +171,17 @@
     return { gastos, terreno, obra, inversion, ingreso, util, margen: ingreso ? util / ingreso : 0, roi: inversion ? util / inversion : 0, anual: inversion && v.meses ? Math.pow(Math.max(0, 1 + util / inversion), 12 / v.meses) - 1 : 0, equilibrio: v.m2 ? inversion / v.m2 / (1 - v.comision / 100) : 0 };
   };
 
+  // ---------- Valor de referencia ----------
+  P.valDefaults = r => {
+    const e = r.ent || {}, z = e.zh || {}, constr = r.tipo === 'Con construcción' || (r.tg || []).includes('constr');
+    const tip = PX.TIPOLOGIAS.some(t => t[0] === z.u) ? z.u : 'VC02';
+    return { area: Math.round(PX.prof(r) || 0), zh: z.v || 0, ac: constr ? Math.min(120, Math.round((PX.prof(r) || 200) * 0.45)) : 0, tip, edad: 20, est: 0.8 };
+  };
+  P.valCalc = (r, v) => {
+    const c = PX.valorRef(v), base = r.bv ? PX.conv(r.bv, r.mon, 'CRC') : null;
+    return Object.assign(c, { base, ratio: base && c.total ? base / c.total : null });
+  };
+
   // ---------- Alertas (demostración, en este navegador) ----------
   P.alertas = () => PX.acct.alertas || (PX.acct.alertas = { canal: { correo: true, whatsapp: false }, dias: 3, etapa: true, nuevos: true, zona: '' });
 
@@ -236,6 +250,23 @@
         <div class="lbl" style="margin-top:6px">Antes de ofertar</div><ul class="chk">${P.CHECK.map(t => `<li><label><input type="checkbox"${PX.isPro() ? '' : ' disabled'}> ${t}</label></li>`).join('')}</ul>
         <div class="foot">Detección automática a partir del edicto y de capas públicas. No es asesoría legal.</div>`;
     },
+    valor(r, st) {
+      const v = st.val = st.val || P.valDefaults(r), c = P.valCalc(r, v), dis = !PX.isPro(), z = (r.ent || {}).zh;
+      const M2 = x => PX.duo(x, 'CRC');
+      return `<p class="lead">${z ? `Zona homogénea <b>${esc(z.c)} · ${esc(PX.cap(z.n))}</b> (Hacienda, ONT): <b>${PX.duoI(z.v, 'CRC', '/m²')}</b>, tipología predominante ${esc(z.u)}.` : 'Sin dato de zona homogénea para este punto.'} La construcción se estima con el manual de tipologías de la ONT (valores a marzo 2023) y depreciación Ross-Heidecke.</p>
+        <div class="pgrid"><div class="pform">
+          <div class="lbl">Terreno</div>
+          ${num('area', 'Área del terreno', v.area, 'm²', { dis })}${num('zh', 'Valor de zona homogénea', v.zh, '/m²', { dis, pre: '₡', step: 500 })}
+          <div class="lbl">Construcción</div>
+          ${num('ac', 'Área construida', v.ac, 'm²', { dis, step: 5 })}
+          <label class="pf"><span>Tipología</span><span class="pin"><select data-vs="tip"${dis ? ' disabled' : ''}>${PX.TIPOLOGIAS.map(t => `<option value="${t[0]}"${t[0] === v.tip ? ' selected' : ''}>${t[0]} · ${t[1]}</option>`).join('')}</select></span></label>
+          ${num('edad', 'Edad', v.edad, 'años', { dis, step: 1 })}
+          <label class="pf"><span>Estado de conservación</span><span class="pin"><select data-vs="est"${dis ? ' disabled' : ''}>${PX.ESTADOS.map(([n, f]) => `<option value="${f}"${f === v.est ? ' selected' : ''}>${n}</option>`).join('')}</select></span></label>
+        </div>
+        <div class="pres"><div class="pkpi"><div><small>Terreno</small><b>${M2(c.terreno)}</b></div><div><small>Construcción depreciada</small><b>${M2(c.vnr)}</b></div>
+          <div><small>Valor de referencia</small><b>${M2(c.total)}</b></div>${c.base ? `<div class="${c.ratio < 1 ? 'good' : 'bad'}"><small>Base vigente</small><b>${M2(c.base)}</b></div><div><small>Base frente a referencia</small><b class="num">${Math.round(c.ratio * 100)} %</b></div>` : ''}</div>
+          <div class="foot">Reposición nueva ${PX.duoI(c.vrn, 'CRC')} (${c.tip[0]}, ${PX.duoI(c.tip[2], 'CRC', '/m²')}, vida útil ${c.tip[3]} años); factor de edad ${fnum(c.fd, 3)}. Referencia orientativa, no es un avalúo.</div></div></div>`;
+    },
     alertas(r) {
       const a = P.alertas(), dis = !PX.isPro() ? ' disabled' : '', sig = r && !r.isPlano ? PX.sigo(r.key) : false;
       return `<p class="lead">Recibe avisos sin entrar al sitio. ${r && !r.isPlano ? `Este lote ${sig ? '<b>está en tu seguimiento</b>' : 'no está en tu seguimiento todavía'}.` : ''}</p>
@@ -283,10 +314,11 @@
         const k = e.target.dataset.al; if (k == null || !PX.isPro()) return;
         const a = P.alertas(); if (k === 'correo' || k === 'whatsapp') a.canal[k] = e.target.checked; else a[k] = e.target.checked; PX.saveAcct();
       });
+      root2.addEventListener('change', e => { const k = e.target.dataset.vs; if (!k || !PX.isPro()) return; st.val[k] = k === 'est' ? +e.target.value : e.target.value; refresh(); });
       root2.addEventListener('input', e => {
         const k = e.target.dataset.v; if (!k || !PX.isPro()) return;
         const v = parseFloat(e.target.value); if (isNaN(v)) return;
-        if (cur === 'potencial') st.pot[k] = v; else if (cur === 'prefa') { st.pref[k] = v; if (k === 'm2') st.pref.m2Edit = true; } else if (cur === 'alertas' && k === 'dias') { P.alertas().dias = v; PX.store.set('px-acct', PX.acct); return; }
+        if (cur === 'valor') st.val[k] = v; else if (cur === 'potencial') st.pot[k] = v; else if (cur === 'prefa') { st.pref[k] = v; if (k === 'm2') st.pref.m2Edit = true; } else if (cur === 'alertas' && k === 'dias') { P.alertas().dias = v; PX.store.set('px-acct', PX.acct); return; }
         const pos = e.target.selectionStart; refresh();
         const el = layer.querySelector(`[data-v="${k}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (er) {} }
       });

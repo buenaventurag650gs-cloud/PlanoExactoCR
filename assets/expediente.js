@@ -53,7 +53,8 @@
       ${r.nat ? `<dt>Naturaleza</dt><dd>${esc(r.nat)}</dd>` : ''}
       <dt>Área</dt><dd>${r.area ? `<span class="num">${fnum(r.area)}</span> m² en edicto` : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? `<span class="num">${fnum(r.areaCat)}</span> m² en catastro` : ''}${diff != null && Math.abs(diff) > 0.1 ? ` <span class="tag warn">${diff > 0 ? '+' : ''}${Math.round(diff * 100)} %</span>` : ''}</dd>
       ${nv.dims ? `<dt>Dimensiones</dt><dd>≈ <span class="num">${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)}</span> m <small class="sub">relación frente/fondo 1:${fnum(nv.dims.rel, 1)}, medida sobre el polígono catastral</small></dd>` : ''}
-      <dt>Ubicación</dt><dd>${esc(r.lugar || '—')}${r.ll ? `<small class="sub num">${r.ll[1].toFixed(5)}, ${r.ll[0].toFixed(5)}</small>` : ''}</dd>
+      ${PX.topo(r) ? `<dt>Topografía</dt><dd>${esc(PX.topo(r).txt)}</dd>` : ''}
+      <dt>Ubicación</dt><dd>${esc(r.lugar || '—')}<small class="sub">${r.isPlano ? 'Predio del catastro' : r.exact ? 'Ubicada por ' + r.loc + ' en el catastro' : 'Aproximada al centro del distrito'}${r.ll ? ' · ' + r.ll[1].toFixed(5) + ', ' + r.ll[0].toFixed(5) : ''}</small></dd>
       ${r.rev ? `<dt>Revisión</dt><dd>${esc(r.rev)}</dd>` : ''}</dl></section>`;
     const gl = r.isPlano ? [] : PX.explicar(r.grav, r.serv);
     const grav = r.isPlano ? '' : `<section class="blk"><h2>Gravámenes y servidumbres</h2>
@@ -67,23 +68,32 @@
     const pv = PX.pro.potDefaults(r), pc = PX.pro.potCalc(pv);
     const potc = pv.area ? `<section class="blk"><h2>Potencial constructivo <small>supuestos generales</small></h2>
       <div class="k4"><div><small>Huella (${pv.cob} %)</small><b class="num">${fnum(pc.huella, 0)} m²</b></div><div><small>En ${pv.pisos} pisos</small><b class="num">${fnum(pc.total, 0)} m²</b></div><div><small>Unidades de ${pv.unidad} m²</small><b class="num">${pc.unidades}</b></div><div><small>Lotes de ${fnum(pv.loteMin)} m²</small><b class="num">${pc.lotes}</b></div></div>
-      <p class="note2">Lote mínimo usado: ${fnum(pv.loteMin)} m² (${nv.vigente ? 'supuesto; confirme la zona del plan regulador' : 'normativa nacional sin alcantarillado sanitario'}). Cobertura y pisos son supuestos.</p></section>` : '';
+      <p class="note2">${esc(nv.titulo)}. Lote mínimo usado: ${fnum(pv.loteMin)} m² (${nv.vigente ? 'supuesto; confirme la zona del plan regulador' : 'normativa nacional sin alcantarillado sanitario'}). Cobertura y pisos son supuestos.</p></section>` : '';
+    const z = e.zh, pcr = PX.pecr(r), vd = PX.pro.valDefaults(r), vc = PX.pro.valCalc(r, vd);
+    const val = `<section class="blk"><h2>Valor y mercado</h2><dl class="kv sm">
+      ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : ''}
+      ${vc.total ? `<dt>Valor de referencia</dt><dd>${PX.duoI(vc.total, 'CRC')}<small class="sub">Terreno ${PX.duoI(vc.terreno, 'CRC')}${vd.ac ? ` + construcción estimada ${fnum(vd.ac)} m² ${vd.tip} (${PX.duoI(vc.vnr, 'CRC')})` : ''}</small></dd>` : ''}
+      ${vc.ratio ? `<dt>Base frente a referencia</dt><dd><b>${Math.round(vc.ratio * 100)} %</b></dd>` : ''}
+      ${e.aguaS ? `<dt>Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}</dd>` : `<dt>Agua potable</dt><dd>Sin cobertura registrada (AyA)</dd>`}
+      </dl>
+      ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de 8</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
+        <p class="note2">Rango ${PX.duoI(pcr[2], 'USD', '/m²')} a ${PX.duoI(pcr[3], 'USD', '/m²')}${r.usdm2 != null ? `; base vigente ${PX.duoI(r.usdm2, 'USD', '/m²')}, ${r.usdm2 < pcr[2] ? 'por debajo' : r.usdm2 > pcr[3] ? 'por encima' : 'dentro'} del rango` : ''}.</p></div>` : ''}
+      <p class="note2">Referencias orientativas, no avalúo. Construcción estimada con supuestos editables en la herramienta PRO «Valor de referencia».</p></section>`;
     const ana = `<section class="blk"><h2>Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
       ${PX.DIMS.map(d => `<div class="dm"><div class="dmh"><b>${d.n}</b><span class="num">${s[d.k] ?? '–'}</span></div><span class="track"><i style="width:${s[d.k] || 0}%"></i></span>
-        <p>${(s.why[d.k] || []).slice(0, 3).map(([p, t]) => esc(t)).join(' · ')}</p></div>`).join('')}</section>`;
+        <p>${(s.why[d.k] || []).slice(0, 2).map(([p, t]) => esc(t)).join(' · ')}</p></div>`).join('')}</section>`;
     const riesg = `<section class="blk"><h2>Riesgos posibles</h2><div class="rl">${ries.length ? ries.map(x => `<div class="r${x.n}"><i>${x.n === 1 ? 'i' : '!'}</i><span><b>${esc(x.t)}</b> <em>${lv[x.n]}</em><br>${esc(x.d)}</span></div>`).join('') : '<p>Sin riesgos detectados en los datos disponibles.</p>'}</div></section>`;
     const potl = `<section class="blk"><h2>Potencialidades</h2><div class="rl pos">${pots.length ? pots.slice(0, 6).map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div></section>`;
     const chk = `<section class="blk"><h2>Antes de ofertar</h2><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul></section>`;
 
+    const fuentes = `<section class="blk"><h2>Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
     h += `<section class="page">${head('Ficha del lote')}<div class="cols">
         <div class="col">${tl}${reg}${grav}</div>
-        <div class="col">${ana}${potl}</div></div>${foot(2)}</section>`;
-    h += `<section class="page">${head('Normativa y potencial')}<div class="cols"><div class="col">${norm}</div><div class="col">${potc}</div></div>${foot(3)}</section>`;
-    h += `<section class="page">${head('Riesgos y verificación')}<div class="cols">
-        <div class="col">${riesg}</div><div class="col">${chk}
-        <section class="blk"><h2>Fuentes</h2><p class="note2">Boletín Judicial (Poder Judicial) · Catastro del Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas · INVU: planes reguladores · MINAE: cobertura 2020, zonas de vida, cuencas · CCSS: sedes de salud · BCCR: tipo de cambio ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>
-        </div></div>${foot(4)}</section>`;
-    if (!r.isPlano && r.txt) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(5)}</section>`;
+        <div class="col">${val}${ana}</div></div>${foot(2)}</section>`;
+    h += `<section class="page">${head('Normativa, potencial y riesgos')}<div class="cols">
+        <div class="col">${norm}${potc}${chk}</div>
+        <div class="col">${potl}${riesg}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
+    if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
     PX.lamina.init(r);

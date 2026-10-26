@@ -81,6 +81,7 @@
       r.lugar = [r.dn, r.cn, r.pn].filter(Boolean).join(', ');
       r.search = PX.norm([r.nom, r.bar, r.plano, r.planoCat, r.fincaTxt, String(r.finca), r.exp, r.dn, r.cn, r.pn, r.nat, r.juz].join(' '));
       r.searchDigits = [r.plano, r.fincaTxt, r.exp, r.planoCat].join(' ').replace(/\D/g, '');
+      r.pub = r.pubF ? new Date(r.pubF + 'T12:00') : null;
       r.usdm2 = r.bv && PX.prof(r) ? PX.usd(r.bv, r.mon) / PX.prof(r) : null;
     }
     // medianas de US$/m² por cantón y provincia (remates vigentes con área)
@@ -97,6 +98,89 @@
 
   // Quita las frases de "libre de …" para no confundirlas con cargas reales
   PX.limpiarGrav = t => PX.norm(t).replace(/libres? de (gravamenes|anotaciones|hipotecas)( hipotecarios)?((,| y| e) (gravamenes|anotaciones|hipotecas))*/g, ' ');
+
+  // ---------- Íconos (trazo simple, color por CSS) ----------
+  const ic = (d, vb) => `<svg viewBox="${vb || '0 0 24 24'}" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  PX.ICON = {
+    'Lote': ic('<path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v9l8 4 8-4V7"/><path d="M12 11v9"/>'),
+    'Con construcción': ic('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
+    'Agrícola': ic('<path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 8-8 7z"/><path d="M12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 6 7 5.5z"/><path d="M5 21h14"/>'),
+    'Filial': ic('<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>'),
+    'Predio': ic('<path d="M4 6l7-2 9 3-2 13-12-2z"/><circle cx="12" cy="11" r="1.6"/>'),
+    cal: ic('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+    list: ic('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+    reset: ic('<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>'),
+    pin: ic('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'),
+    agua: ic('<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'),
+    valor: ic('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    terreno: ic('<path d="M3 18l5-7 4 5 3-3 6 5z"/><circle cx="17" cy="7" r="2"/>'),
+    norma: ic('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'),
+    registro: ic('<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h4"/>'),
+    entorno: ic('<circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/>'),
+    gavel: ic('<path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/>')
+  };
+  PX.tipoIcon = r => `<span class="ti${r.tipo === 'Agrícola' ? ' agro' : ''}" title="${r.tipo}">${PX.ICON[r.tipo] || PX.ICON.Lote}</span>`;
+  // Insignia de etapa del remate (1.º, 2.º, 3.º): martillo + número, usada en lista, ficha, mapa y expediente
+  PX.stageBadge = (st, small) => st < 0 ? '' : `<span class="stb s${st + 1}${small ? ' sm' : ''}" title="${PX.ETAPA[st]} · base al ${PX.PCT[st] * 100} %"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M9.2 1.6l5.2 5.2-1.6 1.6L7.6 3.2z M6.8 4l5.2 5.2-1.2 1.2L5.6 5.2z M7.4 7.4L1.8 13l1.2 1.2 5.6-5.6" fill="currentColor"/></svg>${st + 1}.º<i>${PX.PCT[st] * 100} %</i></span>`;
+  PX.whenTag = d => { const n = PX.days(d); if (n == null) return ''; const t = PX.when(d); return `<span class="when${n <= 0 ? ' hoy' : n === 1 ? ' manana' : n <= 7 ? ' pronto' : ''}">${t.charAt(0).toUpperCase() + t.slice(1)}</span>`; };
+
+  // ---------- Topografía a partir de las curvas de nivel (IGN 1:5 000) ----------
+  PX.topo = r => {
+    const e = r.ent || {};
+    if (e.pend == null && !e.suave) return null;
+    const p = e.pend != null ? e.pend : 3;
+    const c = p < 5 ? ['Plana', 'pendiente menor al 5 %'] : p < 15 ? ['Ondulada', 'pendiente entre 5 y 15 %'] : p < 30 ? ['Quebrada', 'pendiente entre 15 y 30 %'] : ['Muy quebrada', 'pendiente mayor al 30 %'];
+    return { clase: c[0], txt: `${c[0]}: ${e.pend != null ? 'pendiente aproximada de ' + e.pend + ' %' : c[1]}${e.elev != null ? ', a unos ' + PX.fnum(Math.round(e.elev)) + ' m s. n. m.' : ''}` };
+  };
+
+  // ---------- Escala PECR de valor por accesibilidad y dotación ----------
+  PX.PECR = [
+    [1, 'Rural aislado, acceso difícil, sin servicios disponibles', 1, 5],
+    [2, 'Rural, acceso limitado por camino de lastre o servidumbre', 3, 10],
+    [3, 'Acceso razonable, frente a camino público, sin servicios confirmados', 8, 20],
+    [4, 'Acceso consolidado, electricidad disponible, agua no confirmada', 12, 30],
+    [5, 'Acceso consolidado y disponibilidad de agua potable y electricidad', 20, 50],
+    [6, 'Entorno rural residencial, lote aprovechable y servicios disponibles', 35, 85],
+    [7, 'Periurbano, proximidad a centros poblados y equipamientos', 50, 150],
+    [8, 'Suelo urbano consolidado, infraestructura y potencial edificatorio', 80, 500]
+  ];
+  // Nivel PECR: reglas de acceso y dotación, calibradas con el valor de la zona homogénea de Hacienda (60 % valor, 40 % reglas)
+  PX.pecrCalc = r => {
+    const e = r.ent || {}, z = e.zh || {}, tg = r.tg || [];
+    const urb = e.cob === 'Zona urbana' || tg.includes('urbano'), frente = tg.includes('frente') || (e.via && e.via.d <= 10), agua = !!(e.aguaS && e.aguaS.length);
+    const sal = (e.salud || {}).d || 99999, esc = e.esc || 99999, vt = PX.norm((e.via || {}).t), vd = (e.via || {}).d || 9999;
+    const serv = (r.serv || []).some(x => /paso/i.test(x));
+    const a = z.k === 'U' && urb && frente && agua ? 8 : (z.k === 'U' || urb) && (sal <= 3000 || esc <= 1000) ? 7 : agua && frente && (r.area || PX.prof(r) || 0) <= 5000 ? 6 : agua && frente ? 5 : frente && sal <= 6000 ? 4 : frente ? 3 : (serv || /vereda|lastre/.test(vt) || vd <= 200) ? 2 : 1;
+    if (!z.v) return a;
+    const usd = z.v / PX.tc.venta;
+    const b = PX.PECR.reduce((m, x) => Math.abs(Math.log(usd / Math.sqrt(x[2] * x[3]))) < Math.abs(Math.log(usd / Math.sqrt(m[2] * m[3]))) ? x : m)[0];
+    return Math.max(1, Math.min(8, Math.round(0.4 * a + 0.6 * b)));
+  };
+  PX.pecr = r => r.pecr ? PX.PECR[r.pecr - 1] : null;
+
+  // ---------- Valor de referencia: zona homogénea de Hacienda + construcción por tipología (ONT) ----------
+  // Manual de valores base unitarios por tipología constructiva, ONT, valores a marzo de 2023 (Alcance 187, La Gaceta 178, 28/09/2023).
+  PX.TIPOLOGIAS = [
+    ['VC01', 'Concreto, económica (42–90 m²)', 260000, 50], ['VC02', 'Concreto, económica normal (80–110 m²)', 320000, 55],
+    ['VC03', 'Concreto, calidad media (100–150 m²)', 365000, 65], ['VC04', 'Concreto, calidad buena (140–220 m²)', 425000, 70],
+    ['VC05', 'Concreto, diseño especial (210–250 m²)', 485000, 90], ['VC06', 'Concreto, muy buena (240–300 m²)', 545000, 105],
+    ['VC07', 'Concreto, acabados de alto nivel (290–350 m²)', 700000, 120], ['VC08', 'Concreto, lujosa (340–400 m²)', 920000, 120],
+    ['VC09', 'Concreto, lujosa importada (390 m² o más)', 1495000, 120], ['VM01', 'Madera, acabados sencillos (36–90 m²)', 290000, 80],
+    ['VS01', 'Muro seco, una planta (100–150 m²)', 310000, 40], ['VS02', 'Muro seco, calidad buena (140–350 m²)', 500000, 60],
+    ['VE01', 'Modular en acero (24–90 m²)', 550000, 60], ['VP01', 'PVC espumado (45 m² o más)', 370000, 90]
+  ];
+  PX.ESTADOS = [['Óptimo', 1], ['Muy bueno', 0.97], ['Bueno', 0.9], ['Intermedio', 0.8], ['Regular', 0.68], ['Malo', 0.5]];
+  PX.valorRef = v => {
+    // v: { area, zh (₡/m²), ac (m² construidos), tip (código), edad (años), est (factor) }
+    const t = PX.TIPOLOGIAS.find(x => x[0] === v.tip) || PX.TIPOLOGIAS[1];
+    const terreno = (v.area || 0) * (v.zh || 0);
+    const vrn = (v.ac || 0) * t[2];
+    const x = Math.min(1, (v.edad || 0) / t[3]);
+    const fd = 1 - 0.5 * (x + x * x);           // Ross
+    const vnr = vrn * fd * (v.est || 1);          // Heidecke (estado de conservación)
+    return { terreno, vrn, fd, vnr, total: terreno + vnr, tip: t };
+  };
+
   // ---------- análisis multidimensional ----------
   // Cada dimensión va de 0 a 100 (más alto = mejor para quien compra) y trae sus razones.
   PX.DIMS = [
@@ -295,6 +379,27 @@
     if (hit) o.remate = hit.key;
     return o;
   };
+  // Zona homogénea de Hacienda en un punto (servicio ArcGIS público, permite consultas desde el navegador)
+  PX.zhQuery = async (lon, lat) => {
+    try {
+      const p = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: 'VALOR,COD_ZONAH,NOMBRE_ZONAH,TIPO_DE_USO,CATEGORIZADA', returnGeometry: 'false', f: 'json' });
+      const j = await (await fetch('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer/0/query?' + p)).json();
+      const t = j.features && j.features[0] && j.features[0].attributes; if (!t) return null;
+      return { v: t.VALOR, c: t.COD_ZONAH, n: t.NOMBRE_ZONAH, u: t.TIPO_DE_USO, k: t.CATEGORIZADA };
+    } catch (e) { return null; }
+  };
+  PX.zhAt = async (lon, lat) => { const z = await PX.zhQuery(lon, lat); return z ? `${z.c} · ${PX.cap(z.n)} · ${PX.duoT(z.v, 'CRC', '/m²')} · ${z.u}` : null; };
+  // Cobertura de agua potable (AyA, ESPH, ASADAS, municipal)
+  PX.aguaQuery = async (lon, lat) => {
+    try {
+      const L = ['AyA', 'ESPH', 'ASADA', 'Municipal'];
+      const p = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', sr: '4326', layers: 'all:0,1,2,3', tolerance: '0', mapExtent: `${lon - 0.01},${lat - 0.01},${lon + 0.01},${lat + 0.01}`, imageDisplay: '400,400,96', returnGeometry: 'false', f: 'json' });
+      const j = await (await fetch('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer/identify?' + p)).json();
+      const r = (j.results || []).map(f => L[f.layerId] || f.layerName);
+      return [...new Set(r)];
+    } catch (e) { return null; }
+  };
+  PX.aguaAt = async (lon, lat) => { const a = await PX.aguaQuery(lon, lat); return a == null ? null : a.length ? 'Cobertura de ' + a.join(', ') : 'Fuera de las áreas de cobertura registradas'; };
   PX.cobertura = async (lon, lat) => {
     try { const r = await fetch(`api/cobertura?lon=${lon}&lat=${lat}`); if (!r.ok) return null; const j = await r.json(); return j.cat || null; } catch (e) { return null; }
   };

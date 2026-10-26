@@ -49,11 +49,35 @@ aside.side { display: flex; flex-direction: column; min-height: 0; background: v
 .pane { overflow: auto; min-height: 0; flex: 1; }
 .pad { padding: 14px 16px; display: grid; gap: 12px; align-content: start; }
 
-details.grp { border-bottom: 1px solid var(--line); }
-details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 11px 16px; font: 600 12px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); }
+/* Grupos de filtros: encabezado con ícono, título y flecha grande; contenido en subsecciones */
+.fbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
+.fbar .lbl { margin-right: auto; }
+.fbar #nAct { font-size: 12px; }
+details.grp { margin: 0 12px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--chip); font: 700 13px/1 var(--f-body); letter-spacing: .02em; color: var(--ink); }
+details.grp[open] > summary { border-bottom: 1px solid var(--line); }
 details.grp > summary::-webkit-details-marker { display: none; }
-details.grp > summary::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
-details.grp[open] > summary::after { transform: rotate(-135deg); }
+details.grp > summary .gi { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--panel); color: var(--accent); }
+details.grp > summary .gt { flex: 1; }
+details.grp > summary .chev { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); color: var(--ink); transition: transform .15s; }
+details.grp[open] > summary .chev { transform: rotate(180deg); }
+.gbody .sub { display: grid; gap: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.gbody .sub:first-child { border-top: 0; padding-top: 0; }
+.chipsel { display: flex; flex-wrap: wrap; gap: 6px; }
+.chipsel label { cursor: pointer; }
+.chipsel input { position: absolute; opacity: 0; pointer-events: none; }
+.chipsel span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 12.5px; }
+.chipsel span::before { content: ""; width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--faint); }
+.chipsel input:checked + span { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chipsel input:checked + span::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent-soft); }
+.chipsel input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tipos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tipo { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; font-size: 11.5px; color: var(--muted); }
+.tipo svg { color: var(--faint); }
+.tipo[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.tipo[aria-pressed="true"] svg { color: var(--accent); }
+.tipo.agro[aria-pressed="true"], .tipo.agro:hover { border-color: #3E8E5A; color: #2E7D4F; }
+.tipo.agro svg { color: #4C9A68; }
 details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0; text-transform: none; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 999px; }
 .gbody { padding: 0 16px 14px; display: grid; gap: 10px; }
 .search { position: relative; }
@@ -69,7 +93,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .amt .sfx { display: grid; place-items: center; padding: 0 8px; font-size: 11.5px; color: var(--muted); }
 .stages { display: flex; gap: 6px; flex-wrap: wrap; }
 .stg { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; font-size: 12.5px; }
-.stg i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.stg { padding: 3px 8px 3px 4px; }
 .stg[aria-pressed="false"] { opacity: .45; }
 .toggles { display: grid; gap: 6px; font-size: 13px; }
 .toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
@@ -79,17 +103,39 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .attr.locked { color: var(--muted); border-style: dashed; }
 .attr .c { font-family: var(--f-mono); font-size: 11px; color: var(--faint); }
 .prohint { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--gold); }
-.listhead { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 16px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12.5px; color: var(--muted); }
-.listhead select { border: 0; background: transparent; color: var(--ink); font-weight: 600; cursor: pointer; max-width: 130px; }
-.item { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 12px; padding: 11px 16px 11px 0; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; background: transparent; width: 100%; text-align: left; }
+.listhead { position: sticky; top: 0; z-index: 2; display: grid; gap: 6px; padding: 9px 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12.5px; color: var(--muted); }
+.listhead .lh1, .listhead .lh2 { display: flex; align-items: center; gap: 8px; }
+.listhead .lh1 #count { margin-right: auto; }
+.listhead .lh2 { justify-content: space-between; }
+.listhead select { border: 1px solid var(--line); border-radius: 7px; padding: 5px 6px; background: var(--panel); color: var(--ink); font-weight: 600; cursor: pointer; }
+.seg.vw button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; }
+.dayh { position: sticky; top: 86px; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 6px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font: 700 11.5px/1.2 var(--f-body); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.dayh b { font-family: var(--f-mono); font-weight: 600; color: var(--faint); }
+.dayh.hoy, .dayh.manana { color: #A2462A; background: #FBEDE6; }
+/* Calendario */
+.calw { padding: 10px 16px 12px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+.calh { display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
+.calh button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; width: 30px; height: 28px; cursor: pointer; font-size: 15px; }
+.calg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.calg .dw { font-size: 10.5px; color: var(--faint); text-align: center; font-weight: 600; text-transform: uppercase; }
+.calg button { aspect-ratio: 1 / 0.9; border: 1px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; display: grid; place-items: center; align-content: center; gap: 1px; font-size: 12px; color: var(--faint); padding: 0; }
+.calg button.has { background: var(--chip); color: var(--ink); font-weight: 600; }
+.calg button.has i { font: 600 9.5px/1 var(--f-mono); font-style: normal; color: var(--accent); }
+.calg button.today { border-color: var(--accent); }
+.calg button.tom { box-shadow: inset 0 0 0 2px #E8956F; }
+.calg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.calg button[aria-pressed="true"] i { color: var(--accent-ink); }
+.item { display: grid; grid-template-columns: 34px 1fr auto; gap: 0 10px; padding: 11px 16px 11px 12px; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; background: transparent; width: 100%; text-align: left; align-items: start; }
+.item.tomorrow { background: linear-gradient(90deg, #FBEDE6, transparent 70%); }
+.item .ti { margin-top: 1px; }
 .item:hover, .item[aria-current="true"] { background: var(--chip); }
-.item .sb { background: var(--c); border-radius: 0 3px 3px 0; }
+.item .rt { display: grid; justify-items: end; gap: 3px; }
 .item .t1 { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .t2 { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item .mid { min-width: 0; padding-left: 12px; }
+.item .mid { min-width: 0; }
 .item .rt { text-align: right; }
 .item .price { font-weight: 600; }
-.item .when { font-size: 12px; color: var(--muted); }
+
 .tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
 .more { width: 100%; padding: 12px; border: 0; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; }
 .empty { padding: 24px 16px; color: var(--muted); }
@@ -133,6 +179,21 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .legend .sep { height: 1px; background: var(--line); }
 .lyrbtn { position: absolute; top: 12px; left: 12px; z-index: 600; box-shadow: var(--shadow); }
 .lyrpanel { position: absolute; top: 56px; left: 12px; z-index: 600; width: 300px; max-height: calc(100% - 80px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px 0 10px; }
+.lg-g { border-top: 1px solid var(--line); }
+.lg-g:first-child { border-top: 0; }
+.lg-g > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 14px; font: 700 11.5px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); background: var(--chip); }
+.lg-g > summary::-webkit-details-marker { display: none; }
+.lg-g > summary .chev { margin-left: auto; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); transition: transform .15s; }
+.lg-g[open] > summary .chev { transform: rotate(180deg); }
+.lg-g > .lyr:first-of-type { margin-top: 4px; }
+/* Catastro y vías públicas: se atenúan sus colores originales (verde y rosado) para un mapa más sutil */
+.tl-cat { filter: grayscale(1) brightness(.62) contrast(1.6); opacity: .5; }
+.on-sat .tl-cat { filter: grayscale(1) brightness(2.6); opacity: .7; }
+.tl-vias { filter: grayscale(1) brightness(1.75) contrast(.9); opacity: .55; }
+.on-sat .tl-vias { filter: grayscale(1) brightness(2.4); opacity: .35; }
+.infra { display: grid !important; place-items: center; border-radius: 50%; background: var(--panel); color: var(--ink); border: 1.5px solid var(--ink); box-shadow: var(--shadow); }
+.infra svg { width: 70%; height: 70%; }
+.infra:not(.big) { color: var(--muted); border-color: var(--muted); }
 .lyrpanel h4 { margin: 10px 14px 4px; font: 600 11px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
 .lyr { display: grid; grid-template-columns: 18px 1fr auto; gap: 2px 8px; align-items: center; padding: 6px 14px; font-size: 13px; cursor: pointer; }
 .lyr:hover { background: var(--chip); }
@@ -163,7 +224,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
 .pricebox .alt { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .timeline { display: grid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.tl { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); }
+.tl { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); }
 .tl:first-child { border-top: 0; }
 .tl i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 .tl .d { font-size: 13px; } .tl .d small { display: block; color: var(--muted); font-size: 11.5px; }
@@ -247,6 +308,7 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
     <div class="kpis" id="kpis"></div>
     <nav class="nav" aria-label="Cuenta">
       <div class="vista" role="group" aria-label="Vista de prueba: gratis o PRO" title="Etapa de prueba: cambia entre la vista gratis y la PRO"><span>Vista</span><button id="vFree" aria-pressed="false">Gratis</button><button id="vPro" aria-pressed="true">★ PRO</button></div>
+      <button class="btn sm" data-about="us">Quiénes somos</button>
       <button class="btn sm" id="bPlanes">Planes</button>
       <button class="btn sm" id="bCuenta">Mi cuenta <span class="badge" id="planBadge">Gratis</span></button>
       <div class="cur" role="group" aria-label="Moneda"><button id="cCRC" aria-pressed="true">₡</button><button id="cUSD" aria-pressed="false">US$</button></div>
@@ -262,7 +324,8 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
       </div>
 
       <div class="pane" id="p-rem" role="tabpanel">
-        <details class="grp" open><summary>Ubicación <span class="on" id="onU" hidden></span></summary><div class="gbody">
+        <div class="fbar"><span class="lbl">Filtros</span><span id="nAct" class="muted"></span><button class="btn sm" id="resetF" title="Quitar todos los filtros"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Restablecer</button></div>
+        <details class="grp" open><summary><span class="gi" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span class="gt">Ubicación</span><span class="on" id="onU" hidden></span><span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></summary><div class="gbody">
           <div class="search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <input id="q" type="search" placeholder="Lugar, barrio, finca, plano o expediente" aria-label="Buscar remates">
@@ -272,30 +335,42 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
             <div class="fld"><label for="fCanton">Cantón</label><select id="fCanton"><option value="">Todos</option></select></div>
           </div>
         </div></details>
-        <details class="grp" open><summary>Remate <span class="on" id="onR" hidden></span></summary><div class="gbody">
-          <div class="fld"><span class="lbl">Etapa del próximo remate</span><div class="stages" id="stages"></div></div>
-          <div class="fld"><span class="lbl">Base vigente</span>
+        <details class="grp" open><summary><span class="gi" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/></svg></span><span class="gt">Remate</span><span class="on" id="onR" hidden></span><span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></summary><div class="gbody">
+          <div class="sub"><span class="lbl">Etapa del próximo remate</span><div class="stages" id="stages"></div></div>
+          <div class="sub"><span class="lbl">Fechas</span><div class="chipsel">
+            <label><input type="checkbox" id="fSemana"><span>Remate en 7 días</span></label>
+            <label><input type="checkbox" id="fMes"><span>Publicados el último mes</span></label>
+          </div></div>
+          <div class="sub"><span class="lbl">Base vigente</span>
             <div class="row">
               <div class="amt"><span class="u cu">₡</span><input id="fMin" type="number" min="0" step="any" inputmode="decimal" placeholder="Mínimo" aria-label="Base mínima"><span class="sfx cs">millones</span></div>
               <div class="amt"><span class="u cu">₡</span><input id="fMax" type="number" min="0" step="any" inputmode="decimal" placeholder="Máximo" aria-label="Base máxima"><span class="sfx cs">millones</span></div>
             </div></div>
-          <div class="toggles"><label><input type="checkbox" id="fSemana"> Remate en los próximos 7 días</label></div>
         </div></details>
-        <details class="grp"><summary>Características <span class="on" id="onC" hidden></span></summary><div class="gbody">
-          <div class="fld"><label for="fTipo">Tipo de propiedad</label><select id="fTipo"><option value="">Todos</option><option>Lote</option><option>Con construcción</option><option>Agrícola</option><option>Filial</option></select></div>
-          <div class="toggles">
-            <label><input type="checkbox" id="fExact"> Solo ubicación exacta en el catastro</label>
-            <label><input type="checkbox" id="fNoServ"> Sin servidumbres</label>
-            <label><input type="checkbox" id="fPR"> Cantón con plan regulador vigente</label>
-            <label><input type="checkbox" id="fAgua"> Sin ríos ni quebradas a menos de 50 m</label>
-          </div>
-          <div class="fld"><span class="lbl">Atributos del lote <span class="pro">PRO</span></span><div class="attrs" id="attrs"></div></div>
-          <div class="prohint" id="attrHint"><span><span class="pro">PRO</span> Atributos de la versión PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>
+        <details class="grp"><summary><span class="gi" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v9l8 4 8-4V7"/></svg></span><span class="gt">Características</span><span class="on" id="onC" hidden></span><span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></summary><div class="gbody">
+          <div class="sub"><span class="lbl">Tipo de propiedad</span><div class="tipos" id="tipos"></div></div>
+          <div class="sub"><span class="lbl">Área</span>
+            <div class="row">
+              <div class="amt"><input id="aMin" type="number" min="0" step="any" inputmode="decimal" placeholder="Mínima" aria-label="Área mínima"><span class="sfx">m²</span></div>
+              <div class="amt"><input id="aMax" type="number" min="0" step="any" inputmode="decimal" placeholder="Máxima" aria-label="Área máxima"><span class="sfx">m²</span></div>
+            </div></div>
+          <div class="sub"><span class="lbl">Condiciones</span><div class="chipsel">
+            <label><input type="checkbox" id="fNoServ"><span>Sin servidumbres</span></label>
+            <label><input type="checkbox" id="fPR"><span>Plan regulador vigente</span></label>
+            <label><input type="checkbox" id="fAgua"><span>Sin ríos a menos de 50 m</span></label>
+            <label><input type="checkbox" id="fAyA"><span>Con servicio de agua</span></label>
+          </div></div>
+          <div class="sub"><span class="lbl">Atributos del lote <span class="pro">PRO</span></span><div class="attrs" id="attrs"></div>
+          <div class="prohint" id="attrHint"><span>Atributos de la versión PRO</span><button class="linkbtn" data-planes>Ver planes</button></div></div>
         </div></details>
-        <div class="listhead"><span><span id="count"></span> <button class="btn sm favbtn" id="favOnly" aria-pressed="false" title="Mostrar solo favoritos"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>Favoritos</button></span>
-          <span><select id="order" aria-label="Ordenar"><option value="fecha">Próxima fecha</option><option value="precio">Menor base</option><option value="area">Mayor área</option><option value="m2">Menor precio/m²</option><option value="score">Mejor índice</option></select>
-          <button class="btn sm" id="saveSearch" title="Guardar esta búsqueda en Mi cuenta">Guardar</button></span>
+        <div class="listhead">
+          <div class="lh1"><span id="count"></span>
+            <div class="seg vw" role="group" aria-label="Vista"><button id="vwList" aria-pressed="true" title="Lista"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista</button><button id="vwCal" aria-pressed="false" title="Calendario"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendario</button></div>
+            <button class="btn sm favbtn" id="favOnly" aria-pressed="false" title="Mostrar solo favoritos"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>Favoritos</button></div>
+          <div class="lh2"><select id="order" aria-label="Ordenar"><option value="fecha">Próxima fecha</option><option value="pub">Más recientes</option><option value="precio">Menor base</option><option value="area">Mayor área</option><option value="m2">Menor precio/m²</option><option value="score">Mejor índice</option></select>
+          <button class="btn sm" id="saveSearch" title="Guardar esta búsqueda en Mi cuenta">Guardar búsqueda</button></div>
         </div>
+        <div id="cal" hidden></div>
         <div id="list" role="list"></div>
       </div>
 
@@ -326,12 +401,11 @@ details.grp > summary .on { font: 600 10.5px/1 var(--f-mono); letter-spacing: 0;
       <div class="lyrpanel" id="lyrPanel" hidden></div>
       <div class="hoverbox" id="hoverbox" hidden></div>
       <div class="legend" aria-hidden="true">
-        <div class="r"><i style="--c:var(--s1)"></i>1.er remate · base completa</div>
-        <div class="r"><i style="--c:var(--s2)"></i>2.º remate · 75 %</div>
-        <div class="r"><i style="--c:var(--s3)"></i>3.er remate · 25 %</div>
+        <div class="r"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0V6.5M9 11.5V18M0 9H6.5M11.5 9H18" stroke="#2B5C8A" stroke-width="2.4" stroke-linecap="round"/><circle cx="9" cy="9" r="1.6" fill="#2B5C8A"/></svg><span class="stb s1 sm">1.º</span> base completa</div>
+        <div class="r"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0V6.5M9 11.5V18M0 9H6.5M11.5 9H18" stroke="#B7791F" stroke-width="2.4" stroke-linecap="round"/><circle cx="9" cy="9" r="1.6" fill="#B7791F"/></svg><span class="stb s2 sm">2.º</span> base al 75 %</div>
+        <div class="r"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0V6.5M9 11.5V18M0 9H6.5M11.5 9H18" stroke="#B42318" stroke-width="2.4" stroke-linecap="round"/><circle cx="9" cy="9" r="1.6" fill="#B42318"/></svg><span class="stb s3 sm">3.º</span> base al 25 %</div>
         <div class="sep"></div>
-        <div class="r loc"><i style="--c:var(--ink)"></i>Predio exacto (polígono al acercar)</div>
-        <div class="r loc"><i class="ring"></i>Aproximado al distrito</div>
+        <div class="r loc"><span style="width:18px;display:inline-grid;place-items:center"><i style="--c:#C8553D;width:8px;height:8px"></i></span>Favorito</div>
       </div>
       <section class="ficha" id="ficha" hidden aria-label="Ficha de la propiedad"></section>
     </div>

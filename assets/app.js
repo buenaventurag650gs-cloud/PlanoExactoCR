@@ -2,7 +2,8 @@
 (async function () {
   'use strict';
   const { $, esc, css, fdate, fnum, when } = PX;
-  let R, DIST, CANT, ZV, META;
+  let R, DIST, CANT, ZV, META, INFRA = null, ZMT = null;
+  const loadZMT = () => { ZMT = { type: 'FeatureCollection', features: [] }; PX.get('data/zmt.geojson').then(z => { ZMT = z; drawVectors(); }).catch(() => {}); };
   try {
     [R, DIST, META] = await Promise.all([PX.get('data/remates.json'), PX.get('data/distritos.geojson'), PX.get('data/meta.json')]);
   } catch (e) { $('list').innerHTML = '<div class="empty">No se pudieron cargar los datos. Recarga la página.</div>'; return; }
@@ -13,8 +14,8 @@
   // capas secundarias: no bloquean el arranque
   const extra = Promise.all([
     PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => []),
-    PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null)
-  ]).then(([p, s, c, z]) => { Object.assign(PX.ctx, { planes: p, salud: s, ready: true }); CANT = c; ZV = z; prepZV(); drawVectors(); });
+    PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null)
+  ]).then(([p, s, c, z, inf]) => { Object.assign(PX.ctx, { planes: p, salud: s, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
 
   const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
   const lockMsg = (t) => { openPlanes(t); };
@@ -54,8 +55,16 @@
   }
   fillCantones();
   const stOn = [true, true, true];
-  $('stages').innerHTML = [0, 1, 2].map(i => `<button class="stg" aria-pressed="true" data-i="${i}" style="--c:var(${PX.SC[i]})"><i></i>${PX.ETAPA[i]} <span class="num">${live.filter(r => r.st === i).length}</span></button>`).join('');
+  $('stages').innerHTML = [0, 1, 2].map(i => `<button class="stg" aria-pressed="true" data-i="${i}">${PX.stageBadge(i)}<span class="num">${live.filter(r => r.st === i).length}</span></button>`).join('');
   $('stages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (!b) return; const i = +b.dataset.i; stOn[i] = !stOn[i]; b.setAttribute('aria-pressed', stOn[i]); apply(); });
+
+  // Tipo de propiedad (botones con ícono; Agrícola en verde)
+  const TIPOS = ['Lote', 'Con construcción', 'Agrícola', 'Filial'];
+  const tipoOn = new Set();
+  function paintTipos() {
+    $('tipos').innerHTML = TIPOS.map(t => `<button class="tipo${t === 'Agrícola' ? ' agro' : ''}" data-t="${t}" aria-pressed="${tipoOn.has(t)}">${PX.ICON[t]}<span>${t === 'Con construcción' ? 'Construcción' : t}</span><span class="num muted">${live.filter(r => r.tipo === t).length}</span></button>`).join('');
+  }
+  $('tipos').addEventListener('click', e => { const b = e.target.closest('.tipo'); if (!b) return; const t = b.dataset.t; tipoOn.has(t) ? tipoOn.delete(t) : tipoOn.add(t); paintTipos(); apply(); });
 
   // Atributos del lote (suscripción)
   const ATTR = [
@@ -90,16 +99,19 @@
   }
   $('cCRC').onclick = () => setCur('CRC'); $('cUSD').onclick = () => setCur('USD');
 
-  const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, cur: PX.cur,
-    wk: $('fSemana').checked, tipo: $('fTipo').value, ex: $('fExact').checked, ns: $('fNoServ').checked, pr: $('fPR').checked, ag: $('fAgua').checked, attrs: [...attrOn], order: $('order').value });
+  const CHK = ['fSemana', 'fMes', 'fNoServ', 'fPR', 'fAgua', 'fAyA'];
+  const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, cur: PX.cur,
+    tipos: [...tipoOn], chk: Object.fromEntries(CHK.map(k => [k, $(k).checked])), attrs: [...attrOn], order: $('order').value, fav: onlyFav });
   function setFilt(s) {
     $('q').value = s.q || ''; $('fProv').value = s.prov || ''; fillCantones(); $('fCanton').value = s.canton || '';
     (s.st || [true, true, true]).forEach((v, i) => { stOn[i] = v; document.querySelector(`.stg[data-i="${i}"]`).setAttribute('aria-pressed', v); });
     if (s.cur && s.cur !== PX.cur) { PX.setCur(s.cur); setCurUI(); }
-    $('fMin').value = s.min || ''; $('fMax').value = s.max || ''; $('fSemana').checked = !!s.wk; $('fTipo').value = s.tipo || '';
-    $('fExact').checked = !!s.ex; $('fNoServ').checked = !!s.ns; $('fPR').checked = !!s.pr; $('fAgua').checked = !!s.ag;
+    $('fMin').value = s.min || ''; $('fMax').value = s.max || ''; $('aMin').value = s.amin || ''; $('aMax').value = s.amax || '';
+    tipoOn.clear(); (s.tipos || (s.tipo ? [s.tipo] : [])).forEach(t => tipoOn.add(t)); paintTipos();
+    CHK.forEach(k => $(k).checked = !!(s.chk ? s.chk[k] : (k === 'fSemana' ? s.wk : k === 'fNoServ' ? s.ns : k === 'fPR' ? s.pr : k === 'fAgua' ? s.ag : false)));
+    onlyFav = !!s.fav; $('favOnly').setAttribute('aria-pressed', onlyFav);
     attrOn.clear(); if (PX.isPro()) (s.attrs || []).forEach(a => attrOn.add(a)); $('order').value = s.order || 'fecha';
-    paintAttrs(); setTab('rem'); apply(); fitShown();
+    paintAttrs(); setTab('rem'); apply(); if (s.prov || s.canton || s.q) fitShown();
   }
 
   let shown = [], limit = 100;
@@ -107,19 +119,24 @@
   const sc = r => { if (!scoreCache.has(r.key)) scoreCache.set(r.key, PX.score(r)); return scoreCache.get(r.key); };
   function apply() {
     const qRaw = $('q').value.trim(), q = PX.norm(qRaw), qd = qRaw.replace(/\D/g, '');
-    const p = +$('fProv').value, c = $('fCanton').value, t = $('fTipo').value;
+    const p = +$('fProv').value, c = $('fCanton').value;
     const mult = PX.cur === 'CRC' ? 1e6 : 1e3;
     const mn = parseFloat($('fMin').value), mx = parseFloat($('fMax').value);
     const mnV = isNaN(mn) ? null : mn * mult, mxV = isNaN(mx) ? null : mx * mult;
-    const ex = $('fExact').checked, ns = $('fNoServ').checked, wk = $('fSemana').checked, pr = $('fPR').checked, ag = $('fAgua').checked;
+    const ns = $('fNoServ').checked, wk = $('fSemana').checked, pr = $('fPR').checked, ag = $('fAgua').checked, mes = $('fMes').checked, aya = $('fAyA').checked;
+    const an = parseFloat($('aMin').value), ax = parseFloat($('aMax').value);
+    const hace30 = new Date(PX.now - 30 * 864e5);
     const af = ATTR.filter(a => attrOn.has(a[0]));
     shown = live.filter(r => {
       if (onlyFav && !PX.isFav(r.key)) return false;
       if (!stOn[r.st]) return false;
       if (p && r.prov !== p) return false;
       if (c && r.cn !== c) return false;
-      if (t && r.tipo !== t) return false;
-      if (ex && !r.exact) return false;
+      if (tipoOn.size && !tipoOn.has(r.tipo)) return false;
+      if (mes && !(r.pub && r.pub >= hace30)) return false;
+      if (aya && !(r.ent && r.ent.aguaS)) return false;
+      if (!isNaN(an) && !(PX.prof(r) >= an)) return false;
+      if (!isNaN(ax) && !(PX.prof(r) <= ax)) return false;
       if (ns && r.serv && r.serv.length) return false;
       if (wk && PX.days(r.next) > 7) return false;
       if (pr && !(r.ent && r.ent.pr && r.ent.pr.si)) return false;
@@ -141,34 +158,38 @@
       : o === 'area' ? (a, b) => (PX.prof(b) || 0) - (PX.prof(a) || 0)
       : o === 'm2' ? (a, b) => m2(a) - m2(b)
       : o === 'score' ? (a, b) => (sc(b).total || 0) - (sc(a).total || 0)
+      : o === 'pub' ? (a, b) => (b.pub || 0) - (a.pub || 0)
       : (a, b) => a.next - b.next);
     // contadores por grupo
-    const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk, nC = !!t + ex + ns + pr + ag + attrOn.size;
+    const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size;
     [['onU', nU], ['onR', nR], ['onC', nC]].forEach(([id, n]) => { $(id).hidden = !n; $(id).textContent = n + (n === 1 ? ' filtro' : ' filtros'); });
+    const nt = nU + nR + nC + onlyFav; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = !nt;
     limit = 100; renderList(); renderMarkers();
   }
-  ['q', 'fMin', 'fMax'].forEach(id => $(id).addEventListener('input', apply));
-  ['fCanton', 'fTipo', 'fExact', 'fNoServ', 'fSemana', 'fPR', 'fAgua', 'order'].forEach(id => $(id).addEventListener('change', apply));
+  ['q', 'fMin', 'fMax', 'aMin', 'aMax'].forEach(id => $(id).addEventListener('input', apply));
+  ['fCanton', 'order'].concat(CHK).forEach(id => $(id).addEventListener('change', apply));
+  $('resetF').onclick = () => { setFilt({ order: $('order').value }); calDay = null; toast('Filtros restablecidos'); };
   $('fProv').addEventListener('change', () => { fillCantones(); $('fCanton').value = ''; apply(); fitShown(); });
   $('fCanton').addEventListener('change', fitShown);
   $('saveSearch').onclick = () => {
-    const n = prompt_('Nombre para esta búsqueda', [($('fCanton').value || PX.PROVS[+$('fProv').value - 1] || 'Todo el país'), $('fTipo').value].filter(Boolean).join(' · '));
+    const n = prompt_('Nombre para esta búsqueda', [($('fCanton').value || PX.PROVS[+$('fProv').value - 1] || 'Todo el país'), [...tipoOn].join(', ')].filter(Boolean).join(' · '));
     n.then(name => { if (!name) return; PX.acct.busquedas.unshift({ n: name, s: filtState(), t: Date.now() }); PX.saveAcct(); toast('Búsqueda guardada en Mi cuenta'); });
   };
 
   // ---------- lista ----------
   function itemHTML(r) {
-    const tags = [r.exact ? `<span class="tag ok">Exacta por ${r.loc}</span>` : `<span class="tag warn">Aproximada</span>`, `<span class="tag">${esc(r.tipo)}</span>`];
+    const tags = [`<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span>`];
     if (r.serv && r.serv.length) tags.push(`<span class="tag warn">Servidumbre</span>`);
+    if (r.pub && PX.now - r.pub < 7 * 864e5) tags.push(`<span class="tag ok">Nuevo</span>`);
     if (PX.sigo(r.key)) tags.push(`<span class="tag gold">Siguiendo</span>`);
-    const a = PX.prof(r);
-    return `<button class="item" role="listitem" data-k="${r.key}" style="--c:var(${PX.SC[r.st]})"${open === r.key ? ' aria-current="true"' : ''}>
-      <span class="sb"></span>
+    const a = PX.prof(r), dd = PX.days(r.next);
+    return `<button class="item${dd != null && dd <= 1 ? ' tomorrow' : ''}" role="listitem" data-k="${r.key}"${open === r.key ? ' aria-current="true"' : ''}>
+      ${PX.tipoIcon(r)}
       <span class="mid"><div class="t1">${esc(r.nom)}</div>
         <div class="t2">${esc([r.cn, r.pn].filter(Boolean).join(', ') || 'Ubicación por definir')} · ${a ? fnum(a) + ' m²' : 'área s/d'}</div>
         <div class="tags">${tags.join('')}</div></span>
       <span class="rt"><div class="price">${PX.duo(r.bv, r.mon)}</div>
-        <div class="when">${PX.ETAPA[r.st]}</div><div class="when">${when(r.next)}</div>
+        <span>${PX.stageBadge(r.st, true)} ${PX.whenTag(r.next)}</span>
         <span class="fav" data-fav="${r.key}" role="button" aria-label="${PX.isFav(r.key) ? 'Quitar de favoritos' : 'Agregar a favoritos'}" aria-pressed="${PX.isFav(r.key)}" title="${PX.isFav(r.key) ? 'En favoritos' : 'Agregar a favoritos'}">${PX.HEART}</span></span>
     </button>`;
   }
@@ -182,11 +203,38 @@
   }
   let onlyFav = false;
   $('favOnly').onclick = () => { onlyFav = !onlyFav; $('favOnly').setAttribute('aria-pressed', onlyFav); apply(); };
+  // Vista lista (agrupada por fecha cuando se ordena por fecha) o calendario
+  let view = 'list', calDay = null, calMonth = null;
+  const dayKey = d => d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
   function renderList() {
-    $('count').innerHTML = `<b class="num">${shown.length}</b> de ${live.length}`;
-    if (!shown.length) { $('list').innerHTML = '<div class="empty">Ningún remate cumple esos filtros. Prueba quitar alguno o ampliar el rango de precio.</div>'; return; }
-    $('list').innerHTML = shown.slice(0, limit).map(itemHTML).join('') + (shown.length > limit ? `<button class="more" id="more">Mostrar ${Math.min(100, shown.length - limit)} más</button>` : '');
+    const src = view === 'cal' && calDay ? shown.filter(r => dayKey(r.next) === calDay) : shown;
+    $('count').innerHTML = `<b class="num">${src.length}</b> de ${live.length}`;
+    if (view === 'cal') renderCal();
+    if (!src.length) { $('list').innerHTML = `<div class="empty">${view === 'cal' && !calDay ? 'Elige un día del calendario para ver sus remates.' : 'Ningún remate cumple esos filtros. Prueba quitar alguno o usa «Restablecer».'}</div>`; return; }
+    const page = src.slice(0, limit);
+    let h = '';
+    if ($('order').value === 'fecha' && !(view === 'cal' && calDay)) {
+      let last = '';
+      const cnt = {}; src.forEach(r => { const k = dayKey(r.next); cnt[k] = (cnt[k] || 0) + 1; });
+      for (const r of page) { const k = dayKey(r.next); if (k !== last) { last = k; const n = PX.days(r.next); h += `<div class="dayh${n <= 0 ? ' hoy' : n === 1 ? ' manana' : ''}">${n <= 0 ? 'Hoy' : n === 1 ? 'Mañana' : ''}${n <= 1 ? ' · ' : ''}${fdate(r.next)} <b>${cnt[k]}</b></div>`; } h += itemHTML(r); }
+    } else h = page.map(itemHTML).join('');
+    $('list').innerHTML = h + (src.length > limit ? `<button class="more" id="more">Mostrar ${Math.min(100, src.length - limit)} más</button>` : '');
   }
+  function renderCal() {
+    const byDay = {}; shown.forEach(r => { const k = dayKey(r.next); byDay[k] = (byDay[k] || 0) + 1; });
+    if (!calMonth) calMonth = new Date(PX.now.getFullYear(), PX.now.getMonth(), 1);
+    const y = calMonth.getFullYear(), m = calMonth.getMonth(), first = (new Date(y, m, 1).getDay() + 6) % 7, nd = new Date(y, m + 1, 0).getDate();
+    const today = dayKey(PX.now), tom = dayKey(new Date(PX.now.getTime() + 864e5));
+    let g = ['L', 'K', 'M', 'J', 'V', 'S', 'D'].map(d => `<span class="dw">${d}</span>`).join('') + '<span></span>'.repeat(first);
+    for (let d = 1; d <= nd; d++) { const k = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, n = byDay[k] || 0; g += `<button data-day="${k}" class="${n ? 'has' : ''}${k === today ? ' today' : ''}${k === tom ? ' tom' : ''}" aria-pressed="${calDay === k}"${n ? '' : ' disabled'} title="${n} remate${n === 1 ? '' : 's'}">${d}${n ? `<i>${n}</i>` : ''}</button>`; }
+    $('cal').innerHTML = `<div class="calw"><div class="calh"><button data-cm="-1" aria-label="Mes anterior">‹</button><span>${PX.MESL[m].charAt(0).toUpperCase() + PX.MESL[m].slice(1)} ${y}</span><button data-cm="1" aria-label="Mes siguiente">›</button></div><div class="calg">${g}</div><div class="foot">El número indica cuántos remates hay ese día con los filtros activos. El borde naranja marca mañana.</div></div>`;
+  }
+  $('cal').addEventListener('click', e => {
+    const d = e.target.closest('[data-day]'); if (d) { calDay = calDay === d.dataset.day ? null : d.dataset.day; limit = 100; renderList(); return; }
+    const cm = e.target.closest('[data-cm]'); if (cm) { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + +cm.dataset.cm, 1); renderCal(); }
+  });
+  function setView(v) { view = v; $('vwList').setAttribute('aria-pressed', v === 'list'); $('vwCal').setAttribute('aria-pressed', v === 'cal'); $('cal').hidden = v !== 'cal'; if (v === 'cal' && !calDay) { const nx = shown.filter(r => r.next).sort((a, b) => a.next - b.next)[0]; calDay = nx ? dayKey(nx.next) : null; if (nx) calMonth = new Date(nx.next.getFullYear(), nx.next.getMonth(), 1); } limit = 100; renderList(); }
+  $('vwList').onclick = () => setView('list'); $('vwCal').onclick = () => setView('cal');
   $('list').addEventListener('click', e => {
     if (e.target.id === 'more') { limit += 100; renderList(); return; }
     const fv = e.target.closest('[data-fav]'); if (fv) { e.stopPropagation(); favToggle(fv.dataset.fav); return; }
@@ -206,15 +254,34 @@
   const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 19 }, o));
   const carto = (v, o) => L.tileLayer('https://{s}.basemaps.cartocdn.com/{v}/{z}/{x}/{y}{r}.png', Object.assign({ v, subdomains: 'abcd', maxZoom: 19, attribution: cartoAttr }, o));
   // Mapas base: Calles (CARTO Voyager, con color), OpenStreetMap estándar, topográfico, gris claro y satélite con nombres
-  const voyager = carto('rastertiles/voyager');
+  // Los nombres (calles, poblados, ríos) van en una capa superior para que no los tapen las capas temáticas
+  map.createPane('lbl').style.zIndex = 450; map.getPane('lbl').style.pointerEvents = 'none';
+  const voyager = carto('rastertiles/voyager_nolabels');
+  const lblOpt = { pane: 'lbl', zIndex: 5 };
   const base = {
-    calles: L.layerGroup([voyager]),
+    calles: L.layerGroup([voyager, carto('rastertiles/voyager_only_labels', lblOpt)]),
     osm: L.layerGroup([L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osmAttr })]),
     topo: L.layerGroup([esri('World_Topo_Map', { attribution: 'Mapa &copy; Esri, HERE, Garmin, USGS, OpenStreetMap' })]),
-    gris: L.layerGroup([carto('light_all')]),
+    gris: L.layerGroup([carto('light_nolabels'), carto('light_only_labels', lblOpt)]),
     sat: L.layerGroup([esri('World_Imagery', { attribution: 'Imágenes &copy; Esri, Maxar, Earthstar Geographics' }),
-      esri('Reference/World_Transportation', { opacity: 0.85 }), esri('Reference/World_Boundaries_and_Places', { attribution: 'Nombres &copy; Esri' })])
+      esri('Reference/World_Transportation', Object.assign({ opacity: 0.8 }, lblOpt)), esri('Reference/World_Boundaries_and_Places', Object.assign({ attribution: 'Nombres &copy; Esri' }, lblOpt))])
   };
+  // Servicios ArcGIS (Hacienda, AyA): teselas desde «export», con estilo propio (dynamicLayers)
+  const AGS = L.TileLayer.extend({
+    getTileUrl(c) {
+      const b = this._tileCoordsToBounds(c), sw = L.CRS.EPSG3857.project(b.getSouthWest()), ne = L.CRS.EPSG3857.project(b.getNorthEast());
+      const q = new URLSearchParams({ bbox: [sw.x, sw.y, ne.x, ne.y].join(','), bboxSR: 3857, imageSR: 3857, size: '256,256', format: 'png32', transparent: 'true', f: 'image' });
+      if (this.options.dyn) q.set('dynamicLayers', JSON.stringify(this.options.dyn)); else q.set('layers', this.options.layers);
+      return this._url + '/export?' + q;
+    }
+  });
+  const ags = (url, o) => new AGS(url, Object.assign({ maxZoom: 19, tileSize: 256 }, o));
+  const sfs = (fill, line, w) => ({ type: 'esriSFS', style: 'esriSFSSolid', color: fill, outline: { type: 'esriSLS', style: 'esriSLSSolid', color: line, width: w || 0.8 } });
+  const ZH_DYN = [{ id: 0, source: { type: 'mapLayer', mapLayerId: 0 }, drawingInfo: { renderer: { type: 'simple', symbol: sfs([233, 196, 106, 38], [176, 120, 40, 210], 0.9) }, showLabels: true,
+    labelingInfo: [{ labelExpression: '[COD_ZONAH]', labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal', symbol: { type: 'esriTS', color: [120, 72, 20, 255], haloColor: [255, 255, 255, 230], haloSize: 1.5, font: { family: 'Arial', size: 8, weight: 'bold' } } }] } }];
+  const AG_COL = [['AyA', [59, 139, 217]], ['ESPH', [42, 157, 143]], ['ASADA', [106, 153, 78]], ['Municipal', [157, 141, 201]]];
+  const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(60), AG_COL[i][1].concat(170), 0.7) } } }));
+  const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   const BASES = [['calles', 'Calles'], ['osm', 'OpenStreetMap'], ['topo', 'Topográfico'], ['gris', 'Gris claro'], ['sat', 'Satélite con nombres']];
 
   // Estilos propios para los servicios WMS (SLD), en lugar de los colores originales
@@ -248,41 +315,51 @@
   const LY = [
     { g: 'Referencia', id: 'cantones', n: 'Límites cantonales', free: true, on: true, hover: true, lg: [['ln', 'var(--muted)', 'Cantón']] },
     { id: 'distritos', n: 'Límites distritales', free: true, on: true, lg: [['ln', 'var(--dline)', 'Distrito']] },
-    { id: 'catastro', n: 'Predios del catastro', z: 15, free: true, on: true, mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { minZoom: 15, opacity: 0.75, zIndex: 8, attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' }) },
+    { id: 'catastro', n: 'Predios del catastro', z: 15, free: true, on: true, lg: [['ln', '#8A948F', 'Lindero de predio']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { minZoom: 15, zIndex: 8, className: 'tl-cat', attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' }) },
+    { id: 'rios_n', n: 'Nombres de ríos', z: 13, free: true, on: true, mk: () => wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', minZoom: 13, zIndex: 6, sld_body: sld('IGN_NG:hidronimos_25k', `<Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule>`), attribution: 'Hidrónimos &copy; IGN' }) },
     { id: 'planes', n: 'Estado del plan regulador', free: true, hover: true, lg: PRC.map(p => ['', p[2], p[1]]) },
-    { g: 'Ambiente', id: 'zv', n: 'Zonas de vida', hover: true, lg: ZVG.map(g => ['', g[2], g[1]]) },
+    { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea (código y valor al pasar el mouse)']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
+    { id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
+    { g: 'Servicios e infraestructura', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
+    { id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
+    { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
+    { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
+    { g: 'Ambiente y restricciones', id: 'zv', n: 'Zonas de vida', hover: true, lg: ZVG.map(g => ['', g[2], g[1]]) },
     { id: 'cob', n: 'Uso y cobertura del suelo 2020', hover: true, lg: MAF.filter(m => m[0] !== 'Red vial').map(([n, c]) => ['', c, n]).concat([['', MAFO, 'Otros']]), mk: () => wms(SINIA + 'MAF2020/wms', 'MAF2020', { sld_body: mafSld, opacity: 0.9, zIndex: 3, attribution: 'Mapa agropecuario y forestal 2020 &copy; MINAE' }) },
     { id: 'hidro', n: 'Ríos y quebradas', z: 13, lg: [['ln', HIDRO, 'Cauce (IGN 1:5 000)']], mk: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:hidrografia_5000', { minZoom: 13, zIndex: 6, sld_body: sld('IGN_5:hidrografia_5000', lineRule(HIDRO, 1.6, 0.95)), attribution: 'Hidrografía &copy; IGN' }) },
     { id: 'curvas', n: 'Curvas de nivel cada 10 m', z: 15, lg: [['ln', CURV, 'Curva de nivel']], mk: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:curvas_5000', { minZoom: 15, zIndex: 5, sld_body: sld('IGN_5:curvas_5000', lineRule(CURV, 0.7, 0.75)), attribution: 'Curvas &copy; IGN' }) },
     { id: 'prot', n: 'Franjas de protección de ríos', note: 'GAM, no oficial', z: 13, lg: [['', PROT, 'Franja de protección']], mk: () => wms(SINIA + 'PNUD_TEVU/wms', 'areas_proteccion_no_oficial', { minZoom: 13, zIndex: 4, sld_body: sld('areas_proteccion_no_oficial', polyRule(PROT, 0.22, PROT, 0.8)), attribution: 'Protección de ríos (no oficial) &copy; PNUD-TEVU' }) },
     { id: 'psa', n: 'Pago por servicios ambientales 2025', lg: [['', PSA, 'Contrato PSA']], mk: () => wms(SINIA + 'FONAFIFO/wms', 'psa2025', { zIndex: 4, sld_body: sld('psa2025', polyRule(PSA, 0.3, '#386641', 0.8)), attribution: 'PSA &copy; FONAFIFO' }) },
-    { g: 'Mercado', id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
-    { g: 'Infraestructura', id: 'vias', n: 'Vías públicas', z: 13, mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, opacity: 0.8, zIndex: 7, attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
-    { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
-    { id: 'zmt', n: 'Zona pública costera', z: 13, mk: () => wms('https://geos.snitcr.go.cr/be/IGN/wms', 'IGN:lineas_digitales,IGN:mojones', { minZoom: 13, zIndex: 7, attribution: 'Zona pública &copy; IGN' }) }
+    { id: 'zmt', n: 'Zona marítimo terrestre', note: 'calculada desde la línea de costa', lg: [['', '#4FA3F0', 'Zona pública: primeros 50 m'], ['', '#E9C46A', 'Zona restringida: 50 a 200 m']] }
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base', 'calles'); if (!base[baseId]) baseId = 'calles';
-  const vec = { precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
+  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   function syncLayers() {
     for (const k in base) { if (k === baseId) base[k].addTo(map); else base[k].remove(); }
+    map.getContainer().classList.toggle('on-sat', baseId === 'sat');
+    if (lyrState.zmt && allowed(LY.find(l => l.id === 'zmt')) && !ZMT) loadZMT();
     for (const l of LY) { const on = lyrState[l.id] && allowed(l); if (on && !map.hasLayer(l.layer)) l.layer.addTo(map); if (!on && map.hasLayer(l.layer)) l.layer.remove(); }
     PX.store.set('px-layers', lyrState); PX.store.set('px-base', baseId);
   }
+  const lyrOpen = PX.store.get('px-lyrg', { 'Mapa base': true, Referencia: true });
   function renderLyrPanel() {
-    let h = `<h4>Mapa base</h4><div class="lyr" style="grid-template-columns:1fr 1fr;gap:6px 8px">${BASES.map(([k, n]) => `<label><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}> ${n}</label>`).join('')}</div>`;
+    let h = `<details class="lg-g"${lyrOpen['Mapa base'] ? ' open' : ''} data-g="Mapa base"><summary>Mapa base<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary><div class="lyr" style="grid-template-columns:1fr 1fr;gap:6px 8px">${BASES.map(([k, n]) => `<label><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}> ${n}</label>`).join('')}</div></details>`;
+    let open_ = false;
     for (const l of LY) {
-      if (l.g) h += `<h4>${l.g}</h4>`;
+      if (l.g) { if (open_) h += '</details>'; const nOn = LY.filter(x => x.g === l.g).length; h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`; open_ = true; }
       const ok = allowed(l), on = lyrState[l.id] && ok;
       h += `<label class="lyr${ok ? '' : ' locked'}" data-id="${l.id}"><input type="checkbox"${on ? ' checked' : ''}${ok ? '' : ' disabled'}>
         <span>${l.n}${l.note ? ` <small>${l.note}</small>` : ''}${l.z ? ` <small>zoom ${l.z}+</small>` : ''}</span><span>${l.free ? '' : PX.PRO}${ok && l.hover && on ? ' <small>pasa el mouse</small>' : ''}</span>
-        ${on && l.lg ? `<span class="lg">${l.lg.map(([t, c, n]) => `<span><i class="${t}" style="--c:${c}"></i>${esc(n)}</span>`).join('')}</span>` : ''}</label>`;
+        ${on && l.lg && l.lg.length ? `<span class="lg">${l.lg.map(([t, c, n]) => `<span><i class="${t}" style="--c:${c}"></i>${esc(n)}</span>`).join('')}</span>` : ''}</label>`;
     }
-    h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, MINAE, INVU y CCSS con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar.</div>`;
+    if (open_) h += '</details>';
+    h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, Registro Inmobiliario, IGN, Hacienda, AyA, MINAE, INVU y CCSS con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar. Las amenazas de la CNE se agregarán cuando su servicio esté disponible.</div>`;
     $('lyrPanel').innerHTML = h;
   }
+  $('lyrPanel').addEventListener('toggle', e => { const d = e.target.closest('details.lg-g'); if (d) { lyrOpen[d.dataset.g] = d.open; PX.store.set('px-lyrg', lyrOpen); } }, true);
   $('lyrBtn').onclick = () => { const p = $('lyrPanel'); p.hidden = !p.hidden; $('lyrBtn').setAttribute('aria-expanded', !p.hidden); if (!p.hidden) renderLyrPanel(); };
   $('lyrPanel').addEventListener('click', e => {
     const lk = e.target.closest('.lyr.locked'); if (lk) { e.preventDefault(); return lockMsg('Las capas ambientales y de infraestructura se incluyen en la suscripción.'); }
@@ -322,6 +399,8 @@
       vec.precios.addLayer(L.geoJSON(CANT, Object.assign({ style: f => { const m = medCant(f); const c = m ? PC.col(PX.conv(m.v, 'USD', PX.cur)) : null; return { color: css('--panel'), weight: 0.6, fillColor: c || css('--chip'), fillOpacity: c ? 0.62 : 0.25 }; } }, o)));
     }
     if (ZV) vec.zv.addLayer(L.geoJSON(ZV, Object.assign({ style: f => ({ color: f.properties.col, weight: 0.5, opacity: 0.6, fillColor: f.properties.col, fillOpacity: 0.38 }), attribution: 'Zonas de vida &copy; CENIGA (MINAE)' }, o)));
+    if (INFRA) for (const f of INFRA.features) { const t = f.properties.t, big = t !== 'Aeródromo'; const mk = L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { pane: 'ctx', icon: L.divIcon({ className: 'infra' + (big ? ' big' : ''), iconSize: big ? [26, 26] : [18, 18], html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICX[t]}</svg>` }) }).bindTooltip(`<b>${esc(f.properties.n)}</b><br>${t}`, { direction: 'top' }); vec.infra.addLayer(mk); }
+    if (ZMT) vec.zmt.addLayer(L.geoJSON(ZMT, Object.assign({ style: f => f.properties.t === 'publica' ? { stroke: false, fillColor: '#4FA3F0', fillOpacity: 0.45 } : { stroke: false, fillColor: '#E9C46A', fillOpacity: 0.38 } }, o)));
     for (const s of PX.ctx.salud || []) vec.salud.addLayer(L.circleMarker([s.ll[1], s.ll[0]], { renderer: ctxR, pane: 'ctx', radius: s.c === 'EBAIS' ? 3 : 5, color: css('--panel'), weight: 1, fillColor: css('--accent'), fillOpacity: 0.9, interactive: false }));
     syncLayers();
   }
@@ -334,6 +413,13 @@
     hovT = requestAnimationFrame(() => { hovT = null; hover(e); });
   });
   map.on('mouseout', () => { hb.hidden = true; });
+  const aCache = {}, aT = {};
+  function asyncRow(k, x, y, e, rows, label, fn) {
+    const key = k + x.toFixed(4) + ',' + y.toFixed(4);
+    if (key in aCache) { rows.push([label, aCache[key]]); return; }
+    rows.push([label, '…']); clearTimeout(aT[k]);
+    aT[k] = setTimeout(async () => { aCache[key] = (await fn(x, y)) || 'Sin dato en este punto'; hover(e); }, 380);
+  }
   function hover(e) {
     if (overMarker || window.innerWidth <= 900) { hb.hidden = true; return; }
     const x = e.latlng.lng, y = e.latlng.lat, rows = [];
@@ -344,6 +430,8 @@
       if (lastCob.k === k) rows.push(['Uso del suelo', lastCob.v || 'Sin dato']);
       else { rows.push(['Uso del suelo', '…']); clearTimeout(cobT); cobT = setTimeout(async () => { const v = await PX.cobertura(x.toFixed(5), y.toFixed(5)); lastCob = { k, v: v || 'Sin dato en este punto' }; hover(e); }, 380); }
     }
+    if (on('zh') && map.getZoom() >= 13) asyncRow('zh', x, y, e, rows, 'Zona homogénea', PX.zhAt);
+    if (on('agua')) asyncRow('ag', x, y, e, rows, 'Agua potable', PX.aguaAt);
     if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador · ' + f.properties.canton, PX.prText(f.properties)]); }
     if (on('precios')) { const f = hit(CANT, x, y); if (f) { const m = medCant(f); rows.push(['Precio por m² · ' + f.properties.k, m ? `${PX.duoT(m.v, 'USD', '/m²')}, mediana de ${m.n} remates` : 'Menos de 3 remates con área']); } }
     if (on('cantones')) { const f = hit(CANT, x, y); const d = hit(DIST, x, y); if (f) rows.push(['Ubicación', [d && d.properties.d, f.properties.k].filter(Boolean).join(', ')]); }
@@ -359,24 +447,25 @@
   function tip(r) {
     const a = PX.prof(r);
     if (r.isPlano) return `<span class="tipn">${esc(r.nom)}</span>${a ? fnum(a) + ' m²' : ''}<br><span class="tipm">${esc(r.lugar)}</span>`;
-    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st]} · ${fdate(r.next)}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
+    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.stageBadge(r.st, true)} ${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st]} · ${fdate(r.next)}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
   }
   const ringLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
+  // Marcador en cruz: dos líneas que se cruzan sobre el punto; color según la etapa del remate
+  const XC = ['#2B5C8A', '#B7791F', '#B42318'];
+  const xIcon = (st, big, fav) => { const c = XC[st] || '#15302A', s2 = big === 2 ? 26 : big ? 20 : 14, h = s2 / 2, g = 2.5; return L.divIcon({ className: 'xh', iconSize: [s2, s2], iconAnchor: [h, h], html: `<svg width="${s2}" height="${s2}" viewBox="0 0 ${s2} ${s2}"><path d="M${h} 0V${h - g}M${h} ${h + g}V${s2}M0 ${h}H${h - g}M${h + g} ${h}H${s2}" stroke="${c}" stroke-width="${big === 2 ? 3 : big ? 2.4 : 2}" stroke-linecap="round"/>${fav ? `<circle cx="${h}" cy="${h}" r="3.2" fill="#C8553D"/>` : `<circle cx="${h}" cy="${h}" r="1.6" fill="${c}"/>`}</svg>` }); };
   function renderMarkers() {
     markers.clearLayers(); polys.clearLayers();
     const z = map.getZoom();
     for (const r of shown) {
       if (!r.ll) continue;
-      const col = css(PX.SC[r.st]), ll = [r.ll[1], r.ll[0]];
+      const col = XC[r.st], ll = [r.ll[1], r.ll[0]];
       const on = l => { l.on('click', () => openFicha(r.key, true)); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
-      if (r.exact && r.poly && z >= 14) {
-        const pg = L.polygon(ringLL(r), { color: col, weight: 2, fillColor: col, fillOpacity: 0.28 });
+      if (r.exact && r.poly && z >= 15) {
+        const pg = L.polygon(ringLL(r), { color: col, weight: 2, fillColor: col, fillOpacity: 0.18 });
         on(pg); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
       }
-      const m = r.exact
-        ? L.circleMarker(ll, { radius: z >= 14 ? 4 : 6, color: css('--panel'), weight: 1.5, fillColor: col, fillOpacity: 1 })
-        : L.circleMarker(ll, { radius: 9, color: col, weight: 1.5, dashArray: '3 3', fillColor: col, fillOpacity: 0.12 });
-      on(m); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -6] });
+      const m = L.marker(ll, { icon: xIcon(r.st, z >= 13 ? 2 : z >= 10 ? 1 : 0, PX.isFav(r.key)), keyboard: false, riseOnHover: true });
+      on(m); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -10] });
       markers.addLayer(m);
     }
   }
@@ -439,45 +528,65 @@
         <span class="alt eqbig">${PX.other(r.bv, r.mon)}</span>
         <span class="alt"><span>${a ? fnum(a) + ' m²' : 'área s/d'}</span>${r.usdm2 ? `<span>${PX.duoI(r.usdm2, 'USD', ' por m²')}</span>` : ''}</span></div>`;
     }
-    const tl = (r.fd || []).map((d, k) => `<div class="tl ${k < r.st ? 'past' : ''} ${k === r.st ? 'now' : ''}" style="--c:var(${PX.SC[k]})"><i></i>
+    const tl = (r.fd || []).map((d, k) => `<div class="tl ${k < r.st ? 'past' : ''} ${k === r.st ? 'now' : ''}">${PX.stageBadge(k, true)}
         <span class="d">${PX.ETAPA[k]}${k ? ` · ${PX.PCT[k] * 100} %` : ''}<small>${fdate(d, true)}</small></span><span class="b">${PX.duo(r.bases[k], r.mon)}</span></div>`).join('');
     const attrs = ATTR.filter(x => x[2](r)).map(x => x[1]);
     const nserv = (r.serv || []).length;
     const fav = PX.isFav(r.key);
-    f.innerHTML = `<div class="fhead">${seal}<span class="tag">${esc(r.tipo)}</span><button class="btn sm favbtn" data-act="fav" aria-pressed="${fav}">${PX.HEART}${fav ? 'En favoritos' : 'Favorito'}</button><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
+    const I = PX.ICON, sec = (icon, t, body, right) => `<section class="fs"><h3>${icon}${t}${right ? `<span class="r">${right}</span>` : ''}</h3><div class="fb">${body}</div></section>`;
+    const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
+    const zhRatio = z && z.v && a && r.bv ? PX.conv(r.bv, r.mon, 'CRC') / (z.v * a) : null;
+    const pecrH = pc ? `<div class="pecr"><div><b>Nivel PECR ${pc[0]} de 8</b> · ${esc(pc[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pc[0] ? 'me' : x[0] < pc[0] ? 'on' : ''}"></span>`).join('')}</div><div class="lv"><span>1 rural aislado</span><span>8 urbano consolidado</span></div>
+      <div class="muted" style="font-size:12px">Rango de referencia ${PX.duoI(pc[2], 'USD', '/m²')} a ${PX.duoI(pc[3], 'USD', '/m²')}${pc[0] === 8 ? ' o más' : ''}.${r.usdm2 != null ? ` La base vigente equivale a ${PX.duoI(r.usdm2, 'USD', '/m²')}: <b>${r.usdm2 < pc[2] ? 'por debajo del rango' : r.usdm2 > pc[3] ? 'por encima del rango' : 'dentro del rango'}</b>.` : ''}</div></div>` : '';
+    const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
+    f.innerHTML = `<div class="fhead">${PX.tipoIcon(r)}${r.isPlano ? '<span class="tag">Predio consultado</span>' : PX.stageBadge(r.st) + `<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span>`}<button class="btn sm favbtn" data-act="fav" aria-pressed="${fav}">${PX.HEART}${fav ? 'En favoritos' : 'Favorito'}</button><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
     <div class="fbody">
       <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
       ${top}
       ${actionsHTML(r)}
-      ${r.isPlano ? '' : `<div class="sect"><h3>Fechas y bases</h3><div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div></div>`}
       ${r.rev ? `<div class="note">${esc(r.rev)}</div>` : ''}
-      ${!r.exact && !r.rev ? `<div class="note">${r.plano ? 'El catastro no devolvió un predio para este plano ni para la finca.' : 'El edicto no cita plano y el catastro no devolvió la finca.'} El punto marca el distrito declarado.</div>` : ''}
-      <div class="sect"><h3>Índice PlanoExacto</h3>
-        <div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Promedio ponderado de sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
-        <div style="margin-top:10px" class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
-        ${full ? '' : `<div class="prohint" style="margin-top:6px"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>`}</div>
-      <div class="sect"><h3>Resumen</h3><dl class="kv">
+      ${r.isPlano ? '' : sec(PX.ICON.gavel, 'Remate', `<div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div>`, PX.whenTag(r.next))}
+      ${sec(I.valor, 'Valor y mercado', `<dl class="kv">
+        ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
+        ${zhRatio ? `<dt>Base frente a Hacienda</dt><dd><b>${Math.round(zhRatio * 100)} %</b> del valor del terreno<small class="sub">${r.tipo === 'Con construcción' ? 'Incluye construcción: use la herramienta PRO «Valor de referencia»' : 'Valor de zona × área del terreno'}</small></dd>` : ''}
+      </dl>${pecrH}`)}
+      ${sec(I.terreno, 'Terreno', `<dl class="kv">
+        <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
+        ${dm ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
+        <dt>Topografía</dt><dd>${topo ? esc(topo.txt) : 'Sin cartografía 1:5 000 en el sitio'}${topo ? '<small class="sub">Según curvas de nivel del IGN</small>' : ''}</dd>
+        ${e.cob || r.isPlano ? `<dt>Uso del suelo</dt><dd id="pcob">${esc(e.cob || r.cob || '…')}</dd>` : ''}
+        ${e.zv ? `<dt>Zona de vida</dt><dd>${esc(e.zv)}</dd>` : ''}
+      </dl>`)}
+      ${sec(I.entorno, 'Servicios y entorno', `<dl class="kv">
+        <dt>Agua potable</dt><dd>${e.aguaS ? 'Cobertura de ' + esc(e.aguaS.join(', ')) : 'Sin cobertura registrada'}<small class="sub">AyA, ESPH, ASADAS y acueductos municipales</small></dd>
+        ${e.via ? `<dt>Vía más cercana</dt><dd>${e.via.d <= 10 ? esc(e.via.t) + ', al frente' : esc(e.via.t) + ' a ' + PX.dist(e.via.d)}</dd>` : ''}
+        ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n)}<small class="sub">${PX.dist(e.salud.d)}</small></dd>` : ''}
+        ${e.esc != null ? `<dt>Escuela</dt><dd>A ${PX.dist(e.esc)}</dd>` : ''}
+        ${e.agua !== undefined ? `<dt>Ríos</dt><dd>${e.agua == null ? 'Ninguno a menos de 400 m' : 'Cauce a ' + PX.dist(e.agua)}</dd>` : ''}
+        ${e.costa != null && e.costa < 2000 ? `<dt>Costa</dt><dd>A ${PX.dist(e.costa)}${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}</dd>` : ''}
+      </dl>`)}
+      ${sec(I.norma, 'Normativa', `<p style="margin:0"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="note" style="padding:6px 9px">${esc(t)}</div>`).join('')}`)}
+      ${sec(I.registro, 'Registro y ubicación', `<dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
-        ${r.isPlano ? '' : `<dt>Área en edicto</dt><dd class="num">${r.area ? fnum(r.area) + ' m²' : '—'}</dd>`}
-        ${r.areaCat && !r.isPlano ? `<dt>Área en catastro</dt><dd class="num">${fnum(r.areaCat)} m²</dd>` : ''}
-        <dt>Plan regulador</dt><dd>${esc(PX.prText(e.pr))}</dd>
-        ${r.isPlano ? `<dt>Uso del suelo</dt><dd id="pcob">${r.cob ? esc(r.cob) : '…'}</dd>` : ''}
-        ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n)}<small class="sub">${PX.dist(e.salud.d)}</small></dd>` : ''}
-        ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span> <small class="sub">Explicadas en el expediente</small>` : 'Ninguna citada en el edicto'}</dd>`}
-      </dl></div>
-      ${r.isPlano ? '' : `<div class="sect"><h3>Atributos del lote ${PX.PRO}</h3>
-        <div class="chips${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="chip">${esc(t)}</span>`).join('') || '<span class="chip">Sin atributos destacados</span>'}</div></div>`}
+        ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
+        <dt>Ubicación</dt><dd>${esc(ubic)}</dd>
+        ${r.pub ? `<dt>Publicado</dt><dd>${fdate(r.pub)}<small class="sub">Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')}</small></dd>` : ''}
+      </dl>`)}
+      ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
+        <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
+        ${full ? '' : `<div class="prohint"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>`}`)}
+      ${r.isPlano ? '' : sec(PX.ICON.Lote, 'Atributos del lote', `<div class="chips${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="chip">${esc(t)}</span>`).join('') || '<span class="chip">Sin atributos destacados</span>'}</div>`, PX.PRO)}
       ${proBox(r)}
       ${expBox(r)}
-      <div class="foot">Información orientativa extraída de fuentes públicas. No sustituye la certificación del Registro Nacional ni la revisión del expediente judicial.</div>
+      <div class="foot">Información orientativa de fuentes públicas. No sustituye la certificación del Registro Nacional, el certificado de uso de suelo ni la revisión del expediente judicial. <button class="linkbtn" data-about="terms">Términos y descargo</button></div>
     </div>`;
     f.hidden = false;
     $('fx').onclick = closeFicha;
-    if (r.isPlano && !r.cob && r.ll) PX.cobertura(r.ll[0], r.ll[1]).then(v => { r.cob = v; if (r.ent) r.ent.cob = v; PX.savePlano(r); const d = $('pcob'); if (d) d.textContent = v || 'Sin dato del MINAE'; });
+    if (r.isPlano && !r.cob && !e.cob && r.ll) PX.cobertura(r.ll[0], r.ll[1]).then(v => { r.cob = v; if (r.ent) r.ent.cob = v; PX.savePlano(r); const d = $('pcob'); if (d) d.textContent = v || 'Sin dato del MINAE'; });
     selLayer.clearLayers();
     if (r.ll) {
-      const col = r.isPlano ? css('--accent') : css(PX.SC[r.st]);
+      const col = r.isPlano ? css('--accent') : XC[r.st];
       if (r.poly) {
         const pg = L.polygon(ringLL(r), { color: css('--ink'), weight: 2.5, fillColor: col, fillOpacity: 0.35 });
         selLayer.addLayer(pg);
@@ -569,6 +678,37 @@
       <div class="foot">Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Modo demostración: los pagos aún no están conectados.</div>`);
   }
   $('bPlanes').onclick = () => openPlanes();
+  // ---------- Quiénes somos y descargo de responsabilidad ----------
+  function openAbout(which) {
+    const us = `<div class="about">
+      <img src="assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="481" style="width:220px;height:auto">
+      <p><b>PlanoExactoCR</b> reúne en un solo mapa los remates judiciales de propiedades de Costa Rica y los cruza con la información pública que normalmente está dispersa: catastro, planes reguladores, zonas homogéneas de Hacienda, agua potable, ríos, relieve, cobertura del suelo, salud, escuelas y normativa.</p>
+      <h3>Quiénes somos</h3>
+      <p>Somos un equipo de profesionales en urbanismo, arquitectura y planificación territorial con experiencia en planes reguladores, sistemas de información geográfica y gestión municipal en distintos cantones del país. Creamos PlanoExactoCR para que cualquier persona pueda <b>ubicar</b> un lote con precisión, <b>comprender</b> su contexto territorial y legal, y <b>decidir</b> con más información antes de participar en un remate.</p>
+      <h3>Qué hacemos</h3>
+      <ul><li>Leemos el Boletín Judicial y ubicamos cada propiedad por su plano o su finca en el catastro.</li><li>Calculamos un índice orientativo con sanidad jurídica, precio por m², servicios y restricciones.</li><li>Preparamos expedientes por lote con mapa, variables del sitio, potencialidades y riesgos.</li></ul>
+      <h3>Lo que viene</h3>
+      <ul><li>Propiedades curadas en venta, revisadas por nuestro equipo.</li><li>Amenazas naturales, historia del sitio con ortofotos del IGN y normativa por zona de cada plan regulador.</li><li>Cobertura en Panamá y otros países de Latinoamérica.</li></ul>
+      <p class="muted">Contacto: <i>por definir</i>.</p></div>`;
+    const terms = `<div class="about">
+      <h3>Términos de uso y descargo de responsabilidad</h3>
+      <p>Al usar PlanoExactoCR usted acepta lo siguiente:</p>
+      <ul>
+        <li><b>Naturaleza de la información.</b> Todo el contenido (mapas, fichas, índices, escalas de valor, expedientes y herramientas) es un <b>compendio de información pública</b> y un <b>análisis orientativo</b> generado en buena parte de forma automática. No es un certificado de uso de suelo, una certificación registral o catastral, un avalúo, un estudio de título, un dictamen técnico ni asesoría legal, financiera o de inversión.</li>
+        <li><b>Fuentes de terceros.</b> Los datos provienen del Boletín Judicial, el Registro Inmobiliario, el IGN, el INVU, el Ministerio de Hacienda, el AyA, el MINAE, la CCSS, el BCCR y otros servicios públicos. Pueden contener errores, omisiones, desactualizaciones o diferencias de escala que no dependen de PlanoExactoCR. La ubicación de un predio puede ser aproximada.</li>
+        <li><b>Verificación obligatoria.</b> Antes de ofertar, comprar o tomar cualquier decisión, usted debe verificar por su cuenta la información en el expediente judicial, el Registro Nacional, la municipalidad y con profesionales habilitados (abogado, topógrafo, perito valuador).</li>
+        <li><b>Limitación de responsabilidad.</b> PlanoExactoCR, sus creadores, colaboradores y proveedores no asumen responsabilidad alguna por daños, pérdidas, costos o perjuicios directos o indirectos derivados del uso o la imposibilidad de uso del sitio, ni de decisiones tomadas con base en su contenido. El uso es bajo su propio riesgo.</li>
+        <li><b>Sin relación con el proceso judicial.</b> PlanoExactoCR no participa en los remates, no representa a ninguna parte, juzgado, banco ni acreedor, y no garantiza fechas, bases, condiciones ni el resultado de ningún proceso.</li>
+        <li><b>Datos personales.</b> Se omiten los nombres de personas deudoras y los números de cédula de los edictos. No se debe usar el sitio para identificar o contactar a personas.</li>
+        <li><b>Valores de referencia.</b> Las zonas homogéneas, tipologías constructivas, escalas PECR, medianas y prefactibilidades son referencias estadísticas y supuestos editables, no valores de mercado ni avalúos.</li>
+        <li><b>Cambios.</b> El contenido, los precios y estos términos pueden cambiar sin previo aviso. En la etapa de prueba, las cuentas y los pagos funcionan en modo demostración.</li>
+      </ul>
+      <p class="muted">Última actualización: ${PX.fdate(PX.now)}. Este texto debe ser revisado por un abogado antes del lanzamiento comercial.</p></div>`;
+    modal(`<div class="hd"><h2>${which === 'terms' ? 'Términos y descargo' : 'Quiénes somos'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      <div class="seg" role="group"><button data-about="us" aria-pressed="${which !== 'terms'}">Quiénes somos</button><button data-about="terms" aria-pressed="${which === 'terms'}">Términos y descargo</button></div>
+      ${which === 'terms' ? terms : us}`);
+  }
+  document.addEventListener('click', e => { const a = e.target.closest('[data-about]'); if (a) openAbout(a.dataset.about); });
   const setVista = p => { if ((p === 'pro') === PX.isPro()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : 'Vista gratis: así la ve un usuario sin suscripción'); };
   $('vFree').onclick = () => setVista('free'); $('vPro').onclick = () => setVista('pro');
 
@@ -645,6 +785,7 @@
     try {
       const res = await PX.consultar(tipo, val, pv);
       if (!res.length) { out.innerHTML = '<div class="card"><b>Sin resultados</b><span class="muted">El catastro no devolvió un predio para ese número. Revisa la provincia y el año del plano.</span></div>'; return; }
+      await Promise.all(res.map(async o => { const [z, ag] = await Promise.all([PX.zhQuery(o.ll[0], o.ll[1]), PX.aguaQuery(o.ll[0], o.ll[1])]); if (z) o.ent.zh = z; if (ag && ag.length) o.ent.aguaS = ag; o.pecr = PX.pecrCalc(o); }));
       res.forEach(PX.savePlano);
       out.innerHTML = res.map(plaCard).join('');
       if (res.length === 1) openFicha(res[0].key, true);
@@ -769,7 +910,7 @@
   new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   // ---------- arranque ----------
-  paintPlan(); paintAttrs(); setCurUI(); drawVectors(); apply();
+  paintPlan(); paintTipos(); paintAttrs(); setCurUI(); drawVectors(); apply();
   await extra;
   const h = (location.hash || '').slice(1);
   if (/^r\d+$/.test(h) || /^p/.test(h)) openFicha(h, true);
