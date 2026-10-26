@@ -313,7 +313,7 @@
   // Etiquetas de zona homogénea: valor en colones y dólares por m²; el código se agrega al acercarse
   function zhLabels() {
     const tc = (PX.tc && PX.tc.venta) || 456.32, ts = sz => ({ type: 'esriTS', color: [110, 64, 16, 255], haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: sz, weight: 'bold' } });
-    const crc = "'₡' + Replace(Text($feature.VALOR, '#,###'), ',', ' ') + '/m²'", usd = `'US$' + Text(Round($feature.VALOR / ${tc}, 0), '#,###') + '/m²'`;
+    const crc = "'₡' + Replace(Text($feature.VALOR, '#,###'), ',', '\u00a0') + '/m²'", usd = `'US$' + Replace(Text(Round($feature.VALOR / ${tc}, 0), '#,###'), ',', '\u00a0') + '/m²'`;
     const pl = 'esriServerPolygonPlacementAlwaysHorizontal';
     return [
       { labelExpressionInfo: { expression: `${crc} + TextFormatting.NewLine + ${usd}` }, labelPlacement: pl, minScale: 100000, maxScale: 25000, symbol: ts(7.5) },
@@ -323,7 +323,7 @@
   const AG_COL = [['AyA', [59, 139, 217]], ['ESPH', [42, 157, 143]], ['ASADA', [106, 153, 78]], ['Municipal', [157, 141, 201]]];
   // Agua: color por tipo de operador y etiqueta con el nombre del operador y el sistema (desde zoom 12)
   const AG_LBL = ["'AyA · ' + $feature.sistema", "'ESPH'", "$feature.Operador + IIf(IsEmpty(Trim($feature.Sistema)), '', ' · ' + $feature.Sistema)", "$feature.Operador + IIf(IsEmpty(Trim($feature.Sistema)), '', ' · ' + $feature.Sistema)"];
-  const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(70), AG_COL[i][1].concat(200), 0.9) }, showLabels: true,
+  const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(80), AG_COL[i][1].concat(i === 0 ? 0 : 110), 0.5) }, showLabels: true,
     labelingInfo: [{ labelExpressionInfo: { expression: AG_LBL[i] }, labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal', minScale: 150000, maxScale: 0, symbol: { type: 'esriTS', color: AG_COL[i][1].map(c => Math.round(c * 0.55)).concat(255), haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: 8, weight: 'bold' } } }] } }));
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   const BASES = [['calles', 'Calles'], ['osm', 'OpenStreetMap'], ['topo', 'Topográfico'], ['gris', 'Gris claro'], ['sat', 'Satélite con nombres']];
