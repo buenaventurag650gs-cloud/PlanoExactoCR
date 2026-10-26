@@ -406,3 +406,12 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 
 .pecrb .pscale span:nth-child(-n+4) { color: #3D3A2A; }
 .emph .pscale span:nth-child(-n+4) { color: #24221A; }
+
+/* Íconos de la escala PECR */
+.h3sub { text-transform: none; letter-spacing: 0; font-weight: 600; opacity: .75; }
+.pscale span { display: grid; grid-template-rows: auto auto; gap: 2px; height: 40px !important; align-content: center; }
+.pscale span svg { width: 15px; height: 15px; }
+.pscale span i { font: 700 10px/1 var(--f-mono); font-style: normal; }
+.pico { display: inline-grid; place-items: center; margin-right: 6px; vertical-align: -3px; }
+.pico svg { width: 16px; height: 16px; }
+.pecrtab .pico { color: var(--accent); margin-right: 8px; }

@@ -525,8 +525,8 @@
     const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de US$1 a US$1 000 por m²
     const pos = bu == null ? '' : bu < pc[2] ? 'por debajo del rango' : bu >= pc[3] ? 'por encima del rango' : 'dentro del rango';
     return `<div class="pecrb emph">
-      <div class="iphh"><span class="iphn${pc[0] <= 4 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/${PX.PECR_N}</small></span><div><b>Nivel ${pc[0]} de ${PX.PECR_N}</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
-      <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (${PX.pecrRango(x)})">${x[0]}</span>`).join('')}</div>
+      <div class="iphh"><span class="iphn${pc[0] <= 4 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/${PX.PECR_N}</small></span><div><b><span class="pico">${PX.PECR_ICON[pc[0] - 1]}</span>Nivel ${pc[0]} de ${PX.PECR_N}</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
+      <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (${PX.pecrRango(x)})">${PX.PECR_ICON[i]}<i>${x[0]}</i></span>`).join('')}</div>
       <div class="lv"><span>Rural aislado</span><span>Centralidad urbana</span></div>
       <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
         <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">US$${v}</span>`).join('')}</div></div>
@@ -650,7 +650,7 @@
       ${sec(I.moneda, PX.iph(r) ? 'Índice Puja/Hacienda' : 'Valor y mercado', `<dl class="kv">
         ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
       </dl>${iphHTML(r)}`)}
-      ${pecrH ? sec(I.valor, 'Escala de valor PECR', pecrH) : ''}
+      ${pecrH ? sec(I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
@@ -868,8 +868,8 @@
         <p class="gmini">${PX.iphBar(45)}</p>
         ${tip('Hacienda suele valorar por debajo del mercado, así que un IPH bajo es una señal fuerte. Un IPH muy bajo (menos de 10) también puede indicar que se remata solo una parte de la finca (derechos) o que el área del edicto no coincide: la ficha lo advierte.')}
 
-        ${card(I.entorno, 'Escala PECR (niveles 1 a 10)', false, 'Ubicar el lote en una escala de valor según su acceso, servicios y entorno, con un rango orientativo de precio por m².', '', '')}
-        <div class="gtable pecrtab">${PX.PECR.map(x => `<div><b><span class="pn">${x[0]}</span>${PX.pecrRango(x)}</b><span>${esc(x[1])}</span></div>`).join('')}</div>
+        ${card(I.entorno, 'Escala PECR, PlanoExactoCR (niveles 1 a 10)', false, 'Ubicar el lote en una escala de valor según su acceso, servicios y entorno, con un rango orientativo de precio por m².', '', '')}
+        <div class="gtable pecrtab">${PX.PECR.map(x => `<div><b><span class="pn">${x[0]}</span><span class="pico">${PX.PECR_ICON[x[0] - 1]}</span>${PX.pecrRango(x)}</b><span>${esc(x[1])}</span></div>`).join('')}</div>
         <p class="gmini"><b>Cómo se calibra:</b> los rangos son contiguos y no se traslapan: cada nivel empieza donde termina el anterior, desde US$0 hasta el nivel 10, que no tiene tope. Se ajustaron con el valor de zona homogénea de Hacienda de los 801 remates (en dólares). El nivel de cada lote es el rango donde cae su valor de Hacienda; las reglas del sitio (frente a vía pública, agua, distancia a salud y escuela, zona urbana o rural) lo suben o bajan un nivel solo cuando apuntan claramente a otro (diferencia de 3 niveles o más). Así, en casi 8 de cada 10 lotes (77 %) el valor de Hacienda cae dentro del rango de su nivel.</p>
 
         <div class="gcard"><h4><span class="gi">${I.gavel}</span>Índice PlanoExacto (0 a 100)</h4><p class="gpara"><b>¿Para qué sirve?</b> Comparar remates entre sí con una nota general. Suma cuatro dimensiones con estos pesos:</p>
@@ -902,7 +902,7 @@
         `<div class="gtable">
           <div><b>Base</b><span>Precio mínimo para ofertar. Baja en cada remate: 100 %, 75 % y 25 %.</span></div>
           <div><b>Zona homogénea</b><span>Zona donde Hacienda fija un mismo valor del terreno por m².</span></div>
-          <div><b>Escala PECR</b><span>Nota del 1 al 10: 1 es campo aislado sin servicios y 10 es una centralidad urbana de alto valor. Cada nivel trae un rango de precio por m².</span></div>
+          <div><b>Escala PECR (PlanoExactoCR)</b><span>Nota del 1 al 10: 1 es campo aislado sin servicios y 10 es una centralidad urbana de alto valor. Cada nivel trae un rango de precio por m².</span></div>
           <div><b>Índice PlanoExacto</b><span>Nota de 0 a 100 que resume precio, situación legal, servicios y entorno.</span></div>
           <div><b>IPH</b><span>Índice Puja/Hacienda: en qué porcentaje del valor de Hacienda arranca la puja. 50 = a la mitad.</span></div>
           <div><b>Ubicación aproximada</b><span>Cuando no encontramos el plano exacto, la cruz va al centro del distrito o poblado. La ficha lo indica.</span></div>

@@ -182,6 +182,20 @@
     [10, 'Centralidad urbana de alto valor: centros y ejes comerciales, alta densidad', 350, Infinity]
   ];
   PX.PECR_N = PX.PECR.length;
+  // Ícono de cada nivel PECR: de lo rural aislado a la centralidad urbana
+  const pi = d => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  PX.PECR_ICON = [
+    pi('<path d="M3 20l6-10 4 6 2-3 6 7z"/><path d="M15 6l1.5-3L18 6"/>'),                                   // 1 rural aislado: montaña
+    pi('<path d="M8 21c1-6 2-12 4-18M16 21c-1-6-2-12-4-18"/><path d="M12 15v.01M11.5 9v.01"/>'),                // 2 camino de lastre
+    pi('<path d="M6 21L10 3M18 21L14 3M12 5v2M12 10v2M12 15v2"/>'),                                          // 3 frente a camino público
+    pi('<path d="M13 2L5 13h6l-1 9 8-11h-6z"/>'),                                                           // 4 electricidad
+    pi('<path d="M12 3s5 5.5 5 9.5a5 5 0 0 1-10 0C7 8.5 12 3 12 3z"/><path d="M12 13l-1.5 2.5h3L12 18"/>'),  // 5 agua y electricidad
+    pi('<path d="M4 20V11l5-4 5 4v9z"/><path d="M8 20v-4h2v4"/><path d="M17 20v-6M17 14c-2 0-3-1.5-3-3.5S16 7 17 6c1 1 3 2.5 3 4.5S19 14 17 14z"/>'), // 6 rural residencial
+    pi('<path d="M2 20V12l4-3 4 3v8"/><path d="M10 20v-6l4-3 4 3v6"/><path d="M18 20v-4l2-2 2 2v4"/><path d="M1 20h22"/>'), // 7 periurbano
+    pi('<rect x="3" y="10" width="7" height="10"/><rect x="12" y="6" width="9" height="14"/><path d="M6 13v.01M6 16v.01M15 9v.01M18 9v.01M15 12v.01M18 12v.01M15 15v.01M18 15v.01"/>'), // 8 urbano en consolidación
+    pi('<rect x="2" y="9" width="6" height="12"/><rect x="9" y="4" width="6" height="17"/><rect x="16" y="7" width="6" height="14"/><path d="M12 7v.01M12 10v.01M12 13v.01M5 12v.01M19 10v.01"/>'), // 9 urbano consolidado
+    pi('<path d="M4 21V9l4-3v15M10 21V3h5v18M17 21V8l3 2v11"/><path d="M2 21h20M12.5 6v.01M12.5 9v.01M12.5 12v.01M12.5 15v.01"/>') // 10 centralidad
+  ];
   PX.pecrRango = x => x[3] === Infinity ? `US$${x[2]}/m² o más` : `US$${x[2]}–${x[3]}/m²`;
   // Nivel según el valor: el rango que lo contiene (límite inferior incluido)
   PX.pecrNivelValor = usd => (PX.PECR.find(x => usd >= x[2] && usd < x[3]) || PX.PECR[PX.PECR_N - 1])[0];

@@ -26,7 +26,7 @@
     const e = r.ent || {}, v = [];
     const z = e.zh, pc = PX.pecr(r), tp = PX.topo(r);
     if (z) v.push(['Zona homogénea', `${z.c} · ${PX.mt(z.v, 'CRC')}/m²`]);
-    if (pc) v.push(['Escala PECR', `Nivel ${pc[0]} de ${PX.PECR_N}`]);
+    if (pc) v.push(['Escala PECR (PlanoExactoCR)', `Nivel ${pc[0]} de ${PX.PECR_N}`]);
     v.push(['Agua potable', e.aguaS ? e.aguaS.join(', ') : 'Sin cobertura registrada', !e.aguaS]);
     if (tp) v.push(['Topografía', tp.clase + (e.pend != null ? ` (${e.pend} %)` : ''), tp.clase.includes('quebrada')]);
     v.push(['Normativa', e.pr && e.pr.si ? `Plan regulador${e.pr.anno ? ' ' + e.pr.anno : ''}` : 'Nacional INVU (sin plan)', !(e.pr && e.pr.si)]);
