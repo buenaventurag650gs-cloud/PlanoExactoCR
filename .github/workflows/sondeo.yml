@@ -1,0 +1,20 @@
+name: Sondeo de fuentes
+on: workflow_dispatch
+jobs:
+  sondeo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probar acceso a las fuentes públicas
+        run: |
+          for u in \
+            "https://nexuspj.poder-judicial.go.cr/document/avi-1-0155-15851" \
+            "https://boletinjudicial.poder-judicial.go.cr/" \
+            "https://www.snitcr.go.cr/Visor/services/siri?tipoquery=plano&plano=SJ0975627-2005" \
+            "https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer?f=json" \
+            "https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer/0?f=json" \
+            "https://geodatos.sinia.go.cr/geoserver/MAF2020/wms?service=WMS&request=GetCapabilities" \
+            "https://geos.snitcr.go.cr/be/IGN_5/wms?service=WMS&request=GetCapabilities" \
+            "https://gee.bccr.fi.cr/indicadoreseconomicos/" ; do
+            code=$(curl -s -o /tmp/r -w "%{http_code} %{time_total}s %{size_download}B" --max-time 40 -A "PlanoExactoCR/1.0" "$u")
+            echo "$code  $u"; head -c 160 /tmp/r | tr '\n' ' '; echo; echo
+          done
