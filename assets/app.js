@@ -8,6 +8,8 @@
     [R, DIST, META] = await Promise.all([PX.get('data/remates.json'), PX.get('data/distritos.geojson'), PX.get('data/meta.json')]);
   } catch (e) { $('list').innerHTML = '<div class="empty">No se pudieron cargar los datos. Recarga la página.</div>'; return; }
   PX.tc = META.tc;
+  // Íconos declarados en el HTML con data-ic
+  document.querySelectorAll('i[data-ic]').forEach(i => { i.outerHTML = `<span class="ic" aria-hidden="true">${PX.ICON[i.dataset.ic] || ''}</span>`; });
   PX.prepare(R);
   PX.ctx.dist = DIST;
   const live = R.filter(r => r.st >= 0);
@@ -244,7 +246,7 @@
   });
 
   // ---------- mapa ----------
-  const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).setView([9.8, -84.2], 8);
+  const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
   map.attributionControl.setPrefix(false);
   map.zoomControl.setPosition('topright');
@@ -256,25 +258,27 @@
   zc.insertBefore(zr, zc.querySelector('.leaflet-control-zoom-out'));
   const paintZ = () => { const z = map.getZoom(); zr.textContent = Number.isInteger(z) ? z : z.toFixed(1).replace('.', ','); };
   map.on('zoomend', paintZ); paintZ();
+  map.on('zoomend', () => { if (typeof syncLayers === 'function') syncLayers(); });
   map.createPane('ctx').style.zIndex = 350;
   const ctxR = L.canvas({ pane: 'ctx' });
   const dark = () => (matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark';
-  const cartoAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const osmAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
   const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 19 }, o));
-  const carto = (v, o) => L.tileLayer('https://{s}.basemaps.cartocdn.com/{v}/{z}/{x}/{y}{r}.png', Object.assign({ v, subdomains: 'abcd', maxZoom: 19, attribution: cartoAttr }, o));
-  // Mapas base: Calles (CARTO Voyager, con color), OpenStreetMap estándar, topográfico, gris claro y satélite con nombres
+  // Mapas base sin llave de API (CARTO pasó a exigir llave en 2026): Esri, OpenStreetMap y OpenTopoMap
   // Los nombres (calles, poblados, ríos) van en una capa superior para que no los tapen las capas temáticas
   map.createPane('lbl').style.zIndex = 450; map.getPane('lbl').style.pointerEvents = 'none';
-  const voyager = carto('rastertiles/voyager_nolabels');
   const lblOpt = { pane: 'lbl', zIndex: 5 };
+  const EA = 'Mapa &copy; <a href="https://www.esri.com">Esri</a>, HERE, Garmin, OpenStreetMap', SA = 'Imágenes &copy; Esri, Maxar, Earthstar Geographics';
+  const canvas = (v, o) => esri('Canvas/' + v, Object.assign({ maxNativeZoom: 16 }, o));
   const base = {
-    calles: L.layerGroup([voyager, carto('rastertiles/voyager_only_labels', lblOpt)]),
+    claro: L.layerGroup([canvas('World_Light_Gray_Base', { attribution: EA }), canvas('World_Light_Gray_Reference', lblOpt)]),
+    calles: L.layerGroup([esri('World_Street_Map', { attribution: EA })]),
+    sat: L.layerGroup([esri('World_Imagery', { attribution: SA, maxNativeZoom: 19 }),
+      esri('Reference/World_Transportation', Object.assign({ opacity: 0.85 }, lblOpt)), esri('Reference/World_Boundaries_and_Places', Object.assign({ attribution: 'Nombres &copy; Esri' }, lblOpt))]),
+    topo: L.layerGroup([L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19, maxNativeZoom: 17, attribution: 'Mapa &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), SRTM, OpenStreetMap' })]),
+    relieve: L.layerGroup([esri('World_Topo_Map', { attribution: EA + ', USGS' })]),
     osm: L.layerGroup([L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osmAttr })]),
-    topo: L.layerGroup([esri('World_Topo_Map', { attribution: 'Mapa &copy; Esri, HERE, Garmin, USGS, OpenStreetMap' })]),
-    gris: L.layerGroup([carto('light_nolabels'), carto('light_only_labels', lblOpt)]),
-    sat: L.layerGroup([esri('World_Imagery', { attribution: 'Imágenes &copy; Esri, Maxar, Earthstar Geographics' }),
-      esri('Reference/World_Transportation', Object.assign({ opacity: 0.8 }, lblOpt)), esri('Reference/World_Boundaries_and_Places', Object.assign({ attribution: 'Nombres &copy; Esri' }, lblOpt))])
+    oscuro: L.layerGroup([canvas('World_Dark_Gray_Base', { attribution: EA }), canvas('World_Dark_Gray_Reference', lblOpt)])
   };
   // Servicios ArcGIS (Hacienda, AyA): teselas desde «export», con estilo propio (dynamicLayers)
   const AGS = L.TileLayer.extend({
@@ -328,7 +332,17 @@
   const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(80), AG_COL[i][1].concat(i === 0 ? 0 : 110), 0.5) }, showLabels: true,
     labelingInfo: [{ labelExpressionInfo: { expression: AG_LBL[i] }, labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal', minScale: 150000, maxScale: 0, symbol: { type: 'esriTS', color: AG_COL[i][1].map(c => Math.round(c * 0.55)).concat(255), haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: 8, weight: 'bold' } } }] } }));
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
-  const BASES = [['calles', 'Calles'], ['osm', 'OpenStreetMap'], ['topo', 'Topográfico'], ['gris', 'Gris claro'], ['sat', 'Satélite con nombres']];
+  // Mapas base con miniatura (tesela de Costa Rica central) y para qué sirve cada uno
+  const T8 = { esri: s => `https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/9/241/136`, xyz: u => u.replace('{z}', 9).replace('{x}', 136).replace('{y}', 241).replace('{s}', 'a') };
+  const BASES = [
+    ['claro', 'Claro', 'Ideal para ver datos y capas', T8.esri('Canvas/World_Light_Gray_Base')],
+    ['calles', 'Calles', 'Calles, poblados y comercios', T8.esri('World_Street_Map')],
+    ['sat', 'Ortofoto', 'Imagen satelital con nombres', T8.esri('World_Imagery')],
+    ['topo', 'Topográfico', 'Curvas de nivel y relieve', T8.xyz('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png')],
+    ['relieve', 'Relieve', 'Sombras del terreno y vías', T8.esri('World_Topo_Map')],
+    ['osm', 'OSM', 'OpenStreetMap: mapa colaborativo detallado', T8.xyz('https://tile.openstreetmap.org/{z}/{x}/{y}.png')],
+    ['oscuro', 'Oscuro', 'Para el modo oscuro', T8.esri('Canvas/World_Dark_Gray_Base')]
+  ];
 
   // Estilos propios para los servicios WMS (SLD), en lugar de los colores originales
   const sld = (name, rules) => `<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>${name}</Name><UserStyle><FeatureTypeStyle>${rules}</FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
@@ -360,7 +374,7 @@
 
   const LY = [
     { g: 'Referencia', id: 'cantones', n: 'Límites cantonales', free: true, on: true, hover: true, lg: [['ln', 'var(--muted)', 'Cantón']] },
-    { id: 'distritos', n: 'Límites distritales', free: true, on: true, lg: [['ln', 'var(--dline)', 'Distrito']] },
+    { id: 'distritos', minZ: 10, n: 'Límites distritales', free: true, on: true, lg: [['ln', 'var(--dline)', 'Distrito']] },
     { id: 'catastro', n: 'Predios del catastro', z: 15, free: true, on: true, lg: [['ln', '#8A948F', 'Lindero de predio']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { minZoom: 15, zIndex: 8, className: 'tl-cat', attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' }) },
     { id: 'rios_n', n: 'Nombres de ríos', z: 13, free: true, on: true, mk: () => wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', minZoom: 13, zIndex: 6, sld_body: sld('IGN_NG:hidronimos_25k', `<Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule>`), attribution: 'Hidrónimos &copy; IGN' }) },
     { id: 'planes', n: 'Estado del plan regulador', free: true, hover: true, lg: PRC.map(p => ['', p[2], p[1]]) },
@@ -379,7 +393,7 @@
     { id: 'zmt', n: 'Zona marítimo terrestre', note: 'calculada desde la línea de costa', lg: [['', '#4FA3F0', 'Zona pública: primeros 50 m'], ['', '#E9C46A', 'Zona restringida: 50 a 200 m']] }
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
-  let baseId = PX.store.get('px-base', 'calles'); if (!base[baseId]) baseId = 'calles';
+  let baseId = PX.store.get('px-base2', dark() ? 'oscuro' : 'claro'); if (!base[baseId]) baseId = 'claro';
   const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
@@ -387,12 +401,26 @@
     for (const k in base) { if (k === baseId) base[k].addTo(map); else base[k].remove(); }
     map.getContainer().classList.toggle('on-sat', baseId === 'sat');
     if (lyrState.zmt && allowed(LY.find(l => l.id === 'zmt')) && !ZMT) loadZMT();
-    for (const l of LY) { const on = lyrState[l.id] && allowed(l); if (on && !map.hasLayer(l.layer)) l.layer.addTo(map); if (!on && map.hasLayer(l.layer)) l.layer.remove(); }
-    PX.store.set('px-layers', lyrState); PX.store.set('px-base', baseId);
+    for (const l of LY) { const on = lyrState[l.id] && allowed(l) && (!l.minZ || map.getZoom() >= l.minZ); if (on && !map.hasLayer(l.layer)) l.layer.addTo(map); if (!on && map.hasLayer(l.layer)) l.layer.remove(); }
+    PX.store.set('px-layers', lyrState); PX.store.set('px-base2', baseId); paintBaseSw();
   }
+  // Selector rápido de mapa base sobre el mapa (miniaturas)
+  const bsw = L.control({ position: 'bottomright' });
+  bsw.onAdd = () => { const d = L.DomUtil.create('div', 'basesw'); L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d); return d; };
+  bsw.addTo(map);
+  function paintBaseSw() {
+    const d = bsw.getContainer(), cur = BASES.find(b => b[0] === baseId) || BASES[0];
+    d.innerHTML = `<button class="bcur" aria-expanded="${d.classList.contains('open')}" title="Cambiar mapa base"><img src="${cur[3]}" alt="" width="58" height="58"><span>${cur[1]}</span></button>
+      <div class="blist" role="radiogroup" aria-label="Mapa base">${BASES.map(([k, n, ds, img]) => `<button role="radio" aria-checked="${k === baseId}" data-base="${k}" title="${ds}"><img src="${img}" alt="" loading="lazy" width="58" height="44"><span>${n}</span></button>`).join('')}</div>`;
+  }
+  bsw.getContainer().addEventListener('click', e => {
+    const d = bsw.getContainer(), b = e.target.closest('[data-base]');
+    if (b) { baseId = b.dataset.base; d.classList.remove('open'); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel(); return; }
+    if (e.target.closest('.bcur')) { d.classList.toggle('open'); paintBaseSw(); }
+  });
   const lyrOpen = PX.store.get('px-lyrg', { 'Mapa base': true, Referencia: true });
   function renderLyrPanel() {
-    let h = `<details class="lg-g"${lyrOpen['Mapa base'] ? ' open' : ''} data-g="Mapa base"><summary>Mapa base<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary><div class="lyr" style="grid-template-columns:1fr 1fr;gap:6px 8px">${BASES.map(([k, n]) => `<label><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}> ${n}</label>`).join('')}</div></details>`;
+    let h = `<details class="lg-g"${lyrOpen['Mapa base'] ? ' open' : ''} data-g="Mapa base"><summary>Mapa base<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary><div class="bgrid">${BASES.map(([k, n, d, img]) => `<label class="bopt" title="${d}"><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}><img src="${img}" alt="" loading="lazy" width="64" height="44"><span>${n}</span></label>`).join('')}</div></details>`;
     let open_ = false;
     for (const l of LY) {
       if (l.g) { if (open_) h += '</details>'; const nOn = LY.filter(x => x.g === l.g).length; h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`; open_ = true; }
@@ -433,7 +461,6 @@
   function bbox(g) { let a = [180, 90, -180, -90]; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates; for (const p of polys) for (const [x, y] of p[0]) { if (x < a[0]) a[0] = x; if (y < a[1]) a[1] = y; if (x > a[2]) a[2] = x; if (y > a[3]) a[3] = y; } return a; }
   const hit = (fc, x, y) => fc && fc.features.find(f => (!f.bb || (x >= f.bb[0] && x <= f.bb[2] && y >= f.bb[1] && y <= f.bb[3])) && PX.inGeom(x, y, f.geometry));
   function drawVectors() {
-    voyager.options.v = dark() ? 'dark_all' : 'rastertiles/voyager'; voyager.redraw();
     for (const k in vec) vec[k].clearLayers();
     const o = { renderer: ctxR, pane: 'ctx', interactive: false };
     vec.distritos.addLayer(L.geoJSON(DIST, Object.assign({ style: { color: css('--dline'), weight: 0.7, opacity: 0.9, dashArray: '2 3', fill: false }, attribution: 'Límites &copy; IGN (SNIT)' }, o)));
@@ -640,6 +667,7 @@
       ${expBox(r)}
       <div class="foot">Información orientativa de fuentes públicas. No sustituye la certificación del Registro Nacional, el certificado de uso de suelo ni la revisión del expediente judicial. <button class="linkbtn" data-about="terms">Términos y descargo</button></div>
     </div>`;
+    f.querySelectorAll('dl.kv dt').forEach(dt => { const ic = PX.rowIcon(dt.textContent); if (ic) dt.insertAdjacentHTML('afterbegin', `<span class="ri" aria-hidden="true">${ic}</span>`); });
     f.hidden = false;
     $('fx').onclick = closeFicha;
     if (r.isPlano && !r.cob && !e.cob && r.ll) PX.cobertura(r.ll[0], r.ll[1]).then(v => { r.cob = v; if (r.ent) r.ent.cob = v; PX.savePlano(r); const d = $('pcob'); if (d) d.textContent = v || 'Sin dato del MINAE'; });
@@ -851,7 +879,7 @@
           <div><b>Ambiente</b><span><b>MINAE</b>: mapa agropecuario y forestal 2020 y zonas de vida (CENIGA). <b>FONAFIFO</b>: pago por servicios ambientales 2025. Franjas de protección de ríos: PNUD-TEVU (referencia no oficial).</span></div>
           <div><b>Salud y educación</b><span><b>CCSS</b>: EBAIS, áreas de salud y hospitales. Escuelas y colegios: puntos de interés del <b>IGN</b>.</span></div>
           <div><b>Tipo de cambio</b><span><b>Banco Central de Costa Rica (BCCR)</b>.</span></div>
-          <div><b>Mapas base</b><span>OpenStreetMap, CARTO y Esri (imagen satelital de Maxar y Earthstar Geographics).</span></div>
+          <div><b>Mapas base</b><span>Esri (claro, calles, relieve, oscuro y ortofoto de Maxar y Earthstar Geographics), OpenStreetMap y OpenTopoMap.</span></div>
         </div>
         <p class="gmini">Cada fuente tiene su propia escala y fecha de actualización. Puede haber diferencias entre capas; ante cualquier duda, la fuente oficial manda.</p>`)}
 

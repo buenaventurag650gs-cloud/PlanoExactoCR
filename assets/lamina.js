@@ -110,11 +110,12 @@
     // Mapa principal sutil: fondo claro con relieve sombreado, predios y vías atenuados, ríos y nombres
     const m = L.map('lmap', opt).setView(c, 16);
     m.createPane('lbl').style.zIndex = 450;
-    const carto = v => L.tileLayer(`https://{s}.basemaps.cartocdn.com/${v}/{z}/{x}/{y}{r}.png`, { subdomains: 'abcd', maxZoom: 20, maxNativeZoom: 19 });
-    carto('light_nolabels').addTo(m);
+    // Base clara de Esri (CARTO exige llave de API desde 2026)
+    const esriC = v => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${v}/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 20, maxNativeZoom: 16 });
+    esriC('World_Light_Gray_Base').addTo(m);
     esri('Elevation/World_Hillshade', { opacity: 0.22, className: 'tl-hill' }).addTo(m);
     SNIT.vias().addTo(m); SNIT.curvas().addTo(m); SNIT.cat().addTo(m); SNIT.hidro().addTo(m);
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png`, { subdomains: 'abcd', maxZoom: 20, maxNativeZoom: 19, pane: 'lbl' }).addTo(m);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 16, pane: 'lbl' }).addTo(m);
     wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', sld_body: sldText('IGN_NG:hidronimos_25k') }).addTo(m);
     [100, 250, 500].forEach(rad => {
       L.circle(c, { radius: rad, color: '#55635D', weight: 1, dashArray: '4 6', fill: false, interactive: false, opacity: 0.7 }).addTo(m);

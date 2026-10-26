@@ -118,7 +118,37 @@
     norma: ic('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'),
     registro: ic('<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h4"/>'),
     entorno: ic('<circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/>'),
-    gavel: ic('<path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/>')
+    gavel: ic('<path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/>'),
+    // Íconos de interfaz y de filas de la ficha
+    info: ic('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>'),
+    book: ic('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 7h6"/>'),
+    tag: ic('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>'),
+    user: ic('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
+    eye: ic('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+    star: ic('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+    via: ic('<path d="M7 21L10 3M17 21L14 3M12 6v2M12 11v2M12 16v2"/>'),
+    salud: ic('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/>'),
+    escuela: ic('<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/>'),
+    rio: ic('<path d="M2 8c3-2 5 2 8 0s5-2 8 0 2 0 4-1M2 13c3-2 5 2 8 0s5-2 8 0 2 0 4-1M2 18c3-2 5 2 8 0s5-2 8 0 2 0 4-1"/>'),
+    costa: ic('<path d="M3 18c2 0 3-1 4.5-1S10 18 12 18s3-1 4.5-1 2.5 1 4.5 1"/><path d="M6 14l4-8 3 5 2-2 3 5"/>'),
+    hoja: ic('<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19l8-8"/>'),
+    capas: ic('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>'),
+    monte: ic('<path d="M2 20l7-12 4 6 3-4 6 10z"/>'),
+    regla: ic('<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>'),
+    plano: ic('<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/>'),
+    reloj: ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    moneda: ic('<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .9-3 2s1.3 1.7 3 2 3 .9 3 2-1.3 2-3 2c-1.4 0-2.5-.6-3-1.5M12 6v2M12 16v2"/>'),
+    juzgado: ic('<path d="M3 21h18M4 10h16M12 3l9 5H3z"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/>'),
+    alerta: ic('<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>')
+  };
+  // Ícono para cada fila de la ficha según su etiqueta
+  PX.rowIcon = t => {
+    const n = PX.norm(t), I = PX.ICON;
+    const m = [[/zona homog|valor de ref|base|precio|puja/, I.moneda], [/area|superficie/, I.regla], [/dimension/, I.regla], [/topograf|pendiente|elevac/, I.monte], [/uso del suelo|cobertura/, I.capas], [/zona de vida/, I.hoja],
+      [/agua/, I.agua], [/via|camino|calle/, I.via], [/salud|ebais|hospital/, I.salud], [/escuela|colegio/, I.escuela], [/rio|quebrada|cuenca/, I.rio], [/costa|zmt|playa/, I.costa],
+      [/plan regulador|normativa|zona/, I.norma], [/finca/, I.registro], [/plano/, I.plano], [/ubicac|distrito|lugar/, I.pin], [/naturaleza/, I.Lote], [/expediente|juzgado|despacho|proceso/, I.juzgado],
+      [/publicac|boletin|fecha/, I.cal], [/gravamen|servidumbre|anotac/, I.alerta]];
+    const h = m.find(([re]) => re.test(n)); return h ? h[1] : '';
   };
   PX.tipoIcon = r => `<span class="ti${r.tipo === 'Agrícola' ? ' agro' : ''}" title="${r.tipo}">${PX.ICON[r.tipo] || PX.ICON.Lote}</span>`;
   // Insignia de etapa del remate (1.º, 2.º, 3.º): martillo + número, usada en lista, ficha, mapa y expediente
