@@ -26,9 +26,9 @@
   };
   PX.get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); });
   PX.fdate = (d, withTime) => d ? `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()}` + (withTime ? ` · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '') : '—';
-  PX.fnum = (v, dec) => v == null || isNaN(v) ? '—' : v.toLocaleString('es-CR', { maximumFractionDigits: dec != null ? dec : v < 100 ? 2 : 0 });
+  PX.fnum = (v, dec) => v == null || isNaN(v) ? '—' : v.toLocaleString('de-DE', { maximumFractionDigits: dec != null ? dec : v < 100 ? 2 : 0 });
   PX.days = d => d ? Math.ceil((d - PX.now) / 864e5) : null;
-  PX.dist = m => m == null ? '—' : m < 1000 ? Math.round(m / 5) * 5 + ' m' : (m / 1000).toLocaleString('es-CR', { maximumFractionDigits: 1 }) + ' km';
+  PX.dist = m => m == null ? '—' : m < 1000 ? Math.round(m / 5) * 5 + ' m' : (m / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' km';
   PX.when = d => { const n = PX.days(d); return n == null ? '' : n <= 0 ? 'hoy' : n === 1 ? 'mañana' : 'en ' + n + ' días'; };
 
   // ---------- moneda: la unidad va separada del valor ----------
@@ -38,9 +38,9 @@
   PX.conv = (v, from, to) => v == null ? null : from === to ? v : from === 'CRC' ? v / PX.tc.venta : v * PX.tc.venta;
   PX.usd = (v, from) => PX.conv(v, from, 'USD');
   function parts(v, c, compact) {
-    if (v == null || isNaN(v)) return { u: c === 'USD' ? 'US$' : '₡', n: '—', s: '' };
-    const u = c === 'USD' ? 'US$' : '₡';
-    const f = (x, d) => x.toLocaleString('es-CR', { maximumFractionDigits: d, minimumFractionDigits: 0 });
+    if (v == null || isNaN(v)) return { u: c === 'USD' ? '$' : '₡', n: '—', s: '' };
+    const u = c === 'USD' ? '$' : '₡';
+    const f = (x, d) => x.toLocaleString('de-DE', { maximumFractionDigits: d, minimumFractionDigits: 0 });
     if (false) { // siempre cifras completas, sin «mil» ni «M»
       if (v >= 1e9) return { u, n: f(v / 1e9, 2), s: 'mil M' };
       if (v >= 1e6) return { u, n: f(v / 1e6, v >= 1e8 ? 0 : 1), s: 'M' };
@@ -87,7 +87,7 @@
       r.usdm2 = r.bv && PX.prof(r) ? PX.usd(r.bv, r.mon) / PX.prof(r) : null;
       const ip = r.st >= 0 && PX.tc ? PX.iph(r) : null; r.iphV = ip ? ip.v : null;
     }
-    // medianas de US$/m² por cantón y provincia (remates vigentes con área)
+    // medianas de $/m² por cantón y provincia (remates vigentes con área)
     const med = a => { if (!a.length) return null; a = a.slice().sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
     const byC = {}, byP = {};
     for (const r of R) if (r.st >= 0 && r.usdm2) { (byC[r.prov + '|' + r.cn] = byC[r.prov + '|' + r.cn] || []).push(r.usdm2); (byP[r.prov] = byP[r.prov] || []).push(r.usdm2); }
@@ -175,7 +175,7 @@
   };
 
   // ---------- Escala PECR de valor por accesibilidad y dotación ----------
-  // Escala PECR: 10 niveles con rangos contiguos y sin traslape en US$/m² (desde 0; el último no tiene tope).
+  // Escala PECR: 10 niveles con rangos contiguos y sin traslape en $/m² (desde 0; el último no tiene tope).
   // Calibrada el 26 oct 2026 con el valor de zona homogénea de Hacienda de los 801 remates.
   PX.PECR = [
     [1, 'Rural aislado, acceso difícil, sin servicios disponibles', 0, 4],
@@ -204,7 +204,7 @@
     pi('<rect x="2" y="9" width="6" height="12"/><rect x="9" y="4" width="6" height="17"/><rect x="16" y="7" width="6" height="14"/><path d="M12 7v.01M12 10v.01M12 13v.01M5 12v.01M19 10v.01"/>'), // 9 urbano consolidado
     pi('<path d="M4 21V9l4-3v15M10 21V3h5v18M17 21V8l3 2v11"/><path d="M2 21h20M12.5 6v.01M12.5 9v.01M12.5 12v.01M12.5 15v.01"/>') // 10 centralidad
   ];
-  PX.pecrRango = x => x[3] === Infinity ? `US$${x[2]}/m² o más` : `US$${x[2]}–${x[3]}/m²`;
+  PX.pecrRango = x => x[3] === Infinity ? `$${x[2]}/m² o más` : `$${x[2]}–${x[3]}/m²`;
   // Nivel según el valor: el rango que lo contiene (límite inferior incluido)
   PX.pecrNivelValor = usd => (PX.PECR.find(x => usd >= x[2] && usd < x[3]) || PX.PECR[PX.PECR_N - 1])[0];
   // Nivel PECR: reglas de acceso y dotación, calibradas con el valor de la zona homogénea de Hacienda (60 % valor, 40 % reglas)
@@ -221,15 +221,15 @@
     return Math.max(1, Math.min(PX.PECR_N, b + (d >= 3 ? 1 : d <= -3 ? -1 : 0)));
   };
   PX.pecr = r => r.pecr ? PX.PECR[r.pecr - 1] : null;
-  // Tablita comparativa: mínimo y máximo del nivel frente a la base vigente y Hacienda, en ₡ y US$ por m²
+  // Tablita comparativa: mínimo y máximo del nivel frente a la base vigente y Hacienda, en ₡ y $ por m²
   PX.pecrTable = (pc, bu, zu, col) => {
-    const tc = PX.tc.venta, c = v => Math.round(v * tc).toLocaleString('es-CR'), d = v => (v < 10 ? v.toLocaleString('es-CR', { maximumFractionDigits: 1 }) : Math.round(v).toLocaleString('es-CR'));
+    const tc = PX.tc.venta, c = v => Math.round(v * tc).toLocaleString('de-DE'), d = v => (v < 10 ? v.toLocaleString('de-DE', { maximumFractionDigits: 1 }) : Math.round(v).toLocaleString('de-DE'));
     const ver = v => v < pc[2] ? ['por debajo', 'lo'] : v >= pc[3] ? ['por encima', 'hi'] : ['dentro', 'in'];
-    let h = `<table class="ptab"><thead><tr><th></th><th>₡/m²</th><th>US$/m²</th><th></th></tr></thead><tbody>
-      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Mínimo del nivel</th><td>₡${c(pc[2])}</td><td>US$${d(pc[2])}</td><td></td></tr>
-      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Máximo del nivel</th>${pc[3] === Infinity ? '<td>sin tope</td><td>sin tope</td>' : `<td>₡${c(pc[3])}</td><td>US$${d(pc[3])}</td>`}<td></td></tr>`;
-    if (bu != null) { const v = ver(bu); h += `<tr class="me"><th><i class="sw mk"></i>Base vigente</th><td>₡${c(bu)}</td><td>US$${d(bu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
-    if (zu) { const v = ver(zu); h += `<tr><th><i class="sw zh"></i>Hacienda</th><td>₡${c(zu)}</td><td>US$${d(zu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
+    let h = `<table class="ptab"><thead><tr><th></th><th>₡/m²</th><th>$/m²</th><th></th></tr></thead><tbody>
+      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Mínimo del nivel</th><td>₡${c(pc[2])}</td><td>$${d(pc[2])}</td><td></td></tr>
+      <tr class="lim"><th><i class="sw" style="background:${col}"></i>Máximo del nivel</th>${pc[3] === Infinity ? '<td>sin tope</td><td>sin tope</td>' : `<td>₡${c(pc[3])}</td><td>$${d(pc[3])}</td>`}<td></td></tr>`;
+    if (bu != null) { const v = ver(bu); h += `<tr class="me"><th><i class="sw mk"></i>Base vigente</th><td>₡${c(bu)}</td><td>$${d(bu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
+    if (zu) { const v = ver(zu); h += `<tr><th><i class="sw zh"></i>Hacienda</th><td>₡${c(zu)}</td><td>$${d(zu)}</td><td><span class="vd ${v[1]}">${v[0]}</span></td></tr>`; }
     return h + '</tbody></table>';
   };
 

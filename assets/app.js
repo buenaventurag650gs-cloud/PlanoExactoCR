@@ -95,7 +95,7 @@
 
   function setCurUI() {
     $('cCRC').setAttribute('aria-pressed', PX.cur === 'CRC'); $('cUSD').setAttribute('aria-pressed', PX.cur === 'USD');
-    document.querySelectorAll('.amt .cu').forEach(e => e.textContent = PX.cur === 'CRC' ? '₡' : 'US$');
+    document.querySelectorAll('.amt .cu').forEach(e => e.textContent = PX.cur === 'CRC' ? '₡' : '$');
     document.querySelectorAll('.amt .cs').forEach(e => e.textContent = PX.cur === 'CRC' ? 'millones' : 'miles');
   }
   function setCur(c) {
@@ -329,7 +329,7 @@
   // Etiquetas de zona homogénea: valor en colones y dólares por m²; el código se agrega al acercarse
   function zhLabels() {
     const tc = (PX.tc && PX.tc.venta) || 456.32, ts = sz => ({ type: 'esriTS', color: [110, 64, 16, 255], haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: sz, weight: 'bold' } });
-    const crc = "'₡' + Replace(Text($feature.VALOR, '#,###'), ',', '\u00a0') + '/m²'", usd = `'US$' + Replace(Text(Round($feature.VALOR / ${tc}, 0), '#,###'), ',', '\u00a0') + '/m²'`;
+    const crc = "'₡' + Replace(Text($feature.VALOR, '#,###'), ',', '.') + '/m²'", usd = `'$' + Replace(Text(Round($feature.VALOR / ${tc}, 0), '#,###'), ',', '.') + '/m²'`;
     const pl = 'esriServerPolygonPlacementAlwaysHorizontal';
     return [
       { labelExpressionInfo: { expression: `${crc} + TextFormatting.NewLine + ${usd}` }, labelPlacement: pl, minScale: 100000, maxScale: 25000, symbol: ts(7.5) },
@@ -388,7 +388,7 @@
     { id: 'catastro', n: 'Predios del catastro', z: 15, free: true, on: true, lg: [['ln', '#8A948F', 'Lindero de predio']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { minZoom: 15, zIndex: 8, className: 'tl-cat', attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' }) },
     { id: 'rios_n', n: 'Nombres de ríos', z: 13, free: true, on: true, mk: () => wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', minZoom: 13, zIndex: 6, sld_body: sld('IGN_NG:hidronimos_25k', `<Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule>`), attribution: 'Hidrónimos &copy; IGN' }) },
     { id: 'planes', n: 'Estado del plan regulador', free: true, hover: true, lg: PRC.map(p => ['', p[2], p[1]]) },
-    { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea: valor del terreno en ₡ y US$ por m²']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
+    { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea: valor del terreno en ₡ y $ por m²']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
     { id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
     { g: 'Servicios e infraestructura', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
     { id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
@@ -456,14 +456,14 @@
 
   // Vectores locales
   function prepZV() { if (!ZV) return; for (const f of ZV.features) { const g = zvGroup(f.properties.n); f.properties.col = g[2]; f.bb = bbox(f.geometry); } if (CANT) CANT.features.forEach(f => f.bb = bbox(f.geometry)); if (DIST) DIST.features.forEach(f => f.bb = f.bb || bbox(f.geometry)); if (PX.ctx.planes) PX.ctx.planes.features.forEach(f => f.bb = bbox(f.geometry)); }
-  // Mediana de US$/m² de remates vigentes por cantón (código de cantón: provincia = primer dígito)
+  // Mediana de $/m² de remates vigentes por cantón (código de cantón: provincia = primer dígito)
   const medCant = f => PX.medC[Math.floor(f.properties.c / 100) + '|' + f.properties.k];
   function priceClasses() {
     const brks = PX.cur === 'USD' ? [10, 25, 50, 100, 200] : [5000, 12000, 25000, 50000, 100000];
     const cols = ['#FFF3C4', '#F9D57E', '#F0A64A', '#D9733A', '#B04A2E', '#7A2E25'];
     const col = v => cols[brks.findIndex(b => v < b) < 0 ? brks.length : brks.findIndex(b => v < b)];
-    const u = PX.cur === 'USD' ? 'US$' : '₡', f = v => v.toLocaleString('es-CR');
-    const o = PX.cur === 'USD' ? 'CRC' : 'USD', ou = o === 'USD' ? 'US$' : '₡', g = v => Math.round(PX.conv(v, PX.cur, o)).toLocaleString('es-CR');
+    const u = PX.cur === 'USD' ? '$' : '₡', f = v => v.toLocaleString('de-DE');
+    const o = PX.cur === 'USD' ? 'CRC' : 'USD', ou = o === 'USD' ? '$' : '₡', g = v => Math.round(PX.conv(v, PX.cur, o)).toLocaleString('de-DE');
     const eq = (x, y) => ` (${ou} ${g(x)}${y != null ? '–' + g(y) : ''})`;
     const leg = cols.map((c, i) => ['', c, i === 0 ? `menos de ${u} ${f(brks[0])}/m²${eq(brks[0])}` : i === brks.length ? `${u} ${f(brks[i - 1])}/m² o más${eq(brks[i - 1])}` : `${u} ${f(brks[i - 1])} – ${f(brks[i])}/m²${eq(brks[i - 1], brks[i])}`]).concat([['', 'var(--chip)', 'Menos de 3 remates con área']]);
     return { col, leg };
@@ -532,14 +532,14 @@
   const PECR_COL = ['#E0CFA3', '#CFC48D', '#B8BA7C', '#9DAE70', '#80A068', '#619060', '#477F57', '#316C4E', '#1F5843', '#123F31'];
   function pecrHTML(r, pc) {
     const z = (r.ent || {}).zh, zu = z && z.v ? z.v / PX.tc.venta : null, bu = r.usdm2;
-    const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de US$1 a US$1 000 por m²
+    const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de $1 a $1 000 por m²
     const pos = bu == null ? '' : bu < pc[2] ? 'por debajo del rango' : bu >= pc[3] ? 'por encima del rango' : 'dentro del rango';
     return `<div class="pecrb emph">
       <div class="iphh"><span class="iphn${pc[0] <= 4 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/${PX.PECR_N}</small></span><div><b><span class="pico">${PX.PECR_ICON[pc[0] - 1]}</span>Nivel ${pc[0]} de ${PX.PECR_N}</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
       <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (${PX.pecrRango(x)})">${PX.PECR_ICON[i]}<i>${x[0]}</i></span>`).join('')}</div>
       <div class="lv"><span>Rural aislado</span><span>Centralidad urbana</span></div>
       <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
-        <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">US$${v}</span>`).join('')}</div></div>
+        <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">$${v}</span>`).join('')}</div></div>
       ${PX.pecrTable(pc, bu, zu, PECR_COL[pc[0] - 1])}</div>`;
   }
 
@@ -689,7 +689,7 @@
     </svg><figcaption>Forma según el catastro</figcaption></figure>`;
   }
   // Ficha con Tabler: cabecera, precio, tarjetas por sección y datos en «datagrid»
-  const fHead = (r, extra) => `<div class="fhead d-flex align-items-center gap-2 px-3 py-2 border-bottom">${PX.tipoIcon(r)}${r.isPlano ? '<span class="badge bg-secondary-lt">Predio consultado</span>' : PX.stageBadge(r.st) + PX.tipoTag(r)}<div class="ms-auto d-flex align-items-center gap-2">${extra || ''}<button type="button" class="btn-close" id="fx" aria-label="Cerrar ficha"></button></div></div>`;
+  const fHead = (r, extra) => `<div class="fhead d-flex align-items-center gap-2 px-3 py-2 border-bottom">${PX.tipoIcon(r)}${r.isPlano ? '<span class="badge bg-secondary-lt">Predio consultado</span>' : PX.stageBadge(r.st) + PX.tipoTag(r)}<div class="ms-auto d-flex align-items-center gap-2"><button type="button" class="btn btn-sm" data-act="compartir" title="Compartir este remate" aria-label="Compartir"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M8.7 10.7l6.6 -3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg><span class="ms-1">Compartir</span></button>${extra || ''}<button type="button" class="btn-close" id="fx" aria-label="Cerrar ficha"></button></div></div>`;
   const fPrecio = (lbl, grande, alt, linea) => `<div class="card card-sm mb-3 bg-body-tertiary"><div class="card-body"><div class="subheader">${lbl}</div><div class="h1 mb-0 mt-1">${grande}</div>${alt ? `<div class="fw-medium text-secondary">${alt}</div>` : ''}${linea ? `<div class="text-secondary small mt-1">${linea}</div>` : ''}</div></div>`;
   const fGrupo = t => `<div class="hr-text hr-text-start my-3">${t}</div>`;
   function aDatagrid(raiz) {   // convierte <dl class="kv"> en el componente datagrid de Tabler
@@ -836,6 +836,15 @@
     if (tab === 'top') renderHub();
     f.scrollTop = 0; const fb = f.querySelector('.fbody'); if (fb) fb.scrollTop = 0;
   }
+  // Compartir: los remates usan su página pública (con vista previa en WhatsApp y redes); los predios, el enlace al mapa
+  async function compartir(r) {
+    const base = 'https://' + (location.hostname.endsWith('planoexactocr.com') ? 'planoexactocr.com' : location.host);
+    const url = r.isPlano ? `${base}/mapa#${r.key}` : `${base}/remate/${r.id}`;
+    const title = r.nom || 'Remate en PlanoExactoCR', text = r.isPlano ? `${title} en PlanoExactoCR` : `${title} · ${PX.ETAPA[r.st] || 'Remate'} · base ${PX.mt(PX.conv(r.bv, r.mon, 'CRC'), 'CRC')}`;
+    if (navigator.share) { try { await navigator.share({ title, text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(url); toast('Enlace copiado: ya puedes pegarlo donde quieras'); }
+    catch (e) { window.prompt('Copia este enlace:', url); }
+  }
   function closeFicha() { $('ficha').hidden = true; open = null; if (tab === 'top') renderHub(); selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.querySelector('#layer > *')) closeLayer(); else if (open) closeFicha(); } });
   $('ficha').addEventListener('click', e => {
@@ -843,6 +852,7 @@
     const pt = e.target.closest('[data-protool]'); if (pt && open) { openPro(PX.item(open), pt.dataset.protool); return; }
     const b = e.target.closest('[data-act]'); if (!b || !open) return;
     const r = PX.item(open), act = b.dataset.act;
+    if (act === 'compartir') return compartir(r);
     if (act === 'exp') return goExpediente(r);
     if (act === 'fav') return favToggle(r.key);
     if (act === 'cmp') { toggleCmp(r.key); openFicha(open, false); return; }
@@ -1082,7 +1092,7 @@
 
       ${sec('inicio', 'PlanoExactoCR en 5 pasos', 'PlanoExactoCR te muestra en un mapa las propiedades que salen a remate judicial en Costa Rica y te ayuda a entender cada una antes de ofertar.',
         `<div class="gflow">${flow.map(([ic, t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><span class="gi">${ic}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
-        ${tip('¿Prefieres ver los montos en dólares? Cambia la moneda arriba a la derecha (₡ / US$). Siempre verás también el equivalente en la otra moneda.')}`)}
+        ${tip('¿Prefieres ver los montos en dólares? Cambia la moneda arriba a la derecha (₡ / $). Siempre verás también el equivalente en la otra moneda.')}`)}
 
       ${sec('mapa', 'Cómo leer el mapa', '',
         `<div class="ggrid">
@@ -1156,7 +1166,7 @@
 
         ${card(I.entorno, 'Escala PECR, PlanoExactoCR (niveles 1 a 10)', false, 'Ubicar el lote en una escala de valor según su acceso, servicios y entorno, con un rango orientativo de precio por m².', '', '')}
         <div class="gtable pecrtab">${PX.PECR.map(x => `<div><b><span class="pn">${x[0]}</span><span class="pico">${PX.PECR_ICON[x[0] - 1]}</span>${PX.pecrRango(x)}</b><span>${esc(x[1])}</span></div>`).join('')}</div>
-        <p class="gmini"><b>Cómo se calibra:</b> los rangos son contiguos y no se traslapan: cada nivel empieza donde termina el anterior, desde US$0 hasta el nivel 10, que no tiene tope. Se ajustaron con el valor de zona homogénea de Hacienda de los 801 remates (en dólares). El nivel de cada lote es el rango donde cae su valor de Hacienda; las reglas del sitio (frente a vía pública, agua, distancia a salud y escuela, zona urbana o rural) lo suben o bajan un nivel solo cuando apuntan claramente a otro (diferencia de 3 niveles o más). Así, en casi 8 de cada 10 lotes (77 %) el valor de Hacienda cae dentro del rango de su nivel.</p>
+        <p class="gmini"><b>Cómo se calibra:</b> los rangos son contiguos y no se traslapan: cada nivel empieza donde termina el anterior, desde $0 hasta el nivel 10, que no tiene tope. Se ajustaron con el valor de zona homogénea de Hacienda de los 801 remates (en dólares). El nivel de cada lote es el rango donde cae su valor de Hacienda; las reglas del sitio (frente a vía pública, agua, distancia a salud y escuela, zona urbana o rural) lo suben o bajan un nivel solo cuando apuntan claramente a otro (diferencia de 3 niveles o más). Así, en casi 8 de cada 10 lotes (77 %) el valor de Hacienda cae dentro del rango de su nivel.</p>
 
         <div class="gcard"><h4><span class="gi">${I.gavel}</span>Índice PlanoExacto (0 a 100)</h4><p class="gpara"><b>¿Para qué sirve?</b> Comparar remates entre sí con una nota general. Suma cuatro dimensiones con estos pesos:</p>
           <ul class="gkey">${PX.DIMS.map(d => `<li><span class="gk">${PX.W0[d.k]} %</span><span><b>${esc(d.n)}:</b> ${esc(d.d)}.</span></li>`).join('')}</ul><p class="gmini">Con ${P_} puedes cambiar los pesos al comparar.</p></div>
@@ -1451,7 +1461,7 @@
   // ---------- tema ----------
   function retheme() { drawVectors(); renderMarkers(); if (open) openFicha(open, false); paintTheme(); }
   // Botón de tema claro / oscuro en la barra superior
-  function paintTheme() { const d = dark(), b = $('bTheme'); if (!b) return; b.innerHTML = `<span class="ic" aria-hidden="true">${d ? PX.ICON.sol : PX.ICON.luna}</span>`; b.title = d ? 'Cambiar a colores claros' : 'Cambiar a colores oscuros'; b.setAttribute('aria-label', b.title); document.querySelector('meta[name=theme-color]').content = d ? '#151C1A' : '#FCFBF8'; }
+  function paintTheme() { const d = dark(), b = $('bTheme'); if (!b) return; b.innerHTML = `<span class="ic" aria-hidden="true">${d ? PX.ICON.sol : PX.ICON.luna}</span>`; b.title = d ? 'Cambiar a colores claros' : 'Cambiar a colores oscuros'; b.setAttribute('aria-label', b.title); document.querySelector('meta[name=theme-color]').content = d ? '#0C1110' : '#FCFBF8'; }
   $('bTheme').onclick = () => {
     const t = dark() ? 'light' : 'dark';
     document.documentElement.dataset.theme = t; try { localStorage.setItem('px-theme', t); } catch (e) {}

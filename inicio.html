@@ -24,8 +24,8 @@
   --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif; --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; --f-mono: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --line: #28332F; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #16302C; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; } }
-:root[data-theme="dark"] { --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --line: #28332F; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #16302C; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #070A09; --panel: #0C1110; --ink: #E5ECE8; --muted: #A7B4AE; --line: #1E2724; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #10251F; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #070A09; --panel: #0C1110; --ink: #E5ECE8; --muted: #A7B4AE; --line: #1E2724; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #10251F; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--f-body); }
@@ -203,7 +203,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 </div>
 <script>
 (() => {
-  const fmt = n => Number(n).toLocaleString('es-CR');
+  const fmt = n => Number(n).toLocaleString('de-DE');
   fetch('/data/resumen.json', { cache: 'no-store' }).then(r => r.json()).then(d => {
     document.querySelectorAll('#datos [data-k]').forEach(b => { const k = b.dataset.k; if (d[k] != null) b.textContent = k === 'boletin' ? 'N.º ' + d[k] : fmt(d[k]); });
   }).catch(() => {});

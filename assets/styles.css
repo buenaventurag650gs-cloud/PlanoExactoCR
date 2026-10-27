@@ -13,16 +13,16 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --faint: #849089; --line: #28332F;
-  --sea: #0B1315; --land: #1A2320; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #16302C;
-  --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #1F2925;
+  --bg: #070A09; --panel: #0C1110; --ink: #E5ECE8; --muted: #A7B4AE; --faint: #849089; --line: #1E2724;
+  --sea: #0B1315; --land: #111816; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #10251F;
+  --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #151C1A;
   --gold: #F0CF62; --goldbg: #2B2611; --soon: #F0A285; --soonbg: #221A17; --good: #6CC694; --bad: #F2735F;
   --brand: #E5ECE8; --brand-green: #7CC3A4; --mark-bg: transparent;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --faint: #849089; --line: #28332F;
-  --sea: #0B1315; --land: #1A2320; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #16302C;
-  --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #1F2925;
+  --bg: #070A09; --panel: #0C1110; --ink: #E5ECE8; --muted: #A7B4AE; --faint: #849089; --line: #1E2724;
+  --sea: #0B1315; --land: #111816; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #10251F;
+  --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #151C1A;
   --gold: #F0CF62; --goldbg: #2B2611; --soon: #F0A285; --soonbg: #221A17; --good: #6CC694; --bad: #F2735F;
   --brand: #E5ECE8; --brand-green: #7CC3A4; --mark-bg: transparent;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; }
@@ -517,7 +517,11 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 
 /* ---------- Tabler (Bootstrap) en ventanas: solo color de marca y tipografía del sitio ---------- */
 .tb, .tb[data-bs-theme=light], .tb[data-bs-theme=dark] { --tblr-primary: #1F5A47; --tblr-primary-rgb: 31, 90, 71; --tblr-primary-fg: #fff; --tblr-font-sans-serif: var(--f-body); --tblr-body-font-family: var(--f-body); }
-.tb[data-bs-theme=dark] { --tblr-primary: #3E9A7C; --tblr-primary-rgb: 62, 154, 124; }
+.tb[data-bs-theme=dark] { --tblr-primary: #3E9A7C; --tblr-primary-rgb: 62, 154, 124;
+  /* Modo oscuro: superficies casi negras del sitio en vez del gris azulado de Tabler */
+  --tblr-body-bg: var(--bg); --tblr-body-bg-rgb: 7, 10, 9; --tblr-bg-surface: var(--panel); --tblr-bg-surface-secondary: var(--chip); --tblr-bg-surface-tertiary: var(--chip); --tblr-bg-forms: var(--bg);
+  --tblr-border-color: var(--line); --tblr-border-color-translucent: rgba(255,255,255,.07); --tblr-body-color: var(--ink); --tblr-emphasis-color: var(--ink); --tblr-secondary: var(--muted); --tblr-secondary-color: var(--muted);
+  --tblr-tertiary-bg: var(--chip); --tblr-secondary-bg: var(--chip); }
 .tb { position: relative; z-index: 2000; font-family: var(--f-body); }
 /* Neutraliza estilos del mapa que comparten nombre con clases de Tabler */
 .tb .row { gap: 0; } .tb .card { padding: 0; gap: 0; display: flex; } .tb .badge { letter-spacing: normal; }

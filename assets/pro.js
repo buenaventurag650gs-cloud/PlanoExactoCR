@@ -164,7 +164,7 @@
     if (v.modo === 'reventa') {
       const ingreso = v.ref * (1 - v.comision / 100);
       const util = ingreso - terreno;
-      return { gastos, terreno, obra: 0, inversion: terreno, ingreso, util, margen: ingreso ? util / ingreso : 0, roi: terreno ? util / terreno : 0, anual: terreno && v.meses ? Math.pow(1 + util / terreno, 12 / v.meses) - 1 : 0, equilibrio: terreno / (1 - v.comision / 100) };
+      return { gastos, terreno, obra: 0, inversion: terreno, ingreso, util, margen: ingreso ? util / ingreso : 0, roi: terreno ? util / terreno : 0, anual: terreno && v.meses ? Math.pow(Math.max(0, 1 + util / terreno), 12 / v.meses) - 1 : 0, equilibrio: terreno / (1 - v.comision / 100) };
     }
     const obra = v.m2 * v.costo * 1.12; // +12 % de indirectos, permisos y diseño
     const inversion = terreno + obra;
@@ -183,12 +183,18 @@
   // ---------- Alertas (demostración, en este navegador) ----------
   P.alertas = () => PX.acct.alertas || (PX.acct.alertas = { canal: { correo: true, whatsapp: false }, dias: 3, etapa: true, nuevos: true, zona: '' });
 
-  // ---------- Vista de cada herramienta ----------
-  const pct = v => (v * 100).toLocaleString('es-CR', { maximumFractionDigits: 1 }) + ' %';
-  const num = (id, label, val, unit, o) => `<label class="pf"><span>${label}</span><span class="pin">${o && o.pre ? `<span class="u">${o.pre}</span>` : ''}<input type="number" data-v="${id}" value="${val}" step="${(o && o.step) || 'any'}" min="0" inputmode="decimal"${o && o.dis ? ' disabled' : ''}>${unit ? `<span class="sfx">${unit}</span>` : ''}</span></label>`;
-  const curU = () => PX.cur === 'USD' ? 'US$' : '₡';
-  const M = v => PX.duo(v, PX.cur);
-  const I = v => PX.duoI(v, PX.cur);
+  // ---------- Vista de cada herramienta (componentes de Tabler) ----------
+  const pct = v => (isFinite(v) ? v * 100 : 0).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' %';
+  // Campos numéricos con separador de miles (punto) y decimales con coma, como se escriben en Costa Rica
+  const fmtIn = v => v == null || v === '' || isNaN(v) ? '' : Number(v).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+  const parseIn = s => { const t = String(s).replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''); return t === '' ? NaN : parseFloat(t); };
+  const num = (id, label, val, unit, o = {}) => `<div class="row g-2 align-items-center mb-2">
+      <label class="col-6 col-form-label py-0" for="pv-${id}">${label}${o.hint ? `<small class="form-hint mt-0">${o.hint}</small>` : ''}</label>
+      <div class="col-6"><div class="input-group">${o.pre ? `<span class="input-group-text">${o.pre}</span>` : ''}<input id="pv-${id}" type="text" inputmode="decimal" autocomplete="off" class="form-control text-end" data-v="${id}" value="${fmtIn(val)}"${o.dis ? ' disabled' : ''}>${unit ? `<span class="input-group-text">${unit}</span>` : ''}</div></div></div>`;
+  const grupo = t => `<div class="subheader mt-3 mb-2">${t}</div>`;
+  const curU = () => PX.cur === 'USD' ? '$' : '₡';
+  const T = v => PX.mt(Math.round(v), PX.cur);                 // monto en texto, moneda elegida
+  const kpi = (t, v, sub, cls = '') => `<div class="col-6"><div class="card card-sm h-100"><div class="card-body"><div class="subheader">${t}</div><div class="h2 mb-1 ${cls}">${v}</div>${sub ? `<div class="text-secondary small">${sub}</div>` : ''}</div></div></div>`;
 
   function lotSVG(v, c) {
     // Lote cuadrado proporcional, huella centrada y pisos apilados
@@ -204,111 +210,174 @@
       <text x="260" y="168" class="s-t" text-anchor="middle">${v.pisos} piso${v.pisos == 1 ? '' : 's'}</text></svg>`;
   }
 
+  // Resultados (se recalculan al escribir, sin tocar el formulario)
+  P.res = {
+    potencial(r, st) {
+      const v = st.pot, c = P.potCalc(v);
+      return `<div class="row g-2 mb-3">
+          ${kpi('Huella construible', `${fnum(c.huella, 0)} m²`, `${fnum(v.area, 0)} m² × ${fnum(v.util)} % aprovechable × ${fnum(v.cob)} % de cobertura`)}
+          ${kpi('Área total construible', `${fnum(c.total, 0)} m²`, `Huella × ${fnum(v.pisos)} piso${v.pisos == 1 ? '' : 's'}`)}
+          ${kpi(`Unidades de ${fnum(v.unidad)} m²`, fnum(c.unidades, 0), `Área total menos ${fnum(v.circ)} % de circulaciones y muros, dividida entre ${fnum(v.unidad)} m²`)}
+          ${kpi('Lotes si se segrega', fnum(c.lotes, 0), `80 % del área (el resto va a vías y áreas públicas) dividido entre ${fnum(v.loteMin)} m²`)}
+        </div>
+        <div class="card card-sm"><div class="card-body text-center">${lotSVG(v, c)}<div class="text-secondary small mt-1">Coeficiente de aprovechamiento ≈ ${fnum(c.cus, 2)}: se construyen ${fnum(c.cus, 2)} m² por cada m² de lote.</div></div></div>`;
+    },
+    prefa(r, st) {
+      const v = st.pref, c = P.prefCalc(v), rev = v.modo === 'reventa', gana = c.util >= 0, U = curU();
+      const ventas = rev ? v.ref : v.m2 * v.venta, com = ventas * v.comision / 100;
+      const fila = (signo, t, sub, x, total) => `<tr${total ? ' class="fw-bold"' : ''}><td class="w-1 text-secondary">${signo}</td><td>${t}${sub ? `<div class="small text-secondary fw-normal">${sub}</div>` : ''}</td><td class="text-end text-nowrap">${T(x)}</td></tr>`;
+      const tabla = `<div class="card card-sm mb-3"><div class="card-header"><h3 class="card-title">Cómo se calcula</h3></div>
+        <div class="table-responsive"><table class="table table-vcenter card-table mb-0"><tbody>
+          ${fila('', 'Oferta en el remate', '', v.oferta)}
+          ${fila('+', 'Gastos de adjudicación', `Traspaso ${fnum(v.traspaso)} %, timbres ${fnum(v.timbres)} % y honorarios ${fnum(v.legal)} % sobre la oferta${v.otros ? `, más ${T(v.otros)} de deudas u otros` : ''}`, c.gastos)}
+          ${rev ? '' : fila('+', 'Construcción', `${fnum(v.m2, 0)} m² × ${T(v.costo)}, más 12 % de diseño, permisos e indirectos`, c.obra)}
+          ${fila('=', 'Inversión total', '', c.inversion, true)}
+          ${fila('', rev ? 'Precio de venta del terreno' : 'Ventas', rev ? '' : `${fnum(v.m2, 0)} m² × ${T(v.venta)}`, ventas)}
+          ${fila('−', 'Comisión de venta', `${fnum(v.comision)} % del precio de venta`, com)}
+          ${fila('=', 'Ingreso neto', '', c.ingreso, true)}
+          <tr class="fw-bold ${gana ? 'text-green' : 'text-red'}"><td class="w-1">=</td><td>${gana ? 'Ganancia' : 'Pérdida'}<div class="small text-secondary fw-normal">Ingreso neto menos inversión total</div></td><td class="text-end text-nowrap">${T(Math.abs(c.util))}</td></tr>
+        </tbody></table></div></div>`;
+      const cien = x => `${U}${fnum(Math.abs(x * 100), 0)}`;
+      return `<div class="alert alert-${gana ? 'success' : 'danger'} mb-3"><div>
+          <h4 class="alert-title">Con estos supuestos ${gana ? 'ganarías' : 'perderías'} ${T(Math.abs(c.util))}</h4>
+          <div class="text-secondary">${rev ? `Para no perder, el terreno tendría que venderse en <b>${T(c.equilibrio)}</b> o más.` : `Para no perder, cada m² construido tendría que venderse en <b>${T(c.equilibrio)}</b> o más.`}</div></div></div>
+        ${tabla}
+        <div class="row g-2">
+          ${kpi('Retorno sobre lo invertido', pct(c.roi), `Por cada ${U}100 invertidos, ${gana ? 'ganas' : 'pierdes'} ${cien(c.roi)}.`, gana ? 'text-green' : 'text-red')}
+          ${kpi('Margen sobre la venta', pct(c.margen), `De cada ${U}100 de ingreso neto, ${gana ? 'te quedan' : 'pierdes'} ${cien(c.margen)}.`, gana ? 'text-green' : 'text-red')}
+          ${gana && v.meses != 12 ? kpi('Rendimiento por año', pct(c.anual), `El retorno llevado a 12 meses (el plazo es de ${fnum(v.meses)} meses).`) : ''}
+        </div>`;
+    },
+    valor(r, st) {
+      const c = P.valCalc(r, st.val), M2 = x => PX.duo(x, 'CRC');
+      return `<div class="row g-2 mb-3">
+          ${kpi('Terreno', M2(c.terreno), `${fnum(st.val.area, 0)} m² × ${PX.mt(st.val.zh, 'CRC')} por m²`)}
+          ${kpi('Construcción depreciada', M2(c.vnr), `Reposición nueva ${PX.mt(Math.round(c.vrn), 'CRC')} × factor de edad y estado ${fnum(c.fd, 3)}`)}
+          ${kpi('Valor de referencia', M2(c.total), 'Terreno más construcción')}
+          ${c.base ? kpi('Base vigente frente a referencia', `${Math.round(c.ratio * 100)} %`, `La base (${PX.mt(Math.round(c.base), 'CRC')}) es ${c.ratio < 1 ? 'menor' : 'mayor'} que el valor de referencia.`, c.ratio < 1 ? 'text-green' : 'text-red') : ''}
+        </div>
+        <div class="text-secondary small">Tipología ${esc(c.tip[0])}: ${PX.mt(c.tip[2], 'CRC')} por m², vida útil ${c.tip[3]} años. Referencia orientativa, no es un avalúo.</div>`;
+    }
+  };
+
   P.view = {
     potencial(r, st) {
-      const v = st.pot = st.pot || P.potDefaults(r), c = P.potCalc(v), dis = !PX.isPro();
-      const nv = P.normativa(r);
-      return `<div class="normbox"><b>${esc(nv.titulo)}</b><span>${esc(nv.texto)}</span>${nv.reglas.length ? `<dl>${nv.reglas.map(([k, t]) => `<dt>${k}</dt><dd>${esc(t)}</dd>`).join('')}</dl>` : ''}${nv.dims ? `<span>Dimensiones aproximadas del predio: <b>${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)} m</b> (relación 1:${fnum(nv.dims.rel, 1)}).</span>` : ''}${nv.alertas.map(t => `<span class="na">⚠ ${esc(t)}</span>`).join('')}</div>
-        <p class="lead">Cobertura y pisos son supuestos editables${nv.vigente ? '; los valores reales los fija el plan regulador' : '; confírmelos con el Reglamento de Construcciones y la municipalidad'}.</p>
-        <div class="pgrid"><div class="pform">
-          ${num('area', 'Área del lote', v.area, 'm²', { dis })}${num('util', 'Área aprovechable (sin retiros)', v.util, '%', { dis, step: 5 })}
-          ${num('cob', 'Cobertura máxima', v.cob, '%', { dis, step: 5 })}${num('pisos', 'Pisos', v.pisos, '', { dis, step: 1 })}
-          ${num('unidad', 'Tamaño por unidad', v.unidad, 'm²', { dis, step: 5 })}${num('circ', 'Circulaciones y muros', v.circ, '%', { dis, step: 5 })}
-          ${num('loteMin', 'Lote mínimo para segregar', v.loteMin, 'm²', { dis, step: 10 })}</div>
-        <div class="pres"><div class="pkpi"><div><small>Huella construible</small><b class="num">${fnum(c.huella, 0)} <span class="u">m²</span></b></div><div><small>Área total construible</small><b class="num">${fnum(c.total, 0)} <span class="u">m²</span></b></div>
-          <div><small>Unidades de ${v.unidad} m²</small><b class="num">${c.unidades}</b></div><div><small>Lotes si se segrega</small><b class="num">${c.lotes}</b></div></div>
-          ${lotSVG(v, c)}<div class="foot">Coeficiente de aprovechamiento ≈ ${fnum(c.cus, 2)}. La segregación reserva 20 % para vías y áreas públicas.</div></div></div>`;
+      const v = st.pot = st.pot || P.potDefaults(r), dis = !PX.isPro(), nv = P.normativa(r);
+      return `<div class="card card-sm mb-3"><div class="card-header"><h3 class="card-title">${esc(nv.titulo)}</h3></div><div class="card-body">
+          <p class="text-secondary">${esc(nv.texto)}</p>
+          ${nv.reglas.length ? `<div class="datagrid mb-2">${nv.reglas.map(([k, t]) => `<div class="datagrid-item"><div class="datagrid-title">${k}</div><div class="datagrid-content">${esc(t)}</div></div>`).join('')}</div>` : ''}
+          ${nv.dims ? `<p class="mb-2">Dimensiones aproximadas del predio: <b>${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)} m</b> (relación 1:${fnum(nv.dims.rel, 1)}).</p>` : ''}
+          ${nv.alertas.map(t => `<div class="alert alert-warning py-2 mb-2"><div>${esc(t)}</div></div>`).join('')}</div></div>
+        <div class="row g-4"><div class="col-lg-5">
+          <p class="text-secondary small">Cobertura y pisos son supuestos editables${nv.vigente ? '; los valores reales los fija el plan regulador' : '; confírmelos con el Reglamento de Construcciones y la municipalidad'}.</p>
+          ${grupo('El lote')}
+          ${num('area', 'Área del lote', v.area, 'm²', { dis })}${num('util', 'Área aprovechable', v.util, '%', { dis, hint: 'Lo que queda sin retiros' })}
+          ${grupo('Lo que se puede construir')}
+          ${num('cob', 'Cobertura máxima', v.cob, '%', { dis, hint: 'Parte del lote que ocupa el edificio' })}${num('pisos', 'Pisos', v.pisos, '', { dis })}
+          ${grupo('Unidades y segregación')}
+          ${num('unidad', 'Tamaño por unidad', v.unidad, 'm²', { dis })}${num('circ', 'Circulaciones y muros', v.circ, '%', { dis })}
+          ${num('loteMin', 'Lote mínimo para segregar', v.loteMin, 'm²', { dis })}
+        </div><div class="col-lg-7 pres" data-res>${P.res.potencial(r, st)}</div></div>`;
     },
     prefa(r, st) {
       const v = st.pref = st.pref || P.prefDefaults(r);
       if (st.pot && !v.m2Edit) v.m2 = Math.round(P.potCalc(st.pot).total); // el área a construir sigue al potencial constructivo
-      const c = P.prefCalc(v), dis = !PX.isPro(), U = curU();
-      const bars = [['Terreno y gastos', c.terreno, 'var(--s1)'], ['Obra', c.obra, 'var(--s2)'], ['Ingreso neto', c.ingreso, 'var(--accent)']].filter(b => b[1] > 0);
-      const mx = Math.max(...bars.map(b => b[1]), 1);
-      return `<div class="seg" role="group" aria-label="Escenario"><button data-modo="reventa" aria-pressed="${v.modo === 'reventa'}"${dis ? ' disabled' : ''}>Comprar y revender el terreno</button><button data-modo="desarrollo" aria-pressed="${v.modo === 'desarrollo'}"${dis ? ' disabled' : ''}>Desarrollar y vender</button></div>
-        <div class="pgrid"><div class="pform">
-          <div class="lbl">Compra en remate</div>
-          ${num('oferta', 'Oferta', v.oferta, '', { dis, pre: U })}${num('traspaso', 'Impuesto de traspaso', v.traspaso, '%', { dis, step: 0.1 })}
-          ${num('timbres', 'Timbres y registro', v.timbres, '%', { dis, step: 0.1 })}${num('legal', 'Honorarios legales', v.legal, '%', { dis, step: 0.5 })}
-          ${num('otros', 'Deudas, desalojo u otros', v.otros, '', { dis, pre: U })}
-          <div class="lbl">${v.modo === 'reventa' ? 'Venta del terreno' : 'Desarrollo'}</div>
-          ${v.modo === 'reventa' ? num('ref', 'Precio de venta esperado', v.ref, '', { dis, pre: U }) : num('m2', 'Área a construir', v.m2, 'm²', { dis, step: 10 }) + (v.m2Edit ? '' : '<small class="muted">Tomada del potencial constructivo</small>') + num('costo', 'Costo de obra por m²', v.costo, '', { dis, pre: U }) + num('venta', 'Venta por m² construido', v.venta, '', { dis, pre: U })}
-          ${num('comision', 'Comisión de venta', v.comision, '%', { dis, step: 0.5 })}${num('meses', 'Plazo total', v.meses, 'meses', { dis, step: 1 })}</div>
-        <div class="pres"><div class="pkpi"><div><small>Inversión total</small><b>${M(c.inversion, true)}</b></div><div><small>Ingreso neto</small><b>${M(c.ingreso, true)}</b></div>
-          <div class="${c.util >= 0 ? 'good' : 'bad'}"><small>Utilidad</small><b>${M(c.util, true)}</b></div><div><small>Margen sobre ventas</small><b class="num">${pct(c.margen)}</b></div>
-          <div><small>Retorno sobre inversión</small><b class="num">${pct(c.roi)}</b></div><div><small>Rendimiento anualizado</small><b class="num">${pct(c.anual)}</b></div></div>
-          <div class="wf">${bars.map(b => `<div class="wfr"><span>${b[0]}</span><span class="track"><i style="width:${b[1] / mx * 100}%;background:${b[2]}"></i></span><b>${M(b[1], true)}</b></div>`).join('')}</div>
-          <div class="foot">${v.modo === 'reventa' ? `Punto de equilibrio: vender en ${I(c.equilibrio, true)} o más.${v.ref && !r.isPlano ? ' El precio de venta parte de la mediana de remates del cantón por el área: ajústelo con su conocimiento del mercado.' : ''}` : `Punto de equilibrio: ${I(c.equilibrio)} por m² construido. La obra incluye 12 % de indirectos, diseño y permisos.`} Gastos de adjudicación aproximados: ${I(c.gastos, true)}.</div></div></div>`;
+      const dis = !PX.isPro(), U = curU(), rev = v.modo === 'reventa';
+      const base = r.bv ? `Base vigente: ${T(PX.conv(r.bv, r.mon, PX.cur))}` : '';
+      return `<div class="btn-group w-100 mb-3" role="group" aria-label="Escenario">
+          <button type="button" class="btn${rev ? ' btn-primary' : ''}" data-modo="reventa" aria-pressed="${rev}"${dis ? ' disabled' : ''}>Comprar y revender el terreno</button>
+          <button type="button" class="btn${rev ? '' : ' btn-primary'}" data-modo="desarrollo" aria-pressed="${!rev}"${dis ? ' disabled' : ''}>Construir y vender</button></div>
+        <div class="row g-4"><div class="col-lg-5">
+          ${grupo('1. Compra en el remate')}
+          ${num('oferta', 'Tu oferta', v.oferta, '', { dis, pre: U, hint: base })}
+          ${num('traspaso', 'Impuesto de traspaso', v.traspaso, '%', { dis })}
+          ${num('timbres', 'Timbres y registro', v.timbres, '%', { dis })}
+          ${num('legal', 'Honorarios legales', v.legal, '%', { dis })}
+          ${num('otros', 'Deudas, desalojo u otros', v.otros, '', { dis, pre: U, hint: 'Monto fijo, si lo hay' })}
+          ${rev ? `${grupo('2. Venta del terreno')}${num('ref', 'Precio de venta esperado', v.ref, '', { dis, pre: U, hint: !r.isPlano && PX.medFor && PX.medFor(r) ? 'Sugerido: mediana de remates del cantón por el área. Ajústelo a su mercado.' : '' })}`
+            : `${grupo('2. Construcción')}${num('m2', 'Área a construir', v.m2, 'm²', { dis, hint: v.m2Edit ? '' : 'Tomada del potencial constructivo' })}${num('costo', 'Costo de obra por m²', v.costo, '', { dis, pre: U })}
+              ${grupo('3. Venta')}${num('venta', 'Precio de venta por m²', v.venta, '', { dis, pre: U })}`}
+          ${num('comision', 'Comisión de venta', v.comision, '%', { dis })}
+          ${num('meses', 'Plazo total', v.meses, 'meses', { dis, hint: 'De la compra a la venta' })}
+        </div><div class="col-lg-7 pres" data-res>${P.res.prefa(r, st)}</div></div>`;
     },
     riesgos(r) {
-      const rs = P.riesgos(r), lv = ['', 'Información', 'Medio', 'Alto'];
+      const rs = P.riesgos(r), lv = ['', 'Información', 'Medio', 'Alto'], col = ['', 'blue', 'yellow', 'red'];
       const cnt = [3, 2, 1].map(n => rs.filter(x => x.n === n).length);
-      return `<div class="sem"><span class="s3"><b class="num">${cnt[0]}</b> altos</span><span class="s2"><b class="num">${cnt[1]}</b> medios</span><span class="s1"><b class="num">${cnt[2]}</b> informativos</span></div>
-        <div class="rlist">${rs.length ? rs.map(x => `<div class="rk r${x.n}"><i></i><div><b>${esc(x.t)}</b><span class="tag">${lv[x.n]}</span><p>${esc(x.d)}</p></div></div>`).join('') : '<p>No se detectaron riesgos en los datos disponibles.</p>'}</div>
-        <div class="lbl" style="margin-top:6px">Antes de ofertar</div><ul class="chk">${P.CHECK.map(t => `<li><label><input type="checkbox"${P.puede('riesgos') ? '' : ' disabled'}> ${t}</label></li>`).join('')}</ul>
-        <div class="foot">Detección automática a partir del edicto y de capas públicas. No es asesoría legal.</div>`;
+      return `<div class="row g-2 mb-3 pres">${[['Altos', cnt[0], 'red'], ['Medios', cnt[1], 'yellow'], ['Informativos', cnt[2], 'blue']].map(([t, n, c]) => `<div class="col-4"><div class="card card-sm"><div class="card-body d-flex align-items-center gap-2"><span class="status-dot status-${c}" aria-hidden="true"></span><span class="h2 mb-0">${n}</span><span class="text-secondary">${t}</span></div></div></div>`).join('')}</div>
+        <div class="card card-sm mb-3 pres"><div class="list-group list-group-flush">${rs.length ? rs.map(x => `<div class="list-group-item"><div class="d-flex align-items-center gap-2 mb-1"><span class="badge bg-${col[x.n]}-lt">${lv[x.n]}</span><b>${esc(x.t)}</b></div><div class="text-secondary">${esc(x.d)}</div></div>`).join('') : '<div class="list-group-item">No se detectaron riesgos en los datos disponibles.</div>'}</div></div>
+        ${grupo('Antes de ofertar')}${P.CHECK.map(t => `<label class="form-check"><input class="form-check-input" type="checkbox"${P.puede('riesgos') ? '' : ' disabled'}><span class="form-check-label">${t}</span></label>`).join('')}
+        <div class="text-secondary small mt-2">Detección automática a partir del edicto y de capas públicas. No es asesoría legal.</div>`;
     },
     valor(r, st) {
-      const v = st.val = st.val || P.valDefaults(r), c = P.valCalc(r, v), dis = !PX.isPro(), z = (r.ent || {}).zh;
-      const M2 = x => PX.duo(x, 'CRC');
-      return `<p class="lead">${z ? `Zona homogénea <b>${esc(z.c)} · ${esc(PX.cap(z.n))}</b> (Hacienda, ONT): <b>${PX.duoI(z.v, 'CRC', '/m²')}</b>, tipología predominante ${esc(z.u)}.` : 'Sin dato de zona homogénea para este punto.'} La construcción se estima con el manual de tipologías de la ONT (valores a marzo 2023) y depreciación Ross-Heidecke.</p>
-        <div class="pgrid"><div class="pform">
-          <div class="lbl">Terreno</div>
-          ${num('area', 'Área del terreno', v.area, 'm²', { dis })}${num('zh', 'Valor de zona homogénea', v.zh, '/m²', { dis, pre: '₡', step: 500 })}
-          <div class="lbl">Construcción</div>
-          ${num('ac', 'Área construida', v.ac, 'm²', { dis, step: 5 })}
-          <label class="pf"><span>Tipología</span><span class="pin"><select data-vs="tip"${dis ? ' disabled' : ''}>${PX.TIPOLOGIAS.map(t => `<option value="${t[0]}"${t[0] === v.tip ? ' selected' : ''}>${t[0]} · ${t[1]}</option>`).join('')}</select></span></label>
-          ${num('edad', 'Edad', v.edad, 'años', { dis, step: 1 })}
-          <label class="pf"><span>Estado de conservación</span><span class="pin"><select data-vs="est"${dis ? ' disabled' : ''}>${PX.ESTADOS.map(([n, f]) => `<option value="${f}"${f === v.est ? ' selected' : ''}>${n}</option>`).join('')}</select></span></label>
-        </div>
-        <div class="pres"><div class="pkpi"><div><small>Terreno</small><b>${M2(c.terreno)}</b></div><div><small>Construcción depreciada</small><b>${M2(c.vnr)}</b></div>
-          <div><small>Valor de referencia</small><b>${M2(c.total)}</b></div>${c.base ? `<div class="${c.ratio < 1 ? 'good' : 'bad'}"><small>Base vigente</small><b>${M2(c.base)}</b></div><div><small>Base frente a referencia</small><b class="num">${Math.round(c.ratio * 100)} %</b></div>` : ''}</div>
-          <div class="foot">Reposición nueva ${PX.duoI(c.vrn, 'CRC')} (${c.tip[0]}, ${PX.duoI(c.tip[2], 'CRC', '/m²')}, vida útil ${c.tip[3]} años); factor de edad ${fnum(c.fd, 3)}. Referencia orientativa, no es un avalúo.</div></div></div>`;
+      const v = st.val = st.val || P.valDefaults(r), dis = !PX.isPro(), z = (r.ent || {}).zh;
+      return `<p class="text-secondary">${z ? `Zona homogénea <b>${esc(z.c)} · ${esc(PX.cap(z.n))}</b> (Hacienda, ONT): <b>${PX.duoI(z.v, 'CRC', '/m²')}</b>, tipología predominante ${esc(z.u)}.` : 'Sin dato de zona homogénea para este punto.'} La construcción se estima con el manual de tipologías de la ONT (valores a marzo 2023) y depreciación Ross-Heidecke.</p>
+        <div class="row g-4"><div class="col-lg-5">
+          ${grupo('Terreno')}
+          ${num('area', 'Área del terreno', v.area, 'm²', { dis })}${num('zh', 'Valor de zona homogénea', v.zh, '/m²', { dis, pre: '₡' })}
+          ${grupo('Construcción')}
+          ${num('ac', 'Área construida', v.ac, 'm²', { dis })}
+          <div class="mb-2"><label class="form-label" for="pv-tip">Tipología</label><select id="pv-tip" class="form-select" data-vs="tip"${dis ? ' disabled' : ''}>${PX.TIPOLOGIAS.map(t => `<option value="${t[0]}"${t[0] === v.tip ? ' selected' : ''}>${t[0]} · ${t[1]}</option>`).join('')}</select></div>
+          ${num('edad', 'Edad', v.edad, 'años', { dis })}
+          <div class="mb-2"><label class="form-label" for="pv-est">Estado de conservación</label><select id="pv-est" class="form-select" data-vs="est"${dis ? ' disabled' : ''}>${PX.ESTADOS.map(([n, f]) => `<option value="${f}"${f === v.est ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
+        </div><div class="col-lg-7 pres" data-res>${P.res.valor(r, st)}</div></div>`;
     },
     alertas(r) {
       const a = P.alertas(), dis = !P.puede('alertas') ? ' disabled' : '', sig = r && !r.isPlano ? PX.sigo(r.key) : false;
-      return `<p class="lead">Recibe avisos sin entrar al sitio. ${r && !r.isPlano ? `Este lote ${sig ? '<b>está en tu seguimiento</b>' : 'no está en tu seguimiento todavía'}.` : ''}</p>
-        <div class="pform" style="max-width:520px">
-          <div class="lbl">Canales</div>
-          <label class="ck"><input type="checkbox" data-al="correo"${a.canal.correo ? ' checked' : ''}${dis}> Correo electrónico</label>
-          <label class="ck"><input type="checkbox" data-al="whatsapp"${a.canal.whatsapp ? ' checked' : ''}${dis}> WhatsApp</label>
-          <div class="lbl">Avisarme cuando</div>
-          <label class="ck"><input type="checkbox" data-al="etapa"${a.etapa ? ' checked' : ''}${dis}> Un lote que sigo cambie de etapa, se suspenda o se reprograme</label>
-          <label class="ck"><input type="checkbox" data-al="nuevos"${a.nuevos ? ' checked' : ''}${dis}> Salgan remates nuevos que cumplan mis búsquedas guardadas</label>
-          ${num('dias', 'Recordatorio antes del remate', a.dias, 'días', { dis: !!dis, step: 1 })}
-          ${r && !r.isPlano ? `<button class="btn sm${sig ? '' : ' primary'}" data-sig${dis}>${sig ? 'Dejar de seguir este lote' : 'Seguir este lote'}</button>` : ''}
+      const ck = (k, on, t) => `<label class="form-check"><input class="form-check-input" type="checkbox" data-al="${k}"${on ? ' checked' : ''}${dis}><span class="form-check-label">${t}</span></label>`;
+      return `<p class="text-secondary">Recibe avisos sin entrar al sitio. ${r && !r.isPlano ? `Este lote ${sig ? '<b>está en tu seguimiento</b>' : 'no está en tu seguimiento todavía'}.` : ''}</p>
+        <div style="max-width:560px">
+          ${grupo('Canales')}${ck('correo', a.canal.correo, 'Correo electrónico')}${ck('whatsapp', a.canal.whatsapp, 'WhatsApp')}
+          ${grupo('Avisarme cuando')}${ck('etapa', a.etapa, 'Un lote que sigo cambie de etapa, se suspenda o se reprograme')}${ck('nuevos', a.nuevos, 'Salgan remates nuevos que cumplan mis búsquedas guardadas')}
+          ${num('dias', 'Recordatorio antes del remate', a.dias, 'días', { dis: !!dis })}
+          ${r && !r.isPlano ? `<button class="btn${sig ? '' : ' btn-primary'} mt-2" data-sig${dis}>${sig ? 'Dejar de seguir este lote' : 'Seguir este lote'}</button>` : ''}
         </div>
-        <div class="demo">Vista previa: el envío de correos y WhatsApp se conecta en la siguiente fase, junto con el robot diario que lee el Boletín Judicial.</div>`;
+        <div class="alert alert-info mt-3 mb-0"><div>Vista previa: el envío de correos y WhatsApp se conecta en la siguiente fase, junto con el robot diario que lee el Boletín Judicial.</div></div>`;
     }
   };
 
-  // ---------- Espacio de trabajo PRO (ventana) ----------
+  // ---------- Espacio de trabajo (ventana de Tabler) ----------
   const states = {};
   P.nivelDe = k => (P.TOOLS.find(t => t.k === k) || { nv: 3 }).nv;
   P.puede = k => PX.nivel() >= P.nivelDe(k);
   // Etiqueta del plan de cada herramienta
   P.tag = k => P.nivelDe(k) === 2 ? PX.ESE : PX.PRO;
+  const tema = () => ((matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark') ? 'dark' : 'light';
   P.open = (r, tool, layer, hooks) => {
     const st = states[r.key] = states[r.key] || {};
     let cur = tool || 'potencial';
     const tools = P.TOOLS.filter(t => P.view[t.k]);
     function paint() {
       const pro = P.puede(cur), ese = P.nivelDe(cur) === 2;
-      layer.innerHTML = `<div class="scrim"><div class="dlg prows" role="dialog" aria-modal="true" aria-label="Herramientas">
-        <div class="hd">${P.tag(cur)}<h2>Herramientas</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-        <div class="prolot"><b>${esc(r.nom)}</b><span class="muted">${esc(r.lugar || '')}${r.bv ? ' · base ' + PX.duoT(r.bv, r.mon) : ''}${PX.prof(r) ? ' · ' + fnum(PX.prof(r)) + ' m²' : ''}</span></div>
-        ${pro ? '' : `<div class="probar">${P.tag(cur)}<span>Estás viendo una <b>vista previa</b>. Esta herramienta viene en el plan <b>${ese ? 'Esencial' : 'PRO'}</b>${ese ? ' (y en PRO)' : ''}: con él editas los supuestos y ves todos los resultados.</span><button class="btn sm primary" data-planes>Ver planes</button></div>`}
-        <div class="pnav" role="tablist">${tools.map(t => `<button role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n} ${P.tag(t.k)}</button>`).join('')}</div>
-        <div class="pbody${pro ? '' : ' preview'}" data-tool-body>${P.view[cur](r, st)}</div>
-        <div class="foot">Herramienta ${ese ? 'del plan Esencial' : 'PRO'} de PlanoExactoCR. Resultados orientativos: no son un avalúo, un certificado de uso de suelo ni asesoría legal o financiera.</div>
-      </div></div>`;
+      layer.innerHTML = `<div class="tb" data-bs-theme="${tema()}"><div class="modal modal-blur show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Herramientas" data-fondo>
+        <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><div><h5 class="modal-title">${esc(r.nom)}</h5><div class="text-secondary small">${esc(r.lugar || '')}${r.bv ? ' · base ' + PX.mt(Math.round(PX.conv(r.bv, r.mon, PX.cur)), PX.cur) : ''}${PX.prof(r) ? ' · ' + fnum(PX.prof(r)) + ' m²' : ''}</div></div><button type="button" class="btn-close" data-close aria-label="Cerrar"></button></div>
+        <div class="modal-body pt-0">
+          <ul class="nav nav-tabs mb-3" role="tablist">${tools.map(t => `<li class="nav-item" role="presentation"><a href="#" class="nav-link${t.k === cur ? ' active' : ''}" role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n}<span class="ms-2">${P.tag(t.k)}</span></a></li>`).join('')}</ul>
+          ${pro ? '' : `<div class="alert alert-${ese ? 'success' : 'warning'} d-flex align-items-center gap-3"><div class="flex-fill">Estás viendo una <b>vista previa</b>. Esta herramienta viene en el plan <b>${ese ? 'Esencial' : 'PRO'}</b>${ese ? ' (y en PRO)' : ''}: con él editas los supuestos y ves todos los resultados.</div><button class="btn btn-primary" data-planes>Ver planes</button></div>`}
+          <div class="${pro ? '' : 'preview'}" data-tool-body>${P.view[cur](r, st)}</div>
+        </div>
+        <div class="modal-footer justify-content-start text-secondary small">Herramienta ${ese ? 'del plan Esencial' : 'PRO'} de PlanoExactoCR. Resultados orientativos: no son un avalúo, un certificado de uso de suelo ni asesoría legal o financiera.</div>
+      </div></div></div><div class="modal-backdrop fade show"></div></div>`;
     }
     paint();
     function refresh() { const b = layer.querySelector('[data-tool-body]'); if (b) b.innerHTML = P.view[cur](r, st); }
+    function refreshRes() { const b = layer.querySelector('[data-res]'); if (b && P.res[cur]) b.innerHTML = P.res[cur](r, st); }
+    // Formatea mientras se escribe: puntos de miles, coma decimal, sin mover el cursor de su dígito
+    function formatear(el) {
+      const raw = el.value, pos = el.selectionStart || 0, antes = raw.slice(0, pos).replace(/[^\d,]/g, '').length;
+      let limpio = raw.replace(/[^\d,]/g, ''); const i = limpio.indexOf(',');
+      if (i >= 0) limpio = limpio.slice(0, i + 1) + limpio.slice(i + 1).replace(/,/g, '');
+      const [ent, dec] = limpio.split(',');
+      const nuevo = (ent || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (dec != null ? ',' + dec : '');
+      el.value = nuevo;
+      let n = 0, p = 0; while (p < nuevo.length && n < antes) { if (/[\d,]/.test(nuevo[p])) n++; p++; }
+      try { el.setSelectionRange(p, p); } catch (er) {}
+    }
     function bind() {
       const root2 = layer.firstElementChild; if (!root2 || root2._b) return; root2._b = 1;
       root2.addEventListener('click', e => {
-        const t = e.target.closest('[data-tool]'); if (t) { cur = t.dataset.tool; paint(); bind(); return; }
+        const t = e.target.closest('[data-tool]'); if (t) { e.preventDefault(); cur = t.dataset.tool; paint(); bind(); return; }
         const m = e.target.closest('[data-modo]'); if (m && PX.isPro()) { st.pref.modo = m.dataset.modo; refresh(); return; }
         if (e.target.closest('[data-sig]') && P.puede('alertas')) { PX.toggleSigo(r.key); refresh(); if (hooks && hooks.changed) hooks.changed(); }
       });
@@ -316,14 +385,18 @@
         const k = e.target.dataset.al; if (k == null || !P.puede('alertas')) return;
         const a = P.alertas(); if (k === 'correo' || k === 'whatsapp') a.canal[k] = e.target.checked; else a[k] = e.target.checked; PX.saveAcct();
       });
-      root2.addEventListener('change', e => { const k = e.target.dataset.vs; if (!k || !PX.isPro()) return; st.val[k] = k === 'est' ? +e.target.value : e.target.value; refresh(); });
+      root2.addEventListener('change', e => { const k = e.target.dataset.vs; if (!k || !PX.isPro()) return; st.val[k] = k === 'est' ? +e.target.value : e.target.value; refreshRes(); });
       root2.addEventListener('input', e => {
-        const k = e.target.dataset.v; if (!k || !PX.isPro()) return;
-        const v = parseFloat(e.target.value); if (isNaN(v)) return;
-        if (cur === 'valor') st.val[k] = v; else if (cur === 'potencial') st.pot[k] = v; else if (cur === 'prefa') { st.pref[k] = v; if (k === 'm2') st.pref.m2Edit = true; } else if (cur === 'alertas' && k === 'dias') { P.alertas().dias = v; PX.store.set('px-acct', PX.acct); return; }
-        const pos = e.target.selectionStart; refresh();
-        const el = layer.querySelector(`[data-v="${k}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (er) {} }
+        const k = e.target.dataset.v; if (!k) return;
+        formatear(e.target);
+        const v = parseIn(e.target.value); if (isNaN(v)) return;
+        if (cur === 'alertas' && k === 'dias') { if (P.puede('alertas')) { P.alertas().dias = v; PX.saveAcct(); } return; }
+        if (!PX.isPro()) return;
+        if (cur === 'valor') st.val[k] = v; else if (cur === 'potencial') st.pot[k] = v; else if (cur === 'prefa') { st.pref[k] = v; if (k === 'm2') st.pref.m2Edit = true; }
+        refreshRes();
       });
+      // Al salir del campo se deja el número con su formato final
+      root2.addEventListener('focusout', e => { const el = e.target; if (!el.dataset || !el.dataset.v) return; const v = parseIn(el.value); el.value = isNaN(v) ? '' : fmtIn(v); });
     }
     bind();
   };

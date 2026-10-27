@@ -583,8 +583,8 @@ const ETAPA = ["1.er remate", "2.º remate", "3.er remate"], PCT = [1, 0.75, 0.2
 const MES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const slug = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const miles = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-const dinero = (v, mon) => v == null ? "—" : (mon === "USD" ? "US$" : "₡") + miles(v);
+const miles = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const dinero = (v, mon) => v == null ? "—" : (mon === "USD" ? "$" : "₡") + miles(v);
 const fechaTxt = (iso) => { const [d, h] = String(iso).split("T"); const [y, m, dd] = d.split("-").map(Number); return `${dd} de ${MES[m - 1]} de ${y}${h ? ", " + h : ""}`; };
 let DATOS = { etag: null, R: null, meta: null };
 async function datosPublicos(u, env) {
