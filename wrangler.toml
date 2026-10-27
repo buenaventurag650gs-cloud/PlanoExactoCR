@@ -5,6 +5,8 @@ main = "worker.js"
 compatibility_date = "2026-10-01"
 
 # Dominio propio: el sitio vive en planoexactocr.com; la dirección workers.dev y www redirigen allí.
+# workers_dev: mantiene viva la dirección anterior (redirige al dominio y atiende el botón del catastro)
+workers_dev = true
 routes = [
   { pattern = "planoexactocr.com", custom_domain = true },
   { pattern = "www.planoexactocr.com", custom_domain = true }
