@@ -6,8 +6,9 @@
   PX.ETAPA = ['1.er remate', '2.º remate', '3.er remate'];
   PX.SC = ['--s1', '--s2', '--s3'];
   PX.PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
-  // Precios en colones (se muestran también en dólares). PRO incluye hasta «cupo» expedientes al mes; la cuenta gratis, «diario» al día.
-  PX.PRECIOS = { pro: 12900, anual: 129000, expediente: 1900, cupo: 100, diario: 1, cupon: 30 };
+  // Precios en colones (se muestran también en dólares).
+  // Cuenta gratis: «semanal» expedientes por semana. Esencial: «diarioEsencial» al día. PRO: sin límite.
+  PX.PRECIOS = { esencial: 5900, esencialAnual: 59000, pro: 12900, anual: 129000, expediente: 1500, semanal: 1, diarioEsencial: 5, cupon: 30 };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -393,22 +394,30 @@
   };
   PX.conCuenta = () => !!(PX.yo || PX.admin);
   PX.saveAcct = () => { PX.store.set('px-acct', PX.acct); guardarEnCuenta(); document.dispatchEvent(new CustomEvent('px-acct')); };
-  PX.isPro = () => PX.admin ? PX.acct.plan === 'pro' : !!(PX.yo && PX.yo.plan === 'pro');
+  // Nivel de acceso: 0 visitante, 1 cuenta gratis, 2 Esencial, 3 PRO. La administración elige con «Ver como».
+  PX.plan = () => PX.admin ? (PX.acct.plan === 'free' || PX.acct.plan === 'basico' ? PX.acct.plan : 'pro') : PX.yo ? PX.yo.plan || 'free' : 'anon';
+  PX.nivel = () => ({ anon: 0, free: 1, basico: 2, pro: 3 })[PX.plan()] ?? 1;
+  PX.isPro = () => PX.nivel() >= 3;
+  PX.isEsencial = () => PX.nivel() >= 2;
+  PX.NOMPLAN = { anon: 'Visitante', free: 'Cuenta gratis', basico: 'Esencial', pro: 'PRO' };
   PX.mesKey = () => PX.now.getFullYear() + '-' + String(PX.now.getMonth() + 1).padStart(2, '0');
   PX.diaKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  PX.semKey = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   PX.usoMes = () => PX.acct.usados[PX.mesKey()] || 0;
-  PX.usoHoy = () => PX.acct.expedientes.filter(x => x.via === 'dia' && x.d === PX.diaKey()).length;
-  // Cuenta gratis: 1 expediente al día. PRO: hasta PRECIOS.cupo al mes.
-  PX.quedan = () => PX.isPro() ? Math.max(0, PX.PRECIOS.cupo - PX.usoMes()) : PX.conCuenta() ? Math.max(0, PX.PRECIOS.diario - PX.usoHoy()) : 0;
+  PX.usoHoy = () => PX.acct.expedientes.filter(x => x.via !== 'compra' && x.d === PX.diaKey()).length;
+  PX.usoSemana = () => PX.acct.expedientes.filter(x => x.via === 'sem' && x.w === PX.semKey()).length;
+  // Cuántos expedientes nuevos puede abrir ahora (PRO: sin límite)
+  PX.quedan = () => { const n = PX.nivel(); return n >= 3 ? Infinity : n === 2 ? Math.max(0, PX.PRECIOS.diarioEsencial - PX.usoHoy()) : n === 1 ? Math.max(0, PX.PRECIOS.semanal - PX.usoSemana()) : 0; };
+  PX.cupoTxt = () => { const n = PX.nivel(); return n >= 3 ? 'sin límite' : n === 2 ? `${PX.PRECIOS.diarioEsencial} al día` : `${PX.PRECIOS.semanal} por semana`; };
   PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && x.via !== 'compra');
   PX.puedeGenerar = key => PX.tieneExp(key) || PX.quedan() > 0;
   // Registra la generación: descuenta del cupo la primera vez (en el mes) que se abre el expediente de un lote.
   PX.registrarExp = (key, label) => {
-    const a = PX.acct;
+    const a = PX.acct, n = PX.nivel();
     if (!PX.tieneExp(key)) {
       if (!(PX.quedan() > 0)) return false;
-      if (PX.isPro()) { a.usados[PX.mesKey()] = PX.usoMes() + 1; a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'pro' }); }
-      else a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), d: PX.diaKey(), via: 'dia' });
+      if (n >= 3) a.usados[PX.mesKey()] = PX.usoMes() + 1;
+      a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), d: PX.diaKey(), w: PX.semKey(), via: n >= 3 ? 'pro' : n === 2 ? 'esencial' : 'sem' });
     } else if (!a.expedientes.some(x => x.k === key)) a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'compra' });
     PX.saveAcct(); return true;
   };

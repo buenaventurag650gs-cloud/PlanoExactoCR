@@ -33,7 +33,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
 .vista { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; font-size: 12.5px; }
 .vista span { padding: 0 8px 0 11px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
 .vista button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; }
-.vista #vFree[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.vista #vFree[aria-pressed="true"], .vista #vBas[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
 .vista #vPro[aria-pressed="true"] { background: linear-gradient(135deg, #C9A227, #8A6A00); color: #FFFDF5; }
 .cur { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .cur button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
@@ -228,7 +228,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 .ftitle .where { color: var(--muted); }
 .pricebox { display: grid; gap: 3px; padding: 14px; border-radius: 10px; background: var(--chip); }
 .pricebox .big { font-size: 28px; line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
-.pricebox .big .u { font-size: 24px; }
+
 .pricebox .alt.eqbig { font-size: 15px; font-weight: 600; color: var(--muted); }
 .pricebox .alt { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .acts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -260,11 +260,16 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 .dlg .hd { display: flex; align-items: center; gap: 10px; }
 .dlg h2 { margin: 0; font: 600 21px/1.2 var(--f-display); }
 .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.plans.p4 { grid-template-columns: repeat(4, 1fr); }
+.dlg:has(.plans.p4) { width: min(1180px, 100%); }
+@media (max-width: 1100px) { .plans.p4 { grid-template-columns: repeat(2, 1fr); } }
+.plan .pr.sm { font-size: 17px; font-family: var(--f-body); } .plan .alt { font-size: 12.5px; margin: -4px 0 4px; }
+.tag.ese { background: var(--chip); color: var(--ink); }
 .plan { border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; align-content: start; }
 .plan.hl { border: 2px solid var(--accent); }
 .plan h3 { margin: 0; font: 600 16px/1.2 var(--f-display); }
 .plan .pr { font-size: 30px; font-weight: 600; }
-.plan .pr .u { font-size: 14px; } .plan .pr small { font-size: 13px; color: var(--muted); font-weight: 500; font-family: var(--f-body); }
+.plan .pr small { font-size: 13px; color: var(--muted); font-weight: 500; font-family: var(--f-body); }
 .plan ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 3000; width: min(480px, 100%); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; border-left: 1px solid var(--line); }
 .drawer .dbody { overflow: auto; padding: 4px 18px 24px; display: grid; gap: 18px; align-content: start; }
@@ -303,7 +308,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
   .legend { left: 8px; bottom: 22px; padding: 6px 9px; font-size: 11px; }
   .legend .sep, .legend .r.loc { display: none; }
   .lyrpanel { width: auto; right: 12px; }
-  .plans { grid-template-columns: 1fr; }
+  .plans, .plans.p4 { grid-template-columns: 1fr; }
   dl.kv { grid-template-columns: 112px 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -316,7 +321,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
     <div class="brand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="52" height="37"></span><div class="bt"><h1 class="wm" aria-label="PlanoExactoCR"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></h1><span class="tagl">Ubica · Comprende · Decide</span></div><span class="src" id="src"></span></div>
     <div class="kpis" id="kpis"></div>
     <nav class="nav" aria-label="Cuenta">
-      <div class="vista" role="group" aria-label="Ver el sitio como usuario gratis o como suscriptor PRO (demostración)" title="Demostración: mira el sitio como lo ve un usuario gratis o un suscriptor PRO"><span class="vl"><i data-ic="eye"></i>Ver como</span><button id="vFree" aria-pressed="false"><i data-ic="user"></i>Gratis</button><button id="vPro" aria-pressed="true"><i data-ic="star"></i>PRO</button></div>
+      <div class="vista" role="group" aria-label="Ver el sitio como usuario gratis o como suscriptor PRO (demostración)" title="Demostración: mira el sitio como lo ve un usuario gratis o un suscriptor PRO"><span class="vl"><i data-ic="eye"></i>Ver como</span><button id="vFree" aria-pressed="false"><i data-ic="user"></i>Gratis</button><button id="vBas" aria-pressed="false">Esencial</button><button id="vPro" aria-pressed="true"><i data-ic="star"></i>PRO</button></div>
       <button class="btn sm ib" data-about="guia" title="Cómo usar la herramienta"><i data-ic="book"></i><span>Cómo usar</span></button>
       <button class="btn sm ib" data-about="us" title="Quiénes somos"><i data-ic="info"></i><span>Quiénes somos</span></button>
       <button class="btn sm ib" id="bPlanes" title="Planes y precios"><i data-ic="tag"></i><span>Planes</span></button>

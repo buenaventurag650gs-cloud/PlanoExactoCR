@@ -28,12 +28,12 @@
   $('kpis').innerHTML = `<span><b class="num">${live.length}</b> remates de fincas vigentes</span>
     <span title="Tipo de cambio de referencia de venta del BCCR">TC BCCR ${PX.mh(PX.tc.venta, 'CRC')} · ${esc(PX.tc.fecha)}</span>`;
   function paintPlan() {
-    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : ''); b.hidden = !PX.conCuenta();
+    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : PX.isEsencial() ? 'Esencial' : 'Gratis'; b.className = 'badge' + (PX.isEsencial() ? ' pro' : ''); b.hidden = !PX.conCuenta();
     $('bCuenta').querySelector('span:not(.ic):not(.badge)').textContent = PX.conCuenta() ? 'Mi cuenta' : 'Entrar';
     $('bCuenta').classList.toggle('primary', !PX.conCuenta());
     const vs = document.querySelector('.vista'); if (vs) vs.style.display = PX.admin ? '' : 'none';
     $('attrHint').hidden = PX.isPro();
-    $('vFree').setAttribute('aria-pressed', !PX.isPro()); $('vPro').setAttribute('aria-pressed', PX.isPro());
+    $('vFree').setAttribute('aria-pressed', PX.plan() === 'free'); $('vBas').setAttribute('aria-pressed', PX.plan() === 'basico'); $('vPro').setAttribute('aria-pressed', PX.isPro());
   }
 
   // ---------- pestañas ----------
@@ -585,14 +585,13 @@
     return `<div class="bars">${PX.DIMS.map(d => `<div class="bar"><span>${d.n}</span><b>${s[d.k] == null ? '–' : s[d.k]}</b><span class="track"><i style="width:${s[d.k] || 0}%"></i></span></div>`).join('')}</div>`;
   }
   function expBox(r) {
-    const has = PX.tieneExp(r.key);
-    const q = PX.quedan();
-    const label = has ? 'Abrir expediente' : PX.isPro() ? `Generar expediente <small>(${PX.usoMes()} de ${PX.PRECIOS.cupo} este mes)</small>` : PX.conCuenta() ? `Generar expediente <small>(${q ? 'gratis hoy' : 'mañana tienes otro'})</small>` : 'Generar expediente';
+    const has = PX.tieneExp(r.key), q = PX.quedan(), n = PX.nivel();
+    const label = has ? 'Abrir expediente' : !PX.conCuenta() ? 'Generar expediente' : q > 0 ? `Generar expediente <small>(${n >= 3 ? 'sin límite' : q === 1 ? 'te queda 1' : 'te quedan ' + q})</small>` : `Expediente adicional · ${PX.mt(PX.PRECIOS.expediente, 'CRC')}`;
     return `<div class="expbox">
-      <div class="p"><b>Expediente del lote</b>${has ? '<span class="tag ok">Disponible</span>' : PX.isPro() ? '<span class="tag gold">Incluido en tu suscripción</span>' : `<span class="tag ok">${PX.PRECIOS.diario} gratis al día</span>`}</div>
-      <ul><li>Texto del edicto${r.isPlano ? ' (si está en remate)' : ''}, datos registrales y despacho</li><li>Gravámenes y servidumbres explicados en lenguaje claro</li><li>Entorno: ríos, relieve, cobertura, salud, escuela y zona de vida</li><li>Análisis multidimensional y comparables de la zona</li><li>Versión imprimible con mapa del predio</li></ul>
-      <div class="acts"><button class="btn primary" data-act="exp">${label}</button>${!has && !PX.isPro() ? `<button class="btn gold" data-planes>PRO: ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes</button>` : ''}</div>
-      <div class="foot">No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div>`;
+      <div class="p"><b>Expediente del lote</b>${has ? '<span class="tag ok">Disponible</span>' : `<span class="tag ${n >= 2 ? 'gold' : 'ok'}">${n >= 3 ? 'Incluido en PRO' : n === 2 ? `Esencial: ${PX.cupoTxt()}` : `Gratis: ${PX.cupoTxt()}`}</span>`}</div>
+      <ul><li>Texto del edicto${r.isPlano ? ' (si está en remate)' : ''}, datos registrales y despacho</li><li>Gravámenes y servidumbres explicados en lenguaje claro</li><li>Valor de Hacienda, índices y entorno completo del predio</li><li>Análisis multidimensional y comparables de la zona</li><li>Versión imprimible con mapa del predio</li></ul>
+      <div class="acts"><button class="btn primary" data-act="exp">${label}</button>${!has && n < 3 ? '<button class="btn gold" data-planes>Ver planes</button>' : ''}</div>
+      <div class="foot">Cada expediente adicional cuesta ${PX.mt(PX.PRECIOS.expediente, 'CRC')}. No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div>`;
   }
   function proBox(r) {
     const rs = PX.pro.riesgos(r), alto = rs.filter(x => x.n === 3).length, med = rs.filter(x => x.n === 2).length, pro = PX.isPro();
@@ -617,13 +616,13 @@
   }
   function fichaPrevia(r) {
     const f = $('ficha'), a = PX.prof(r);
-    const ven = [[PX.ICON.pin || '', 'Ubicación exacta del predio, con área y forma'], [PX.ICON.moneda || '', 'Índice Puja/Hacienda y escala de valor PECR'], [PX.ICON.norma || '', 'Plan regulador y normativa'], [PX.ICON.entorno || '', 'Agua potable, salud, escuela, ríos y costa'], [PX.ICON.registro || '', 'Registro, servidumbres y gravámenes'], [PX.ICON.alerta || '', `${PX.PRECIOS.diario} expediente PDF completo gratis cada día`]];
+    const ven = [[PX.ICON.gavel || '', 'Fechas y bases de los tres remates'], [PX.ICON.terreno || '', 'Área y topografía del lote'], [PX.ICON.norma || '', 'Estado del plan regulador'], [PX.ICON.list || '', 'Listas y seguimiento de remates'], [PX.ICON.alerta || '', `${PX.PRECIOS.semanal} expediente PDF completo gratis por semana`]];
     f.innerHTML = `<div class="fhead">${PX.tipoIcon(r)}${PX.stageBadge(r.st)}<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
     <div class="fbody">
       <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
       <div class="pricebox"><span class="lbl">Base vigente · ${PX.ETAPA[r.st] || ''} · ${fdate(r.next)}</span><span class="big">${PX.money(r.bv, r.mon)}</span><span class="alt eqbig">${PX.other(r.bv, r.mon)}</span><span class="alt"><span>${a ? fnum(a) + ' m²' : 'área s/d'}</span></span></div>
       <div class="gate emph">
-        <h3>Crea tu cuenta gratis para ver la ficha</h3>
+        <h3>Crea tu cuenta gratis para ver la ficha</h3><small>Con tu cuenta gratis:</small>
         <ul>${ven.map(([i, t]) => `<li><span class="ri" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
         <div class="acts"><button class="btn primary" data-auth="crear">Crear cuenta gratis</button><button class="btn" data-auth="entrar">Ya tengo cuenta</button></div>
         <small class="muted">Acceso anticipado: al registrarte recibes un cupón de 30 % de descuento para cuando abramos los planes de pago.</small>
@@ -641,7 +640,7 @@
     document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current'));
     const li = document.querySelector(`.item[data-k="${key}"]`); if (li) li.setAttribute('aria-current', 'true');
     const f = $('ficha');
-    const s = PX.score(r), pro = PX.isPro(), full = pro || PX.tieneExp(r.key);
+    const s = PX.score(r), pro = PX.isPro(), full = pro || PX.tieneExp(r.key), ese = full || PX.isEsencial();
     const a = PX.prof(r), e = r.ent || {};
     const seal = r.isPlano ? `<span class="seal ok">● Predio del catastro</span>` : r.exact ? `<span class="seal ok">● Exacta por ${r.loc}</span>` : `<span class="seal aprox">◌ Aproximada al distrito</span>`;
     let top;
@@ -660,8 +659,11 @@
     const attrs = ATTR.filter(x => x[2](r)).map(x => x[1]);
     const nserv = (r.serv || []).length;
     const fav = PX.isFav(r.key);
-    const lockSec = (que, icon, t) => `<section class="fs locked"><h3>${icon}${t}<span class="r">${PX.PRO}</span></h3><div class="fb"><div class="lockb"><span>${que}</span><div class="acts"><button class="btn sm gold" data-planes>Ver PRO</button>${PX.quedan() ? '<button class="btn sm" data-act="exp">O usa tu expediente gratis de hoy</button>' : ''}</div></div></div></section>`;
-    const PROsec = (que, icon, t, body, right) => full ? sec(icon, t, body, right) : lockSec(que, icon, t);
+    // Secciones con candado: Esencial (registro, entorno) y PRO (valor, índices). Con el expediente del lote se ve todo.
+    const ESE = '<span class="tag ese">Esencial</span>';
+    const lockSec = (que, icon, t, nivel) => `<section class="fs locked"><h3>${icon}${t}<span class="r">${nivel === 2 ? ESE : PX.PRO}</span></h3><div class="fb"><div class="lockb"><span>${que}</span><div class="acts"><button class="btn sm gold" data-planes>Ver planes</button>${PX.quedan() > 0 ? '<button class="btn sm" data-act="exp">O abre el expediente de este lote</button>' : ''}</div></div></div></section>`;
+    const PROsec = (que, icon, t, body, right) => full ? sec(icon, t, body, right) : lockSec(que, icon, t, 3);
+    const ESEsec = (que, icon, t, body, right) => ese ? sec(icon, t, body, right) : lockSec(que, icon, t, 2);
     const I = PX.ICON, sec = (icon, t, body, right) => `<section class="fs"><h3>${icon}${t}${right ? `<span class="r">${right}</span>` : ''}</h3><div class="fb">${body}</div></section>`;
     const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
     const pecrH = pc ? pecrHTML(r, pc) : '';
@@ -679,12 +681,12 @@
       ${pecrH ? PROsec('Nivel del predio en la escala de valor PECR, de 1 a 10.', I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
-        ${dm ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
+        ${dm && ese ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
         <dt>Topografía</dt><dd>${topo ? esc(topo.txt) : 'Sin cartografía 1:5 000 en el sitio'}${topo ? '<small class="sub">Según curvas de nivel del IGN</small>' : ''}</dd>
         ${e.cob || r.isPlano ? `<dt>Uso del suelo</dt><dd id="pcob">${esc(e.cob || r.cob || '…')}</dd>` : ''}
         ${e.zv ? `<dt>Zona de vida</dt><dd>${esc(e.zv)}</dd>` : ''}
       </dl>`)}
-      ${PROsec('Agua potable, vía de acceso, salud, escuela, ríos y distancia a la costa.', I.entorno, 'Servicios y entorno', `<dl class="kv">
+      ${ESEsec('Agua potable, vía de acceso, salud, escuela, ríos y distancia a la costa.', I.entorno, 'Servicios y entorno', `<dl class="kv">
         <dt>Agua potable</dt><dd>${e.aguaS ? 'Cobertura de ' + esc(e.aguaS.join(', ')) : 'Sin cobertura registrada'}<small class="sub">AyA, ESPH, ASADAS y acueductos municipales</small></dd>
         ${e.via ? `<dt>Vía más cercana</dt><dd>${e.via.d <= 10 ? esc(e.via.t) + ', al frente' : esc(e.via.t) + ' a ' + PX.dist(e.via.d)}</dd>` : ''}
         ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n)}<small class="sub">${PX.dist(e.salud.d)}</small></dd>` : ''}
@@ -693,7 +695,7 @@
         ${e.costa != null && e.costa < 2000 ? `<dt>Costa</dt><dd>A ${PX.dist(e.costa)}${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}</dd>` : ''}
       </dl>`)}
       ${sec(I.norma, 'Normativa', `<p style="margin:0"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="note" style="padding:6px 9px">${esc(t)}</div>`).join('')}`)}
-      ${sec(I.registro, 'Registro y ubicación', `<dl class="kv">
+      ${ESEsec('Número de finca y plano, servidumbres citadas y el predio dibujado según el catastro.', I.registro, 'Registro y ubicación', `<dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
         ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
@@ -715,7 +717,7 @@
     selLayer.clearLayers();
     if (r.ll) {
       const col = r.isPlano ? css('--accent') : XC[r.st];
-      if (r.poly) {
+      if (r.poly && ese) {
         const pg = L.polygon(ringLL(r), { color: css('--ink'), weight: 2.5, fillColor: col, fillOpacity: 0.35 });
         selLayer.addLayer(pg);
         if (fly !== false) map.fitBounds(pg.getBounds(), { maxZoom: 17, paddingTopLeft: [60, 60], paddingBottomRight: window.innerWidth > 900 ? [480, 60] : [60, 60] });
@@ -762,24 +764,26 @@
     if (r.isPlano) PX.savePlano(r);
     if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis para generar expedientes.');
     if (PX.registrarExp(r.key, r.nom)) { location.href = 'expediente.html?k=' + encodeURIComponent(r.key); return; }
-    modal(`<div class="hd"><h2>${PX.isPro() ? 'Usaste los expedientes de este mes' : 'Ya usaste tu expediente de hoy'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <p>${PX.isPro() ? `Tu suscripción incluye ${PX.PRECIOS.cupo} expedientes al mes y ya los usaste.` : `Tu cuenta gratis incluye ${PX.PRECIOS.diario} expediente al día. Mañana puedes generar otro, o con ${PX.PRO} generas hasta ${PX.PRECIOS.cupo} al mes y ves toda la información de cada ficha.`}</p>
-      <p>Los pagos en línea llegan pronto. Si lo necesitas ahora, solicita el acceso PRO y te escribimos.</p>
-      <div class="acts">${PX.isPro() ? '' : '<button class="btn primary" data-sub>Solicitar acceso PRO</button>'}<button class="btn" data-close>Cerrar</button></div>`, true);
+    const n = PX.nivel();
+    modal(`<div class="hd"><h2>Expediente adicional</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      <p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.diarioEsencial} expedientes al día y ya los usaste hoy.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`} Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con ${PX.PRO} generas todos los que quieras.</p>
+      <p class="muted">Los pagos en línea llegan pronto. Si lo necesitas ahora, solicita un plan y te escribimos.</p>
+      <div class="acts"><button class="btn primary" data-planes>Ver planes</button><button class="btn" data-close>Cerrar</button></div>`, true);
   }
   // Solicitud de PRO: durante el acceso anticipado se activa a mano desde /admin
-  async function pedirPro() {
+  async function pedirPro(plan) {
     if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis y luego solicita el acceso PRO.');
-    if (PX.isPro()) return toast('Ya tienes PRO activo');
-    if (PX.yo) await fetch('/api/cuenta/solicitar-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-    if (PX.yo) PX.yo.solicitaPro = new Date().toISOString();
+    plan = plan === 'basico' ? 'basico' : 'pro';
+    if (PX.nivel() >= (plan === 'pro' ? 3 : 2)) return toast('Ya tienes ese plan activo');
+    if (PX.yo) await fetch('/api/cuenta/solicitar-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) }).catch(() => {});
+    if (PX.yo) PX.yo.solicitaPro = plan + ' ' + new Date().toISOString();
     modal(`<div class="hd"><h2>Recibimos tu solicitud</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <p>Estamos en acceso anticipado: activamos PRO personalmente. Te escribiremos a <b>${esc(PX.yo ? PX.yo.correo : '')}</b> con los detalles.</p>
-      ${PX.yo && PX.yo.cupon ? `<p>Tu cupón <b class="num">${esc(PX.yo.cupon)}</b> te da ${PX.PRECIOS.cupon} % de descuento en tu primer mes PRO.</p>` : ''}
+      <p>Estamos en acceso anticipado: activamos el plan ${plan === 'pro' ? 'PRO' : 'Esencial'} personalmente. Te escribiremos a <b>${esc(PX.yo ? PX.yo.correo : '')}</b> con los detalles.</p>
+      ${PX.yo && PX.yo.cupon ? `<p>Tu cupón <b class="num">${esc(PX.yo.cupon)}</b> te da ${PX.PRECIOS.cupon} % de descuento en tu primer mes.</p>` : ''}
       <div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
   }
   document.addEventListener('click', e => {
-    if (e.target.closest('[data-sub]')) { e.preventDefault(); pedirPro(); return; }
+    { const sb = e.target.closest('[data-sub]'); if (sb) { e.preventDefault(); pedirPro(sb.dataset.sub); return; } }
     const au = e.target.closest('[data-auth]'); if (au) { openAuth(au.dataset.auth); return; }
     if (e.target.closest('[data-close]') || e.target.classList.contains('scrim')) closeLayer();
   });
@@ -836,27 +840,30 @@
     });
   }
   function openPlanes(why) {
-    const pro = PX.isPro();
+    const n = PX.nivel();
     modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
       ${why ? `<div class="note">${esc(why)}</div>` : ''}
-      <div class="plans">
-        <div class="plan"><h3>Visitante</h3><div class="pr">${PX.mh(0, 'CRC')}</div>
-          <ul><li>Mapa con todos los remates vigentes</li><li>Filtros por ubicación, etapa, precio y tipo</li><li>Base vigente y fecha de cada remate</li></ul>
-          ${PX.conCuenta() ? '' : '<span class="muted" style="font-size:12.5px">Sin registro</span>'}</div>
-        <div class="plan${pro ? '' : ' hl'}"><h3>Cuenta gratis</h3><div class="pr">${PX.mh(0, 'CRC')}</div>
-          <ul><li>Todo lo del visitante</li><li>Ficha con la información base: fechas y bases de cada remate, área, finca, plano, ubicación en el catastro y plan regulador</li><li><b>${PX.PRECIOS.diario} expediente PDF completo al día</b></li><li>Listas, seguimiento y búsquedas guardadas</li><li>Comparar 2 lotes</li></ul>
-          ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : pro ? '' : '<span class="tag ok">Tu plan actual</span>'}</div>
-        <div class="plan${pro ? ' hl' : ''}"><h3>${PX.PRO} Suscripción</h3><div class="pr">${PX.mh(PX.PRECIOS.pro, 'CRC')} <small>al mes</small></div>
-          <div class="muted" style="font-size:12.5px;margin:-4px 0 6px">o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)</div>
-          <ul><li>Toda la información de cada ficha: valor de Hacienda, índice Puja/Hacienda, escala PECR, agua, salud, escuela, ríos y costa</li><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Todas las capas del mapa y mapa de precios</li><li>Top 10 del mes por provincia y atributos del lote</li><li>Comparar hasta 4 lotes con pesos propios</li><li>Herramientas: potencial constructivo, prefactibilidad, riesgos y alertas</li></ul>
-          ${pro ? '<span class="tag gold">Tu plan actual</span>' : '<button class="btn primary" data-sub>Solicitar acceso PRO</button>'}</div>
+      <div class="plans p4">
+        <div class="plan"><h3>Visitante</h3><div class="pr sm">Sin registro</div>
+          <ul><li>Mapa con todos los remates vigentes</li><li>Filtros por ubicación, etapa y precio</li><li>Base vigente y fecha de cada remate</li></ul></div>
+        <div class="plan${n === 1 ? ' hl' : ''}"><h3>Cuenta gratis</h3><div class="pr sm">Con tu correo</div>
+          <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Listas y seguimiento</li><li><b>${PX.PRECIOS.semanal} expediente por semana</b></li></ul>
+          ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : n === 1 ? '<span class="tag ok">Tu plan actual</span>' : ''}</div>
+        <div class="plan${n === 2 ? ' hl' : ''}"><h3>Esencial</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
+          <div class="muted alt">o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año</div>
+          <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>Hasta ${PX.PRECIOS.diarioEsencial} expedientes al día</b></li></ul>
+          ${n === 2 ? '<span class="tag gold">Tu plan actual</span>' : n < 2 ? '<button class="btn" data-sub="basico">Solicitar Esencial</button>' : ''}</div>
+        <div class="plan${n === 3 ? ' hl' : ''}"><h3>${PX.PRO} Acceso total</h3><div class="pr">${PX.mh(PX.PRECIOS.pro, 'CRC')} <small>al mes</small></div>
+          <div class="muted alt">o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)</div>
+          <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b>, para imprimir todos los informes que quieras</li></ul>
+          ${n === 3 ? '<span class="tag gold">Tu plan actual</span>' : '<button class="btn primary" data-sub="pro">Solicitar PRO</button>'}</div>
       </div>
-      <div class="foot">Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Acceso anticipado: PRO se activa por solicitud mientras habilitamos los pagos en línea; quienes se registren ahora tienen ${PX.PRECIOS.cupon} % de descuento con su cupón.</div>`);
+      <div class="foot">Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Acceso anticipado: los planes se activan por solicitud mientras habilitamos los pagos en línea; quienes se registren ahora tienen ${PX.PRECIOS.cupon} % de descuento el primer mes con su cupón.</div>`);
   }
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
   function guideHTML() {
-    const I = PX.ICON, cupo = PX.PRECIOS.cupo, P_ = PX.PRO;
+    const I = PX.ICON, cupo = PX.PRECIOS.diarioEsencial, P_ = PX.PRO;
     // Bloques didácticos: tarjeta con «para qué sirve», pasos numerados y un ejemplo
     const steps = arr => `<ol class="gsteps">${arr.map(t => `<li><span>${t}</span></li>`).join('')}</ol>`;
     const card = (ic, t, pro, para, pasos, ej) => `<div class="gcard"><h4><span class="gi">${ic || ''}</span>${t}${pro ? ' ' + P_ : ''}</h4>
@@ -1022,13 +1029,13 @@
     if (a) { openAbout(a.dataset.about); if (a.dataset.gsec) setTimeout(() => { const t = document.getElementById('g-' + a.dataset.gsec); if (t) t.scrollIntoView({ block: 'start' }); }, 60); return; }
     const g = e.target.closest('[data-gto]'); if (g) { const t = document.getElementById('g-' + g.dataset.gto); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
-  const setVista = p => { if (!PX.admin || (p === 'pro') === PX.isPro()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : 'Vista gratis: así la ve un usuario sin suscripción'); };
-  $('vFree').onclick = () => setVista('free'); $('vPro').onclick = () => setVista('pro');
+  const setVista = p => { if (!PX.admin || p === PX.plan()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : p === 'basico' ? 'Vista Esencial: así la ve un suscriptor del plan Esencial' : 'Vista gratis: así la ve un usuario con cuenta gratis'); };
+  $('vFree').onclick = () => setVista('free'); $('vBas').onclick = () => setVista('basico'); $('vPro').onclick = () => setVista('pro');
 
   // ---------- Mi cuenta ----------
   function renderCuenta() {
     if (!PX.conCuenta()) return openAuth('entrar');
-    const a = PX.acct, pro = PX.isPro(), uso = pro ? PX.usoMes() : PX.usoHoy(), cupo = pro ? PX.PRECIOS.cupo : PX.PRECIOS.diario, yo = PX.yo;
+    const a = PX.acct, pro = PX.isPro(), n = PX.nivel(), uso = n === 2 ? PX.usoHoy() : PX.usoSemana(), cupo = n === 2 ? PX.PRECIOS.diarioEsencial : PX.PRECIOS.semanal, yo = PX.yo;
     const nameOf = k => { const it = PX.item(k); return it ? it.nom : k; };
     const sig = a.sigo.map(k => PX.item(k)).filter(Boolean);
     const snap = a.snap || {};
@@ -1040,9 +1047,9 @@
           ${yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en tu primer mes ${PX.PRO} cuando abramos los pagos.</small></div>` : ''}
         </section>` : `<div class="demo">Sesión de administración: con «Ver como» revisas el sitio como usuario gratis o PRO. <a href="/admin">Panel de administración</a> · <a href="/__salir">Salir</a></div>`}
         <section class="acc"><h3>Plan</h3>
-          <div class="li"><div><b>${pro ? 'Suscripción ' + PX.PRO : 'Cuenta gratis'}</b><br><small>${pro ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste PRO: te escribiremos pronto' : `Información base y ${PX.PRECIOS.diario} expediente al día · PRO: ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
-            <div>${pro || (yo && yo.solicitaPro) ? '' : '<button class="btn sm primary" data-sub>Solicitar PRO</button>'}</div></div>
-          <div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados ${pro ? 'en ' + PX.MESL[PX.now.getMonth()] : 'hoy'}: <b class="num">${uso}</b> de ${cupo}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>
+          <div class="li"><div><b>${n >= 2 ? 'Plan ' + (pro ? PX.PRO : 'Esencial') : 'Cuenta gratis'}</b><br><small>${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste un plan: te escribiremos pronto' : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
+            <div>${pro ? '' : '<button class="btn sm primary" data-planes>Ver planes</button>'}</div></div>
+          ${pro ? '<small class="muted">Expedientes sin límite.</small>' : `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados ${n === 2 ? 'hoy' : 'esta semana'}: <b class="num">${uso}</b> de ${cupo} · adicional ${PX.mt(PX.PRECIOS.expediente, 'CRC')}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>`}
         </section>
         <section class="acc"><h3>Seguimiento <span class="tag">${sig.length}</span></h3>
           ${sig.length ? sig.map(r => { const s0 = snap[r.key]; const cambio = s0 && s0.st !== r.st ? (r.st < 0 ? 'Ya pasaron todas las fechas' : `Pasó a ${PX.ETAPA[r.st]}`) : ''; return `<div class="li"><div><button class="linkbtn" data-open="${r.key}">${esc(r.nom)}</button><br><small>${r.st >= 0 ? `${PX.ETAPA[r.st]} · ${fdate(r.next)} · ${when(r.next)}` : 'Sin fechas pendientes'}</small>${cambio ? ` <span class="tag warn">${cambio}</span>` : ''}</div><div>${r.st >= 0 ? PX.duo(r.bv, r.mon) : ''}<br><button class="linkbtn" data-unsig="${r.key}" style="font-weight:500;font-size:12px">Dejar de seguir</button></div></div>`; }).join('') : '<small class="muted">Usa «Seguir» en la ficha de un remate para ver aquí su próxima fecha y los cambios de etapa.</small>'}
@@ -1055,7 +1062,7 @@
           <div class="acts" style="margin-top:8px"><button class="btn sm" data-newl>Nueva lista</button></div>
         </section>
         <section class="acc"><h3>Expedientes <span class="tag">${a.expedientes.length}</span></h3>
-          ${a.expedientes.length ? a.expedientes.map(x => `<div class="li"><div><a href="expediente.html?k=${encodeURIComponent(x.k)}">${esc(x.n || nameOf(x.k))}</a><br><small>${x.via === 'pro' ? 'Suscripción' : x.via === 'dia' || x.via === 'cortesia' ? 'Gratis del día' : 'Compra individual'} · ${fdate(new Date(x.t))}</small></div><div></div></div>`).join('') : '<small class="muted">Aún no has generado expedientes.</small>'}
+          ${a.expedientes.length ? a.expedientes.map(x => `<div class="li"><div><a href="expediente.html?k=${encodeURIComponent(x.k)}">${esc(x.n || nameOf(x.k))}</a><br><small>${x.via === 'pro' ? 'PRO' : x.via === 'esencial' ? 'Esencial' : x.via === 'compra' ? 'Compra individual' : 'Cuenta gratis'} · ${fdate(new Date(x.t))}</small></div><div></div></div>`).join('') : '<small class="muted">Aún no has generado expedientes.</small>'}
         </section>
         <section class="acc"><h3>Búsquedas guardadas</h3>
           ${a.busquedas.length ? a.busquedas.map((b, i) => `<div class="li"><div><button class="linkbtn" data-bus="${i}">${esc(b.n)}</button><br><small>${fdate(new Date(b.t))}</small></div><div><button class="linkbtn" data-delb="${i}" style="font-weight:500;font-size:12px">Eliminar</button></div></div>`).join('') : '<small class="muted">Usa «Guardar» sobre la lista de remates para volver a una búsqueda.</small>'}
@@ -1251,7 +1258,7 @@
   if (!PX.conCuenta() && (qs.has('crear') || qs.has('entrar'))) openAuth(qs.has('crear') ? 'crear' : 'entrar');
   let bienv = null; try { bienv = sessionStorage.getItem('px-bienvenida'); sessionStorage.removeItem('px-bienvenida'); } catch (e) {}
   if (bienv === '1' && PX.yo) modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-    <p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.diario} expediente PDF completo al día.</p>
+    <p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
     ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en tu primer mes ${PX.PRO} cuando abramos los pagos. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
     <div class="acts"><button class="btn primary" data-close>Ir al mapa</button><button class="btn" data-about="guia">Cómo usar</button></div>`, true);
 })();

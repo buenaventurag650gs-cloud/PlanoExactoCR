@@ -88,7 +88,9 @@ async function usuarioActual(request, env) {
   return u && u.ver === s.ver ? u : null;
 }
 const hoy = () => new Date().toISOString().slice(0, 10);
-const planVigente = (u) => (u.plan === "pro" && (!u.pro_hasta || u.pro_hasta >= hoy()) ? "pro" : "free");
+// Planes: free (cuenta gratis), basico (Esencial) y pro (acceso total). pro_hasta vale para los dos de pago.
+const PLANES = new Set(["free", "basico", "pro"]);
+const planVigente = (u) => (u.plan !== "free" && PLANES.has(u.plan) && (!u.pro_hasta || u.pro_hasta >= hoy()) ? u.plan : "free");
 const publico = (u) => ({ correo: u.correo, nombre: u.nombre || "", perfil: u.perfil, prov: u.prov || "", plan: planVigente(u), proHasta: u.pro_hasta, cupon: u.cupon, solicitaPro: u.solicita_pro, creado: u.creado });
 
 async function cupon(correo) {   // determinista: el mismo correo recibe siempre el mismo cupón
@@ -197,7 +199,8 @@ async function cuenta(request, env, u, pw) {
     return json({ ok: true }, 200, 0, { "Set-Cookie": await crearSesion(env, nu) });
   }
   if (ruta === "solicitar-pro") {
-    await env.DB.prepare("UPDATE usuarios SET solicita_pro = ? WHERE id = ?").bind(ahora, us.id).run();
+    const quiere = b.plan === "basico" ? "basico" : "pro";   // se guarda «plan fecha»
+    await env.DB.prepare("UPDATE usuarios SET solicita_pro = ? WHERE id = ?").bind(quiere + " " + ahora, us.id).run();
     return json({ ok: true }, 200, 0);
   }
   if (ruta === "borrar") {
@@ -223,9 +226,9 @@ async function admin(request, env, u) {
   const b = await leerJSON(request);
   if (!b || !b.id) return json({ error: "Solicitud inválida" }, 400, 0);
   if (ruta === "usuario") {
-    const plan = b.plan === "pro" ? "pro" : "free", hasta = /^\d{4}-\d{2}-\d{2}$/.test(b.pro_hasta || "") ? b.pro_hasta : null;
-    await env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, nota = ?, solicita_pro = CASE WHEN ? = 'pro' THEN NULL ELSE solicita_pro END WHERE id = ?")
-      .bind(plan, plan === "pro" ? hasta : null, String(b.nota || "").slice(0, 300), plan, b.id).run();
+    const plan = PLANES.has(b.plan) ? b.plan : "free", hasta = /^\d{4}-\d{2}-\d{2}$/.test(b.pro_hasta || "") ? b.pro_hasta : null;
+    await env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, nota = ?, solicita_pro = CASE WHEN ? <> 'free' THEN NULL ELSE solicita_pro END WHERE id = ?")
+      .bind(plan, plan !== "free" ? hasta : null, String(b.nota || "").slice(0, 300), plan, b.id).run();
     return json({ ok: true }, 200, 0);
   }
   if (ruta === "enlace") {   // enlace para que el usuario elija una contraseña nueva (vale 72 horas)

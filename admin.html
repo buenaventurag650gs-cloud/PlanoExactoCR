@@ -44,8 +44,8 @@ td input[type=text] { width: 150px; }
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="fuentes" id="fuentes"></div>
-  <div class="bar"><input id="q" type="search" placeholder="Buscar por correo, nombre o cupón" aria-label="Buscar"><select id="fp" aria-label="Filtrar"><option value="">Todos</option><option value="pide">Solicitan PRO</option><option value="pro">PRO</option><option value="free">Gratis</option></select></div>
-  <div class="tw"><table><thead><tr><th>Usuario</th><th>Perfil</th><th>Llegó por</th><th>Fechas</th><th>Plan</th><th>PRO hasta</th><th>Nota</th><th>Acciones</th></tr></thead><tbody id="tb"><tr><td colspan="8" class="vacío">Cargando…</td></tr></tbody></table></div>
+  <div class="bar"><input id="q" type="search" placeholder="Buscar por correo, nombre o cupón" aria-label="Buscar"><select id="fp" aria-label="Filtrar"><option value="">Todos</option><option value="pide">Solicitan plan</option><option value="pro">Con plan de pago</option><option value="free">Gratis</option></select></div>
+  <div class="tw"><table><thead><tr><th>Usuario</th><th>Perfil</th><th>Llegó por</th><th>Fechas</th><th>Plan</th><th>Plan hasta</th><th>Nota</th><th>Acciones</th></tr></thead><tbody id="tb"><tr><td colspan="8" class="vacío">Cargando…</td></tr></tbody></table></div>
 </main>
 <script>
 (async () => {
@@ -59,11 +59,13 @@ td input[type=text] { width: 150px; }
     if (!r.ok) { $('tb').innerHTML = `<tr><td colspan="8" class="vacío">${r.status === 401 ? 'La sesión de administración terminó. Recarga la página.' : 'No se pudo cargar la lista (¿falta la base de datos D1?).'}</td></tr>`; return; }
     const j = await r.json(); U = j.usuarios; HOY = j.hoy; pintar();
   }
-  const esPro = u => u.plan === 'pro' && (!u.pro_hasta || u.pro_hasta >= HOY);
+  const esPro = u => (u.plan === 'pro' || u.plan === 'basico') && (!u.pro_hasta || u.pro_hasta >= HOY);   // con plan de pago vigente
+  const pide = u => { const [p, f] = String(u.solicita_pro || '').split(' '); return f ? { p, f } : u.solicita_pro ? { p: 'pro', f: u.solicita_pro } : null; };
+  const NOM = { free: 'Gratis', basico: 'Esencial', pro: 'PRO' };
   function pintar() {
     const sem = Date.now() - 7 * 864e5;
-    const n7 = U.filter(u => new Date(u.creado) >= sem).length, pro = U.filter(esPro).length, pide = U.filter(u => u.solicita_pro && !esPro(u)).length;
-    $('kpis').innerHTML = [[U.length, 'cuentas'], [n7, 'nuevas en 7 días'], [pro, 'con PRO activo'], [pide, 'solicitan PRO']].map(([v, t]) => `<div><b>${v}</b><small>${t}</small></div>`).join('');
+    const n7 = U.filter(u => new Date(u.creado) >= sem).length, pro = U.filter(esPro).length, pideN = U.filter(u => u.solicita_pro && !esPro(u)).length;
+    $('kpis').innerHTML = [[U.length, 'cuentas'], [n7, 'nuevas en 7 días'], [pro, 'con plan de pago'], [pideN, 'solicitan plan']].map(([v, t]) => `<div><b>${v}</b><small>${t}</small></div>`).join('');
     const fu = {}; U.forEach(u => { const k = (u.fuente || 'directo').split('/')[0]; fu[k] = (fu[k] || 0) + 1; });
     const pf = {}; U.forEach(u => { pf[u.perfil] = (pf[u.perfil] || 0) + 1; });
     $('fuentes').textContent = U.length ? 'Origen: ' + Object.entries(fu).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') + '   ·   Perfiles: ' + Object.entries(pf).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') : '';
@@ -74,8 +76,8 @@ td input[type=text] { width: 150px; }
       <td>${esc(u.perfil)}<small>${esc(u.prov || 'Todo el país')}</small></td>
       <td>${esc(u.fuente || 'directo')}<small>${esc(u.pais || '')}</small></td>
       <td>${fd(u.creado)}<small>última vez ${fd(u.ultimo)}</small></td>
-      <td><select data-f="plan"><option value="free"${u.plan !== 'pro' ? ' selected' : ''}>Gratis</option><option value="pro"${u.plan === 'pro' ? ' selected' : ''}>PRO</option></select>
-        ${u.solicita_pro && !esPro(u) ? `<small><span class="tag pide">Pidió PRO ${fd(u.solicita_pro)}</span></small>` : ''}${u.plan === 'pro' && !esPro(u) ? '<small>vencido</small>' : ''}</td>
+      <td><select data-f="plan">${['free', 'basico', 'pro'].map(k => `<option value="${k}"${(u.plan || 'free') === k ? ' selected' : ''}>${NOM[k]}</option>`).join('')}</select>
+        ${pide(u) && !esPro(u) ? `<small><span class="tag pide">Pidió ${NOM[pide(u).p] || 'PRO'} ${fd(pide(u).f)}</span></small>` : ''}${u.plan !== 'free' && u.plan && !esPro(u) ? '<small>vencido</small>' : ''}</td>
       <td><input type="date" data-f="pro_hasta" value="${esc(u.pro_hasta || '')}"></td>
       <td><input type="text" data-f="nota" value="${esc(u.nota || '')}" placeholder="p. ej. pagó por SINPE"></td>
       <td><div class="acc"><button class="pri" data-a="guardar">Guardar</button><button data-a="enlace" title="Crea un enlace para que elija una contraseña nueva">Enlace de contraseña</button><a class="btn sm" href="mailto:${esc(u.correo)}">Escribir</a></div></td></tr>`).join('')

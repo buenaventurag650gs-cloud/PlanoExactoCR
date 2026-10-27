@@ -9,7 +9,7 @@
   --shadow: 0 10px 30px rgba(20, 35, 30, .14);
   --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --f-mono: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
@@ -448,3 +448,5 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .lockb { display: grid; gap: 8px; padding: 12px; border-radius: 10px; border: 1px dashed var(--line); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--gold) 6%, transparent) 8px 16px); }
 .lockb > span { font-size: 13.5px; color: var(--muted); }
 .lockb .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Signo de moneda del mismo tamaño que la cifra */
+.money .u { font-size: 1em !important; font-family: var(--f-mono); }
