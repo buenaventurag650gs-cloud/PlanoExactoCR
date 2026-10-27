@@ -372,7 +372,7 @@
   // Administración (contraseña del sitio): puede ver el sitio como usuario gratis o PRO con el selector «Ver como».
   const A0 = { plan: 'pro', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {} };
   PX.acct = Object.assign({}, A0, PX.store.get('px-acct', {}));
-  PX.yo = null; PX.admin = false;
+  PX.yo = null; PX.admin = false; PX.ingreso = {};
   let subir = null;
   const datosCuenta = () => { const d = Object.assign({}, PX.acct); delete d.plan; return d; };
   const guardarEnCuenta = () => {
@@ -383,7 +383,7 @@
   PX.cargarYo = async () => {
     try {
       const j = await (await fetch('/api/cuenta/yo', { cache: 'no-store' })).json();
-      PX.yo = j.user || null; PX.admin = !!j.admin;
+      PX.yo = j.user || null; PX.admin = !!j.admin; PX.ingreso = j.ingreso || {};
       if (PX.yo) {
         const dueño = PX.store.get('px-acct-de', null);
         if (j.datos && Object.keys(j.datos).length) PX.acct = Object.assign({}, A0, j.datos, { plan: PX.acct.plan });

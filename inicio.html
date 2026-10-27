@@ -84,6 +84,9 @@ label small { font-weight: 400; }
 input, select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: 15px/1.3 var(--f-body); }
 .ok { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; font-weight: 400; color: var(--muted); }
 .ok input { width: auto; margin-top: 3px; }
+.ingreso { display: grid; gap: 12px; }
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px 14px; background: #fff; color: #1f1f1f; border: 1px solid #dadce0; font-weight: 600; text-decoration: none; border-radius: 10px; }
+.sep-o { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; } .sep-o::before, .sep-o::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .resultado { padding: 16px; border-radius: 12px; background: var(--soft); display: grid; gap: 6px; }
 .resultado code { font: 700 22px/1.2 var(--f-mono); letter-spacing: .06em; color: var(--accent); }
 .error { color: var(--terra); font-size: 14px; margin: 0; }
@@ -157,6 +160,14 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         <p class="sub">Al registrarte recibes un cupón de 30 % de descuento en la primera mensualidad de cualquier plan. Los planes se pagan por SINPE Móvil.</p>
       </div>
       <div>
+        <div id="ingreso" class="ingreso" hidden>
+          <a class="btn gbtn" id="gBtn" href="/auth/google" hidden><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg><span>Continuar con Google</span></a>
+          <div class="sep-o" id="gSep" hidden><span>o con tu correo</span></div>
+          <form id="mlF" novalidate hidden><label>Correo electrónico<input id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></label>
+            <p class="error" id="mlErr" hidden></p><button class="btn pri" type="submit" id="mlBtn">Enviarme un enlace para entrar</button></form>
+          <div class="resultado" id="mlOk" hidden><b>Revisa tu correo</b><span id="mlTxt"></span></div>
+          <p class="mini">Sin contraseñas. Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón. Al continuar aceptas la <a href="/privacidad">política de privacidad</a>.</p>
+        </div>
         <form id="f" novalidate>
           <label>Correo electrónico<input id="correo" name="correo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></label>
           <label><span>Contraseña <small>(mínimo 8 caracteres)</small></span><input id="clave" name="clave" type="password" autocomplete="new-password" minlength="8" required></label>
@@ -200,11 +211,30 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
   // Si ya hay sesión, los botones llevan directo al mapa
   fetch('/api/cuenta/yo', { cache: 'no-store' }).then(r => r.json()).then(j => {
+    const I = j.ingreso || {};
+    if (!j.user && (I.google || I.correo)) {   // ingreso sin contraseña
+      document.getElementById('f').hidden = true; document.getElementById('ingreso').hidden = false;
+      const g = document.getElementById('gBtn'), f = Object.values(utm).join('/');
+      if (I.google) { g.hidden = false; g.href = '/auth/google?v=/mapa' + (f ? '&f=' + encodeURIComponent(f) : ''); }
+      if (I.correo) document.getElementById('mlF').hidden = false;
+      document.getElementById('gSep').hidden = !(I.google && I.correo);
+    }
     if (!j.user && !j.admin) return;
     const e = document.getElementById('entrar'); e.textContent = 'Ir al mapa'; e.href = '/mapa'; e.classList.add('pri');
     const c = document.getElementById('ctaCrear'); c.textContent = 'Ir al mapa'; c.href = '/mapa'; document.getElementById('ctaMapa').hidden = true;
-    if (j.user) { document.getElementById('cod').textContent = j.user.cupon; document.getElementById('f').hidden = true; document.getElementById('listo').hidden = false; document.querySelector('#listo b').textContent = 'Ya tienes cuenta. Tu cupón:'; }
+    if (j.user) { document.getElementById('ingreso').hidden = true; document.getElementById('cod').textContent = j.user.cupon; document.getElementById('f').hidden = true; document.getElementById('listo').hidden = false; document.querySelector('#listo b').textContent = 'Ya tienes cuenta. Tu cupón:'; }
   }).catch(() => {});
+  const mlF = document.getElementById('mlF');
+  mlF.addEventListener('submit', async e => {
+    e.preventDefault(); const er = document.getElementById('mlErr'), b = document.getElementById('mlBtn'), correo = document.getElementById('mlCorreo').value.trim(); er.hidden = true;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) { er.textContent = 'Revisa el correo: parece incompleto.'; er.hidden = false; return; }
+    b.disabled = true; b.textContent = 'Enviando…';
+    try {
+      const r = await fetch('/api/cuenta/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, vuelta: '/mapa', utm }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'No se pudo enviar.');
+      mlF.hidden = true; document.getElementById('mlTxt').textContent = 'Te enviamos un enlace a ' + correo + '. Ábrelo desde este dispositivo para entrar; vale 20 minutos.'; document.getElementById('mlOk').hidden = false;
+    } catch (x) { er.textContent = x.message; er.hidden = false; b.disabled = false; b.textContent = 'Enviarme un enlace para entrar'; }
+  });
   const f = document.getElementById('f'), err = document.getElementById('err'), btn = document.getElementById('enviar');
   const fallo = t => { err.textContent = t; err.hidden = false; };
   f.addEventListener('submit', async e => {

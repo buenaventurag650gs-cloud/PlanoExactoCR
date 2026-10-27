@@ -930,7 +930,40 @@
 
   // ---------- crear cuenta / entrar ----------
   const PERF = [['comprador', 'Comprador'], ['inversionista', 'Inversionista'], ['abogado', 'Abogado'], ['corredor', 'Corredor'], ['desarrollador', 'Desarrollador'], ['otro', 'Otro']];
+  // Ingreso sin contraseña: Google y enlace por correo (si están configurados en el servidor)
+  const GLOGO = '<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+  const utmQ = () => { const q = new URLSearchParams(location.search), u = {}; ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) u[k] = q.get(k).slice(0, 60); }); return u; };
+  function openIngreso(porque) {
+    const I = PX.ingreso, vuelta = location.pathname + location.hash, f = Object.values(utmQ()).join('/');
+    modal(`<div class="hd">${PX.marca('dlgmark')}<h2>Entra a PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      ${porque ? `<div class="note">${esc(porque)}</div>` : ''}
+      <p class="muted" style="margin:0">Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón de lanzamiento. Sin contraseñas.</p>
+      <div class="authf">
+        ${I.google ? `<a class="btn gbtn" href="/auth/google?v=${encodeURIComponent(vuelta)}${f ? '&f=' + encodeURIComponent(f) : ''}">${GLOGO}<span>Continuar con Google</span></a>` : ''}
+        ${I.google && I.correo ? '<div class="sep-o"><span>o con tu correo</span></div>' : ''}
+        ${I.correo ? `<form id="mlF" class="authf" novalidate><div class="fld"><label for="mlCorreo">Correo electrónico</label><input id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></div>
+          <p class="aerr" id="mlErr" role="alert" hidden></p><button class="btn primary" type="submit" id="mlBtn">Enviarme un enlace para entrar</button></form>` : ''}
+        <small class="muted">Al continuar aceptas la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</small>
+      </div>`, true);
+    const fm = $('mlF'); if (!fm) return;
+    fm.onsubmit = async ev => {
+      ev.preventDefault();
+      const correo = $('mlCorreo').value.trim(), err = t => { const e = $('mlErr'); e.textContent = t; e.hidden = !t; }, b = $('mlBtn'); err('');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) return err('Revisa el correo: parece incompleto.');
+      b.disabled = true; b.textContent = 'Enviando…';
+      try {
+        const r = await fetch('/api/cuenta/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, vuelta, utm: utmQ() }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'No se pudo enviar.');
+        modal(`<div class="hd"><h2>Revisa tu correo</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+          <p>Te enviamos un enlace a <b>${esc(correo)}</b>. Ábrelo desde este mismo dispositivo para entrar; vale 20 minutos.</p>
+          <p class="muted">¿No llega? Revisa la carpeta de spam o promociones, o vuelve a pedirlo en unos minutos.</p><div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
+      } catch (x) { err(x.message); b.disabled = false; b.textContent = 'Enviarme un enlace para entrar'; }
+    };
+    $('mlCorreo').focus();
+  }
   function openAuth(modo, porque) {
+    if (PX.ingreso.google || PX.ingreso.correo) return openIngreso(porque);
     const crear = modo === 'crear', olvido = modo === 'olvide';
     const utm = {}; const q = new URLSearchParams(location.search); ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
     modal(`<div class="hd">${PX.marca('dlgmark')}<h2>${olvido ? 'Restablecer contraseña' : crear ? 'Crea tu cuenta gratis' : 'Entrar'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
@@ -1406,8 +1439,13 @@
   const qs = new URLSearchParams(location.search);
   if (!PX.conCuenta() && (qs.has('crear') || qs.has('entrar'))) openAuth(qs.has('crear') ? 'crear' : 'entrar');
   let bienv = null; try { bienv = sessionStorage.getItem('px-bienvenida'); sessionStorage.removeItem('px-bienvenida'); } catch (e) {}
+  if (qs.has('bienvenida')) { bienv = '1'; try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if (bienv === '1' && PX.yo) modal(`<div class="hd">${PX.marca('dlgmark')}<h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
     <p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
     ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
-    <div class="acts"><button class="btn primary" data-close>Ir al mapa</button><button class="btn" data-about="guia">Cómo usar</button></div>`, true);
+    <form id="bvF" class="authf" style="margin-top:6px"><div class="row2"><div class="fld"><label for="bvPerf">Te interesa como <small>(opcional)</small></label><select id="bvPerf">${PERF.map(([v, t]) => `<option value="${v}"${PX.yo.perfil === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div class="fld"><label for="bvProv">Provincia de interés</label><select id="bvProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option${PX.yo.prov === p ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div>
+    <div class="acts"><button class="btn primary" type="submit">Ir al mapa</button><button class="btn" type="button" data-about="guia">Cómo usar</button></div></form>`, true);
+  const bvF = $('bvF');
+  if (bvF) bvF.onsubmit = ev => { ev.preventDefault(); fetch('/api/cuenta/perfil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: PX.yo.nombre || '', perfil: $('bvPerf').value, prov: $('bvProv').value }) }).catch(() => {}); closeLayer(); };
 })();

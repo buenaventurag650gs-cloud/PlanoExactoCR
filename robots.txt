@@ -5,6 +5,7 @@ Disallow: /api/
 Disallow: /catastro
 Disallow: /expediente
 Disallow: /restablecer
+Disallow: /auth/
 Disallow: /data/
 Disallow: /__acceso
 

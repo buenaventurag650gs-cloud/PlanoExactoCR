@@ -499,3 +499,8 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .formap { display: flex; justify-content: center; margin: 4px 0 10px; } .formap .forma { float: none; margin: 0; }
 .formadd .forma svg { width: 132px; height: auto; }
 .formap .forma { justify-items: center; }
+/* Ingreso con Google y por correo */
+.gbtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 11px 14px; background: #fff !important; color: #1f1f1f !important; border: 1px solid #dadce0 !important; font-weight: 600; text-decoration: none; }
+.gbtn:hover { background: #f8f9fa !important; }
+.sep-o { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
+.sep-o::before, .sep-o::after { content: ""; flex: 1; height: 1px; background: var(--line); }

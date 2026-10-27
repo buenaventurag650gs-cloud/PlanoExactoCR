@@ -4,136 +4,153 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Administración · PlanoExactoCR</title><meta name="robots" content="noindex,nofollow">
 <link rel="icon" href="assets/img/favicon.png">
-<script>try { const t = localStorage.getItem('px-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><script src="/assets/fuentes.js"></script>
-<link rel="stylesheet" href="assets/styles.css">
-<style>
-body { background: var(--bg); color: var(--ink); font: 14.5px/1.5 var(--f-body); margin: 0; padding: 20px 16px 40px; }
-main { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
-.top { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
-h1 { font: 600 22px/1.2 var(--f-display); margin: 0; }
-.links { display: flex; flex-wrap: wrap; gap: 8px; }
-.links a { padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 13px; }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.kpis div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-.kpis b { display: block; font: 600 24px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; }
-.kpis small { color: var(--muted); }
-.fuentes { color: var(--muted); font-size: 13px; }
-.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.bar input, .bar select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink); font: inherit; }
-.bar input { flex: 1 1 260px; }
-.tw { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
-table { border-collapse: collapse; width: 100%; min-width: 980px; }
-th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--bg); position: sticky; top: 0; }
-td small { display: block; color: var(--muted); }
-td select, td input { padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; }
-td input[type=text] { width: 150px; }
-.tag.pide { background: var(--goldbg); color: var(--gold); }
-.acc { display: flex; gap: 6px; flex-wrap: wrap; }
-.acc button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); cursor: pointer; font: 600 12.5px/1.2 var(--f-body); }
-.acc button.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.vacío { padding: 24px; text-align: center; color: var(--muted); }
-.pagos h2 { font: 600 18px/1.2 var(--f-display); margin: 0 0 10px; }
-.pagos table { min-width: 900px; }
-tr.pend td { background: color-mix(in srgb, var(--gold) 8%, transparent); }
-.est { font-weight: 700; font-size: 12.5px; } .est.pendiente { color: var(--gold); } .est.aprobado { color: var(--good); } .est.rechazado { color: var(--bad); }
-.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 10px; font-weight: 600; }
-</style>
+<script>try { const t = localStorage.getItem('px-theme'); document.documentElement.setAttribute('data-bs-theme', t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'); } catch (e) {}</script>
+<!-- Sistema de diseño: Tabler (sobre Bootstrap). Sin estilos propios salvo el color de marca. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.5.1/dist/css/tabler.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.47.0/dist/tabler-icons.min.css">
+<style>:root, [data-bs-theme] { --tblr-primary: #1F5A47; --tblr-primary-rgb: 31, 90, 71; }</style>
 </head>
-<body><main>
-  <div class="top">
-    <h1>Administración · usuarios y planes</h1>
-    <div class="links"><a href="/mapa">Mapa</a><a href="/catastro">Ubicar remates</a><a href="/admin/usuarios.csv">Descargar usuarios (CSV)</a><a href="/admin/registros.csv">Lista de espera previa (CSV)</a><a href="/__salir">Salir</a></div>
+<body>
+<div class="page">
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <a class="navbar-brand" href="/"><img src="assets/img/logo-mark.webp" alt="" width="40" height="27" class="me-2">PlanoExactoCR <span class="text-secondary fw-normal ms-2">Administración</span></a>
+      <div class="navbar-nav flex-row order-md-last gap-2">
+        <a class="btn btn-ghost-secondary" href="/mapa"><i class="ti ti-map me-1"></i>Mapa</a>
+        <a class="btn btn-ghost-secondary" href="/catastro"><i class="ti ti-map-pin-search me-1"></i>Ubicar remates</a>
+        <div class="dropdown">
+          <a href="#" class="btn btn-ghost-secondary" data-menu="exportar"><i class="ti ti-download me-1"></i>Exportar</a>
+          <div class="dropdown-menu dropdown-menu-end" id="menuExportar"><a class="dropdown-item" href="/admin/usuarios.csv">Usuarios (CSV)</a><a class="dropdown-item" href="/admin/registros.csv">Lista de espera previa (CSV)</a></div>
+        </div>
+        <a class="btn btn-ghost-danger" href="/__salir"><i class="ti ti-logout me-1"></i>Salir</a>
+      </div>
+    </div>
+  </header>
+  <div class="page-wrapper">
+    <div class="page-header"><div class="container-xl"><div class="row align-items-center"><div class="col"><div class="page-pretitle">Panel</div><h2 class="page-title">Usuarios, planes y pagos</h2></div></div></div></div>
+    <div class="page-body"><div class="container-xl">
+      <div class="row row-deck row-cards mb-3" id="kpis"></div>
+
+      <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title"><i class="ti ti-cash me-2"></i>Pagos por SINPE Móvil</h3><div class="card-actions"><span class="badge bg-yellow-lt" id="nPend"></span></div></div>
+        <div class="table-responsive"><table class="table table-vcenter card-table">
+          <thead><tr><th>Usuario</th><th>Concepto</th><th>Monto</th><th>Comprobante</th><th>Reportado</th><th>Estado</th><th class="w-1"></th></tr></thead>
+          <tbody id="tp"><tr><td colspan="7" class="text-secondary">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="ti ti-users me-2"></i>Usuarios</h3>
+          <div class="card-actions d-flex gap-2"><div class="input-icon"><span class="input-icon-addon"><i class="ti ti-search"></i></span><input id="q" type="search" class="form-control" placeholder="Correo, nombre o cupón" aria-label="Buscar"></div>
+            <select id="fp" class="form-select w-auto" aria-label="Filtrar"><option value="">Todos</option><option value="pide">Solicitan plan</option><option value="pro">Con plan de pago</option><option value="free">Gratis</option></select></div></div>
+        <div class="card-body border-bottom py-2 text-secondary small" id="fuentes"></div>
+        <div class="table-responsive"><table class="table table-vcenter card-table">
+          <thead><tr><th>Usuario</th><th>Perfil</th><th>Llegó por</th><th>Fechas</th><th>Plan</th><th>Vence</th><th>Nota</th><th class="w-1"></th></tr></thead>
+          <tbody id="tb"><tr><td colspan="8" class="text-secondary">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div></div>
   </div>
-  <section class="pagos"><h2>Pagos por SINPE Móvil</h2><div class="tw"><table><thead><tr><th>Usuario</th><th>Concepto</th><th>Monto</th><th>Comprobante</th><th>Reportado</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tp"><tr><td colspan="7" class="vacío">Cargando…</td></tr></tbody></table></div></section>
-  <h2 style="font:600 18px/1.2 var(--f-display);margin:6px 0 0">Usuarios</h2>
-  <div class="kpis" id="kpis"></div>
-  <div class="fuentes" id="fuentes"></div>
-  <div class="bar"><input id="q" type="search" placeholder="Buscar por correo, nombre o cupón" aria-label="Buscar"><select id="fp" aria-label="Filtrar"><option value="">Todos</option><option value="pide">Solicitan plan</option><option value="pro">Con plan de pago</option><option value="free">Gratis</option></select></div>
-  <div class="tw"><table><thead><tr><th>Usuario</th><th>Perfil</th><th>Llegó por</th><th>Fechas</th><th>Plan</th><th>Plan hasta</th><th>Nota</th><th>Acciones</th></tr></thead><tbody id="tb"><tr><td colspan="8" class="vacío">Cargando…</td></tr></tbody></table></div>
-</main>
+</div>
+
+<!-- Ventana de confirmación (componente modal de Tabler) -->
+<div class="modal modal-blur" id="dlg" tabindex="-1" role="dialog" aria-modal="true" style="display:none">
+  <div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">
+    <div class="modal-status" id="dlgStatus"></div>
+    <div class="modal-body py-4"><h3 id="dlgTitle"></h3><div class="text-secondary" id="dlgText"></div>
+      <textarea class="form-control mt-3" id="dlgNota" rows="2" hidden></textarea></div>
+    <div class="modal-footer"><div class="w-100"><div class="row"><div class="col"><button class="btn w-100" data-dlg="no">Cancelar</button></div><div class="col"><button class="btn w-100" id="dlgOk" data-dlg="si">Aceptar</button></div></div></div></div>
+  </div></div>
+</div>
+<div class="modal-backdrop fade show" id="dlgBack" style="display:none"></div>
+<div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="alert alert-important mb-0" id="aviso" style="display:none"></div></div>
+
 <script>
 (async () => {
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fd = s => s ? new Date(s).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-  const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2400); };
+  const toast = (t, tipo) => { const a = $('aviso'); a.className = 'alert alert-important mb-0 alert-' + (tipo || 'success'); a.textContent = t; a.style.display = 'block'; clearTimeout(a._t); a._t = setTimeout(() => a.style.display = 'none', 2600); };
+  // Menú desplegable sin JavaScript de Bootstrap
+  document.addEventListener('click', e => { const m = e.target.closest('[data-menu]'); const menu = $('menuExportar'); if (m) { e.preventDefault(); menu.classList.toggle('show'); } else menu.classList.remove('show'); });
+  // Confirmación con el modal de Tabler
+  const confirmar = (titulo, texto, { peligro, nota, ok } = {}) => new Promise(res => {
+    $('dlgTitle').textContent = titulo; $('dlgText').textContent = texto; $('dlgStatus').className = 'modal-status ' + (peligro ? 'bg-danger' : 'bg-success');
+    $('dlgOk').className = 'btn w-100 ' + (peligro ? 'btn-danger' : 'btn-success'); $('dlgOk').textContent = ok || 'Aceptar';
+    const n = $('dlgNota'); n.hidden = nota == null; n.value = nota || '';
+    const d = $('dlg'); d.style.display = 'block'; d.classList.add('show'); $('dlgBack').style.display = 'block';
+    const fin = v => { d.style.display = 'none'; d.classList.remove('show'); $('dlgBack').style.display = 'none'; d.onclick = null; res(v); };
+    d.onclick = e => { const b = e.target.closest('[data-dlg]'); if (b) fin(b.dataset.dlg === 'si' ? (nota == null ? true : n.value) : null); else if (e.target === d) fin(null); };
+  });
   let U = [], HOY = '';
+  const NOM = { free: 'Gratis', basico: 'Esencial', pro: 'PRO' };
+  const esPro = u => (u.plan === 'pro' || u.plan === 'basico') && (!u.pro_hasta || u.pro_hasta >= HOY);
+  const pide = u => { const [p, f] = String(u.solicita_pro || '').split(' '); return f ? { p, f } : u.solicita_pro ? { p: 'pro', f: u.solicita_pro } : null; };
+  const kpi = (icono, color, valor, texto) => `<div class="col-sm-6 col-lg-3"><div class="card card-sm"><div class="card-body"><div class="row align-items-center"><div class="col-auto"><span class="bg-${color} text-white avatar"><i class="ti ti-${icono}"></i></span></div><div class="col"><div class="font-weight-medium">${valor}</div><div class="text-secondary">${texto}</div></div></div></div></div></div>`;
   async function cargar() {
     const r = await fetch('/api/admin/usuarios', { cache: 'no-store' });
-    if (!r.ok) { $('tb').innerHTML = `<tr><td colspan="8" class="vacío">${r.status === 401 ? 'La sesión de administración terminó. Recarga la página.' : 'No se pudo cargar la lista (¿falta la base de datos D1?).'}</td></tr>`; return; }
+    if (!r.ok) { $('tb').innerHTML = `<tr><td colspan="8" class="text-secondary">${r.status === 401 ? 'La sesión de administración terminó. Recarga la página.' : 'No se pudo cargar la lista.'}</td></tr>`; return; }
     const j = await r.json(); U = j.usuarios; HOY = j.hoy; pintar();
   }
-  const esPro = u => (u.plan === 'pro' || u.plan === 'basico') && (!u.pro_hasta || u.pro_hasta >= HOY);   // con plan de pago vigente
-  const pide = u => { const [p, f] = String(u.solicita_pro || '').split(' '); return f ? { p, f } : u.solicita_pro ? { p: 'pro', f: u.solicita_pro } : null; };
-  const NOM = { free: 'Gratis', basico: 'Esencial', pro: 'PRO' };
   function pintar() {
     const sem = Date.now() - 7 * 864e5;
     const n7 = U.filter(u => new Date(u.creado) >= sem).length, pro = U.filter(esPro).length, pideN = U.filter(u => u.solicita_pro && !esPro(u)).length;
-    $('kpis').innerHTML = [[U.length, 'cuentas'], [n7, 'nuevas en 7 días'], [pro, 'con plan de pago'], [pideN, 'solicitan plan']].map(([v, t]) => `<div><b>${v}</b><small>${t}</small></div>`).join('');
-    const fu = {}; U.forEach(u => { const k = (u.fuente || 'directo').split('/')[0]; fu[k] = (fu[k] || 0) + 1; });
-    const pf = {}; U.forEach(u => { pf[u.perfil] = (pf[u.perfil] || 0) + 1; });
-    $('fuentes').textContent = U.length ? 'Origen: ' + Object.entries(fu).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') + '   ·   Perfiles: ' + Object.entries(pf).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') : '';
+    $('kpis').innerHTML = kpi('users', 'primary', U.length, 'cuentas') + kpi('user-plus', 'green', n7, 'nuevas en 7 días') + kpi('star', 'yellow', pro, 'con plan de pago') + kpi('bell', 'orange', pideN, 'solicitan plan');
+    const fu = {}, pf = {}; U.forEach(u => { const k = (u.fuente || 'directo').split('/')[0]; fu[k] = (fu[k] || 0) + 1; pf[u.perfil] = (pf[u.perfil] || 0) + 1; });
+    const lst = o => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="badge bg-secondary-lt me-1">${esc(k)} ${v}</span>`).join('');
+    $('fuentes').innerHTML = U.length ? `Origen ${lst(fu)} <span class="ms-3">Perfiles</span> ${lst(pf)}` : 'Sin cuentas todavía.';
     const q = $('q').value.trim().toLowerCase(), f = $('fp').value;
     const L = U.filter(u => (!q || [u.correo, u.nombre, u.cupon].join(' ').toLowerCase().includes(q)) && (!f || (f === 'pide' ? u.solicita_pro && !esPro(u) : f === 'pro' ? esPro(u) : !esPro(u))));
     $('tb').innerHTML = L.length ? L.map(u => `<tr data-id="${u.id}">
-      <td><b>${esc(u.correo)}</b><small>${esc(u.nombre || '—')} · <span class="num">${esc(u.cupon || '')}</span></small></td>
-      <td>${esc(u.perfil)}<small>${esc(u.prov || 'Todo el país')}</small></td>
-      <td>${esc(u.fuente || 'directo')}<small>${esc(u.pais || '')}</small></td>
-      <td>${fd(u.creado)}<small>última vez ${fd(u.ultimo)}</small></td>
-      <td><select data-f="plan">${['free', 'basico', 'pro'].map(k => `<option value="${k}"${(u.plan || 'free') === k ? ' selected' : ''}>${NOM[k]}</option>`).join('')}</select>
-        ${pide(u) && !esPro(u) ? `<small><span class="tag pide">Pidió ${NOM[pide(u).p] || 'PRO'} ${fd(pide(u).f)}</span></small>` : ''}${u.plan !== 'free' && u.plan && !esPro(u) ? '<small>vencido</small>' : ''}</td>
-      <td><input type="date" data-f="pro_hasta" value="${esc(u.pro_hasta || '')}"></td>
-      <td><input type="text" data-f="nota" value="${esc(u.nota || '')}" placeholder="p. ej. pagó por SINPE"></td>
-      <td><div class="acc"><button class="pri" data-a="guardar">Guardar</button><button data-a="enlace" title="Crea un enlace para que elija una contraseña nueva">Enlace de contraseña</button><a class="btn sm" href="mailto:${esc(u.correo)}">Escribir</a></div></td></tr>`).join('')
-      : `<tr><td colspan="8" class="vacío">${U.length ? 'Ningún usuario coincide.' : 'Todavía no hay cuentas. Se crean desde la página de inicio o desde el mapa.'}</td></tr>`;
+      <td><div class="fw-medium">${esc(u.correo)}</div><div class="text-secondary small">${esc(u.nombre || '—')} · <code>${esc(u.cupon || '')}</code></div></td>
+      <td>${esc(u.perfil)}<div class="text-secondary small">${esc(u.prov || 'Todo el país')}</div></td>
+      <td>${esc(u.fuente || 'directo')}<div class="text-secondary small">${esc(u.pais || '')}</div></td>
+      <td>${fd(u.creado)}<div class="text-secondary small">última vez ${fd(u.ultimo)}</div></td>
+      <td><select class="form-select form-select-sm" data-f="plan">${['free', 'basico', 'pro'].map(k => `<option value="${k}"${(u.plan || 'free') === k ? ' selected' : ''}>${NOM[k]}</option>`).join('')}</select>
+        ${pide(u) && !esPro(u) ? `<span class="badge bg-yellow-lt mt-1">Pidió ${NOM[pide(u).p] || 'PRO'} · ${fd(pide(u).f)}</span>` : ''}${u.plan !== 'free' && u.plan && !esPro(u) ? '<span class="badge bg-red-lt mt-1">vencido</span>' : ''}</td>
+      <td><input type="date" class="form-control form-control-sm" data-f="pro_hasta" value="${esc(u.pro_hasta || '')}"></td>
+      <td><input type="text" class="form-control form-control-sm" data-f="nota" value="${esc(u.nota || '')}" placeholder="p. ej. pagó por SINPE"></td>
+      <td><div class="btn-list flex-nowrap"><button class="btn btn-primary btn-sm" data-a="guardar">Guardar</button><a class="btn btn-sm btn-icon" href="mailto:${esc(u.correo)}" title="Escribir"><i class="ti ti-mail"></i></a></div></td></tr>`).join('')
+      : `<tr><td colspan="8" class="text-secondary">${U.length ? 'Ningún usuario coincide.' : 'Todavía no hay cuentas. Se crean desde la página de inicio o desde el mapa.'}</td></tr>`;
   }
   $('q').oninput = pintar; $('fp').onchange = pintar;
   $('tb').addEventListener('click', async e => {
     const b = e.target.closest('button[data-a]'); if (!b) return;
     const tr = b.closest('tr'), id = +tr.dataset.id, v = k => tr.querySelector(`[data-f="${k}"]`).value;
-    if (b.dataset.a === 'guardar') {
-      const r = await fetch('/api/admin/usuario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, plan: v('plan'), pro_hasta: v('pro_hasta'), nota: v('nota') }) });
-      toast(r.ok ? 'Guardado' : 'No se pudo guardar'); if (r.ok) cargar();
-    }
-    if (b.dataset.a === 'enlace') {
-      const r = await fetch('/api/admin/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) return toast('No se pudo crear el enlace');
-      try { await navigator.clipboard.writeText(j.enlace); toast('Enlace copiado: vale 72 horas'); } catch (_) { window.prompt('Copia este enlace (vale 72 horas):', j.enlace); }
-    }
+    const r = await fetch('/api/admin/usuario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, plan: v('plan'), pro_hasta: v('pro_hasta'), nota: v('nota') }) });
+    toast(r.ok ? 'Guardado' : 'No se pudo guardar', r.ok ? 'success' : 'danger'); if (r.ok) cargar();
   });
   // ---------- pagos ----------
   const CONC = { 'esencial-mes': 'Esencial · 1 mes', 'esencial-anual': 'Esencial · 1 año', 'pro-mes': 'PRO · 1 mes', 'pro-anual': 'PRO · 1 año', expedientes: 'Expedientes' };
+  const EST = { pendiente: ['En revisión', 'yellow'], aprobado: ['Aprobado', 'green'], rechazado: ['Rechazado', 'red'] };
   const crc = n => '₡' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   async function cargarPagos() {
     const r = await fetch('/api/admin/pagos', { cache: 'no-store' });
-    if (!r.ok) { $('tp').innerHTML = '<tr><td colspan="7" class="vacío">No se pudo cargar.</td></tr>'; return; }
-    const L = (await r.json()).pagos;
-    $('tp').innerHTML = L.length ? L.map(p => `<tr data-id="${p.id}" class="${p.estado === 'pendiente' ? 'pend' : ''}">
-      <td><b>${esc(p.correo)}</b><small>${esc(p.nombre || '')}${p.telefono ? ' · tel. ' + esc(p.telefono) : ''}</small></td>
+    if (!r.ok) { $('tp').innerHTML = '<tr><td colspan="7" class="text-secondary">No se pudo cargar.</td></tr>'; return; }
+    const L = (await r.json()).pagos, np = L.filter(p => p.estado === 'pendiente').length;
+    $('nPend').textContent = np ? np + ' por revisar' : ''; $('nPend').hidden = !np;
+    $('tp').innerHTML = L.length ? L.map(p => `<tr data-id="${p.id}">
+      <td><div class="fw-medium">${esc(p.correo)}</div><div class="text-secondary small">${esc(p.nombre || '')}${p.telefono ? ' · tel. ' + esc(p.telefono) : ''}</div></td>
       <td>${CONC[p.concepto] || esc(p.concepto)}${p.concepto === 'expedientes' ? ' × ' + p.cantidad : ''}</td>
-      <td><b>${crc(p.monto)}</b>${p.descuento ? `<small>cupón −${crc(p.descuento)}</small>` : ''}</td>
-      <td><span class="num">${esc(p.ref)}</span>${p.conimg ? '<small><a href="/api/admin/pago-img?id=' + p.id + '" target="_blank" rel="noopener">Ver captura</a></small>' : '<small>sin captura</small>'}</td>
-      <td>${fd(p.creado)}${p.resuelto ? `<small>resuelto ${fd(p.resuelto)}</small>` : ''}</td>
-      <td><span class="est ${p.estado}">${p.estado}</span>${p.nota ? `<small>${esc(p.nota)}</small>` : ''}</td>
-      <td>${p.estado === 'pendiente' ? '<div class="acc"><button class="pri" data-p="aprobar">Aprobar y activar</button><button data-p="rechazar">Rechazar</button></div>' : ''}</td></tr>`).join('')
-      : '<tr><td colspan="7" class="vacío">Todavía no hay pagos reportados.</td></tr>';
+      <td class="fw-medium">${crc(p.monto)}${p.descuento ? `<div class="text-secondary small">cupón −${crc(p.descuento)}</div>` : ''}</td>
+      <td><code>${esc(p.ref)}</code><div class="small">${p.conimg ? `<a href="/api/admin/pago-img?id=${p.id}" target="_blank" rel="noopener"><i class="ti ti-photo"></i> Ver captura</a>` : '<span class="text-secondary">sin captura</span>'}</div></td>
+      <td>${fd(p.creado)}${p.resuelto ? `<div class="text-secondary small">resuelto ${fd(p.resuelto)}</div>` : ''}</td>
+      <td><span class="badge bg-${EST[p.estado][1]}-lt">${EST[p.estado][0]}</span>${p.nota ? `<div class="text-secondary small">${esc(p.nota)}</div>` : ''}</td>
+      <td>${p.estado === 'pendiente' ? '<div class="btn-list flex-nowrap"><button class="btn btn-success btn-sm" data-p="aprobar"><i class="ti ti-check me-1"></i>Aprobar</button><button class="btn btn-outline-danger btn-sm" data-p="rechazar">Rechazar</button></div>' : ''}</td></tr>`).join('')
+      : '<tr><td colspan="7" class="text-secondary">Todavía no hay pagos reportados.</td></tr>';
   }
   $('tp').addEventListener('click', async e => {
     const b = e.target.closest('button[data-p]'); if (!b) return;
     const id = +b.closest('tr').dataset.id, accion = b.dataset.p;
     let nota = '';
-    if (accion === 'rechazar') { nota = window.prompt('Motivo (lo verá el usuario en Mi cuenta):', 'No encontramos el SINPE con ese comprobante') || ''; }
-    else if (!window.confirm('¿Confirmaste el SINPE en tu banco? Se activará el plan o los expedientes de inmediato.')) return;
+    if (accion === 'rechazar') { nota = await confirmar('Rechazar pago', 'Motivo (lo verá el usuario en Mi cuenta):', { peligro: true, nota: 'No encontramos el SINPE con ese comprobante', ok: 'Rechazar' }); if (nota == null) return; }
+    else if (!(await confirmar('¿Aprobar este pago?', 'Confirma primero el SINPE en tu banco. El plan o los expedientes se activan de inmediato.', { ok: 'Aprobar y activar' }))) return;
     const r = await fetch('/api/admin/pago', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, accion, nota }) });
     const j = await r.json().catch(() => ({}));
-    toast(r.ok ? (accion === 'aprobar' ? (j.hasta ? 'Plan activo hasta el ' + j.hasta : 'Expedientes acreditados') : 'Pago rechazado') : (j.error || 'No se pudo guardar'));
+    toast(r.ok ? (accion === 'aprobar' ? (j.hasta ? 'Plan activo hasta el ' + j.hasta : 'Expedientes acreditados') : 'Pago rechazado') : (j.error || 'No se pudo guardar'), r.ok ? 'success' : 'danger');
     cargarPagos(); cargar();
   });
-  cargarPagos();
-  cargar();
+  cargarPagos(); cargar();
 })();
 </script>
 </body></html>

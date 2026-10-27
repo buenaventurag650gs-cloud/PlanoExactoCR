@@ -52,7 +52,8 @@ function initDB(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER NOT NULL, correo TEXT, concepto TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
       monto INTEGER NOT NULL, descuento INTEGER DEFAULT 0, ref TEXT, telefono TEXT, estado TEXT NOT NULL DEFAULT 'pendiente', nota TEXT, creado TEXT, resuelto TEXT, img TEXT)`)
   ]).then(async (r) => {   // columnas agregadas después de la primera versión (fallan sin daño si ya existen)
-    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
+    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS enlaces (t TEXT PRIMARY KEY, correo TEXT NOT NULL, vence INTEGER NOT NULL, datos TEXT)").run();
     return r;
   }).catch((e) => { listo = null; throw e; });
   return listo;
@@ -143,6 +144,77 @@ async function avisar(env, asunto, lineas) {
 }
 const NOMPLAN = { free: "Gratis", basico: "Esencial", pro: "PRO" };
 
+// ---------- Correo a usuarios (Resend) ----------
+// Requiere la variable secreta RESEND_API_KEY y el dominio verificado en Resend. CORREO_DE: remitente (opcional).
+async function enviarCorreo(env, para, asunto, texto, html) {
+  if (!env.RESEND_API_KEY) return false;
+  const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: env.CORREO_DE || `PlanoExactoCR <hola@${env.DOMINIO || "planoexactocr.com"}>`, to: para, subject: asunto, text: texto, html, reply_to: `hola@${env.DOMINIO || "planoexactocr.com"}` }) }).catch(() => null);
+  return !!(r && r.ok);
+}
+const correoHTML = (titulo, parrafos, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#15302A">
+<p style="font-size:18px;font-weight:bold;margin:0 0 4px">PlanoExactoCR</p><p style="color:#4C5953;margin:0 0 20px;font-size:13px">Remates judiciales de Costa Rica en un mapa</p>
+<h1 style="font-size:20px;margin:0 0 12px">${titulo}</h1>${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${t}</p>`).join("")}
+${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p><p style="font-size:12px;color:#4C5953">Si el botón no funciona, copia este enlace: ${enlace}</p>` : ""}
+<p style="font-size:12px;color:#4C5953;margin-top:24px">Si no solicitaste este correo, ignóralo.</p></div>`;
+
+// ---------- Ingreso sin contraseña: Google y enlace por correo ----------
+const metodosIngreso = (env) => ({ google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), correo: !!env.RESEND_API_KEY });
+async function cuentaPorCorreo(env, request, correo, extra) {
+  let us = await env.DB.prepare("SELECT * FROM usuarios WHERE correo = ?").bind(correo).first();
+  if (us) return { us, nuevo: false };
+  const ahora = new Date().toISOString(), cp = await cupon(correo), e = extra || {};
+  let fuente = String(e.fuente || "").slice(0, 120);
+  if (!fuente && env.REGISTROS) { const prev = await env.REGISTROS.getWithMetadata("r:" + correo).catch(() => null); if (prev && prev.metadata) fuente = prev.metadata.fuente || "registro previo"; }
+  us = await env.DB.prepare(`INSERT INTO usuarios (correo, nombre, perfil, prov, hash, sal, cupon, fuente, pais, creado, ultimo, google_sub, origen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`)
+    .bind(correo, String(e.nombre || "").slice(0, 80), PERFILES.has(e.perfil) ? e.perfil : "otro", String(e.prov || "").slice(0, 20), "-", azar(16), cp, fuente, (request.cf && request.cf.country) || "", ahora, ahora, e.sub || null, e.origen || "correo").first();
+  await avisar(env, "Nueva cuenta: " + correo, ["Se creó una cuenta en PlanoExactoCR.", "", "Correo: " + correo, "Nombre: " + (us.nombre || "—"), "Entró con: " + (e.origen === "google" ? "Google" : "enlace por correo"),
+    "Llegó por: " + (fuente || "directo"), "País: " + (us.pais || "—"), "Cupón: " + cp, "", "Panel: https://" + (env.DOMINIO || "planoexactocr.com") + "/admin"]);
+  await enviarCorreo(env, correo, "Bienvenido a PlanoExactoCR: tu cupón " + cp, `Tu cuenta en PlanoExactoCR está lista.\n\nTu cupón de lanzamiento: ${cp} (30 % de descuento en la primera mensualidad de cualquier plan).\n\nEntra al mapa: https://${env.DOMINIO || "planoexactocr.com"}/mapa`,
+    correoHTML("Tu cuenta está lista", ["Ya puedes ver la información base de cada remate, guardar listas y generar un expediente PDF completo por semana.", `Tu cupón de lanzamiento es <b style="font-size:18px;letter-spacing:1px">${cp}</b>: 30 % de descuento en la primera mensualidad de cualquier plan.`], "Ir al mapa", `https://${env.DOMINIO || "planoexactocr.com"}/mapa`));
+  return { us, nuevo: true };
+}
+const volverA = (v) => (typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : "/mapa");
+async function ingresoExterno(request, env, u) {
+  await initDB(env);
+  const p = u.pathname, base = "https://" + (env.DOMINIO && u.hostname === env.DOMINIO ? env.DOMINIO : u.host);
+  const redirigir = (dest, cookies) => { const h = new Headers({ "Location": dest, "cache-control": "no-store" }); (cookies || []).forEach((c) => h.append("Set-Cookie", c)); return new Response(null, { status: 302, headers: h }); };
+  const fallo = (t) => pagina("No se pudo entrar", `<div class="card">${LOGO}<h1>No se pudo entrar</h1><p>${t}</p><p><a href="/mapa?entrar=1">Intentar de nuevo</a></p></div>`, 400);
+  if (p === "/auth/google") {
+    if (!metodosIngreso(env).google) return fallo("El ingreso con Google todavía no está configurado.");
+    const st = azar(18), vuelta = volverA(u.searchParams.get("v")), utm = (u.searchParams.get("f") || "").slice(0, 120);
+    const q = new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, redirect_uri: base + "/auth/google/vuelta", response_type: "code", scope: "openid email profile", state: st, prompt: "select_account" });
+    return redirigir("https://accounts.google.com/o/oauth2/v2/auth?" + q, [galleta("pecr_g", encodeURIComponent(JSON.stringify({ st, vuelta, utm })), 600)]);
+  }
+  if (p === "/auth/google/vuelta") {
+    let g = {}; try { g = JSON.parse(decodeURIComponent(leerCookie(request, "pecr_g") || "")); } catch (_) {}
+    if (!g.st || g.st !== u.searchParams.get("state")) return fallo("La sesión de ingreso venció. Vuelve a intentarlo.");
+    if (u.searchParams.get("error")) return redirigir("/mapa?entrar=1", [galleta("pecr_g", "", 0)]);
+    const tr = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ code: u.searchParams.get("code") || "", client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, redirect_uri: base + "/auth/google/vuelta", grant_type: "authorization_code" }) });
+    const tj = await tr.json().catch(() => ({}));
+    if (!tr.ok || !tj.id_token) return fallo("Google no confirmó el ingreso.");
+    let id = {}; try { id = JSON.parse(new TextDecoder().decode(b64uDec(tj.id_token.split(".")[1]))); } catch (_) {}
+    // El token llega directo de Google por HTTPS (flujo de código del servidor): basta validar destinatario, emisor y vigencia
+    if (id.aud !== env.GOOGLE_CLIENT_ID || !/accounts\.google\.com$/.test(id.iss || "") || (id.exp || 0) * 1000 < Date.now() || !id.email || id.email_verified === false) return fallo("No pudimos verificar tu cuenta de Google.");
+    const correo = String(id.email).toLowerCase();
+    let { us, nuevo } = await cuentaPorCorreo(env, request, correo, { nombre: id.name, sub: id.sub, origen: "google", fuente: g.utm });
+    await env.DB.prepare("UPDATE usuarios SET ultimo = ?, google_sub = COALESCE(google_sub, ?), nombre = CASE WHEN nombre IS NULL OR nombre = '' THEN ? ELSE nombre END WHERE id = ?").bind(new Date().toISOString(), id.sub, String(id.name || "").slice(0, 80), us.id).run();
+    return redirigir(nuevo ? "/mapa?bienvenida=1" : g.vuelta || "/mapa", [await crearSesion(env, us), galleta("pecr_g", "", 0)]);
+  }
+  if (p === "/auth/correo") {   // enlace recibido por correo
+    const t = u.searchParams.get("t") || "";
+    const e = await env.DB.prepare("SELECT * FROM enlaces WHERE t = ?").bind(t).first();
+    if (!e || e.vence < Date.now()) return fallo("El enlace venció o ya se usó. Pide uno nuevo desde «Entrar».");
+    await env.DB.prepare("DELETE FROM enlaces WHERE t = ? OR vence < ?").bind(t, Date.now()).run();
+    let d = {}; try { d = JSON.parse(e.datos || "{}"); } catch (_) {}
+    const { us, nuevo } = await cuentaPorCorreo(env, request, e.correo, Object.assign({ origen: "correo" }, d));
+    await env.DB.prepare("UPDATE usuarios SET ultimo = ? WHERE id = ?").bind(new Date().toISOString(), us.id).run();
+    return redirigir(nuevo ? "/mapa?bienvenida=1" : volverA(d.vuelta), [await crearSesion(env, us)]);
+  }
+  return null;
+}
+
 // ---------- /api/cuenta/* ----------
 async function cuenta(request, env, u, pw) {
   if (!env.DB) return json({ error: "Las cuentas no están disponibles en este momento." }, 503, 0);
@@ -154,7 +226,7 @@ async function cuenta(request, env, u, pw) {
     const us = await usuarioActual(request, env);
     let datos = null;
     if (us && us.datos) try { datos = JSON.parse(us.datos); } catch (_) {}
-    return json({ user: us ? publico(us) : null, datos, admin: await esAdmin(request, pw) }, 200, 0);
+    return json({ user: us ? publico(us) : null, datos, admin: await esAdmin(request, pw), ingreso: metodosIngreso(env) }, 200, 0);
   }
   if (ruta === "pagos" && request.method === "GET") {
     const us = await usuarioActual(request, env);
@@ -167,6 +239,8 @@ async function cuenta(request, env, u, pw) {
   if (!b) return json({ error: "Solicitud inválida" }, 400, 0);
 
   if (ruta === "crear") {
+    const mi = metodosIngreso(env);
+    if (mi.google || mi.correo) return json({ error: "Ahora las cuentas se crean con Google o con un enlace a tu correo, sin contraseña." }, 410, 0);
     const correo = String(b.correo || "").trim().toLowerCase().slice(0, 120), clave = String(b.clave || "");
     if (!CORREO_OK.test(correo)) return json({ error: "Revisa el correo: parece incompleto." }, 400, 0);
     if (clave.length < 8) return json({ error: "La contraseña debe tener al menos 8 caracteres." }, 400, 0);
@@ -198,6 +272,24 @@ async function cuenta(request, env, u, pw) {
     return json({ ok: true, user: publico(us) }, 200, 0, { "Set-Cookie": await crearSesion(env, us) });
   }
 
+  if (ruta === "enlace") {   // enviar enlace de ingreso (también crea la cuenta la primera vez)
+    const correo = String(b.correo || "").trim().toLowerCase().slice(0, 120);
+    if (!CORREO_OK.test(correo)) return json({ error: "Revisa el correo: parece incompleto." }, 400, 0);
+    if (!env.RESEND_API_KEY) return json({ error: "El ingreso por correo todavía no está disponible." }, 503, 0);
+    const desde = Date.now() - 15 * 60 * 1000;
+    await env.DB.prepare("DELETE FROM intentos WHERE ts < ?").bind(desde).run();
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM intentos WHERE correo = ?").bind("enlace:" + correo).first();
+    if (n && n.n >= 4) return json({ error: "Ya te enviamos varios enlaces. Revisa tu correo (y la carpeta de spam) o espera unos minutos." }, 429, 0);
+    await env.DB.prepare("INSERT INTO intentos (correo, ts) VALUES (?, ?)").bind("enlace:" + correo, Date.now()).run();
+    const utm = b.utm || {}, t = azar(24), base = "https://" + (env.DOMINIO || u.host);
+    const datos = { vuelta: volverA(b.vuelta), fuente: [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.ref].filter(Boolean).join("/").slice(0, 120) };
+    await env.DB.prepare("INSERT INTO enlaces (t, correo, vence, datos) VALUES (?, ?, ?, ?)").bind(t, correo, Date.now() + 20 * 60 * 1000, JSON.stringify(datos)).run();
+    const enlace = base + "/auth/correo?t=" + t;
+    const ok = await enviarCorreo(env, correo, "Tu enlace para entrar a PlanoExactoCR", `Para entrar a PlanoExactoCR abre este enlace (vale 20 minutos):\n${enlace}\n\nSi no lo pediste, ignora este correo.`,
+      correoHTML("Tu enlace para entrar", ["Haz clic en el botón para entrar a PlanoExactoCR. El enlace vale 20 minutos y sirve una sola vez.", "Si es tu primera vez, con este paso queda creada tu cuenta gratis."], "Entrar a PlanoExactoCR", enlace));
+    if (!ok) return json({ error: "No pudimos enviar el correo. Intenta de nuevo en un momento." }, 502, 0);
+    return json({ ok: true }, 200, 0);
+  }
   if (ruta === "olvide") {
     const correo = String(b.correo || "").trim().toLowerCase().slice(0, 120);
     const us = CORREO_OK.test(correo) ? await env.DB.prepare("SELECT id FROM usuarios WHERE correo = ?").bind(correo).first() : null;
@@ -640,6 +732,7 @@ export default {
     if (p === "/api/registro" && request.method === "POST") return registrar(request, env);
     if (p.startsWith("/api/cuenta/")) return cuenta(request, env, u, pw);
     if (p === "/restablecer") return paginaRestablecer(u.searchParams.get("t") || "");
+    if (p.startsWith("/auth/")) { if (!env.DB) return txt("Las cuentas no están disponibles.", 503); const r = await ingresoExterno(request, env, u); if (r) return r; }
 
     const adm = await esAdmin(request, pw);
     if (SOLO_ADMIN.has(p) || p.startsWith("/api/admin/")) {
