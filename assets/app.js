@@ -718,17 +718,23 @@
       ${top}
       ${actionsHTML(r)}
       ${r.rev ? `<div class="note">${esc(r.rev)}</div>` : ''}
+      <div class="fgrp">Información base</div>
       ${r.isPlano ? '' : sec(PX.ICON.gavel, 'Remate', `<div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div>`, PX.whenTag(r.next))}
-      ${PROsec('Valor de Hacienda de la zona y en qué porcentaje de ese valor arranca la puja.', I.moneda, PX.iph(r) ? 'Índice Puja/Hacienda' : 'Valor y mercado', `<dl class="kv">
-        ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
-      </dl>${iphHTML(r)}`)}
-      ${pecrH ? PROsec('Nivel del predio en la escala de valor PECR, de 1 a 10.', I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm && ese ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
         <dt>Topografía</dt><dd>${topo ? esc(topo.txt) : 'Sin cartografía 1:5 000 en el sitio'}${topo ? '<small class="sub">Según curvas de nivel del IGN</small>' : ''}</dd>
         ${e.cob || r.isPlano ? `<dt>Uso del suelo</dt><dd id="pcob">${esc(e.cob || r.cob || '…')}</dd>` : ''}
         ${e.zv ? `<dt>Zona de vida</dt><dd>${esc(e.zv)}</dd>` : ''}
+      </dl>`)}
+      ${sec(I.norma, 'Normativa', `<p style="margin:0"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="note" style="padding:6px 9px">${esc(t)}</div>`).join('')}`)}
+      <div class="fgrp">${PX.ESE} Con el plan Esencial</div>
+      ${ESEsec('Número de finca y plano, servidumbres citadas y el predio dibujado según el catastro.', I.registro, 'Registro y ubicación', `<dl class="kv">
+        <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
+        <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
+        ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
+        <dt>Ubicación</dt><dd>${esc(ubic)}</dd>
+        ${r.pub ? `<dt>Publicado</dt><dd>${fdate(r.pub)}<small class="sub">Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')}</small></dd>` : ''}
       </dl>`)}
       ${ESEsec('Agua potable, vía de acceso, salud, escuela, ríos y distancia a la costa.', I.entorno, 'Servicios y entorno', `<dl class="kv">
         <dt>Agua potable</dt><dd>${e.aguaS ? 'Cobertura de ' + esc(e.aguaS.join(', ')) : 'Sin cobertura registrada'}<small class="sub">AyA, ESPH, ASADAS y acueductos municipales</small></dd>
@@ -738,19 +744,17 @@
         ${e.agua !== undefined ? `<dt>Ríos</dt><dd>${e.agua == null ? 'Ninguno a menos de 400 m' : 'Cauce a ' + PX.dist(e.agua)}</dd>` : ''}
         ${e.costa != null && e.costa < 2000 ? `<dt>Costa</dt><dd>A ${PX.dist(e.costa)}${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}</dd>` : ''}
       </dl>`)}
-      ${sec(I.norma, 'Normativa', `<p style="margin:0"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="note" style="padding:6px 9px">${esc(t)}</div>`).join('')}`)}
-      ${ESEsec('Número de finca y plano, servidumbres citadas y el predio dibujado según el catastro.', I.registro, 'Registro y ubicación', `<dl class="kv">
-        <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
-        <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
-        ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
-        <dt>Ubicación</dt><dd>${esc(ubic)}</dd>
-        ${r.pub ? `<dt>Publicado</dt><dd>${fdate(r.pub)}<small class="sub">Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')}</small></dd>` : ''}
-      </dl>`)}
+      <div class="fgrp">${PX.PRO} Con el plan PRO</div>
+      ${PROsec('Valor de Hacienda de la zona y en qué porcentaje de ese valor arranca la puja.', I.moneda, PX.iph(r) ? 'Índice Puja/Hacienda' : 'Valor y mercado', `<dl class="kv">
+        ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
+      </dl>${iphHTML(r)}`)}
+      ${pecrH ? PROsec('Nivel del predio en la escala de valor PECR, de 1 a 10.', I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
       ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
         ${full ? '' : `<div class="prohint"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>`}`)}
       ${r.isPlano ? '' : sec(PX.ICON.Lote, 'Atributos del lote', `<div class="chips${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="chip">${esc(t)}</span>`).join('') || '<span class="chip">Sin atributos destacados</span>'}</div>`, PX.PRO)}
       ${proBox(r)}
+      <div class="fgrp">Expediente</div>
       ${expBox(r)}
       <div class="foot">Información orientativa de fuentes públicas. No sustituye la certificación del Registro Nacional, el certificado de uso de suelo ni la revisión del expediente judicial. <button class="linkbtn" data-about="terms">Términos y descargo</button></div>
     </div>`;

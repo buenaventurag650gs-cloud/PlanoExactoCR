@@ -489,3 +489,6 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .pgpasos { margin: 0 0 10px; padding-left: 20px; display: grid; gap: 10px; }
 .pgpasos li > span { display: block; margin-bottom: 6px; }
 .pgpasos .authf { margin-top: 4px; }
+/* Grupos de la ficha: base, Esencial, PRO y expediente */
+.fgrp { display: flex; align-items: center; gap: 8px; margin: 14px 0 -2px; font: 700 11.5px/1.2 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.fgrp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
