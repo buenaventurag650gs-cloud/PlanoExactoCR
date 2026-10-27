@@ -4,14 +4,13 @@ name = "planoexactocr"
 main = "worker.js"
 compatibility_date = "2026-10-01"
 
-# Dominio propio: cuando planoexactocr.com esté activo en esta cuenta de Cloudflare, quitar los «#» de estas
-# seis líneas. El sitio pasa a planoexactocr.com y la dirección workers.dev redirige allí.
-# routes = [
-#   { pattern = "planoexactocr.com", custom_domain = true },
-#   { pattern = "www.planoexactocr.com", custom_domain = true }
-# ]
-# [vars]
-# DOMINIO = "planoexactocr.com"
+# Dominio propio: el sitio vive en planoexactocr.com; la dirección workers.dev y www redirigen allí.
+routes = [
+  { pattern = "planoexactocr.com", custom_domain = true },
+  { pattern = "www.planoexactocr.com", custom_domain = true }
+]
+[vars]
+DOMINIO = "planoexactocr.com"
 
 [assets]
 directory = "."
