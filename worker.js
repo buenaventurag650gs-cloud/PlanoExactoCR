@@ -306,7 +306,7 @@ a{color:var(--accent)}.err{color:var(--bad);font-size:13px;text-align:center}`;
 const pagina = (titulo, cuerpo, status = 200) => new Response(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PlanoExactoCR · ${titulo}</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/img/favicon.png"><style>${ESTILO}</style></head><body>${cuerpo}</body></html>`,
   { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "X-Robots-Tag": "noindex, nofollow" } });
-const LOGO = '<picture><source srcset="/assets/img/logo-oscuro.webp" media="(prefers-color-scheme: dark)"><img class="logo" src="/assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463"></picture>';
+const LOGO = '<a href="/" style="justify-self:center"><picture><source srcset="/assets/img/logo-oscuro.webp" media="(prefers-color-scheme: dark)"><img class="logo" src="/assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463"></picture></a>';
 function paginaAdmin(error, sig) {
   return pagina("Administración", `<form class="card" method="post" action="/__acceso">${LOGO}
 <h1>Administración</h1><p>Ingresa la contraseña del sitio.</p>${error ? '<div class="err" role="alert">La contraseña no es correcta. Intenta de nuevo.</div>' : ""}

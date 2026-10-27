@@ -251,7 +251,7 @@
   // ---------- mapa ----------
   const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
-  map.attributionControl.setPrefix('<span class="attrb">' + PX.marca('', 18, 12) + '<b>PlanoExacto</b>CR</span>');
+  map.attributionControl.setPrefix('<a class="attrb" href="/" title="Ir al inicio">' + PX.marca('', 18, 12) + '<b>PlanoExacto</b>CR</a>');
   map.zoomControl.setPosition('topright');
   PX.map = map;
   // Indicador del nivel de zoom entre + y −

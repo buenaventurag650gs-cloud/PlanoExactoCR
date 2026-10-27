@@ -21,6 +21,7 @@
 header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 9px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: var(--panel); border-bottom: 1px solid var(--line); }
+a.brand { text-decoration: none; color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand .bt { display: grid; gap: 1px; }
 .brand .src { align-self: center; }
@@ -318,7 +319,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><span class="mark"><img class="lg-claro" src="assets/img/logo-mark.webp" alt="" width="52" height="36"><img class="lg-oscuro" src="assets/img/logo-mark-oscuro.webp" alt="" width="52" height="36"></span><div class="bt"><h1 class="wm" aria-label="PlanoExactoCR"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></h1><span class="tagl">Ubica · Comprende · Decide</span></div><span class="src" id="src"></span></div>
+    <a class="brand" href="/" title="Ir al inicio"><span class="mark"><img class="lg-claro" src="assets/img/logo-mark.webp" alt="" width="52" height="36"><img class="lg-oscuro" src="assets/img/logo-mark-oscuro.webp" alt="" width="52" height="36"></span><div class="bt"><h1 class="wm" aria-label="PlanoExactoCR"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></h1><span class="tagl">Ubica · Comprende · Decide</span></div><span class="src" id="src"></span></a>
     <div class="kpis" id="kpis"></div>
     <nav class="nav" aria-label="Cuenta">
       <div class="vista" role="group" aria-label="Ver el sitio como usuario gratis o como suscriptor PRO (demostración)" title="Demostración: mira el sitio como lo ve un usuario gratis o un suscriptor PRO"><span class="vl"><i data-ic="eye"></i>Ver como</span><button id="vFree" aria-pressed="false"><i data-ic="user"></i>Gratis</button><button id="vBas" aria-pressed="false">Esencial</button><button id="vPro" aria-pressed="true"><i data-ic="star"></i>PRO</button></div>

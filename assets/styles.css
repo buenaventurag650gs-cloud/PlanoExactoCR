@@ -362,7 +362,7 @@ dl.kv dd { font-size: 14px; line-height: 1.4; }
 header.top { position: relative; padding-top: 12px; }
 header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #15302A 0 46%, #539279 46% 82%, #D9906E 82%); }
 .brand { padding-right: 16px; margin-right: 2px; border-right: 1px solid var(--line); }
-.attrb { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--ink); font: 300 11px/1 "Montserrat", var(--f-body); letter-spacing: .06em; }
+.attrb { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--ink); font: 300 11px/1 "Montserrat", var(--f-body); letter-spacing: .06em; }
 .attrb b { font-weight: 700; }
 .attrb img { width: 18px; height: auto; }
 @media (max-width: 900px) { .brand { border-right: 0; padding-right: 0; } .mark img { width: 54px; } .wm { font-size: 20px; } }
