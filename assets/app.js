@@ -677,10 +677,17 @@
     if (r.ll) { selLayer.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false })); }
     try { history.replaceState(null, '', '#' + r.key); } catch (err) {}
   }
+  // Acercar al remate: máximo zoom (17) si está ubicado exacto; 14 si es aproximado al distrito.
+  // En pantallas anchas se corre el punto a la izquierda para que no quede detrás de la ficha.
+  const irA = r => {
+    const z = r.exact || r.isPlano ? 17 : 14, ll = L.latLng(r.ll[1], r.ll[0]);
+    const desp = window.innerWidth > 900 ? 240 : 0, p = map.project(ll, z).add([desp, 0]);
+    map.setView(map.unproject(p, z), z);
+  };
   function openFicha(key, fly) {
     const r = PX.item(key); if (!r) return;
     open = key;
-    if (!PX.conCuenta() && !r.isPlano) { document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); fichaPrevia(r); if (r.ll && fly !== false) map.setView([r.ll[1], r.ll[0]], Math.max(map.getZoom(), 13)); return; }
+    if (!PX.conCuenta() && !r.isPlano) { document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); fichaPrevia(r); if (r.ll && fly !== false) irA(r); return; }
     document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current'));
     const li = document.querySelector(`.item[data-k="${key}"]`); if (li) li.setAttribute('aria-current', 'true');
     const f = $('ficha');
@@ -771,7 +778,7 @@
         if (fly !== false) map.fitBounds(pg.getBounds(), { maxZoom: 17, paddingTopLeft: [60, 60], paddingBottomRight: window.innerWidth > 900 ? [480, 60] : [60, 60] });
       } else {
         selLayer.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false }));
-        if (fly !== false) map.setView([r.ll[1], r.ll[0]], 12);
+        if (fly !== false) irA(r);
       }
     }
     try { history.replaceState(null, '', '#' + key); } catch (err) {}
