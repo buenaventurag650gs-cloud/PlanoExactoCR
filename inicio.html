@@ -110,7 +110,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         <li><b data-k="ubicados">—</b><span>con predio exacto</span></li>
         <li><b data-k="boletin">—</b><span>último Boletín Judicial</span></li>
       </ul>
-      <div class="cta"><a class="btn pri" href="#registro" id="ctaCrear">Crear cuenta gratis</a><a class="btn" href="/mapa">Explorar el mapa</a></div>
+      <div class="cta"><a class="btn pri" href="#registro" id="ctaCrear">Crear cuenta gratis</a><a class="btn" href="/mapa" id="ctaMapa">Explorar el mapa</a></div>
     </div>
     <div class="vista"><img src="/assets/img/vista-app.webp" alt="Mapa de PlanoExactoCR con remates marcados en cruces y la ficha de una propiedad abierta" width="800" height="499"><span class="sello">Vista real de la versión de prueba</span></div>
   </div>
@@ -202,7 +202,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   fetch('/api/cuenta/yo', { cache: 'no-store' }).then(r => r.json()).then(j => {
     if (!j.user && !j.admin) return;
     const e = document.getElementById('entrar'); e.textContent = 'Ir al mapa'; e.href = '/mapa'; e.classList.add('pri');
-    const c = document.getElementById('ctaCrear'); c.textContent = 'Ir al mapa'; c.href = '/mapa';
+    const c = document.getElementById('ctaCrear'); c.textContent = 'Ir al mapa'; c.href = '/mapa'; document.getElementById('ctaMapa').hidden = true;
     if (j.user) { document.getElementById('cod').textContent = j.user.cupon; document.getElementById('f').hidden = true; document.getElementById('listo').hidden = false; document.querySelector('#listo b').textContent = 'Ya tienes cuenta. Tu cupón:'; }
   }).catch(() => {});
   const f = document.getElementById('f'), err = document.getElementById('err'), btn = document.getElementById('enviar');
