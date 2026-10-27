@@ -160,8 +160,19 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .normbox .na { color: var(--warn); }
 
 /* ---------- Íconos de tipo, insignia de remate y fechas ---------- */
-.ti { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--chip); color: #7B8782; flex: none; }
-.ti.agro { background: #E3F1E6; color: #2E7D4F; }
+.ti { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--t-bg, var(--chip)); color: var(--t-fg, #7B8782); flex: none; }
+/* Tonos por tipo (mismo esquema del agrícola): fondo teñido claro + ícono y texto del tono fuerte */
+.t-lote { --t-bg: #F7E6DE; --t-fg: #B4502F; }
+.t-cons { --t-bg: #E3ECF6; --t-fg: #2B5C8A; }
+.t-agro { --t-bg: #E3F1E6; --t-fg: #2E7D4F; }
+.t-fil  { --t-bg: #ECE7F5; --t-fg: #5B4A8B; }
+:root[data-theme="dark"] .t-lote { --t-bg: rgba(212,120,86,.18); --t-fg: #E59A7C; }
+:root[data-theme="dark"] .t-cons { --t-bg: rgba(90,145,200,.18); --t-fg: #8DB6DE; }
+:root[data-theme="dark"] .t-agro { --t-bg: rgba(76,154,104,.18); --t-fg: #7CC495; }
+:root[data-theme="dark"] .t-fil  { --t-bg: rgba(140,120,200,.20); --t-fg: #B3A3DE; }
+.tag.t-lote, .tag.t-cons, .tag.t-agro, .tag.t-fil { background: var(--t-bg); color: var(--t-fg); }
+.tipo svg { color: var(--t-fg) !important; }
+.tipo[aria-pressed="true"], .tipo:hover { border-color: var(--t-fg); background: var(--t-bg); color: var(--t-fg); }
 .stb { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 6px; border-radius: 6px; font: 700 11.5px/1.3 var(--f-body); color: #fff; white-space: nowrap; }
 .stb i { font-style: normal; font-weight: 500; font-size: 11px; opacity: .85; margin-left: 2px; }
 .stb.s1 { background: #2B5C8A; } .stb.s2 { background: #B7791F; } .stb.s3 { background: #B42318; }
@@ -169,7 +180,6 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .when { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .when.pronto { color: var(--ink); font-weight: 600; }
 .when.manana, .when.hoy { color: #fff; background: #C8553D; border-radius: 5px; padding: 1px 7px; font-weight: 700; }
-.tag.agro { background: #E3F1E6; color: #2E7D4F; }
 /* Marcador en cruz: dos líneas que se cruzan sobre el punto */
 .xh { background: none !important; border: 0 !important; }
 .xh svg { overflow: visible; filter: drop-shadow(0 0 1.5px rgba(255,255,255,.95)); }
@@ -514,3 +524,24 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .tb .btn { gap: 0; } .tb .btn:hover { border-color: var(--tblr-btn-hover-border-color); }
 .tb .modal-title .pro, .tb .modal-title .ese { vertical-align: 2px; }
 .tb .tbmarca { width: 40px; height: auto; }
+/* Ficha del predio con componentes de Tabler: ocupa todo el panel, cabecera fija y cuerpo con desplazamiento */
+.ficha:has(> .fichatb) { overflow: hidden; }
+.fichatb { z-index: auto; display: flex; flex-direction: column; flex: 1; min-height: 0; background: var(--tblr-bg-surface); color: var(--tblr-body-color); }
+.fichatb .fhead { padding: 10px 12px 10px 16px; flex: none; }
+.fichatb .fbody { display: block; overflow: auto; padding: 16px; flex: 1; min-height: 0; }
+.fichatb h2 { font: 600 19px/1.25 var(--f-display); text-wrap: balance; }
+.fichatb .card-header .avatar svg { width: 16px; height: 16px; }
+.fichatb .datagrid { --tblr-datagrid-padding: 1rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.fichatb .datagrid-title { display: flex; align-items: center; gap: 6px; }
+.fichatb .datagrid-item.forma-item { grid-column: 1 / -1; }
+.fichatb .ri-claro { background: rgba(255,255,255,.15); color: #fff; width: 24px; height: 24px; }
+.fichatb .ftl .list-group-item.active { background: var(--tblr-primary-lt, rgba(var(--tblr-primary-rgb), .08)); color: inherit; border-color: var(--tblr-border-color); }
+.fichatb .fbloq .card-header { background: var(--tblr-bg-surface-secondary); }
+.fichatb .favbtn svg { width: 16px; height: 16px; }
+.fichatb .hr-text { font-size: .7rem; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-lote { --t-bg: rgba(212,120,86,.18); --t-fg: #E59A7C; }
+  :root:not([data-theme="light"]) .t-cons { --t-bg: rgba(90,145,200,.18); --t-fg: #8DB6DE; }
+  :root:not([data-theme="light"]) .t-agro { --t-bg: rgba(76,154,104,.18); --t-fg: #7CC495; }
+  :root:not([data-theme="light"]) .t-fil { --t-bg: rgba(140,120,200,.20); --t-fg: #B3A3DE; } }
+.fichatb .datagrid-content small { display: block; color: var(--tblr-secondary); }
+.fichatb .hr-text .pro, .fichatb .hr-text .ese { color: #FFFDF5; }

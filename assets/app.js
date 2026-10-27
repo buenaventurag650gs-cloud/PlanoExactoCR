@@ -67,7 +67,7 @@
   const TIPOS = ['Lote', 'Con construcción', 'Agrícola', 'Filial'];
   const tipoOn = new Set();
   function paintTipos() {
-    $('tipos').innerHTML = TIPOS.map(t => `<button class="tipo${t === 'Agrícola' ? ' agro' : ''}" data-t="${t}" aria-pressed="${tipoOn.has(t)}">${PX.ICON[t]}<span>${t === 'Con construcción' ? 'Construcción' : t}</span><span class="num muted">${live.filter(r => r.tipo === t).length}</span></button>`).join('');
+    $('tipos').innerHTML = TIPOS.map(t => `<button class="tipo ${PX.tipoCls(t)}" data-t="${t}" aria-pressed="${tipoOn.has(t)}">${PX.ICON[t]}<span>${t === 'Con construcción' ? 'Construcción' : t}</span><span class="num muted">${live.filter(r => r.tipo === t).length}</span></button>`).join('');
   }
   $('tipos').addEventListener('click', e => { const b = e.target.closest('.tipo'); if (!b) return; const t = b.dataset.t; tipoOn.has(t) ? tipoOn.delete(t) : tipoOn.add(t); paintTipos(); apply(); });
 
@@ -184,7 +184,7 @@
 
   // ---------- lista ----------
   function itemHTML(r) {
-    const tags = [`<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span>`];
+    const tags = [PX.tipoTag(r)];
     if (r.serv && r.serv.length) tags.push(`<span class="tag warn">Servidumbre</span>`);
     if (r.pub && PX.now - r.pub < 7 * 864e5) tags.push(`<span class="tag ok">Nuevo</span>`);
     if (PX.sigo(r.key)) tags.push(`<span class="tag gold">Siguiendo</span>`);
@@ -641,34 +641,34 @@
   }
   function expBox(r) {
     const has = PX.tieneExp(r.key), q = PX.quedan(), n = PX.nivel();
-    const label = has ? 'Abrir expediente' : !PX.conCuenta() ? 'Generar expediente' : q > 0 ? `Generar expediente <small>(${n >= 3 ? 'sin límite' : q === 1 ? 'te queda 1' : 'te quedan ' + q})</small>` : `Expediente adicional · ${PX.mt(PX.PRECIOS.expediente, 'CRC')}`;
-    return `<div class="expbox">
-      <div class="p"><b>Expediente del lote</b>${has ? '<span class="tag ok">Disponible</span>' : `<span class="tag ${n >= 2 ? 'gold' : 'ok'}">${n >= 3 ? 'Incluido en PRO' : n === 2 ? `Esencial: ${PX.cupoTxt()}` : `Gratis: ${PX.cupoTxt()}`}</span>`}</div>
-      <ul><li>Texto del edicto${r.isPlano ? ' (si está en remate)' : ''}, datos registrales y despacho</li><li>Gravámenes y servidumbres explicados en lenguaje claro</li><li>Valor de Hacienda, índices y entorno completo del predio</li><li>Análisis multidimensional y comparables de la zona</li><li>Versión imprimible con mapa del predio</li></ul>
-      <div class="acts"><button class="btn primary" data-act="exp">${label}</button>${!has && n < 3 ? '<button class="btn gold" data-planes>Ver planes</button>' : ''}</div>
-      <div class="foot">${n < 3 ? `Cada expediente adicional cuesta ${PX.mt(PX.PRECIOS.expediente, 'CRC')}. ` : ''}No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div>`;
+    const label = has ? 'Abrir expediente' : !PX.conCuenta() ? 'Generar expediente' : q > 0 ? `Generar expediente <span class="badge bg-white text-primary ms-2">${n >= 3 ? 'sin límite' : q === 1 ? 'te queda 1' : 'te quedan ' + q}</span>` : `Expediente adicional · ${PX.mt(PX.PRECIOS.expediente, 'CRC')}`;
+    return `<div class="card card-sm border-warning mb-3"><div class="card-status-top bg-warning"></div><div class="card-body">
+      <div class="d-flex align-items-center mb-2"><h3 class="card-title mb-0">Expediente del lote</h3><div class="ms-auto">${has ? '<span class="badge bg-green-lt">Disponible</span>' : `<span class="badge bg-${n >= 2 ? 'yellow' : 'green'}-lt">${n >= 3 ? 'Incluido en PRO' : n === 2 ? `Esencial: ${PX.cupoTxt()}` : `Gratis: ${PX.cupoTxt()}`}</span>`}</div></div>
+      <ul class="list-unstyled small mb-3">${['Texto del edicto' + (r.isPlano ? ' (si está en remate)' : '') + ', datos registrales y despacho', 'Gravámenes y servidumbres explicados en lenguaje claro', 'Valor de Hacienda, índices y entorno completo del predio', 'Análisis multidimensional y comparables de la zona', 'Versión imprimible con mapa del predio'].map(t => `<li class="d-flex">${TCHK}<span>${t}</span></li>`).join('')}</ul>
+      <div class="btn-list"><button class="btn btn-primary" data-act="exp">${label}</button>${!has && n < 3 ? '<button class="btn" data-planes>Ver planes</button>' : ''}</div>
+      <div class="text-secondary small mt-2">${n < 3 ? `Cada expediente adicional cuesta ${PX.mt(PX.PRECIOS.expediente, 'CRC')}. ` : ''}No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div></div>`;
   }
   function proBox(r) {
     const rs = PX.pro.riesgos(r), alto = rs.filter(x => x.n === 3).length, med = rs.filter(x => x.n === 2).length, pro = PX.isPro();
     const pot = PX.pro.potCalc(PX.pro.potDefaults(r));
-    const T = k => ' ' + PX.pro.tag(k);
     const rsk = PX.pro.puede('riesgos');
-    return `<div class="procard"><h3>Herramientas</h3>
-      <p>${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : rsk ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Con PRO, además, potencial constructivo y prefactibilidad.` : 'Riesgos del proceso y alertas vienen en Esencial; potencial constructivo y prefactibilidad, en PRO.'}</p>
-      <div class="acts"><button class="btn sm" data-protool="riesgos">Riesgos${rsk ? ` <span class="tag${alto ? ' warn' : ''}">${alto + med}</span>` : ''}${T('riesgos')}</button><button class="btn sm" data-protool="alertas">Alertas${T('alertas')}</button><button class="btn sm" data-protool="potencial">Potencial constructivo${T('potencial')}</button><button class="btn sm" data-protool="prefa">Prefactibilidad${T('prefa')}</button></div></div>`;
+    const b = (k, t, extra = '') => `<button class="btn btn-sm" data-protool="${k}">${t}${extra}<span class="ms-2">${PX.pro.tag(k)}</span></button>`;
+    return `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.valor}</span><h3 class="card-title">Herramientas</h3></div><div class="card-body">
+      <p class="text-secondary">${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : rsk ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Con PRO, además, potencial constructivo y prefactibilidad.` : 'Riesgos del proceso y alertas vienen en Esencial; potencial constructivo y prefactibilidad, en PRO.'}</p>
+      <div class="btn-list">${b('riesgos', 'Riesgos', rsk ? ` <span class="badge bg-${alto ? 'red' : 'secondary'}-lt ms-1">${alto + med}</span>` : '')}${b('alertas', 'Alertas')}${b('potencial', 'Potencial constructivo')}${b('prefa', 'Prefactibilidad')}</div></div></div>`;
   }
   const openPro = (r, t) => PX.pro.open(r, t, $('layer'), { changed: () => { renderList(); if (open) openFicha(open, false); } });
   function listMenu(r) {
-    return `<div class="menu" id="lmenu" hidden>${PX.acct.listas.map(l => `<label><input type="checkbox" data-l="${l.id}"${l.items.some(i => i.k === r.key) ? ' checked' : ''}> ${esc(l.n)} <span class="muted">(${l.items.length})</span></label>`).join('')}
-      <div class="row2"><input type="text" id="lnew" placeholder="Nueva lista" aria-label="Nombre de la nueva lista"><button class="btn sm" id="lnewb">Crear</button></div></div>`;
+    return `<div class="card card-sm mt-2" id="lmenu" hidden><div class="card-body">${PX.acct.listas.map(l => `<label class="form-check"><input class="form-check-input" type="checkbox" data-l="${l.id}"${l.items.some(i => i.k === r.key) ? ' checked' : ''}><span class="form-check-label">${esc(l.n)} <span class="text-secondary">(${l.items.length})</span></span></label>`).join('')}
+      <div class="input-group input-group-sm mt-2"><input type="text" class="form-control" id="lnew" placeholder="Nueva lista" aria-label="Nombre de la nueva lista"><button class="btn" id="lnewb">Crear</button></div></div></div>`;
   }
   function actionsHTML(r) {
-    const inCmp = cmp.includes(r.key);
-    return `<div class="acts">
-      <button class="btn sm" data-act="cmp" aria-pressed="${inCmp}">${inCmp ? 'En comparación' : 'Comparar'}</button>
-      ${r.isPlano ? '' : `<button class="btn sm" data-act="sigo" aria-pressed="${PX.sigo(r.key)}">${PX.sigo(r.key) ? 'Siguiendo' : 'Seguir'}</button>`}
-      <button class="btn sm" data-act="lista">Guardar en lista</button>
-      ${r.ll ? `<a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a>` : ''}
+    const inCmp = cmp.includes(r.key), sg = PX.sigo(r.key);
+    return `<div class="btn-list mb-3">
+      <button class="btn btn-sm${inCmp ? ' btn-primary' : ''}" data-act="cmp" aria-pressed="${inCmp}">${inCmp ? 'En comparación' : 'Comparar'}</button>
+      ${r.isPlano ? '' : `<button class="btn btn-sm${sg ? ' btn-primary' : ''}" data-act="sigo" aria-pressed="${sg}">${sg ? 'Siguiendo' : 'Seguir'}</button>`}
+      <button class="btn btn-sm" data-act="lista">Guardar en lista</button>
+      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a>` : ''}
     </div>${listMenu(r)}`;
   }
   // Forma del predio en pequeño: contorno a escala con norte y barra de escala
@@ -688,21 +688,38 @@
       <g transform="translate(8,${H - 8})"><path d="M0 0 H${bl.toFixed(1)}" stroke="currentColor" stroke-width="2"/><path d="M0 -3 V3 M${bl.toFixed(1)} -3 V3" stroke="currentColor" stroke-width="1"/><text x="${(bl + 4).toFixed(1)}" y="3" font-size="8.5" fill="currentColor">${nice} m</text></g>
     </svg><figcaption>Forma según el catastro</figcaption></figure>`;
   }
+  // Ficha con Tabler: cabecera, precio, tarjetas por sección y datos en «datagrid»
+  const fHead = (r, extra) => `<div class="fhead d-flex align-items-center gap-2 px-3 py-2 border-bottom">${PX.tipoIcon(r)}${r.isPlano ? '<span class="badge bg-secondary-lt">Predio consultado</span>' : PX.stageBadge(r.st) + PX.tipoTag(r)}<div class="ms-auto d-flex align-items-center gap-2">${extra || ''}<button type="button" class="btn-close" id="fx" aria-label="Cerrar ficha"></button></div></div>`;
+  const fPrecio = (lbl, grande, alt, linea) => `<div class="card card-sm mb-3 bg-body-tertiary"><div class="card-body"><div class="subheader">${lbl}</div><div class="h1 mb-0 mt-1">${grande}</div>${alt ? `<div class="fw-medium text-secondary">${alt}</div>` : ''}${linea ? `<div class="text-secondary small mt-1">${linea}</div>` : ''}</div></div>`;
+  const fGrupo = t => `<div class="hr-text hr-text-start my-3">${t}</div>`;
+  function aDatagrid(raiz) {   // convierte <dl class="kv"> en el componente datagrid de Tabler
+    raiz.querySelectorAll('dl.kv').forEach(dl => {
+      const g = document.createElement('div'); g.className = 'datagrid fdatos';
+      dl.querySelectorAll('dt').forEach(dt => {
+        const dd = dt.nextElementSibling, it = document.createElement('div'); it.className = 'datagrid-item' + (dd && dd.classList.contains('formadd') ? ' forma-item' : '');
+        const ic = PX.rowIcon(dt.textContent);
+        it.innerHTML = `<div class="datagrid-title">${ic ? `<span class="ri" aria-hidden="true">${ic}</span>` : ''}${dt.innerHTML}</div><div class="datagrid-content"${dd && dd.id ? ` id="${dd.id}"` : ''}>${dd ? dd.innerHTML : ''}</div>`;
+        g.appendChild(it);
+      });
+      dl.replaceWith(g);
+    });
+  }
   function fichaPrevia(r) {
     const f = $('ficha'), a = PX.prof(r);
     const ven = [[PX.ICON.gavel || '', 'Fechas y bases de los tres remates'], [PX.ICON.terreno || '', 'Área y topografía del lote'], [PX.ICON.norma || '', 'Estado del plan regulador'], [PX.ICON.list || '', 'Listas y seguimiento de remates'], [PX.ICON.alerta || '', `${PX.PRECIOS.semanal} expediente PDF completo gratis por semana`]];
-    f.innerHTML = `<div class="fhead">${PX.tipoIcon(r)}${PX.stageBadge(r.st)}<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
+    f.innerHTML = `<div class="tb fichatb" data-bs-theme="${tbTema()}">${fHead(r)}
     <div class="fbody">
-      <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
-      <div class="pricebox"><span class="lbl">Base vigente · ${PX.ETAPA[r.st] || ''} · ${fdate(r.next)}</span><span class="big">${PX.money(r.bv, r.mon)}</span><span class="alt eqbig">${PX.other(r.bv, r.mon)}</span><span class="alt"><span>${a ? fnum(a) + ' m²' : 'área s/d'}</span></span></div>
-      ${r.poly ? `<div class="formap">${formaSVG(r)}</div>` : ''}
-      <div class="gate emph">
-        <h3>Crea tu cuenta gratis para ver la ficha</h3><small>Con tu cuenta gratis:</small>
-        <ul>${ven.map(([i, t]) => `<li><span class="ri" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
-        <div class="acts"><button class="btn primary" data-auth="crear">Crear cuenta gratis</button><button class="btn" data-auth="entrar">Ya tengo cuenta</button></div>
-        <small class="muted">Al registrarte recibes un cupón de 30 % de descuento en la primera mensualidad de cualquier plan.</small>
-      </div>
-    </div>`;
+      <h2 class="mb-1">${esc(r.nom)}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
+      ${fPrecio(`Base vigente · ${PX.ETAPA[r.st] || ''} · ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), a ? fnum(a) + ' m²' : 'área s/d')}
+      ${r.poly ? `<div class="formap mb-3">${formaSVG(r)}</div>` : ''}
+      <div class="card bg-primary text-white"><div class="card-body">
+        <h3 class="card-title text-white">Crea tu cuenta gratis para ver la ficha</h3>
+        <div class="text-white-50 small mb-2">Con tu cuenta gratis:</div>
+        <ul class="list-unstyled mb-3">${ven.map(([i, t]) => `<li class="d-flex align-items-center gap-2 mb-1"><span class="ri ri-claro" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
+        <div class="btn-list"><button class="btn btn-light" data-auth="crear">Crear cuenta gratis</button><button class="btn btn-outline-light" data-auth="entrar">Ya tengo cuenta</button></div>
+        <div class="text-white-50 small mt-2">Al registrarte recibes un cupón de 30 % de descuento en la primera mensualidad de cualquier plan.</div>
+      </div></div>
+    </div></div>`;
     f.hidden = false; $('fx').onclick = closeFicha;
     selLayer.clearLayers();
     if (r.ll) selLayer.addLayer(r.poly ? L.polygon(ringLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.45 }) : L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false }));
@@ -732,37 +749,34 @@
     const seal = r.isPlano ? `<span class="seal ok">● Predio del catastro</span>` : r.exact ? `<span class="seal ok">● Exacta por ${r.loc}</span>` : `<span class="seal aprox">◌ Aproximada al distrito</span>`;
     let top;
     if (r.isPlano) {
-      top = `<div class="pricebox"><span class="lbl">Área según catastro</span><span class="big"><span class="num">${fnum(a)}</span> <span class="u">m²</span></span>
-        <span class="alt">${r.remate ? `<button class="linkbtn" data-act="rem">Está en remate: ver ficha</button>` : 'No aparece en los remates vigentes'}</span></div>`;
+      top = fPrecio('Área según catastro', `${fnum(a)} m²`, '', r.remate ? '<a href="#" data-act="rem">Está en remate: ver ficha</a>' : 'No aparece en los remates vigentes');
     } else {
       const m2 = r.bv && a ? PX.conv(r.bv, r.mon, PX.cur) / a : null;
-      top = `<div class="pricebox"><span class="lbl">Base vigente · ${PX.ETAPA[r.st]} · ${fdate(r.next)}</span>
-        <span class="big">${PX.money(r.bv, r.mon)}</span>
-        <span class="alt eqbig">${PX.other(r.bv, r.mon)}</span>
-        <span class="alt"><span>${a ? fnum(a) + ' m²' : 'área s/d'}</span>${r.usdm2 ? `<span>${PX.duoI(r.usdm2, 'USD', ' por m²')}</span>` : ''}</span></div>`;
+      top = fPrecio(`Base vigente · ${PX.ETAPA[r.st]} · ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), `${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', ' por m²') : ''}`);
     }
-    const tl = (r.fd || []).map((d, k) => `<div class="tl ${k < r.st ? 'past' : ''} ${k === r.st ? 'now' : ''}">${PX.stageBadge(k, true)}
-        <span class="d">${PX.ETAPA[k]}${k ? ` · ${PX.PCT[k] * 100} %` : ''}<small>${fdate(d, true)}</small></span><span class="b">${PX.duo(r.bases[k], r.mon)}</span></div>`).join('');
+    const tl = (r.fd || []).map((d, k) => `<div class="list-group-item${k === r.st ? ' active' : ''}${k < r.st ? ' text-secondary' : ''}"><div class="row align-items-center g-2"><div class="col-auto">${PX.stageBadge(k, true)}</div>
+        <div class="col"><div class="fw-medium">${PX.ETAPA[k]}${k ? ` · ${PX.PCT[k] * 100} %` : ''}</div><div class="small text-secondary">${fdate(d, true)}</div></div><div class="col-auto text-end${k < r.st ? ' text-decoration-line-through' : ''}">${PX.duo(r.bases[k], r.mon)}</div></div></div>`).join('');
     const attrs = ATTR.filter(x => x[2](r)).map(x => x[1]);
     const nserv = (r.serv || []).length;
     const fav = PX.isFav(r.key);
     // Secciones con candado: Esencial (registro, entorno) y PRO (valor, índices). Con el expediente del lote se ve todo.
     const ESE = PX.ESE;
-    const lockSec = (que, icon, t, nivel) => `<section class="fs locked"><h3>${icon}${t}<span class="r">${nivel === 2 ? ESE : PX.PRO}</span></h3><div class="fb"><div class="lockb"><span>${que}</span><div class="acts"><button class="btn sm gold" data-planes>Ver planes</button>${PX.quedan() > 0 ? '<button class="btn sm" data-act="exp">O abre el expediente de este lote</button>' : ''}</div></div></div></section>`;
+    const lockSec = (que, icon, t, nivel) => `<div class="card card-sm mb-3 fbloq"><div class="card-header"><span class="avatar avatar-sm bg-secondary-lt me-2">${icon}</span><h3 class="card-title text-secondary">${t}</h3><div class="card-actions">${nivel === 2 ? ESE : PX.PRO}</div></div>
+      <div class="card-body"><p class="text-secondary">${que}</p><div class="btn-list"><button class="btn btn-sm btn-primary" data-planes>Ver planes</button>${PX.quedan() > 0 ? '<button class="btn btn-sm" data-act="exp">O abre el expediente de este lote</button>' : ''}</div></div></div>`;
     const PROsec = (que, icon, t, body, right) => full ? sec(icon, t, body, right) : lockSec(que, icon, t, 3);
     const ESEsec = (que, icon, t, body, right) => ese ? sec(icon, t, body, right) : lockSec(que, icon, t, 2);
-    const I = PX.ICON, sec = (icon, t, body, right) => `<section class="fs"><h3>${icon}${t}${right ? `<span class="r">${right}</span>` : ''}</h3><div class="fb">${body}</div></section>`;
+    const I = PX.ICON, sec = (icon, t, body, right) => `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${icon}</span><h3 class="card-title">${t}</h3>${right ? `<div class="card-actions">${right}</div>` : ''}</div><div class="card-body">${body}</div></div>`;
     const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
     const pecrH = pc ? pecrHTML(r, pc) : '';
     const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
-    f.innerHTML = `<div class="fhead">${PX.tipoIcon(r)}${r.isPlano ? '<span class="tag">Predio consultado</span>' : PX.stageBadge(r.st) + `<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span>`}<button class="btn sm favbtn" data-act="fav" aria-pressed="${fav}">${PX.HEART}${fav ? 'En favoritos' : 'Favorito'}</button><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
+    f.innerHTML = `<div class="tb fichatb" data-bs-theme="${tbTema()}">${fHead(r, `<button class="btn btn-sm favbtn${fav ? ' btn-primary' : ''}" data-act="fav" aria-pressed="${fav}">${PX.HEART}<span class="ms-1">${fav ? 'En favoritos' : 'Favorito'}</span></button>`)}
     <div class="fbody">
-      <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
+      <h2 class="mb-1">${esc(r.nom)}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
       ${top}
       ${actionsHTML(r)}
-      ${r.rev ? `<div class="note">${esc(r.rev)}</div>` : ''}
-      <div class="fgrp">Información base</div>
-      ${r.isPlano ? '' : sec(PX.ICON.gavel, 'Remate', `<div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div>`, PX.whenTag(r.next))}
+      ${r.rev ? `<div class="alert alert-warning"><div>${esc(r.rev)}</div></div>` : ''}
+      ${fGrupo('Información base')}
+      ${r.isPlano ? '' : `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div></div>`}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm && ese ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
@@ -771,8 +785,8 @@
         ${e.cob || r.isPlano ? `<dt>Uso del suelo</dt><dd id="pcob">${esc(e.cob || r.cob || '…')}</dd>` : ''}
         ${e.zv ? `<dt>Zona de vida</dt><dd>${esc(e.zv)}</dd>` : ''}
       </dl>`)}
-      ${sec(I.norma, 'Normativa', `<p style="margin:0"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="note" style="padding:6px 9px">${esc(t)}</div>`).join('')}`)}
-      <div class="fgrp">${PX.ESE} Con el plan Esencial</div>
+      ${sec(I.norma, 'Normativa', `<p class="mb-2"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="alert alert-warning py-2 mb-2"><div>${esc(t)}</div></div>`).join('')}`)}
+      ${fGrupo(`${PX.ESE} <span class="ms-2">Con el plan Esencial</span>`)}
       ${ESEsec('Número de finca y plano, servidumbres citadas y origen de la ubicación.', I.registro, 'Registro y ubicación', `<dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
@@ -788,21 +802,21 @@
         ${e.agua !== undefined ? `<dt>Ríos</dt><dd>${e.agua == null ? 'Ninguno a menos de 400 m' : 'Cauce a ' + PX.dist(e.agua)}</dd>` : ''}
         ${e.costa != null && e.costa < 2000 ? `<dt>Costa</dt><dd>A ${PX.dist(e.costa)}${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}</dd>` : ''}
       </dl>`)}
-      <div class="fgrp">${PX.PRO} Con el plan PRO</div>
+      ${fGrupo(`${PX.PRO} <span class="ms-2">Con el plan PRO</span>`)}
       ${PROsec('Valor de Hacienda de la zona y en qué porcentaje de ese valor arranca la puja.', I.moneda, PX.iph(r) ? 'Índice Puja/Hacienda' : 'Valor y mercado', `<dl class="kv">
         ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
       </dl>${iphHTML(r)}`)}
       ${pecrH ? PROsec('Nivel del predio en la escala de valor PECR, de 1 a 10.', I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
       ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
-        ${full ? '' : `<div class="prohint"><span>${PX.PRO} Desglose en el expediente o en PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>`}`)}
-      ${r.isPlano ? '' : sec(PX.ICON.Lote, 'Atributos del lote', `<div class="chips${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="chip">${esc(t)}</span>`).join('') || '<span class="chip">Sin atributos destacados</span>'}</div>`, PX.PRO)}
+        ${full ? '' : `<div class="d-flex align-items-center gap-2 mt-2 small">${PX.PRO}<span class="text-secondary">Desglose en el expediente o en PRO</span><a href="#" class="ms-auto" data-planes>Ver planes</a></div>`}`)}
+      ${r.isPlano ? '' : sec(PX.ICON.Lote, 'Atributos del lote', `<div class="d-flex flex-wrap gap-1${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="badge bg-secondary-lt">${esc(t)}</span>`).join('') || '<span class="badge bg-secondary-lt">Sin atributos destacados</span>'}</div>`, PX.PRO)}
       ${proBox(r)}
-      <div class="fgrp">Expediente</div>
+      ${fGrupo('Expediente')}
       ${expBox(r)}
-      <div class="foot">Información orientativa de fuentes públicas. No sustituye la certificación del Registro Nacional, el certificado de uso de suelo ni la revisión del expediente judicial. <button class="linkbtn" data-about="terms">Términos y descargo</button></div>
-    </div>`;
-    f.querySelectorAll('dl.kv dt').forEach(dt => { const ic = PX.rowIcon(dt.textContent); if (ic) dt.insertAdjacentHTML('afterbegin', `<span class="ri" aria-hidden="true">${ic}</span>`); });
+      <div class="text-secondary small">Información orientativa de fuentes públicas. No sustituye la certificación del Registro Nacional, el certificado de uso de suelo ni la revisión del expediente judicial. <a href="#" data-about="terms">Términos y descargo</a></div>
+    </div></div>`;
+    aDatagrid(f);
     f.hidden = false;
     $('fx').onclick = closeFicha;
     if (r.isPlano && !r.cob && !e.cob && r.ll) PX.cobertura(r.ll[0], r.ll[1]).then(v => { r.cob = v; if (r.ent) r.ent.cob = v; PX.savePlano(r); const d = $('pcob'); if (d) d.textContent = v || 'Sin dato del MINAE'; });
@@ -820,11 +834,12 @@
     }
     try { history.replaceState(null, '', '#' + key); } catch (err) {}
     if (tab === 'top') renderHub();
-    f.scrollTop = 0;
+    f.scrollTop = 0; const fb = f.querySelector('.fbody'); if (fb) fb.scrollTop = 0;
   }
   function closeFicha() { $('ficha').hidden = true; open = null; if (tab === 'top') renderHub(); selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.querySelector('#layer > *')) closeLayer(); else if (open) closeFicha(); } });
   $('ficha').addEventListener('click', e => {
+    if (e.target.closest('a[href="#"]')) e.preventDefault();
     const pt = e.target.closest('[data-protool]'); if (pt && open) { openPro(PX.item(open), pt.dataset.protool); return; }
     const b = e.target.closest('[data-act]'); if (!b || !open) return;
     const r = PX.item(open), act = b.dataset.act;

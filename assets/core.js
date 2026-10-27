@@ -156,7 +156,11 @@
       [/publicac|boletin|fecha/, I.cal], [/gravamen|servidumbre|anotac/, I.alerta]];
     const h = m.find(([re]) => re.test(n)); return h ? h[1] : '';
   };
-  PX.tipoIcon = r => `<span class="ti${r.tipo === 'Agrícola' ? ' agro' : ''}" title="${r.tipo}">${PX.ICON[r.tipo] || PX.ICON.Lote}</span>`;
+  // Cada tipo de propiedad con su color: cuadro teñido con el ícono del mismo tono (clase t-<clave>)
+  PX.TIPO_CLS = { 'Lote': 't-lote', 'Con construcción': 't-cons', 'Agrícola': 't-agro', 'Filial': 't-fil' };
+  PX.tipoCls = t => PX.TIPO_CLS[t] || 't-lote';
+  PX.tipoIcon = r => `<span class="ti ${PX.tipoCls(r.tipo)}" title="${r.tipo}">${PX.ICON[r.tipo] || PX.ICON.Lote}</span>`;
+  PX.tipoTag = r => `<span class="tag ${PX.tipoCls(r.tipo)}">${r.tipo}</span>`;
   // Insignia de etapa del remate (1.º, 2.º, 3.º): martillo + número, usada en lista, ficha, mapa y expediente
   PX.stageBadge = (st, small) => st < 0 ? '' : `<span class="stb s${st + 1}${small ? ' sm' : ''}" title="${PX.ETAPA[st]} · base al ${PX.PCT[st] * 100} %"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M9.2 1.6l5.2 5.2-1.6 1.6L7.6 3.2z M6.8 4l5.2 5.2-1.2 1.2L5.6 5.2z M7.4 7.4L1.8 13l1.2 1.2 5.6-5.6" fill="currentColor"/></svg>${st + 1}.º<i>${PX.PCT[st] * 100} %</i></span>`;
   PX.whenTag = d => { const n = PX.days(d); if (n == null) return ''; const t = PX.when(d); return `<span class="when${n <= 0 ? ' hoy' : n === 1 ? ' manana' : n <= 7 ? ' pronto' : ''}">${t.charAt(0).toUpperCase() + t.slice(1)}</span>`; };
