@@ -6,7 +6,7 @@
   PX.ETAPA = ['1.er remate', '2.º remate', '3.er remate'];
   PX.SC = ['--s1', '--s2', '--s3'];
   PX.PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
-  PX.PRECIOS = { expediente: 20, suscripcion: 200, cupo: 200 };
+  PX.PRECIOS = { expediente: 20, suscripcion: 200, cupo: 200, cortesia: 3 };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -362,23 +362,50 @@
   };
   PX.scoreLabel = v => v == null ? 'Sin dato' : v >= 75 ? 'Muy favorable' : v >= 60 ? 'Favorable' : v >= 45 ? 'Intermedio' : v >= 30 ? 'Con reparos' : 'Desfavorable';
 
-  // ---------- cuenta del usuario (modo demostración, en este navegador) ----------
+  // ---------- cuenta del usuario ----------
+  // La sesión y el plan vienen del servidor (/api/cuenta/yo). Listas, seguimiento, búsquedas y expedientes
+  // se guardan en este navegador y, con sesión, también en la cuenta (se sincronizan entre dispositivos).
+  // Administración (contraseña del sitio): puede ver el sitio como usuario gratis o PRO con el selector «Ver como».
   const A0 = { plan: 'pro', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {} };
   PX.acct = Object.assign({}, A0, PX.store.get('px-acct', {}));
-  if (!PX.store.get('px-v3')) { PX.acct.plan = 'pro'; PX.store.set('px-v3', 1); PX.store.set('px-acct', PX.acct); } // etapa de prueba: PRO activo
-  PX.saveAcct = () => { PX.store.set('px-acct', PX.acct); document.dispatchEvent(new CustomEvent('px-acct')); };
-  PX.isPro = () => PX.acct.plan === 'pro';
+  PX.yo = null; PX.admin = false;
+  let subir = null;
+  const datosCuenta = () => { const d = Object.assign({}, PX.acct); delete d.plan; return d; };
+  const guardarEnCuenta = () => {
+    if (!PX.yo) return;
+    clearTimeout(subir);
+    subir = setTimeout(() => fetch('/api/cuenta/datos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ datos: datosCuenta() }) }).catch(() => {}), 800);
+  };
+  PX.cargarYo = async () => {
+    try {
+      const j = await (await fetch('/api/cuenta/yo', { cache: 'no-store' })).json();
+      PX.yo = j.user || null; PX.admin = !!j.admin;
+      if (PX.yo) {
+        const dueño = PX.store.get('px-acct-de', null);
+        if (j.datos && Object.keys(j.datos).length) PX.acct = Object.assign({}, A0, j.datos, { plan: PX.acct.plan });
+        else if (dueño && dueño !== PX.yo.correo) PX.acct = Object.assign({}, A0, { plan: PX.acct.plan });
+        else guardarEnCuenta();   // primera vez: sube lo que había en este navegador
+        PX.store.set('px-acct-de', PX.yo.correo); PX.store.set('px-acct', PX.acct);
+      }
+    } catch (e) {}
+    return PX.yo;
+  };
+  PX.conCuenta = () => !!(PX.yo || PX.admin);
+  PX.saveAcct = () => { PX.store.set('px-acct', PX.acct); guardarEnCuenta(); document.dispatchEvent(new CustomEvent('px-acct')); };
+  PX.isPro = () => PX.admin ? PX.acct.plan === 'pro' : !!(PX.yo && PX.yo.plan === 'pro');
   PX.mesKey = () => PX.now.getFullYear() + '-' + String(PX.now.getMonth() + 1).padStart(2, '0');
   PX.usoMes = () => PX.acct.usados[PX.mesKey()] || 0;
-  PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && x.via === 'pro');
-  PX.puedeGenerar = key => PX.tieneExp(key) || (PX.isPro() && PX.usoMes() < PX.PRECIOS.cupo);
-  // Registra la generación: con suscripción descuenta del cupo mensual la primera vez en el mes.
+  // Cupo mensual de expedientes: PRO, o de cortesía durante el acceso anticipado para cuentas gratis
+  PX.cupoMes = () => PX.isPro() ? PX.PRECIOS.cupo : PX.conCuenta() ? PX.PRECIOS.cortesia : 0;
+  PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && (x.via === 'pro' || x.via === 'cortesia'));
+  PX.puedeGenerar = key => PX.tieneExp(key) || PX.usoMes() < PX.cupoMes();
+  // Registra la generación: descuenta del cupo mensual la primera vez en el mes.
   PX.registrarExp = (key, label) => {
     const a = PX.acct;
     if (!PX.tieneExp(key)) {
-      if (!(PX.isPro() && PX.usoMes() < PX.PRECIOS.cupo)) return false;
+      if (!(PX.usoMes() < PX.cupoMes())) return false;
       a.usados[PX.mesKey()] = PX.usoMes() + 1;
-      a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'pro' });
+      a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: PX.isPro() ? 'pro' : 'cortesia' });
     } else if (!a.expedientes.some(x => x.k === key)) a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'compra' });
     PX.saveAcct(); return true;
   };

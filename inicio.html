@@ -23,6 +23,7 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --line: #28332F; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #16302C; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; } }
 :root[data-theme="dark"] { --bg: #0F1513; --panel: #151C1A; --ink: #E5ECE8; --muted: #A7B4AE; --line: #28332F; --accent: #5FB8AE; --accent-ink: #08201D; --soft: #16302C; --terra: #F08C74; --terra-soft: #2A1C17; --gold: #F0CF62; color-scheme: dark; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--f-body); }
 a { color: var(--accent); }
 .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
@@ -41,6 +42,7 @@ h1 em { font-style: normal; color: var(--terra); }
 .datos { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0 0 24px; padding: 0; list-style: none; }
 .datos li { display: grid; } .datos b { font: 600 26px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; } .datos span { font-size: 12.5px; color: var(--muted); }
 .cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.eyebrow { margin: 0 0 10px; font: 600 13px/1.3 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .vista { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(20, 35, 30, .16); background: var(--panel); }
 .vista img { display: block; width: 100%; height: auto; }
 .vista .sello { position: absolute; left: 12px; bottom: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(21, 48, 42, .88); color: #fff; font: 600 12px/1.2 var(--f-body); }
@@ -59,6 +61,8 @@ h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--f-display); margin: 0 0 8px; te
 form { display: grid; gap: 12px; }
 .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); }
+label small { font-weight: 400; }
+.mini { margin: 0; font-size: 13.5px; color: var(--muted); text-align: center; }
 input, select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: 15px/1.3 var(--f-body); }
 .ok { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; font-weight: 400; color: var(--muted); }
 .ok input { width: auto; margin-top: 3px; }
@@ -79,11 +83,12 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 <div class="wrap">
   <header>
     <a class="marca" href="/"><img src="/assets/img/logo-mark.webp" alt="" width="54" height="37"><span class="wm">PLANO<b>EXACTO</b><i>CR</i></span></a>
-    <a class="btn" href="#acceso">Ya tengo acceso</a>
+    <a class="btn" href="/mapa?entrar=1" id="entrar">Entrar</a>
   </header>
 
   <div class="hero">
     <div>
+      <p class="eyebrow">Información territorial para decidir mejor</p>
       <h1>Los remates judiciales de Costa Rica, <em>en un mapa</em>.</h1>
       <p class="lead">Cada mañana leemos el Boletín Judicial, ubicamos cada finca en el catastro y la cruzamos con el plan regulador, el valor de Hacienda, el agua potable y su entorno. Para que sepas qué estás comprando antes de ofertar.</p>
       <ul class="datos" id="datos" aria-live="polite">
@@ -92,7 +97,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         <li><b data-k="ubicados">—</b><span>con predio exacto</span></li>
         <li><b data-k="boletin">—</b><span>último Boletín Judicial</span></li>
       </ul>
-      <div class="cta"><a class="btn pri" href="#registro">Quiero acceso y mi cupón</a><a class="btn" href="#que">Qué incluye</a></div>
+      <div class="cta"><a class="btn pri" href="#registro" id="ctaCrear">Crear cuenta gratis</a><a class="btn" href="/mapa">Explorar el mapa</a></div>
     </div>
     <div class="vista"><img src="/assets/img/vista-app.webp" alt="Mapa de PlanoExactoCR con remates marcados en cruces y la ficha de una propiedad abierta" width="800" height="499"><span class="sello">Vista real de la versión de prueba</span></div>
   </div>
@@ -119,12 +124,14 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
     <div class="registro">
       <div>
         <span class="cupon">Cupón de lanzamiento · 30 % de descuento</span>
-        <h2>Regístrate para el acceso anticipado</h2>
-        <p class="sub">Estamos en etapa de prueba. Déjanos tu correo y te avisamos cuando abramos, con un cupón de 30 % en tu primer expediente o primer mes PRO.</p>
+        <h2>Crea tu cuenta gratis</h2>
+        <p class="sub">El mapa está abierto para todos. Con tu cuenta ves la ficha completa de cada remate y guardas listas y seguimientos. Mientras dura el acceso anticipado, también generas 3 expedientes en PDF al mes.</p>
+        <p class="sub">Al registrarte recibes un cupón de 30 % para tu primer mes PRO o tu primer expediente, que podrás usar cuando abramos los pagos.</p>
       </div>
       <div>
         <form id="f" novalidate>
           <label>Correo electrónico<input id="correo" name="correo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></label>
+          <label><span>Contraseña <small>(mínimo 8 caracteres)</small></span><input id="clave" name="clave" type="password" autocomplete="new-password" minlength="8" required></label>
           <div class="fila">
             <label>Nombre (opcional)<input id="nombre" name="nombre" autocomplete="name" maxlength="80"></label>
             <label>Te interesa como
@@ -135,28 +142,23 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
           </div>
           <label>Provincia de interés
             <select id="prov" name="prov"><option value="">Todo el país</option><option>San José</option><option>Alajuela</option><option>Cartago</option><option>Heredia</option><option>Guanacaste</option><option>Puntarenas</option><option>Limón</option></select></label>
-          <label class="ok"><input id="acepto" type="checkbox" required> <span>Acepto que PlanoExactoCR guarde mi correo para avisarme del lanzamiento y enviarme el cupón, según la <a href="/privacidad.html">política de privacidad</a>. Puedo pedir que lo borren cuando quiera.</span></label>
+          <label class="ok"><input id="acepto" type="checkbox" required> <span>Acepto la <a href="/privacidad">política de privacidad</a>: PlanoExactoCR guarda mi correo y mis preferencias para mi cuenta y para avisarme novedades. Puedo pedir que los borren cuando quiera.</span></label>
           <p class="error" id="err" hidden></p>
-          <button class="btn pri" type="submit" id="enviar">Registrarme y recibir mi cupón</button>
+          <button class="btn pri" type="submit" id="enviar">Crear cuenta y recibir mi cupón</button>
+          <p class="mini">¿Ya tienes cuenta? <a href="/mapa?entrar=1">Entra aquí</a>.</p>
         </form>
         <div class="resultado" id="listo" hidden>
-          <b>¡Listo! Este es tu cupón:</b>
+          <b>¡Tu cuenta está lista! Este es tu cupón:</b>
           <code id="cod">—</code>
-          <span>Guárdalo. Te escribiremos al correo cuando abramos. Mientras tanto, síguenos en Instagram para ver los remates más interesantes de cada semana.</span>
+          <span>Lo encuentras siempre en «Mi cuenta». Síguenos en Instagram para ver cada semana los remates más interesantes.</span>
+          <a class="btn pri" href="/mapa">Ir al mapa</a>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="acceso">
-    <form class="acceso" method="post" action="/__acceso">
-      <label>¿Ya tienes acceso de prueba? Contraseña<input type="password" name="clave" autocomplete="current-password" required></label>
-      <button class="btn" type="submit">Entrar al mapa</button>
-    </form>
-  </section>
-
   <footer>
-    <nav><span>Instagram: <b>@planoexactocr</b></span><span>Correo: <b id="correo-contacto">hola@planoexacto.cr</b></span><a href="/privacidad.html">Privacidad</a></nav>
+    <nav><span>Correo: <a href="mailto:hola@planoexactocr.com">hola@planoexactocr.com</a></span><a href="https://instagram.com/planoexactocr" rel="noopener">Instagram @planoexactocr</a><a href="/privacidad">Privacidad</a></nav>
     <span>PlanoExactoCR reúne información pública (Boletín Judicial, Registro Inmobiliario, IGN, Hacienda, AyA, INVU, MINAE) con fines orientativos. No es asesoría legal ni un avalúo; verifique siempre en el expediente judicial y el Registro Nacional.</span>
   </footer>
 </div>
@@ -168,19 +170,29 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   }).catch(() => {});
   const q = new URLSearchParams(location.search), utm = {};
   ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
+  // Si ya hay sesión, los botones llevan directo al mapa
+  fetch('/api/cuenta/yo', { cache: 'no-store' }).then(r => r.json()).then(j => {
+    if (!j.user && !j.admin) return;
+    const e = document.getElementById('entrar'); e.textContent = 'Ir al mapa'; e.href = '/mapa'; e.classList.add('pri');
+    const c = document.getElementById('ctaCrear'); c.textContent = 'Ir al mapa'; c.href = '/mapa';
+    if (j.user) { document.getElementById('cod').textContent = j.user.cupon; document.getElementById('f').hidden = true; document.getElementById('listo').hidden = false; document.querySelector('#listo b').textContent = 'Ya tienes cuenta. Tu cupón:'; }
+  }).catch(() => {});
   const f = document.getElementById('f'), err = document.getElementById('err'), btn = document.getElementById('enviar');
+  const fallo = t => { err.textContent = t; err.hidden = false; };
   f.addEventListener('submit', async e => {
     e.preventDefault(); err.hidden = true;
-    const correo = document.getElementById('correo').value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) { err.textContent = 'Revisa el correo: parece incompleto.'; err.hidden = false; return; }
-    if (!document.getElementById('acepto').checked) { err.textContent = 'Para registrarte, marca la casilla de privacidad.'; err.hidden = false; return; }
-    btn.disabled = true; btn.textContent = 'Registrando…';
+    const correo = document.getElementById('correo').value.trim(), clave = document.getElementById('clave').value;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) return fallo('Revisa el correo: parece incompleto.');
+    if (clave.length < 8) return fallo('La contraseña debe tener al menos 8 caracteres.');
+    if (!document.getElementById('acepto').checked) return fallo('Para crear la cuenta, marca la casilla de privacidad.');
+    btn.disabled = true; btn.textContent = 'Creando tu cuenta…';
     try {
-      const r = await fetch('/api/registro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, nombre: document.getElementById('nombre').value.trim(), perfil: document.getElementById('perfil').value, prov: document.getElementById('prov').value, utm }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || 'No se pudo registrar.');
-      document.getElementById('cod').textContent = j.cupon; f.hidden = true; document.getElementById('listo').hidden = false;
-    } catch (x) { err.textContent = x.message + ' Intenta de nuevo en un momento.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Registrarme y recibir mi cupón'; }
+      const r = await fetch('/api/cuenta/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, clave, acepto: true, nombre: document.getElementById('nombre').value.trim(), perfil: document.getElementById('perfil').value, prov: document.getElementById('prov').value, utm }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.existe ? 'Ya existe una cuenta con ese correo. Entra desde el mapa con tu contraseña.' : (j.error || 'No se pudo crear la cuenta. Intenta de nuevo en un momento.'));
+      document.getElementById('cod').textContent = j.user.cupon; f.hidden = true; document.getElementById('listo').hidden = false;
+      try { sessionStorage.setItem('px-bienvenida', '1'); } catch (_) {}
+    } catch (x) { fallo(x.message); btn.disabled = false; btn.textContent = 'Crear cuenta y recibir mi cupón'; }
   });
 })();
 </script>

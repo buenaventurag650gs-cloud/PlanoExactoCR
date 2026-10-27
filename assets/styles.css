@@ -415,3 +415,31 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .pico { display: inline-grid; place-items: center; margin-right: 6px; vertical-align: -3px; }
 .pico svg { width: 16px; height: 16px; }
 .pecrtab .pico { color: var(--accent); margin-right: 8px; }
+
+/* ---------- Cuentas: vista previa de la ficha, formularios y cupón ---------- */
+.gate { display: grid; gap: 10px; padding: 16px; border-radius: 14px; border: 1px solid; }
+.gate h3 { margin: 0; font: 700 17px/1.25 var(--f-display); }
+.gate ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.gate li { display: flex; gap: 9px; align-items: center; font-size: 14px; }
+.gate .ri { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: rgba(255,255,255,.12); flex: none; }
+.gate .ri svg { width: 16px; height: 16px; }
+.gate .acts { margin-top: 4px; }
+.gate .btn:not(.primary) { background: transparent; color: var(--ink); border-color: var(--line); }
+.gate .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.gate small { color: var(--muted); }
+.authf { display: grid; gap: 12px; }
+.authf .fld { display: grid; gap: 5px; }
+.authf .fld label small { font-weight: 400; color: var(--muted); }
+.authf input, .authf select { width: 100%; }
+.authf .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.authf .chk { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.authf .chk input { width: auto; margin-top: 2px; }
+.authf .linkbtn { justify-self: center; }
+.aerr { margin: 0; color: var(--bad, #B42318); font-size: 13.5px; font-weight: 600; }
+.cupon { display: grid; gap: 3px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--soon); background: color-mix(in srgb, var(--soon) 10%, transparent); margin-top: 8px; }
+.cupon span { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.cupon b { font: 700 22px/1.2 var(--f-mono, monospace); letter-spacing: .06em; color: var(--soon); }
+.cupon small { color: var(--muted); }
+#bCuenta.primary .ic { color: inherit; }
+@media (max-width: 520px) { .authf .row2 { grid-template-columns: 1fr; } }
+#bCuenta.primary > span:not(.ic):not(.badge) { display: inline !important; }

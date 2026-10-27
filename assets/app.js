@@ -5,7 +5,7 @@
   let R, DIST, CANT, ZV, META, INFRA = null, ZMT = null;
   const loadZMT = () => { ZMT = { type: 'FeatureCollection', features: [] }; PX.get('data/zmt.geojson').then(z => { ZMT = z; drawVectors(); }).catch(() => {}); };
   try {
-    [R, DIST, META] = await Promise.all([PX.get('data/remates.json'), PX.get('data/distritos.geojson'), PX.get('data/meta.json')]);
+    [R, DIST, META] = await Promise.all([PX.cargarYo().then(() => PX.get('data/remates.json')), PX.get('data/distritos.geojson'), PX.get('data/meta.json')]);
   } catch (e) { $('list').innerHTML = '<div class="empty">No se pudieron cargar los datos. Recarga la página.</div>'; return; }
   PX.tc = META.tc;
   // Íconos declarados en el HTML con data-ic
@@ -28,7 +28,10 @@
   $('kpis').innerHTML = `<span><b class="num">${live.length}</b> remates de fincas vigentes</span>
     <span title="Tipo de cambio de referencia de venta del BCCR">TC BCCR ${PX.mh(PX.tc.venta, 'CRC')} · ${esc(PX.tc.fecha)}</span>`;
   function paintPlan() {
-    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : '');
+    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : ''); b.hidden = !PX.conCuenta();
+    $('bCuenta').querySelector('span:not(.ic):not(.badge)').textContent = PX.conCuenta() ? 'Mi cuenta' : 'Entrar';
+    $('bCuenta').classList.toggle('primary', !PX.conCuenta());
+    const vs = document.querySelector('.vista'); if (vs) vs.style.display = PX.admin ? '' : 'none';
     $('attrHint').hidden = PX.isPro();
     $('vFree').setAttribute('aria-pressed', !PX.isPro()); $('vPro').setAttribute('aria-pressed', PX.isPro());
   }
@@ -611,9 +614,29 @@
       ${r.ll ? `<a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a>` : ''}
     </div>${listMenu(r)}`;
   }
+  function fichaPrevia(r) {
+    const f = $('ficha'), a = PX.prof(r);
+    const ven = [[PX.ICON.pin || '', 'Ubicación exacta del predio, con área y forma'], [PX.ICON.moneda || '', 'Índice Puja/Hacienda y escala de valor PECR'], [PX.ICON.norma || '', 'Plan regulador y normativa'], [PX.ICON.entorno || '', 'Agua potable, salud, escuela, ríos y costa'], [PX.ICON.registro || '', 'Registro, servidumbres y gravámenes'], [PX.ICON.alerta || '', `Riesgos y ${PX.PRECIOS.cortesia} expedientes PDF de cortesía al mes`]];
+    f.innerHTML = `<div class="fhead">${PX.tipoIcon(r)}${PX.stageBadge(r.st)}<span class="tag${r.tipo === 'Agrícola' ? ' agro' : ''}">${esc(r.tipo)}</span><button class="x" id="fx" aria-label="Cerrar ficha">×</button></div>
+    <div class="fbody">
+      <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
+      <div class="pricebox"><span class="lbl">Base vigente · ${PX.ETAPA[r.st] || ''} · ${fdate(r.next)}</span><span class="big">${PX.money(r.bv, r.mon)}</span><span class="alt eqbig">${PX.other(r.bv, r.mon)}</span><span class="alt"><span>${a ? fnum(a) + ' m²' : 'área s/d'}</span></span></div>
+      <div class="gate emph">
+        <h3>Crea tu cuenta gratis para ver la ficha completa</h3>
+        <ul>${ven.map(([i, t]) => `<li><span class="ri" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
+        <div class="acts"><button class="btn primary" data-auth="crear">Crear cuenta gratis</button><button class="btn" data-auth="entrar">Ya tengo cuenta</button></div>
+        <small class="muted">Acceso anticipado: al registrarte recibes un cupón de 30 % de descuento para cuando abramos los planes de pago.</small>
+      </div>
+    </div>`;
+    f.hidden = false; $('fx').onclick = closeFicha;
+    selLayer.clearLayers();
+    if (r.ll) { selLayer.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false })); }
+    try { history.replaceState(null, '', '#' + r.key); } catch (err) {}
+  }
   function openFicha(key, fly) {
     const r = PX.item(key); if (!r) return;
     open = key;
+    if (!PX.conCuenta() && !r.isPlano) { document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); fichaPrevia(r); if (r.ll && fly !== false) map.setView([r.ll[1], r.ll[0]], Math.max(map.getZoom(), 13)); return; }
     document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current'));
     const li = document.querySelector(`.item[data-k="${key}"]`); if (li) li.setAttribute('aria-current', 'true');
     const f = $('ficha');
@@ -734,24 +757,71 @@
   // ---------- expediente: acceso ----------
   function goExpediente(r) {
     if (r.isPlano) PX.savePlano(r);
-    if (PX.tieneExp(r.key) || (PX.isPro() && PX.usoMes() < PX.PRECIOS.cupo)) { PX.registrarExp(r.key, r.nom); location.href = 'expediente.html?k=' + encodeURIComponent(r.key); return; }
-    if (PX.isPro()) return modal(`<div class="hd"><h2>Llegaste al cupo del mes</h2></div><p>Tu suscripción incluye ${PX.PRECIOS.cupo} expedientes al mes y ya los usaste. Puedes comprar este expediente por separado.</p><div class="acts"><button class="btn primary" data-buy="${r.key}">Comprar por ${PX.mt(PX.PRECIOS.expediente, 'USD')}</button></div>`, true);
-    modal(`<div class="hd"><h2>Expediente del lote</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <div><b>${esc(r.nom)}</b><div class="muted">${esc(r.lugar)}</div></div>
-      <div class="plans" style="grid-template-columns:1fr 1fr">
-        <div class="plan"><h3>Solo este lote</h3><div class="pr">${PX.usdH(PX.PRECIOS.expediente)}</div><ul><li>Expediente completo e imprimible</li><li>Queda disponible en Mi cuenta</li></ul><button class="btn primary" data-buy="${r.key}">Comprar expediente</button></div>
-        <div class="plan hl"><h3>Suscripción ${PX.PRO}</h3><div class="pr">${PX.usdH(PX.PRECIOS.suscripcion)} <small>al mes</small></div><ul><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Top 10 por provincia, atributos y todas las capas</li></ul><button class="btn" data-sub>Suscribirme</button></div>
-      </div>
-      <div class="demo">Modo demostración: el pago aún no está conectado. Al confirmar se activa el acceso en este navegador.</div>`, true);
+    if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis para generar expedientes.');
+    if (PX.registrarExp(r.key, r.nom)) { location.href = 'expediente.html?k=' + encodeURIComponent(r.key); return; }
+    modal(`<div class="hd"><h2>Usaste los expedientes de este mes</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      <p>${PX.isPro() ? `Tu suscripción incluye ${PX.PRECIOS.cupo} expedientes al mes y ya los usaste.` : `Durante el acceso anticipado, cada cuenta gratis genera ${PX.PRECIOS.cortesia} expedientes al mes, y ya usaste los de ${PX.MESL[PX.now.getMonth()]}.`}</p>
+      <p>Los pagos en línea llegan pronto. Si necesitas más expedientes ahora, solicita el acceso PRO y te escribimos.</p>
+      <div class="acts">${PX.isPro() ? '' : '<button class="btn primary" data-sub>Solicitar acceso PRO</button>'}<button class="btn" data-close>Cerrar</button></div>`, true);
+  }
+  // Solicitud de PRO: durante el acceso anticipado se activa a mano desde /admin
+  async function pedirPro() {
+    if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis y luego solicita el acceso PRO.');
+    if (PX.isPro()) return toast('Ya tienes PRO activo');
+    if (PX.yo) await fetch('/api/cuenta/solicitar-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+    if (PX.yo) PX.yo.solicitaPro = new Date().toISOString();
+    modal(`<div class="hd"><h2>Recibimos tu solicitud</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      <p>Estamos en acceso anticipado: activamos PRO personalmente. Te escribiremos a <b>${esc(PX.yo ? PX.yo.correo : '')}</b> con los detalles.</p>
+      ${PX.yo && PX.yo.cupon ? `<p>Tu cupón <b class="num">${esc(PX.yo.cupon)}</b> te da 30 % de descuento en tu primer mes PRO o en tu primer expediente.</p>` : ''}
+      <div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
   }
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-buy]');
-    if (b) { const r = PX.item(b.dataset.buy); PX.comprar(r.key, r.nom); closeLayer(); location.href = 'expediente.html?k=' + encodeURIComponent(r.key); }
-    if (e.target.closest('[data-sub]')) { PX.acct.plan = 'pro'; PX.saveAcct(); closeLayer(); toast('PRO activado (demostración)'); }
-    if (e.target.closest('[data-free]')) { PX.acct.plan = 'free'; PX.saveAcct(); closeLayer(); toast('Volviste al plan gratuito'); }
+    if (e.target.closest('[data-sub]')) { e.preventDefault(); pedirPro(); return; }
+    const au = e.target.closest('[data-auth]'); if (au) { openAuth(au.dataset.auth); return; }
     if (e.target.closest('[data-close]') || e.target.classList.contains('scrim')) closeLayer();
   });
 
+  // ---------- crear cuenta / entrar ----------
+  const PERF = [['comprador', 'Comprador'], ['inversionista', 'Inversionista'], ['abogado', 'Abogado'], ['corredor', 'Corredor'], ['desarrollador', 'Desarrollador'], ['otro', 'Otro']];
+  function openAuth(modo, porque) {
+    const crear = modo === 'crear', olvido = modo === 'olvide';
+    const utm = {}; const q = new URLSearchParams(location.search); ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
+    modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>${olvido ? 'Restablecer contraseña' : crear ? 'Crea tu cuenta gratis' : 'Entrar'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      ${porque ? `<div class="note">${esc(porque)}</div>` : ''}
+      ${olvido ? '' : `<div class="seg" role="group"><button data-auth="crear" aria-pressed="${crear}">Crear cuenta</button><button data-auth="entrar" aria-pressed="${!crear}">Ya tengo cuenta</button></div>`}
+      <form id="authF" class="authf" novalidate>
+        <div class="fld"><label for="aCorreo">Correo electrónico</label><input id="aCorreo" type="email" autocomplete="email" required></div>
+        ${olvido ? '' : `<div class="fld"><label for="aClave">Contraseña${crear ? ' <small>(mínimo 8 caracteres)</small>' : ''}</label><input id="aClave" type="password" minlength="8" autocomplete="${crear ? 'new-password' : 'current-password'}" required></div>`}
+        ${crear ? `<div class="row2"><div class="fld"><label for="aNom">Nombre <small>(opcional)</small></label><input id="aNom" autocomplete="name" maxlength="80"></div>
+          <div class="fld"><label for="aPerf">Te interesa como</label><select id="aPerf">${PERF.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></div></div>
+          <div class="fld"><label for="aProv">Provincia de interés</label><select id="aProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option>${p}</option>`).join('')}</select></div>
+          <label class="chk"><input id="aOk" type="checkbox"> <span>Acepto la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>: PlanoExactoCR guarda mi correo y mis preferencias para mi cuenta y para avisarme novedades. Puedo pedir que los borren.</span></label>` : ''}
+        <p class="aerr" id="aErr" role="alert" hidden></p>
+        <button class="btn primary" type="submit" id="aBtn">${olvido ? 'Enviar enlace' : crear ? 'Crear cuenta y recibir mi cupón' : 'Entrar'}</button>
+        ${crear || olvido ? '' : '<button type="button" class="linkbtn" data-auth="olvide">¿Olvidaste tu contraseña?</button>'}
+      </form>`, true);
+    const err = t => { const x = $('aErr'); x.textContent = t; x.hidden = !t; };
+    $('authF').onsubmit = async ev => {
+      ev.preventDefault(); err('');
+      const correo = $('aCorreo').value.trim(), btn = $('aBtn');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) return err('Revisa el correo: parece incompleto.');
+      let ruta = olvido ? 'olvide' : crear ? 'crear' : 'entrar', body = { correo };
+      if (!olvido) { body.clave = $('aClave').value; if (body.clave.length < 8) return err('La contraseña debe tener al menos 8 caracteres.'); }
+      if (crear) { if (!$('aOk').checked) return err('Para crear la cuenta, acepta la política de privacidad.'); Object.assign(body, { nombre: $('aNom').value.trim(), perfil: $('aPerf').value, prov: $('aProv').value, acepto: true, utm }); }
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/cuenta/' + ruta, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { btn.disabled = false; return err(j.error || 'No se pudo completar. Intenta de nuevo.'); }
+        if (olvido) return modal(`<div class="hd"><h2>Restablecer contraseña</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+          <p>${j.enviado ? 'Si existe una cuenta con ese correo, te enviamos un enlace para elegir una contraseña nueva. Revisa también la carpeta de correo no deseado.' : `Escríbenos a <b>${esc(j.contacto)}</b> desde el correo de tu cuenta y te enviamos un enlace para elegir una contraseña nueva.`}</p>
+          <div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
+        sessionStorage.setItem('px-bienvenida', crear ? '1' : '');
+        location.reload();
+      } catch (x) { btn.disabled = false; err('No hay conexión. Intenta de nuevo.'); }
+    };
+    $('aCorreo').focus();
+  }
   // ---------- ventanas ----------
   function modal(html, small) { $('layer').innerHTML = `<div class="scrim"><div class="dlg${small ? ' sm' : ''}" role="dialog" aria-modal="true">${html}</div></div>`; const f = $('layer').querySelector('button, input'); if (f) f.focus(); }
   function closeLayer() { $('layer').innerHTML = ''; }
@@ -768,16 +838,16 @@
       ${why ? `<div class="note">${esc(why)}</div>` : ''}
       <div class="plans">
         <div class="plan${pro ? '' : ' hl'}"><h3>Gratis</h3><div class="pr">${PX.usdH(0)}</div>
-          <ul><li>Mapa de remates vigentes con filtros de ubicación, remate y características básicas</li><li>Búsqueda de cualquier plano o finca en el catastro</li><li>Comparar 2 lotes con el índice PlanoExacto</li><li>Capas básicas: calles, satélite, límites, catastro y estado del plan regulador</li><li>Listas y seguimiento</li></ul>
-          ${pro ? '<button class="btn" data-free>Volver a Gratis</button>' : '<span class="tag ok">Tu plan actual</span>'}</div>
+          <ul><li>Mapa de remates vigentes con filtros de ubicación, remate y características básicas</li><li>Búsqueda de cualquier plano o finca en el catastro</li><li>Comparar 2 lotes con el índice PlanoExacto</li><li>Capas básicas: calles, satélite, límites, catastro y estado del plan regulador</li><li>Listas y seguimiento, guardados en tu cuenta</li><li>${PX.PRECIOS.cortesia} expedientes de cortesía al mes (acceso anticipado)</li></ul>
+          ${!PX.conCuenta() ? '<button class="btn" data-auth="crear">Crear cuenta gratis</button>' : pro ? '' : '<span class="tag ok">Tu plan actual</span>'}</div>
         <div class="plan"><h3>Expediente por lote</h3><div class="pr">${PX.usdH(PX.PRECIOS.expediente)} <small>por lote</small></div>
           <ul><li>Texto del edicto y datos registrales</li><li>Gravámenes y servidumbres explicados</li><li>Entorno completo: ríos, relieve, cobertura, salud, escuela</li><li>Análisis multidimensional y comparables</li><li>Versión imprimible con nota legal</li></ul>
           <span class="muted" style="font-size:12.5px">Se compra desde la ficha de cada lote.</span></div>
         <div class="plan${pro ? ' hl' : ''}"><h3>Suscripción ${PX.PRO}</h3><div class="pr">${PX.usdH(PX.PRECIOS.suscripcion)} <small>al mes</small></div>
           <ul><li>Hasta ${PX.PRECIOS.cupo} expedientes al mes</li><li>Top 10 del mes por provincia</li><li>Atributos del lote: plano, construcción, frente a vía, urbano…</li><li>Todas las capas: zonas de vida, uso del suelo, ríos, curvas, PSA, vías, salud</li><li>Comparar hasta 4 lotes con pesos propios</li><li>Herramientas PRO: potencial constructivo, prefactibilidad financiera, riesgos del proceso, alertas y mapa de precios</li></ul>
-          ${pro ? '<span class="tag gold">Tu plan actual</span>' : '<button class="btn primary" data-sub>Suscribirme</button>'}</div>
+          ${pro ? '<span class="tag gold">Tu plan actual</span>' : '<button class="btn primary" data-sub>Solicitar acceso PRO</button>'}</div>
       </div>
-      <div class="foot">Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Modo demostración: los pagos aún no están conectados.</div>`);
+      <div class="foot">Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Acceso anticipado: las cuentas gratis incluyen ${PX.PRECIOS.cortesia} expedientes al mes y PRO se activa por solicitud. Los pagos en línea llegan pronto, con 30 % de descuento para quienes se registren ahora.</div>`);
   }
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
@@ -948,23 +1018,27 @@
     if (a) { openAbout(a.dataset.about); if (a.dataset.gsec) setTimeout(() => { const t = document.getElementById('g-' + a.dataset.gsec); if (t) t.scrollIntoView({ block: 'start' }); }, 60); return; }
     const g = e.target.closest('[data-gto]'); if (g) { const t = document.getElementById('g-' + g.dataset.gto); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
-  const setVista = p => { if ((p === 'pro') === PX.isPro()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : 'Vista gratis: así la ve un usuario sin suscripción'); };
+  const setVista = p => { if (!PX.admin || (p === 'pro') === PX.isPro()) return; PX.acct.plan = p; PX.saveAcct(); toast(p === 'pro' ? 'Vista PRO: todas las herramientas activas' : 'Vista gratis: así la ve un usuario sin suscripción'); };
   $('vFree').onclick = () => setVista('free'); $('vPro').onclick = () => setVista('pro');
 
   // ---------- Mi cuenta ----------
   function renderCuenta() {
-    const a = PX.acct, pro = PX.isPro(), uso = PX.usoMes();
+    if (!PX.conCuenta()) return openAuth('entrar');
+    const a = PX.acct, pro = PX.isPro(), uso = PX.usoMes(), cupo = PX.cupoMes(), yo = PX.yo;
     const nameOf = k => { const it = PX.item(k); return it ? it.nom : k; };
     const sig = a.sigo.map(k => PX.item(k)).filter(Boolean);
     const snap = a.snap || {};
     $('layer').innerHTML = `<div class="scrim" style="place-items:stretch end;padding:0"><aside class="drawer" role="dialog" aria-modal="true" aria-label="Mi cuenta">
       <div class="fhead"><h2 style="margin:0;font:600 19px/1.2 var(--f-display)">Mi cuenta</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
       <div class="dbody">
-        <div class="demo">Modo demostración: tu cuenta se guarda solo en este navegador y los pagos no están conectados.</div>
+        ${yo ? `<section class="acc"><h3>Tu cuenta</h3>
+          <div class="li"><div><b>${esc(yo.nombre || yo.correo)}</b>${yo.nombre ? `<br><small>${esc(yo.correo)}</small>` : ''}</div><div><a class="btn sm" href="/__salir">Cerrar sesión</a></div></div>
+          ${yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(yo.cupon)}</b><small>30 % de descuento en tu primer mes PRO o en tu primer expediente cuando abramos los pagos.</small></div>` : ''}
+        </section>` : `<div class="demo">Sesión de administración: con «Ver como» revisas el sitio como usuario gratis o PRO. <a href="/admin">Panel de administración</a> · <a href="/__salir">Salir</a></div>`}
         <section class="acc"><h3>Plan</h3>
-          <div class="li"><div><b>${pro ? 'Suscripción ' + PX.PRO : 'Gratis'}</b><br><small>${pro ? `${PX.mt(PX.PRECIOS.suscripcion, 'USD')} al mes · hasta ${PX.PRECIOS.cupo} expedientes` : `Expedientes a ${PX.mt(PX.PRECIOS.expediente, 'USD')} por lote`}</small></div>
-            <div>${pro ? '<button class="btn sm" data-free>Pasar a Gratis</button>' : '<button class="btn sm primary" data-sub>Suscribirme</button>'}</div></div>
-          ${pro ? `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados en ${PX.MESL[PX.now.getMonth()]}: <b class="num">${uso}</b> de ${PX.PRECIOS.cupo}</small><div class="meter"><i style="width:${uso / PX.PRECIOS.cupo * 100}%"></i></div></div>` : ''}
+          <div class="li"><div><b>${pro ? 'Suscripción ' + PX.PRO : 'Gratis · acceso anticipado'}</b><br><small>${pro ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste PRO: te escribiremos pronto' : 'Mapa, fichas completas, listas y seguimiento'}</small></div>
+            <div>${pro || (yo && yo.solicitaPro) ? '' : '<button class="btn sm primary" data-sub>Solicitar PRO</button>'}</div></div>
+          <div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados en ${PX.MESL[PX.now.getMonth()]}: <b class="num">${uso}</b> de ${cupo}${pro ? '' : ' de cortesía'}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>
         </section>
         <section class="acc"><h3>Seguimiento <span class="tag">${sig.length}</span></h3>
           ${sig.length ? sig.map(r => { const s0 = snap[r.key]; const cambio = s0 && s0.st !== r.st ? (r.st < 0 ? 'Ya pasaron todas las fechas' : `Pasó a ${PX.ETAPA[r.st]}`) : ''; return `<div class="li"><div><button class="linkbtn" data-open="${r.key}">${esc(r.nom)}</button><br><small>${r.st >= 0 ? `${PX.ETAPA[r.st]} · ${fdate(r.next)} · ${when(r.next)}` : 'Sin fechas pendientes'}</small>${cambio ? ` <span class="tag warn">${cambio}</span>` : ''}</div><div>${r.st >= 0 ? PX.duo(r.bv, r.mon) : ''}<br><button class="linkbtn" data-unsig="${r.key}" style="font-weight:500;font-size:12px">Dejar de seguir</button></div></div>`; }).join('') : '<small class="muted">Usa «Seguir» en la ficha de un remate para ver aquí su próxima fecha y los cambios de etapa.</small>'}
@@ -977,14 +1051,15 @@
           <div class="acts" style="margin-top:8px"><button class="btn sm" data-newl>Nueva lista</button></div>
         </section>
         <section class="acc"><h3>Expedientes <span class="tag">${a.expedientes.length}</span></h3>
-          ${a.expedientes.length ? a.expedientes.map(x => `<div class="li"><div><a href="expediente.html?k=${encodeURIComponent(x.k)}">${esc(x.n || nameOf(x.k))}</a><br><small>${x.via === 'pro' ? 'Suscripción' : 'Compra individual'} · ${fdate(new Date(x.t))}</small></div><div></div></div>`).join('') : '<small class="muted">Aún no has generado expedientes.</small>'}
+          ${a.expedientes.length ? a.expedientes.map(x => `<div class="li"><div><a href="expediente.html?k=${encodeURIComponent(x.k)}">${esc(x.n || nameOf(x.k))}</a><br><small>${x.via === 'pro' ? 'Suscripción' : x.via === 'cortesia' ? 'Cortesía' : 'Compra individual'} · ${fdate(new Date(x.t))}</small></div><div></div></div>`).join('') : '<small class="muted">Aún no has generado expedientes.</small>'}
         </section>
         <section class="acc"><h3>Búsquedas guardadas</h3>
           ${a.busquedas.length ? a.busquedas.map((b, i) => `<div class="li"><div><button class="linkbtn" data-bus="${i}">${esc(b.n)}</button><br><small>${fdate(new Date(b.t))}</small></div><div><button class="linkbtn" data-delb="${i}" style="font-weight:500;font-size:12px">Eliminar</button></div></div>`).join('') : '<small class="muted">Usa «Guardar» sobre la lista de remates para volver a una búsqueda.</small>'}
         </section>
-        <section class="acc"><h3>Administración</h3>
+        ${PX.admin ? `<section class="acc"><h3>Administración</h3>
+          <div class="li"><div><a href="/admin">Usuarios y planes</a><br><small>Lista de cuentas, solicitudes de PRO y exportación.</small></div></div>
           <div class="li"><div><a href="catastro.html">Ubicar remates en el catastro</a><br><small>Botón para consultar el SNIT desde Costa Rica los remates nuevos que quedaron ubicados por distrito.</small></div></div>
-        </section>
+        </section>` : ''}
       </div></aside></div>`;
   }
   $('bCuenta').onclick = renderCuenta;
@@ -1129,7 +1204,7 @@
     if (!PX.isPro()) {
       $('topOut').innerHTML = `<div class="teaser"><h3>Los 10 mejores remates de cada provincia</h3><span>Los 10 remates con mejor combinación de:</span>
         <ul><li><b>Sanidad jurídica</b> (${WTOP.juridica} %): servidumbres, gravámenes, derechos y certeza de ubicación</li><li><b>Precio por m²</b> (${WTOP.precio} %) frente a la mediana de la zona</li><li><b>Potencial por servicios</b> (${WTOP.servicios} %): plan regulador, acceso, salud, escuela, zona urbana</li></ul>
-        <div class="acts"><button class="btn primary" data-sub>Suscribirme · ${PX.mt(PX.PRECIOS.suscripcion, 'USD')} al mes</button><button class="btn" data-planes>Ver planes</button></div></div>
+        <div class="acts"><button class="btn primary" data-sub>Solicitar acceso PRO</button><button class="btn" data-planes>Ver planes</button></div></div>
         <div class="blur" aria-hidden="true">${[1, 2, 3].map(i => `<div class="item"><span></span><span class="mid"><div class="t1">Lote destacado ${i}</div><div class="t2">Cantón · 1 000 m²</div></span><span class="rt">₡ 00 M</span></div>`).join('')}</div>`;
       return;
     }
@@ -1167,4 +1242,12 @@
   const h = (location.hash || '').slice(1);
   if (/^r\d+$/.test(h) || /^p/.test(h)) openFicha(h, true);
   else if (/^r?(\d+)$/.test(h)) openFicha('r' + h.replace(/\D/g, ''), true);
+  // Enlaces desde la página de inicio: /mapa?crear=1, /mapa?entrar=1
+  const qs = new URLSearchParams(location.search);
+  if (!PX.conCuenta() && (qs.has('crear') || qs.has('entrar'))) openAuth(qs.has('crear') ? 'crear' : 'entrar');
+  let bienv = null; try { bienv = sessionStorage.getItem('px-bienvenida'); sessionStorage.removeItem('px-bienvenida'); } catch (e) {}
+  if (bienv === '1' && PX.yo) modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+    <p>Tu cuenta está lista. Ya puedes abrir la ficha completa de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.cortesia} expedientes de cortesía al mes.</p>
+    ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>30 % de descuento en tu primer mes PRO o en tu primer expediente cuando abramos los pagos. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
+    <div class="acts"><button class="btn primary" data-close>Ir al mapa</button><button class="btn" data-about="guia">Cómo usar</button></div>`, true);
 })();

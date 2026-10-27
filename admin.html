@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administración · PlanoExactoCR</title><meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="assets/img/favicon.png">
+<script>try { const t = localStorage.getItem('px-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+body { background: var(--bg); color: var(--ink); font: 14.5px/1.5 var(--f-body); margin: 0; padding: 20px 16px 40px; }
+main { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+.top { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+h1 { font: 600 22px/1.2 var(--f-display); margin: 0; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a { padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 13px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpis div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.kpis b { display: block; font: 600 24px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.kpis small { color: var(--muted); }
+.fuentes { color: var(--muted); font-size: 13px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bar input, .bar select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink); font: inherit; }
+.bar input { flex: 1 1 260px; }
+.tw { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 980px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--bg); position: sticky; top: 0; }
+td small { display: block; color: var(--muted); }
+td select, td input { padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; }
+td input[type=text] { width: 150px; }
+.tag.pide { background: var(--goldbg); color: var(--gold); }
+.acc { display: flex; gap: 6px; flex-wrap: wrap; }
+.acc button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); cursor: pointer; font: 600 12.5px/1.2 var(--f-body); }
+.acc button.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.vacío { padding: 24px; text-align: center; color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 10px; font-weight: 600; }
+</style>
+</head>
+<body><main>
+  <div class="top">
+    <h1>Administración · usuarios y planes</h1>
+    <div class="links"><a href="/mapa">Mapa</a><a href="/catastro">Ubicar remates</a><a href="/admin/usuarios.csv">Descargar usuarios (CSV)</a><a href="/admin/registros.csv">Lista de espera previa (CSV)</a><a href="/__salir">Salir</a></div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="fuentes" id="fuentes"></div>
+  <div class="bar"><input id="q" type="search" placeholder="Buscar por correo, nombre o cupón" aria-label="Buscar"><select id="fp" aria-label="Filtrar"><option value="">Todos</option><option value="pide">Solicitan PRO</option><option value="pro">PRO</option><option value="free">Gratis</option></select></div>
+  <div class="tw"><table><thead><tr><th>Usuario</th><th>Perfil</th><th>Llegó por</th><th>Fechas</th><th>Plan</th><th>PRO hasta</th><th>Nota</th><th>Acciones</th></tr></thead><tbody id="tb"><tr><td colspan="8" class="vacío">Cargando…</td></tr></tbody></table></div>
+</main>
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fd = s => s ? new Date(s).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2400); };
+  let U = [], HOY = '';
+  async function cargar() {
+    const r = await fetch('/api/admin/usuarios', { cache: 'no-store' });
+    if (!r.ok) { $('tb').innerHTML = `<tr><td colspan="8" class="vacío">${r.status === 401 ? 'La sesión de administración terminó. Recarga la página.' : 'No se pudo cargar la lista (¿falta la base de datos D1?).'}</td></tr>`; return; }
+    const j = await r.json(); U = j.usuarios; HOY = j.hoy; pintar();
+  }
+  const esPro = u => u.plan === 'pro' && (!u.pro_hasta || u.pro_hasta >= HOY);
+  function pintar() {
+    const sem = Date.now() - 7 * 864e5;
+    const n7 = U.filter(u => new Date(u.creado) >= sem).length, pro = U.filter(esPro).length, pide = U.filter(u => u.solicita_pro && !esPro(u)).length;
+    $('kpis').innerHTML = [[U.length, 'cuentas'], [n7, 'nuevas en 7 días'], [pro, 'con PRO activo'], [pide, 'solicitan PRO']].map(([v, t]) => `<div><b>${v}</b><small>${t}</small></div>`).join('');
+    const fu = {}; U.forEach(u => { const k = (u.fuente || 'directo').split('/')[0]; fu[k] = (fu[k] || 0) + 1; });
+    const pf = {}; U.forEach(u => { pf[u.perfil] = (pf[u.perfil] || 0) + 1; });
+    $('fuentes').textContent = U.length ? 'Origen: ' + Object.entries(fu).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') + '   ·   Perfiles: ' + Object.entries(pf).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') : '';
+    const q = $('q').value.trim().toLowerCase(), f = $('fp').value;
+    const L = U.filter(u => (!q || [u.correo, u.nombre, u.cupon].join(' ').toLowerCase().includes(q)) && (!f || (f === 'pide' ? u.solicita_pro && !esPro(u) : f === 'pro' ? esPro(u) : !esPro(u))));
+    $('tb').innerHTML = L.length ? L.map(u => `<tr data-id="${u.id}">
+      <td><b>${esc(u.correo)}</b><small>${esc(u.nombre || '—')} · <span class="num">${esc(u.cupon || '')}</span></small></td>
+      <td>${esc(u.perfil)}<small>${esc(u.prov || 'Todo el país')}</small></td>
+      <td>${esc(u.fuente || 'directo')}<small>${esc(u.pais || '')}</small></td>
+      <td>${fd(u.creado)}<small>última vez ${fd(u.ultimo)}</small></td>
+      <td><select data-f="plan"><option value="free"${u.plan !== 'pro' ? ' selected' : ''}>Gratis</option><option value="pro"${u.plan === 'pro' ? ' selected' : ''}>PRO</option></select>
+        ${u.solicita_pro && !esPro(u) ? `<small><span class="tag pide">Pidió PRO ${fd(u.solicita_pro)}</span></small>` : ''}${u.plan === 'pro' && !esPro(u) ? '<small>vencido</small>' : ''}</td>
+      <td><input type="date" data-f="pro_hasta" value="${esc(u.pro_hasta || '')}"></td>
+      <td><input type="text" data-f="nota" value="${esc(u.nota || '')}" placeholder="p. ej. pagó por SINPE"></td>
+      <td><div class="acc"><button class="pri" data-a="guardar">Guardar</button><button data-a="enlace" title="Crea un enlace para que elija una contraseña nueva">Enlace de contraseña</button><a class="btn sm" href="mailto:${esc(u.correo)}">Escribir</a></div></td></tr>`).join('')
+      : `<tr><td colspan="8" class="vacío">${U.length ? 'Ningún usuario coincide.' : 'Todavía no hay cuentas. Se crean desde la página de inicio o desde el mapa.'}</td></tr>`;
+  }
+  $('q').oninput = pintar; $('fp').onchange = pintar;
+  $('tb').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-a]'); if (!b) return;
+    const tr = b.closest('tr'), id = +tr.dataset.id, v = k => tr.querySelector(`[data-f="${k}"]`).value;
+    if (b.dataset.a === 'guardar') {
+      const r = await fetch('/api/admin/usuario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, plan: v('plan'), pro_hasta: v('pro_hasta'), nota: v('nota') }) });
+      toast(r.ok ? 'Guardado' : 'No se pudo guardar'); if (r.ok) cargar();
+    }
+    if (b.dataset.a === 'enlace') {
+      const r = await fetch('/api/admin/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return toast('No se pudo crear el enlace');
+      try { await navigator.clipboard.writeText(j.enlace); toast('Enlace copiado: vale 72 horas'); } catch (_) { window.prompt('Copia este enlace (vale 72 horas):', j.enlace); }
+    }
+  });
+  cargar();
+})();
+</script>
+</body></html>

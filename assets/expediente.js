@@ -9,19 +9,18 @@
   catch (e) { doc.innerHTML = '<p class="err">No se pudieron cargar los datos. Recarga la página.</p>'; return; }
   PX.tc = META.tc; PX.prepare(R);
   const r = PX.item(key);
-  if (!r) { doc.innerHTML = '<div class="wall"><h1>No encontramos ese lote</h1><p>El enlace puede ser de un remate que ya no está vigente o de un plano consultado en otro navegador.</p><div class="acts"><a class="btn primary" href="index.html">Volver al mapa</a></div></div>'; return; }
-  $('back').href = 'index.html#' + r.key;
+  if (!r) { doc.innerHTML = '<div class="wall"><h1>No encontramos ese lote</h1><p>El enlace puede ser de un remate que ya no está vigente o de un plano consultado en otro navegador.</p><div class="acts"><a class="btn primary" href="/mapa">Volver al mapa</a></div></div>'; return; }
+  $('back').href = '/mapa#' + r.key;
 
-  // Acceso: comprado, o incluido en la suscripción (descuenta del cupo la primera vez en el mes)
+  // Acceso: con cuenta, dentro del cupo del mes (PRO o cortesía del acceso anticipado)
+  await PX.cargarYo();
   if (!PX.tieneExp(r.key) && !PX.registrarExp(r.key, r.nom)) {
     doc.innerHTML = `<div class="wall"><span class="lbl">Expediente del lote</span><h1>${esc(r.nom)}</h1><p class="muted">${esc(r.lugar)}</p>
       <p>Este expediente reúne en una lámina el mapa del predio con sus variables, el índice PlanoExacto, las potencialidades y los riesgos, más el edicto, los datos registrales y los gravámenes explicados.</p>
-      <div class="acts"><button class="btn primary" id="buy">Comprar por ${PX.duoT(PX.PRECIOS.expediente, 'USD')}</button><button class="btn" id="sub">Suscripción PRO: ${PX.mt(PX.PRECIOS.suscripcion, 'USD')} al mes, ${PX.PRECIOS.cupo} expedientes</button></div>
-      <div class="demo">Modo demostración: el pago aún no está conectado. Al confirmar se activa el acceso en este navegador.</div>
+      <p>${PX.conCuenta() ? `Ya usaste los ${PX.cupoMes()} expedientes de este mes. Los pagos en línea llegan pronto; mientras tanto puedes solicitar el acceso PRO desde Mi cuenta.` : 'Entra con tu cuenta para generar el expediente.'}</p>
+      <div class="acts"><a class="btn primary" href="/mapa${PX.conCuenta() ? '#' + r.key : '?entrar=1'}">Volver al mapa</a></div>
       <div class="legal">${PX.DISCLAIMER}</div></div>`;
     $('print').hidden = true;
-    $('buy').onclick = () => { PX.comprar(r.key, r.nom); location.reload(); };
-    $('sub').onclick = () => { PX.acct.plan = 'pro'; PX.saveAcct(); location.reload(); };
     return;
   }
   if (r.isPlano && r.ent && r.ent.cob === undefined && r.ll) { r.ent.cob = await PX.cobertura(r.ll[0], r.ll[1]); PX.savePlano(r); }

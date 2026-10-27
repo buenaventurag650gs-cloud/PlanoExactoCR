@@ -1,8 +1,17 @@
-# Cloudflare Workers con archivos estáticos: worker.js protege con contraseña y atiende /api;
+# Cloudflare Workers con archivos estáticos: worker.js atiende cuentas, administración y /api;
 # el resto se sirve desde la raíz del repositorio (lo listado en .assetsignore no se publica).
 name = "planoexactocr"
 main = "worker.js"
 compatibility_date = "2026-10-01"
+
+# Dominio propio: cuando planoexactocr.com esté activo en esta cuenta de Cloudflare, quitar los «#» de estas
+# seis líneas. El sitio pasa a planoexactocr.com y la dirección workers.dev redirige allí.
+# routes = [
+#   { pattern = "planoexactocr.com", custom_domain = true },
+#   { pattern = "www.planoexactocr.com", custom_domain = true }
+# ]
+# [vars]
+# DOMINIO = "planoexactocr.com"
 
 [assets]
 directory = "."
@@ -10,6 +19,12 @@ binding = "ASSETS"
 run_worker_first = true
 not_found_handling = "none"
 
-# Registros del acceso anticipado (correo, perfil, cupón). Cloudflare crea el espacio la primera vez que se publica.
+# Lista de espera previa (correo, perfil, cupón). Cloudflare crea el espacio la primera vez que se publica.
 [[kv_namespaces]]
 binding = "REGISTROS"
+
+# Cuentas de usuario (correo, contraseña cifrada, plan). Cloudflare crea la base la primera vez que se publica;
+# el Worker crea las tablas solo.
+[[d1_databases]]
+binding = "DB"
+database_name = "planoexactocr-usuarios"
