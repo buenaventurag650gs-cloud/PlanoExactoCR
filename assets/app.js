@@ -28,7 +28,7 @@
   $('kpis').innerHTML = `<span><b class="num">${live.length}</b> remates de fincas vigentes</span>
     <span title="Tipo de cambio de referencia de venta del BCCR">TC BCCR ${PX.mh(PX.tc.venta, 'CRC')} · ${esc(PX.tc.fecha)}</span>`;
   function paintPlan() {
-    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : PX.isEsencial() ? 'Esencial' : 'Gratis'; b.className = 'badge' + (PX.isEsencial() ? ' pro' : ''); b.hidden = !PX.conCuenta();
+    const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : PX.isEsencial() ? 'Esencial' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : PX.isEsencial() ? ' ese' : ''); b.hidden = !PX.conCuenta();
     $('bCuenta').querySelector('span:not(.ic):not(.badge)').textContent = PX.conCuenta() ? 'Mi cuenta' : 'Entrar';
     $('bCuenta').classList.toggle('primary', !PX.conCuenta());
     const vs = document.querySelector('.vista'); if (vs) vs.style.display = PX.admin ? '' : 'none';
@@ -596,7 +596,7 @@
   function proBox(r) {
     const rs = PX.pro.riesgos(r), alto = rs.filter(x => x.n === 3).length, med = rs.filter(x => x.n === 2).length, pro = PX.isPro();
     const pot = PX.pro.potCalc(PX.pro.potDefaults(r));
-    const T = k => PX.pro.nivelDe(k) === 2 ? ' <small class="tnv ese">Esencial</small>' : ' <small class="tnv">PRO</small>';
+    const T = k => ' ' + PX.pro.tag(k);
     const rsk = PX.pro.puede('riesgos');
     return `<div class="procard"><h3>Herramientas</h3>
       <p>${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : rsk ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Con PRO, además, potencial constructivo y prefactibilidad.` : 'Riesgos del proceso y alertas vienen en Esencial; potencial constructivo y prefactibilidad, en PRO.'}</p>
@@ -662,7 +662,7 @@
     const nserv = (r.serv || []).length;
     const fav = PX.isFav(r.key);
     // Secciones con candado: Esencial (registro, entorno) y PRO (valor, índices). Con el expediente del lote se ve todo.
-    const ESE = '<span class="tag ese">Esencial</span>';
+    const ESE = PX.ESE;
     const lockSec = (que, icon, t, nivel) => `<section class="fs locked"><h3>${icon}${t}<span class="r">${nivel === 2 ? ESE : PX.PRO}</span></h3><div class="fb"><div class="lockb"><span>${que}</span><div class="acts"><button class="btn sm gold" data-planes>Ver planes</button>${PX.quedan() > 0 ? '<button class="btn sm" data-act="exp">O abre el expediente de este lote</button>' : ''}</div></div></div></section>`;
     const PROsec = (que, icon, t, body, right) => full ? sec(icon, t, body, right) : lockSec(que, icon, t, 3);
     const ESEsec = (que, icon, t, body, right) => ese ? sec(icon, t, body, right) : lockSec(que, icon, t, 2);
@@ -849,7 +849,7 @@
         <div class="plan${n === 1 ? ' hl' : ''}"><h3>Cuenta gratis</h3><div class="pr sm">Con tu correo</div>
           <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Listas y seguimiento</li><li><b>${PX.PRECIOS.semanal} expediente por semana</b></li></ul>
           ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : n === 1 ? '<span class="tag ok">Tu plan actual</span>' : ''}</div>
-        <div class="plan${n === 2 ? ' hl' : ''}"><h3>Esencial</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
+        <div class="plan${n === 2 ? ' hl' : ''}"><h3>${PX.ESE} Lo esencial para decidir</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año</div>
           <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b></li></ul>
           ${n === 2 ? '<span class="tag gold">Tu plan actual</span>' : n < 2 ? '<button class="btn" data-sub="basico">Solicitar Esencial</button>' : ''}</div>
@@ -1047,7 +1047,7 @@
           ${yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en tu primer mes ${PX.PRO} cuando abramos los pagos.</small></div>` : ''}
         </section>` : `<div class="demo">Sesión de administración: con «Ver como» revisas el sitio como usuario gratis o PRO. <a href="/admin">Panel de administración</a> · <a href="/__salir">Salir</a></div>`}
         <section class="acc"><h3>Plan</h3>
-          <div class="li"><div><b>${n >= 2 ? 'Plan ' + (pro ? PX.PRO : 'Esencial') : 'Cuenta gratis'}</b><br><small>${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste un plan: te escribiremos pronto' : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
+          <div class="li"><div><b>${n >= 2 ? 'Plan ' + (pro ? PX.PRO : PX.ESE) : 'Cuenta gratis'}</b><br><small>${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste un plan: te escribiremos pronto' : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
             <div>${pro ? '' : '<button class="btn sm primary" data-planes>Ver planes</button>'}</div></div>
           ${pro ? '<small class="muted">Expedientes sin límite.</small>' : `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados esta semana: <b class="num">${uso}</b> de ${cupo} · adicional ${PX.mt(PX.PRECIOS.expediente, 'CRC')}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>`}
         </section>
@@ -1196,7 +1196,7 @@
   function renderHub() {
     const r = open ? PX.item(open) : null, pro = PX.isPro();
     $('proHub').innerHTML = `<div class="procard"><h3>Herramientas</h3>
-        <p>${pro ? 'Tu plan PRO está activo: todas las herramientas completas.' : 'Cada herramienta indica su plan: <span class="tag ese">Esencial</span> o ' + PX.PRO + '. Sin ese plan la abres como vista previa.'}</p>
+        <p>${pro ? 'Tu plan PRO está activo: todas las herramientas completas.' : 'Cada herramienta indica su plan: ' + PX.ESE + ' o ' + PX.PRO + '. Sin ese plan la abres como vista previa.'}</p>
         <p>${r ? `Lote abierto: <b>${esc(r.nom)}</b>` : 'Abre un lote en el mapa o busca un plano para usar las herramientas de lote.'}</p>
         <div class="acts"><button class="btn sm" data-about="guia">Cómo usar las herramientas</button></div></div>
       ${PX.pro.TOOLS.map(t => `<div class="procard${t.st === 'soon' ? ' soon' : ''}"><h3>${PX.pro.tag(t.k)} ${t.n} ${t.st === 'soon' ? '<span class="tag">Próximamente</span>' : ''}</h3><p>${t.q}</p>

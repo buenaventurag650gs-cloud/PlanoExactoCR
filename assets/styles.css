@@ -463,3 +463,8 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .attrb img.lg-claro { display: none !important; } :root:not([data-theme="light"]) .attrb img.lg-oscuro { display: inline-block !important; } }
 :root[data-theme="dark"] .attrb img.lg-claro { display: none !important; } :root[data-theme="dark"] .attrb img.lg-oscuro { display: inline-block !important; }
 .dlgmark { background: none !important; padding: 0 !important; }
+/* Distintivo del plan Esencial (como el de PRO) */
+.ese { display: inline-flex; align-items: center; gap: 3px; font: 700 11px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px 3px 5px; border-radius: 5px; background: linear-gradient(135deg, #539279, #1F5A47); color: #FFFDF5; vertical-align: 1px; white-space: nowrap; }
+.ese::before { content: "◆"; font-size: 9.5px; }
+.badge.ese { background: color-mix(in srgb, #539279 18%, transparent); color: var(--accent); }
+.badge.ese::before { content: "◆ "; font-size: 9px; }

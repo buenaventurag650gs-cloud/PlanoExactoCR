@@ -8,7 +8,7 @@
   PX.PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
   // Precios en colones (se muestran también en dólares).
   // Cuenta gratis: «semanal» expedientes por semana. Esencial: «semanalEsencial» por semana. PRO: sin límite.
-  PX.PRECIOS = { esencial: 5900, esencialAnual: 59000, pro: 12900, anual: 129000, expediente: 1500, semanal: 1, semanalEsencial: 10, cupon: 30 };
+  PX.PRECIOS = { esencial: 5190, esencialAnual: 51900, pro: 11290, anual: 112900, expediente: 1300, semanal: 1, semanalEsencial: 10, cupon: 30 };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];

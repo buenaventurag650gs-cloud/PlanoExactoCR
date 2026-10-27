@@ -60,7 +60,10 @@ h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--f-display); margin: 0 0 8px; te
 .planes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .plan { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 8px; }
 .plan.dest { border: 2px solid var(--accent); }
-.plan h3 { margin: 0; font: 700 18px/1.2 var(--f-display); }
+.plan h3 { margin: 0; font: 700 18px/1.2 var(--f-display); display: flex; align-items: center; gap: 8px; }
+.pro, .ese { display: inline-flex; align-items: center; gap: 4px; font: 700 11px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 4px 7px 4px 6px; border-radius: 5px; color: #FFFDF5; white-space: nowrap; }
+.pro { background: linear-gradient(135deg, #C9A227, #8A6A00); } .pro::before { content: "★"; }
+.ese { background: linear-gradient(135deg, #539279, #1F5A47); } .ese::before { content: "◆"; font-size: 10px; }
 .precio { font: 600 26px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; } .precio.sm { font: 600 18px/1.3 var(--f-body); color: var(--muted); } .precio small { font: 500 13px var(--f-body); color: var(--muted); }
 .plan .alt, .plan .nota { font-size: 13px; color: var(--muted); } .plan .nota { color: var(--terra); font-weight: 600; }
 .plan ul { margin: 4px 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
@@ -137,12 +140,12 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
       <div class="plan dest"><h3>Cuenta gratis</h3><div class="precio sm">Con tu correo</div>
         <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Listas y seguimiento</li><li><b>1 expediente PDF completo por semana</b></li></ul>
         <a class="btn pri" href="#registro">Crear cuenta gratis</a></div>
-      <div class="plan"><h3>Esencial</h3><div class="precio">₡5 900 <small>al mes</small></div><div class="alt">o ₡59 000 al año</div>
+      <div class="plan"><h3><span class="ese">Esencial</span> Lo esencial para decidir</h3><div class="precio">₡5 190 <small>al mes</small></div><div class="alt">o ₡51 900 al año</div>
         <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li><b>10 expedientes por semana</b></li></ul></div>
-      <div class="plan"><h3>PRO · acceso total</h3><div class="precio">₡12 900 <small>al mes</small></div><div class="alt">o ₡129 000 al año (2 meses gratis)</div>
+      <div class="plan"><h3><span class="pro">PRO</span> Acceso total</h3><div class="precio">₡11 290 <small>al mes</small></div><div class="alt">o ₡112 900 al año (2 meses gratis)</div>
         <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b></li></ul></div>
     </div>
-    <p class="sub" style="margin-top:14px">Expediente adicional, fuera de lo que incluye tu plan: <b>₡1 500</b> cada uno. Con tu cupón de lanzamiento tienes 30 % de descuento el primer mes de cualquier plan.</p>
+    <p class="sub" style="margin-top:14px">Expediente adicional, fuera de lo que incluye tu plan: <b>₡1 300</b> cada uno. Con tu cupón de lanzamiento tienes 30 % de descuento el primer mes de cualquier plan.</p>
   </section>
 
   <section id="registro">

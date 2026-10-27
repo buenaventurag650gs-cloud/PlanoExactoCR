@@ -5,6 +5,7 @@
   const { esc, fnum } = PX;
   const P = PX.pro = {};
   PX.PRO = '<span class="pro" title="Herramienta de la versión PRO">PRO</span>';
+  PX.ESE = '<span class="ese" title="Incluido desde el plan Esencial">Esencial</span>';
 
   // Catálogo de herramientas (las disponibles y las que vienen)
   // nv: plan desde el que se usa la herramienta completa (2 Esencial, 3 PRO)
@@ -286,7 +287,7 @@
   P.nivelDe = k => (P.TOOLS.find(t => t.k === k) || { nv: 3 }).nv;
   P.puede = k => PX.nivel() >= P.nivelDe(k);
   // Etiqueta del plan de cada herramienta
-  P.tag = k => P.nivelDe(k) === 2 ? '<span class="tag ese">Esencial</span>' : PX.PRO;
+  P.tag = k => P.nivelDe(k) === 2 ? PX.ESE : PX.PRO;
   P.open = (r, tool, layer, hooks) => {
     const st = states[r.key] = states[r.key] || {};
     let cur = tool || 'potencial';
@@ -296,8 +297,8 @@
       layer.innerHTML = `<div class="scrim"><div class="dlg prows" role="dialog" aria-modal="true" aria-label="Herramientas">
         <div class="hd">${P.tag(cur)}<h2>Herramientas</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
         <div class="prolot"><b>${esc(r.nom)}</b><span class="muted">${esc(r.lugar || '')}${r.bv ? ' · base ' + PX.duoT(r.bv, r.mon) : ''}${PX.prof(r) ? ' · ' + fnum(PX.prof(r)) + ' m²' : ''}</span></div>
-        ${pro ? '' : `<div class="probar">${PX.PRO}<span>Estás viendo una <b>vista previa</b>. Esta herramienta viene en el plan <b>${ese ? 'Esencial' : 'PRO'}</b>${ese ? ' (y en PRO)' : ''}: con él editas los supuestos y ves todos los resultados.</span><button class="btn sm primary" data-planes>Ver planes</button></div>`}
-        <div class="pnav" role="tablist">${tools.map(t => `<button role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n} ${P.nivelDe(t.k) === 2 ? '<small class="tnv ese">Esencial</small>' : '<small class="tnv">PRO</small>'}</button>`).join('')}</div>
+        ${pro ? '' : `<div class="probar">${P.tag(cur)}<span>Estás viendo una <b>vista previa</b>. Esta herramienta viene en el plan <b>${ese ? 'Esencial' : 'PRO'}</b>${ese ? ' (y en PRO)' : ''}: con él editas los supuestos y ves todos los resultados.</span><button class="btn sm primary" data-planes>Ver planes</button></div>`}
+        <div class="pnav" role="tablist">${tools.map(t => `<button role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n} ${P.tag(t.k)}</button>`).join('')}</div>
         <div class="pbody${pro ? '' : ' preview'}" data-tool-body>${P.view[cur](r, st)}</div>
         <div class="foot">Herramienta ${ese ? 'del plan Esencial' : 'PRO'} de PlanoExactoCR. Resultados orientativos: no son un avalúo, un certificado de uso de suelo ni asesoría legal o financiera.</div>
       </div></div>`;
