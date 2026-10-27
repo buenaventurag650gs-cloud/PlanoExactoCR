@@ -250,7 +250,7 @@
   $('list').addEventListener('dblclick', e => { const b = e.target.closest('.item'); if (!b) return; const r = PX.item(b.dataset.k); if (r && r.ll) irA(r); });
 
   // ---------- mapa ----------
-  const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
+  const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 21, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
   const vistaInicial = () => map.fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.attributionControl.setPrefix('<a class="attrb" href="/" title="Ir al inicio">' + PX.marca('', 18, 12) + '<b>PlanoExacto</b>CR</a>');
@@ -268,7 +268,7 @@
   const ctxR = L.canvas({ pane: 'ctx' });
   const dark = () => (matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark';
   const osmAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-  const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 19 }, o));
+  const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 21, maxNativeZoom: 19 }, o));
   // Mapas base sin llave de API (CARTO pasó a exigir llave en 2026): Esri, OpenStreetMap y OpenTopoMap
   // Los nombres (calles, poblados, ríos) van en una capa superior para que no los tapen las capas temáticas
   map.createPane('lbl').style.zIndex = 450; map.getPane('lbl').style.pointerEvents = 'none';
@@ -278,11 +278,16 @@
   const base = {
     claro: L.layerGroup([canvas('World_Light_Gray_Base', { attribution: EA }), canvas('World_Light_Gray_Reference', lblOpt)]),
     calles: L.layerGroup([esri('World_Street_Map', { attribution: EA })]),
+    // Ortofoto: Esri de fondo y encima las ortofotos oficiales del Registro Nacional / IGN (SNIT), que tienen más detalle:
+    // mosaico 1:5 000 (2014-2017, todo el país), 1:1 000 (2015-2018, ciudades) y la misión 2026 de 10 cm donde ya existe.
     sat: L.layerGroup([esri('World_Imagery', { attribution: SA, maxNativeZoom: 19 }),
+      L.tileLayer.wms('https://geos1.snitcr.go.cr/Ortofoto2017/wms', { layers: 'Ortofoto2017:ortofoto2017_5000_altaresolucion', format: 'image/jpeg', version: '1.1.1', minZoom: 15, maxZoom: 21, attribution: 'Ortofotos &copy; Registro Nacional · IGN (SNIT)' }),
+      L.tileLayer.wms('https://geos1.snitcr.go.cr/Ortofoto1k/wms', { layers: 'Ortofoto1k:ortofoto2017_1000', format: 'image/png', transparent: true, version: '1.1.1', minZoom: 17, maxZoom: 21 }),
+      L.tileLayer.wms('https://geos1.snitcr.go.cr/ANOC_10cm_202601/wms', { layers: 'ortoimagen_10cm_mision_202601', format: 'image/png', transparent: true, version: '1.1.1', minZoom: 17, maxZoom: 21 }),
       esri('Reference/World_Transportation', Object.assign({ opacity: 0.85 }, lblOpt)), esri('Reference/World_Boundaries_and_Places', Object.assign({ attribution: 'Nombres &copy; Esri' }, lblOpt))]),
-    topo: L.layerGroup([L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19, maxNativeZoom: 17, attribution: 'Mapa &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), SRTM, OpenStreetMap' })]),
+    topo: L.layerGroup([L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 21, maxNativeZoom: 17, attribution: 'Mapa &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), SRTM, OpenStreetMap' })]),
     relieve: L.layerGroup([esri('World_Topo_Map', { attribution: EA + ', USGS' })]),
-    osm: L.layerGroup([L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osmAttr })]),
+    osm: L.layerGroup([L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, attribution: osmAttr })]),
     oscuro: L.layerGroup([canvas('World_Dark_Gray_Base', { attribution: EA }), canvas('World_Dark_Gray_Reference', lblOpt)])
   };
   // Servicios ArcGIS (Hacienda, AyA): teselas desde «export», con estilo propio (dynamicLayers)
@@ -358,7 +363,7 @@
   const MAF = [['Zona urbana', '#E07A5F'], ['Pasto', '#E9D8A6'], ['Cobertura forestal', '#2A9D8F'], ['Café', '#8D5B4C'], ['Caña', '#B5C99A'], ['Cultivo', '#F4A261'], ['Palma', '#6A994E'], ['Suelo desnudo', '#CDB4A0'], ['Red vial', '#9C9489']];
   const MAFO = '#C9CED1';
   const mafSld = sld('MAF2020', MAF.map(([n, c]) => `<Rule><ogc:Filter><ogc:PropertyIsEqualTo><ogc:PropertyName>CATEGORIA</ogc:PropertyName><ogc:Literal>${n}</ogc:Literal></ogc:PropertyIsEqualTo></ogc:Filter><PolygonSymbolizer>${fill(c, 0.62)}</PolygonSymbolizer></Rule>`).join('') + `<Rule><ElseFilter/><PolygonSymbolizer>${fill(MAFO, 0.4)}</PolygonSymbolizer></Rule>`);
-  const wms = (url, layers, o) => L.tileLayer.wms(url, Object.assign({ layers, version: '1.1.1', format: 'image/png', transparent: true, maxZoom: 19 }, o));
+  const wms = (url, layers, o) => L.tileLayer.wms(url, Object.assign({ layers, version: '1.1.1', format: 'image/png', transparent: true, maxZoom: 21 }, o));
   const SINIA = 'https://geodatos.sinia.go.cr/geoserver/';
   const HIDRO = '#3B8BD9', CURV = '#A0826D', PSA = '#6A994E', PROT = '#3B8BD9';
 
