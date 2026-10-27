@@ -402,8 +402,125 @@ async function rematesLibres(u, env) {
   return body;
 }
 
+// ---------- Páginas públicas para buscadores: /remates, /remates/<provincia>[/<cantón>], /remate/<id> ----------
+// Se generan aquí desde los datos del mapa (solo la información base, la misma que ve un visitante).
+const PROVS = ["San José", "Alajuela", "Cartago", "Heredia", "Guanacaste", "Puntarenas", "Limón"];
+const ETAPA = ["1.er remate", "2.º remate", "3.er remate"], PCT = [1, 0.75, 0.25];
+const MES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const slug = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const miles = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+const dinero = (v, mon) => v == null ? "—" : (mon === "USD" ? "US$" : "₡") + miles(v);
+const fechaTxt = (iso) => { const [d, h] = String(iso).split("T"); const [y, m, dd] = d.split("-").map(Number); return `${dd} de ${MES[m - 1]} de ${y}${h ? ", " + h : ""}`; };
+let DATOS = { etag: null, R: null, meta: null };
+async function datosPublicos(u, env) {
+  const body = await rematesLibres(u, env);
+  if (DATOS.R && DATOS.etag === LITE.etag) return DATOS;
+  const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);   // hora de Costa Rica
+  const R = JSON.parse(body).map((r) => { const st = (r.f || []).findIndex((f) => f >= ahora); return Object.assign(r, { st }); }).filter((r) => r.st >= 0 && r.pn && r.cn);
+  let meta = {}; try { meta = await (await env.ASSETS.fetch(new Request(new URL("/data/meta.json", u)))).json(); } catch (_) {}
+  DATOS = { etag: LITE.etag, R, meta };
+  return DATOS;
+}
+const tipoTxt = (t) => ({ "Con construcción": "Casa o edificación", "Lote": "Lote", "Agrícola": "Finca agrícola", "Filial": "Filial en condominio" }[t] || t || "Propiedad");
+function pagSEO(u, titulo, desc, cuerpo, ld) {
+  const canon = "https://" + u.host + u.pathname;
+  return new Response(`<!doctype html><html lang="es-CR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(titulo)}</title><meta name="description" content="${esc(desc)}"><link rel="canonical" href="${canon}">
+<meta property="og:type" content="website"><meta property="og:site_name" content="PlanoExactoCR"><meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${canon}"><meta property="og:image" content="https://${u.host}/assets/img/vista-app.webp"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/img/favicon.png"><script>try{const t=localStorage.getItem('px-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script><script src="/assets/fuentes.js"></script>
+${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>` : ""}
+<style>
+:root{--bg:#F1EEE7;--panel:#FCFBF8;--ink:#15302A;--muted:#4C5953;--line:#DCD8CE;--accent:#1F5A47;--accent-ink:#fff;--soft:#DFEDE6;--terra:#C8553D}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#5FB8AE;--accent-ink:#08201D;--soft:#16302C;--terra:#F08C74}}
+:root[data-theme="dark"]{--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#5FB8AE;--accent-ink:#08201D;--soft:#16302C;--terra:#F08C74}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--f-body)}a{color:var(--accent)}
+.franja{height:4px;background:linear-gradient(90deg,#15302A 0 46%,#539279 46% 82%,#D9906E 82%)}
+.wrap{max-width:960px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}
+.marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font:300 19px/1 Montserrat,var(--f-body);letter-spacing:.09em}.marca b{font-weight:700}.marca i{font-style:normal;color:#539279}.marca img{width:50px;height:auto}
+.lg-oscuro{display:none}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-claro{display:none}:root:not([data-theme="light"]) .lg-oscuro{display:block}}:root[data-theme="dark"] .lg-claro{display:none}:root[data-theme="dark"] .lg-oscuro{display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:600;text-decoration:none}.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+nav.migas{font-size:13.5px;color:var(--muted);margin:8px 0 4px}nav.migas a{color:var(--muted)}
+h1{font:800 clamp(26px,4vw,38px)/1.12 var(--f-display);margin:6px 0 6px;text-wrap:balance}h2{font:700 21px/1.25 var(--f-display);margin:26px 0 10px}
+.sub{color:var(--muted);margin:0 0 18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}.datos div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.datos b{display:block;font:600 21px/1.2 var(--f-body);font-variant-numeric:tabular-nums}.datos span{font-size:13px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}td.n{text-align:right;white-space:nowrap}tr.ya td{color:var(--muted);text-decoration:line-through}tr.ahora td{font-weight:700}
+.cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
+ul.lista{list-style:none;padding:0;margin:0;display:grid;gap:8px}ul.lista a{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;text-decoration:none;color:var(--ink)}ul.lista small{display:block;color:var(--muted)}ul.lista .p{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
+footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+</style></head><body><div class="franja"></div><div class="wrap">
+<header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.webp" alt="" width="50" height="34"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.webp" alt="" width="50" height="34"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
+${cuerpo}
+<footer>PlanoExactoCR reúne información pública del Boletín Judicial, el Registro Inmobiliario y otras fuentes oficiales con fines orientativos. No es asesoría legal ni un avalúo: verifique siempre en el expediente judicial y el Registro Nacional. · <a href="/privacidad">Privacidad</a></footer>
+</div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
+}
+const CTA = (r) => `<div class="cta"><b>¿Qué más hay que saber antes de ofertar?</b><p>Con tu cuenta gratis ves la ficha de cada remate y generas un expediente PDF completo por semana: ubicación exacta en el catastro, plan regulador, valor de Hacienda, agua potable y entorno.</p>
+<div class="acts"><a class="btn pri" href="/mapa?crear=1${r ? "#r" + r.id : ""}">Crear cuenta gratis</a>${r ? `<a class="btn" href="/mapa#r${r.id}">Ver en el mapa</a>` : `<a class="btn" href="/mapa">Explorar el mapa</a>`}</div></div>`;
+const itemLista = (r) => { const bv = r.base * PCT[r.st]; return `<li><a href="/remate/${r.id}"><span><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}${r.area ? " · " + miles(r.area) + " m²" : ""} · ${ETAPA[r.st]} el ${fechaTxt(r.f[r.st]).split(",")[0]}</small></span><span class="p">${dinero(bv, r.mon)}</span></a></li>`; };
+const migas = (items) => `<nav class="migas" aria-label="Ruta">${items.map(([t, h]) => h ? `<a href="${h}">${esc(t)}</a>` : esc(t)).join(" › ")}</nav>`;
+const ldMigas = (u, items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map(([t, h], i) => ({ "@type": "ListItem", position: i + 1, name: t, item: "https://" + u.host + (h || u.pathname) })) });
+
+async function seo(u, env) {
+  const p = decodeURIComponent(u.pathname).replace(/\/+$/, "") || "/";
+  const { R, meta } = await datosPublicos(u, env);
+  const porProv = (i) => R.filter((r) => r.prov === i + 1);
+  if (p === "/sitemap.xml") {
+    const hoy = (meta.generado || new Date().toISOString().slice(0, 10));
+    const urls = ["/", "/mapa", "/remates", "/privacidad"];
+    PROVS.forEach((pv, i) => { const L = porProv(i); if (!L.length) return; urls.push("/remates/" + slug(pv)); [...new Set(L.map((r) => r.cn))].forEach((c) => urls.push("/remates/" + slug(pv) + "/" + slug(c))); });
+    R.forEach((r) => urls.push("/remate/" + r.id));
+    return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((x) => `<url><loc>https://${u.host}${x}</loc><lastmod>${hoy}</lastmod></url>`).join("\n")}\n</urlset>`,
+      { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  }
+  if (p === "/remates") {
+    const cuerpo = `${migas([["Inicio", "/"], ["Remates judiciales"]])}<h1>Remates judiciales de propiedades en Costa Rica</h1>
+<p class="sub">${R.length} remates vigentes publicados en el Boletín Judicial${meta.ultimoBoletin ? ` (hasta el N.º ${meta.ultimoBoletin})` : ""}, por provincia y cantón. Se actualiza cada día hábil.</p>
+${PROVS.map((pv, i) => { const L = porProv(i); if (!L.length) return ""; const cs = {}; L.forEach((r) => cs[r.cn] = (cs[r.cn] || 0) + 1);
+  return `<h2><a href="/remates/${slug(pv)}">${pv}</a> <small style="color:var(--muted);font-weight:500">${L.length} remates</small></h2><ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(b, "es")).map((c) => `<li><a href="/remates/${slug(pv)}/${slug(c)}">${esc(c)} (${cs[c]})</a></li>`).join("")}</ul>`; }).join("")}
+${CTA()}`;
+    return pagSEO(u, "Remates judiciales en Costa Rica por provincia y cantón · PlanoExactoCR", `${R.length} remates judiciales vigentes de casas, lotes y fincas en Costa Rica, ordenados por provincia y cantón, con base, fechas y ubicación en el mapa.`, cuerpo, ldMigas(u, [["Inicio", "/"], ["Remates", "/remates"]]));
+  }
+  let m = p.match(/^\/remates\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?$/);
+  if (m) {
+    const i = PROVS.findIndex((pv) => slug(pv) === m[1]); if (i < 0) return null;
+    let L = porProv(i), cn = null;
+    if (m[2]) { L = L.filter((r) => slug(r.cn) === m[2]); if (!L.length) return null; cn = L[0].cn; }
+    L.sort((a, b) => a.f[a.st].localeCompare(b.f[b.st]));
+    const lugar = cn ? `${cn}, ${PROVS[i]}` : PROVS[i];
+    const tipos = {}; L.forEach((r) => tipos[tipoTxt(r.tipo)] = (tipos[tipoTxt(r.tipo)] || 0) + 1);
+    const cs = {}; if (!cn) L.forEach((r) => cs[r.cn] = (cs[r.cn] || 0) + 1);
+    const ruta = [["Inicio", "/"], ["Remates", "/remates"], [PROVS[i], cn ? "/remates/" + m[1] : null]].concat(cn ? [[cn]] : []);
+    const cuerpo = `${migas(ruta)}<h1>Remates judiciales en ${esc(lugar)}</h1>
+<p class="sub">${L.length} ${L.length === 1 ? "propiedad en remate" : "propiedades en remate"} vigentes: ${Object.entries(tipos).map(([t, n]) => `${n} ${t.toLowerCase()}${n > 1 && !t.endsWith("s") ? (t.endsWith("n") ? "es" : "s") : ""}`).join(", ")}. Ordenadas por la fecha del próximo remate.</p>
+${cn ? "" : `<ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(b, "es")).map((c) => `<li><a href="/remates/${m[1]}/${slug(c)}">${esc(c)} (${cs[c]})</a></li>`).join("")}</ul>`}
+<ul class="lista" style="margin-top:16px">${L.map(itemLista).join("")}</ul>${CTA()}`;
+    return pagSEO(u, `Remates judiciales en ${lugar} · casas, lotes y fincas · PlanoExactoCR`, `${L.length} remates judiciales vigentes en ${lugar}: casas, lotes y fincas con base, fechas de remate y ubicación en el mapa. Actualizado del Boletín Judicial.`, cuerpo, ldMigas(u, ruta.map(([t, h]) => [t, h || u.pathname])));
+  }
+  m = p.match(/^\/remate\/(\d+)$/);
+  if (m) {
+    const r = R.find((x) => String(x.id) === m[1]); if (!r) return null;
+    const bv = r.base * PCT[r.st], i = r.prov - 1, lugar = [r.dn, r.cn, r.pn].filter(Boolean).join(", ");
+    const titulo = `Remate judicial: ${tipoTxt(r.tipo).toLowerCase()} en ${[r.dn, r.cn].filter(Boolean).join(", ")}`;
+    const ruta = [["Inicio", "/"], ["Remates", "/remates"], [r.pn, "/remates/" + slug(r.pn)], [r.cn, "/remates/" + slug(r.pn) + "/" + slug(r.cn)], [r.nom || "Remate"]];
+    const vecinos = R.filter((x) => x.cn === r.cn && x.id !== r.id).slice(0, 6);
+    const cuerpo = `${migas(ruta)}<h1>${esc(titulo.charAt(0).toUpperCase() + titulo.slice(1))}</h1><p class="sub">${esc(lugar)} · publicado en el Boletín Judicial N.º ${esc((r.bols || [r.bol]).join(" y "))}</p>
+<div class="datos"><div><b>${dinero(bv, r.mon)}</b><span>Base del ${ETAPA[r.st]}</span></div><div><b>${fechaTxt(r.f[r.st]).split(",")[0]}</b><span>Próximo remate${r.f[r.st].includes("T") ? " · " + r.f[r.st].split("T")[1] : ""}</span></div><div><b>${r.area ? miles(r.area) + " m²" : "—"}</b><span>Área según el edicto</span></div><div><b>${esc(tipoTxt(r.tipo))}</b><span>Tipo de propiedad</span></div></div>
+<h2>Fechas y bases</h2><div class="card" style="padding:4px 14px"><table><thead><tr><th>Remate</th><th>Fecha</th><th style="text-align:right">Base</th></tr></thead><tbody>
+${(r.f || []).map((f, k) => `<tr class="${k < r.st ? "ya" : k === r.st ? "ahora" : ""}"><td>${ETAPA[k]}${k ? ` (${PCT[k] * 100} %)` : ""}</td><td>${fechaTxt(f)}</td><td class="n">${dinero(r.base * PCT[k], r.mon)}</td></tr>`).join("")}
+</tbody></table></div>
+${CTA(r)}
+${vecinos.length ? `<h2>Otros remates en ${esc(r.cn)}</h2><ul class="lista">${vecinos.map(itemLista).join("")}</ul><p><a href="/remates/${slug(r.pn)}/${slug(r.cn)}">Ver todos los remates en ${esc(r.cn)}</a></p>` : ""}`;
+    const desc = `${tipoTxt(r.tipo)} en remate judicial en ${lugar}${r.area ? `, ${miles(r.area)} m²` : ""}. ${ETAPA[r.st]} el ${fechaTxt(r.f[r.st]).split(",")[0]} con base de ${dinero(bv, r.mon)}. Ubicación, plan regulador y valor de Hacienda en PlanoExactoCR.`;
+    return pagSEO(u, `${titulo} · base ${dinero(bv, r.mon)} · PlanoExactoCR`, desc, cuerpo, ldMigas(u, ruta.map(([t, h]) => [t, h || u.pathname])));
+  }
+  return null;
+}
+
 const SOLO_ADMIN = new Set(["/admin", "/admin.html", "/catastro", "/catastro.html", "/data/pendientes.json", "/data/catastro_resultados.json", "/data/estado.json", "/admin/registros.csv", "/admin/usuarios.csv"]);
-const INDEXABLES = new Set(["/", "/mapa", "/privacidad", "/robots.txt"]);
+const INDEXABLES = new Set(["/", "/mapa", "/privacidad", "/robots.txt", "/sitemap.xml"]);
+const esIndexable = (p) => INDEXABLES.has(p) || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/");
 
 export default {
   async fetch(request, env) {
@@ -459,7 +576,10 @@ export default {
     if ((p === "/api/plano" || p === "/api/finca") && !dentro) return json({ error: "Entra con tu cuenta para buscar planos y fincas." }, 401, 0);
 
     let res;
-    if (p === "/data/remates.json" && !dentro) res = new Response(await rematesLibres(u, env), { headers: { "content-type": "application/json; charset=utf-8" } });
+    if (p === "/sitemap.xml" || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/")) {
+      res = await seo(u, env).catch(() => null);
+      if (!res) res = new Response("No encontramos esa página. Puede ser un remate que ya pasó.", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+    } else if (p === "/data/remates.json" && !dentro) res = new Response(await rematesLibres(u, env), { headers: { "content-type": "application/json; charset=utf-8" } });
     else if (p.startsWith("/api/")) res = await api(u);
     else {
       // Los archivos estáticos se sirven sin «.html» (/inicio, /admin…) y index.html en «/»
@@ -467,7 +587,7 @@ export default {
       res = await env.ASSETS.fetch(archivo ? new Request(new URL(archivo, u), request) : request);
     }
     const out = new Response(res.body, res);
-    if (!(env.DOMINIO && u.hostname === env.DOMINIO && INDEXABLES.has(p))) out.headers.set("X-Robots-Tag", "noindex, nofollow");
+    if (!(env.DOMINIO && u.hostname === env.DOMINIO && esIndexable(p))) out.headers.set("X-Robots-Tag", "noindex, nofollow");
     out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     out.headers.set("X-Content-Type-Options", "nosniff");
     if (p.startsWith("/data/")) out.headers.set("Cache-Control", dentro && p === "/data/remates.json" ? "private, max-age=0, must-revalidate" : "public, max-age=0, must-revalidate");

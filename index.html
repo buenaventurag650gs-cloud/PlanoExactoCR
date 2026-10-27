@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Remates judiciales de fincas en Costa Rica, ubicados por plano y finca sobre el catastro, con entorno y análisis de cada lote.">
 <meta name="robots" content="noindex, nofollow">
-<title>PlanoExactoCR · Ubica, comprende, decide</title>
+<title>Mapa de remates judiciales de Costa Rica · PlanoExactoCR</title>
+<link rel="canonical" href="https://planoexactocr.com/mapa">
+<meta property="og:title" content="Mapa de remates judiciales de Costa Rica · PlanoExactoCR"><meta property="og:description" content="Todos los remates judiciales de propiedades de Costa Rica en un mapa, con base, fechas y ubicación."><meta property="og:image" content="https://planoexactocr.com/assets/img/vista-app.webp"><meta property="og:url" content="https://planoexactocr.com/mapa"><meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -418,11 +420,13 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
       <div class="lyrpanel" id="lyrPanel" hidden></div>
       <div class="hoverbox" id="hoverbox" hidden></div>
       <div class="legend" aria-hidden="true">
-        <div class="r"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0V6.5M9 11.5V18M0 9H6.5M11.5 9H18" stroke="#2B5C8A" stroke-width="2.4" stroke-linecap="round"/><circle cx="9" cy="9" r="1.6" fill="#2B5C8A"/></svg><span class="stb s1 sm">1.º</span> base completa</div>
-        <div class="r"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0V6.5M9 11.5V18M0 9H6.5M11.5 9H18" stroke="#B7791F" stroke-width="2.4" stroke-linecap="round"/><circle cx="9" cy="9" r="1.6" fill="#B7791F"/></svg><span class="stb s2 sm">2.º</span> base al 75 %</div>
-        <div class="r"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 0V6.5M9 11.5V18M0 9H6.5M11.5 9H18" stroke="#B42318" stroke-width="2.4" stroke-linecap="round"/><circle cx="9" cy="9" r="1.6" fill="#B42318"/></svg><span class="stb s3 sm">3.º</span> base al 25 %</div>
+        <div class="r"><span class="pd" style="--c:#2B5C8A"></span><span class="stb s1 sm">1.º</span> base completa</div>
+        <div class="r"><span class="pd" style="--c:#B7791F"></span><span class="stb s2 sm">2.º</span> base al 75 %</div>
+        <div class="r"><span class="pd" style="--c:#B42318"></span><span class="stb s3 sm">3.º</span> base al 25 %</div>
         <div class="sep"></div>
-        <div class="r loc"><span style="width:18px;display:inline-grid;place-items:center"><i style="--c:#C8553D;width:8px;height:8px"></i></span>Favorito</div>
+        <div class="r"><span class="gr mini" style="background:conic-gradient(#2B5C8A 0 60%,#B7791F 60% 85%,#B42318 85%)"><b>12</b></span>Varios remates juntos</div>
+        <div class="r"><span class="pd aprox" style="--c:#55635D"></span>Ubicación aproximada</div>
+        <div class="r"><span class="pd" style="--c:#55635D"><i class="pf"></i></span>Favorito</div>
       </div>
       <section class="ficha" id="ficha" hidden aria-label="Ficha de la propiedad"></section>
     </div>

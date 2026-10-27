@@ -1,6 +1,11 @@
 User-agent: *
-Allow: /$
-Allow: /inicio.html
-Allow: /privacidad.html
-Allow: /assets/img/
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /catastro
+Disallow: /expediente
+Disallow: /restablecer
+Disallow: /data/
+Disallow: /__acceso
+
+Sitemap: https://planoexactocr.com/sitemap.xml

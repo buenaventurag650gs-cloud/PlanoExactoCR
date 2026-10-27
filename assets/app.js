@@ -555,23 +555,65 @@
     return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.stageBadge(r.st, true)} ${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st]} · ${fdate(r.next)}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
   }
   const ringLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
-  // Marcador en cruz: dos líneas que se cruzan sobre el punto; color según la etapa del remate
+  // Marcadores: de lejos, círculos que agrupan los remates cercanos con su número y un anillo con la proporción
+  // de 1.º, 2.º y 3.º remate; al acercarse se separan en puntos individuales del color de su etapa.
   const XC = ['#2B5C8A', '#B7791F', '#B42318'];
-  // Tamaños 30 % mayores que la primera versión: 18 / 26 / 34 px según el zoom
-  const xIcon = (st, big, fav) => { const c = XC[st] || '#15302A', s2 = big === 2 ? 34 : big ? 26 : 18, h = s2 / 2, g = 3.2; return L.divIcon({ className: 'xh', iconSize: [s2, s2], iconAnchor: [h, h], html: `<svg width="${s2}" height="${s2}" viewBox="0 0 ${s2} ${s2}"><path d="M${h} 0V${h - g}M${h} ${h + g}V${s2}M0 ${h}H${h - g}M${h + g} ${h}H${s2}" stroke="${c}" stroke-width="${big === 2 ? 3.9 : big ? 3.1 : 2.6}" stroke-linecap="round"/>${fav ? `<circle cx="${h}" cy="${h}" r="4.2" fill="#C8553D"/>` : `<circle cx="${h}" cy="${h}" r="2.1" fill="${c}"/>`}</svg>` }); };
+  const ZSEP = 13;          // desde este zoom ya no se agrupa
+  const RADIO = 54;         // distancia en píxeles para agrupar
+  const xIcon = (st, big, fav, exacto) => {
+    const c = XC[st] || '#15302A', d = big === 2 ? 26 : big ? 20 : 15;
+    const txt = big === 2 ? `<b>${st + 1}</b>` : '';
+    return L.divIcon({ className: 'pt', iconSize: [d, d], iconAnchor: [d / 2, d / 2],
+      html: `<span class="pd${exacto ? '' : ' aprox'}" style="--c:${c};width:${d}px;height:${d}px">${txt}${fav ? '<i class="pf"></i>' : ''}</span>` });
+  };
+  const grupoIcon = g => {
+    const n = g.items.length, d = Math.round(Math.min(64, 30 + 7.5 * Math.log2(n)));
+    const c = [0, 0, 0]; g.items.forEach(r => { if (r.st >= 0 && r.st < 3) c[r.st]++; });
+    let a = 0; const seg = c.map((k, i) => { const b = a + k / n * 360; const t = `${XC[i]} ${a}deg ${b}deg`; a = b; return t; }).join(',');
+    return L.divIcon({ className: 'pt', iconSize: [d, d], iconAnchor: [d / 2, d / 2],
+      html: `<span class="gr" style="width:${d}px;height:${d}px;background:conic-gradient(${seg})"><b style="font-size:${n >= 100 ? 12 : 13.5}px">${n}</b></span>` });
+  };
+  function agrupar(lista, z) {
+    const celdas = new Map(), grupos = [];
+    for (const r of lista) {
+      const p = map.project([r.ll[1], r.ll[0]], z), cx = Math.floor(p.x / RADIO), cy = Math.floor(p.y / RADIO);
+      let g = null;
+      for (let dx = -1; dx <= 1 && !g; dx++) for (let dy = -1; dy <= 1 && !g; dy++) {
+        for (const h of celdas.get((cx + dx) + ':' + (cy + dy)) || []) if (Math.hypot(h.x - p.x, h.y - p.y) < RADIO) { g = h; break; }
+      }
+      if (!g) { g = { x: p.x, y: p.y, items: [] }; grupos.push(g); const k = cx + ':' + cy; (celdas.get(k) || celdas.set(k, []).get(k)).push(g); }
+      g.items.push(r);
+      g.x += (p.x - g.x) / g.items.length; g.y += (p.y - g.y) / g.items.length;   // centro promedio
+    }
+    return grupos;
+  }
   function renderMarkers() {
     markers.clearLayers(); polys.clearLayers();
     const z = map.getZoom();
-    for (const r of shown) {
-      if (!r.ll) continue;
+    const on = (l, r) => { l.on('click', () => openFicha(r.key, true)); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
+    const punto = r => {
       const col = XC[r.st], ll = [r.ll[1], r.ll[0]];
-      const on = l => { l.on('click', () => openFicha(r.key, true)); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
-      if (r.exact && r.poly && z >= 15) {
+      if (r.exact && r.poly && z >= 15 && (PX.isEsencial() || PX.tieneExp(r.key))) {
         const pg = L.polygon(ringLL(r), { color: col, weight: 2, fillColor: col, fillOpacity: 0.18 });
-        on(pg); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
+        on(pg, r); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
       }
-      const m = L.marker(ll, { icon: xIcon(r.st, z >= 13 ? 2 : z >= 10 ? 1 : 0, PX.isFav(r.key)), keyboard: false, riseOnHover: true });
-      on(m); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -10] });
+      const m = L.marker(ll, { icon: xIcon(r.st, z >= 14 ? 2 : z >= 11 ? 1 : 0, PX.isFav(r.key), r.exact), keyboard: false, riseOnHover: true });
+      on(m, r); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -10] });
+      markers.addLayer(m);
+    };
+    const conPunto = shown.filter(r => r.ll);
+    if (z >= ZSEP) { conPunto.forEach(punto); return; }
+    for (const g of agrupar(conPunto, z)) {
+      if (g.items.length === 1) { punto(g.items[0]); continue; }
+      const c = [0, 0, 0]; g.items.forEach(r => { if (r.st >= 0 && r.st < 3) c[r.st]++; });
+      const m = L.marker(map.unproject([g.x, g.y], z), { icon: grupoIcon(g), keyboard: false, riseOnHover: true, zIndexOffset: g.items.length });
+      m.bindTooltip(`<b>${g.items.length} remates</b><br>${c.map((k, i) => k ? `${PX.ETAPA[i]}: ${k}` : '').filter(Boolean).join(' · ')}<br><span class="tipm">Haz clic para acercarte</span>`, { direction: 'top', offset: [0, -14] });
+      m.on('click', () => {
+        const b = L.latLngBounds(g.items.map(r => [r.ll[1], r.ll[0]]));
+        if (b.getNorthEast().equals(b.getSouthWest())) map.setView(b.getCenter(), ZSEP);
+        else map.fitBounds(b, { padding: [50, 50], maxZoom: ZSEP });
+      });
+      m.on('mouseover', () => { overMarker = true; hb.hidden = true; }); m.on('mouseout', () => { overMarker = false; });
       markers.addLayer(m);
     }
   }

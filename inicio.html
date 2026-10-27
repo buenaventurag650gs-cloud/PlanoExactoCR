@@ -7,7 +7,11 @@
 <meta name="description" content="Los remates judiciales de propiedades de Costa Rica, ubicados en el mapa y cruzados con catastro, plan regulador, valor de Hacienda, agua y entorno.">
 <meta property="og:title" content="PlanoExactoCR · Remates judiciales en el mapa">
 <meta property="og:description" content="Cada mañana leemos el Boletín Judicial, ubicamos cada finca y la analizamos para que decidas antes de ofertar.">
-<meta property="og:image" content="/assets/img/vista-app.webp">
+<meta property="og:image" content="https://planoexactocr.com/assets/img/vista-app.webp">
+<meta property="og:url" content="https://planoexactocr.com/"><meta property="og:type" content="website"><meta property="og:site_name" content="PlanoExactoCR"><meta property="og:locale" content="es_CR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://planoexactocr.com/">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"PlanoExactoCR","url":"https://planoexactocr.com/","inLanguage":"es-CR","description":"Remates judiciales de propiedades de Costa Rica ubicados en el mapa y cruzados con catastro, plan regulador, valor de Hacienda y agua."},{"@type":"Organization","name":"PlanoExactoCR","url":"https://planoexactocr.com/","logo":"https://planoexactocr.com/assets/img/logo.webp","email":"hola@planoexactocr.com","sameAs":["https://instagram.com/planoexactocr"]}]}</script>
 <link rel="icon" href="/assets/img/favicon.png">
 <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,6 +72,7 @@ h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--f-display); margin: 0 0 8px; te
 .plan .alt, .plan .nota { font-size: 13px; color: var(--muted); } .plan .nota { color: var(--terra); font-weight: 600; }
 .plan ul { margin: 4px 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
 .para { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.para a { color: inherit; text-decoration: none; }
 .para li { padding: 7px 12px; border-radius: 999px; background: var(--soft); font-size: 14px; font-weight: 600; }
 .registro { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 28px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
 .cupon { display: inline-block; padding: 4px 10px; border-radius: 8px; background: var(--terra-soft); color: var(--terra); font: 700 14px/1.3 var(--f-body); margin-bottom: 10px; }
@@ -131,6 +136,12 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   <section>
     <h2>Para quién</h2>
     <ul class="para"><li>Compradores de vivienda</li><li>Inversionistas</li><li>Abogados</li><li>Corredores de bienes raíces</li><li>Desarrolladores</li><li>Topógrafos y valuadores</li></ul>
+  </section>
+
+  <section id="provincias">
+    <h2>Remates por provincia</h2>
+    <p class="sub">Lista de remates vigentes, actualizada cada día hábil con el Boletín Judicial.</p>
+    <ul class="para"><li><a href="/remates/san-jose">San José</a></li><li><a href="/remates/alajuela">Alajuela</a></li><li><a href="/remates/cartago">Cartago</a></li><li><a href="/remates/heredia">Heredia</a></li><li><a href="/remates/guanacaste">Guanacaste</a></li><li><a href="/remates/puntarenas">Puntarenas</a></li><li><a href="/remates/limon">Limón</a></li><li><a href="/remates">Todos los cantones</a></li></ul>
   </section>
 
   <section id="planes">

@@ -468,3 +468,16 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .ese::before { content: "◆"; font-size: 9.5px; }
 .badge.ese { background: color-mix(in srgb, #539279 18%, transparent); color: var(--accent); }
 .badge.ese::before { content: "◆ "; font-size: 9px; }
+/* ---------- Marcadores del mapa ---------- */
+.pt { background: none !important; border: 0 !important; }
+.pd { position: relative; display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); box-sizing: border-box; transition: transform .12s; }
+.pd b { color: #fff; font: 700 11px/1 var(--f-body); }
+.pd.aprox { background: color-mix(in srgb, var(--c) 45%, transparent); border: 2px dashed #fff; }
+.pd .pf { position: absolute; top: -4px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: #C8553D; border: 1.5px solid #fff; }
+.leaflet-marker-icon:hover .pd { transform: scale(1.18); }
+.gr { display: grid; place-items: center; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.3); cursor: pointer; transition: transform .12s; }
+.gr::before { content: ""; grid-area: 1 / 1; width: calc(100% - 9px); height: calc(100% - 9px); border-radius: 50%; background: #15302A; }
+.gr b { grid-area: 1 / 1; position: relative; color: #fff; font: 700 13.5px/1 var(--f-body); font-variant-numeric: tabular-nums; }
+.leaflet-marker-icon:hover .gr { transform: scale(1.08); }
+.gr.mini { width: 22px; height: 22px; } .gr.mini::before { width: 15px; height: 15px; } .gr.mini b { font-size: 8.5px; }
+.legend .pd { width: 13px; height: 13px; flex: none; margin: 0 2px; }
