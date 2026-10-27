@@ -558,6 +558,7 @@
   // Marcadores: de lejos, círculos que agrupan los remates cercanos con su número y un anillo con la proporción
   // de 1.º, 2.º y 3.º remate; al acercarse se separan en puntos individuales del color de su etapa.
   const XC = ['#2B5C8A', '#B7791F', '#B42318'];
+  const TERRA = '#D9906E', TERRA_D = '#C8553D';   // terracota del logo: predios en el mapa
   const ZSEP = 13;          // desde este zoom ya no se agrupa
   const RADIO = 54;         // distancia en píxeles para agrupar
   const xIcon = (st, big, fav, exacto) => {
@@ -593,11 +594,13 @@
     const on = (l, r) => { l.on('click', () => openFicha(r.key, true)); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
     const punto = r => {
       const col = XC[r.st], ll = [r.ll[1], r.ll[0]];
-      if (r.exact && r.poly && z >= 15 && (PX.isEsencial() || PX.tieneExp(r.key))) {
-        const pg = L.polygon(ringLL(r), { color: col, weight: 2, fillColor: col, fillOpacity: 0.18 });
+      if (r.exact && r.poly && z >= 15) {   // el predio exacto, en el terracota del logo
+        const pg = L.polygon(ringLL(r), { color: TERRA_D, weight: 2, fillColor: TERRA, fillOpacity: 0.32 });
         on(pg, r); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
       }
-      const m = L.marker(ll, { icon: xIcon(r.st, z >= 14 ? 2 : z >= 11 ? 1 : 0, PX.isFav(r.key), r.exact), keyboard: false, riseOnHover: true });
+      // Con el predio dibujado (zoom 16+), el punto se achica para no tapar la forma
+      const chico = r.exact && r.poly && z >= 16;
+      const m = L.marker(ll, { opacity: chico ? 0.9 : 1, icon: chico ? xIcon(r.st, 0, PX.isFav(r.key), true) : xIcon(r.st, z >= 14 ? 2 : z >= 11 ? 1 : 0, PX.isFav(r.key), r.exact), keyboard: false, riseOnHover: true });
       on(m, r); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -10] });
       markers.addLayer(m);
     };
@@ -658,6 +661,23 @@
       ${r.ll ? `<a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a>` : ''}
     </div>${listMenu(r)}`;
   }
+  // Forma del predio en pequeño: contorno a escala con norte y barra de escala
+  function formaSVG(r, W = 150, H = 118) {
+    if (!r.poly || !r.poly[0] || !r.poly[0][0]) return '';
+    const ring = r.poly[0][0], lat0 = ring.reduce((a, p) => a + p[1], 0) / ring.length;
+    const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+    const pts = ring.map(([x, y]) => [x * kx, -y * ky]);
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), x0 = Math.min(...xs), y0 = Math.min(...ys);
+    const w = Math.max(...xs) - x0, h = Math.max(...ys) - y0, pad = 14, k = Math.min((W - 2 * pad) / (w || 1), (H - 2 * pad - 10) / (h || 1));
+    const ox = (W - w * k) / 2, oy = (H - 10 - h * k) / 2;
+    const d = 'M' + pts.map(([x, y]) => `${((x - x0) * k + ox).toFixed(1)},${((y - y0) * k + oy).toFixed(1)}`).join('L') + 'Z';
+    const nice = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000].find(v => v * k >= 26) || 5000, bl = nice * k;
+    return `<figure class="forma"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Forma del predio">
+      <path d="${d}" fill="${TERRA}" fill-opacity=".55" stroke="${TERRA_D}" stroke-width="1.6" stroke-linejoin="round"/>
+      <g transform="translate(${W - 12},14)"><path d="M0 -8 L4 4 L0 1.5 L-4 4 Z" fill="currentColor"/><text y="13" text-anchor="middle" font-size="8" font-weight="700" fill="currentColor">N</text></g>
+      <g transform="translate(8,${H - 8})"><path d="M0 0 H${bl.toFixed(1)}" stroke="currentColor" stroke-width="2"/><path d="M0 -3 V3 M${bl.toFixed(1)} -3 V3" stroke="currentColor" stroke-width="1"/><text x="${(bl + 4).toFixed(1)}" y="3" font-size="8.5" fill="currentColor">${nice} m</text></g>
+    </svg><figcaption>Forma según el catastro</figcaption></figure>`;
+  }
   function fichaPrevia(r) {
     const f = $('ficha'), a = PX.prof(r);
     const ven = [[PX.ICON.gavel || '', 'Fechas y bases de los tres remates'], [PX.ICON.terreno || '', 'Área y topografía del lote'], [PX.ICON.norma || '', 'Estado del plan regulador'], [PX.ICON.list || '', 'Listas y seguimiento de remates'], [PX.ICON.alerta || '', `${PX.PRECIOS.semanal} expediente PDF completo gratis por semana`]];
@@ -665,6 +685,7 @@
     <div class="fbody">
       <div class="ftitle"><h2>${esc(r.nom)}</h2><div class="where">${esc(r.lugar || 'Ubicación por definir')}</div></div>
       <div class="pricebox"><span class="lbl">Base vigente · ${PX.ETAPA[r.st] || ''} · ${fdate(r.next)}</span><span class="big">${PX.money(r.bv, r.mon)}</span><span class="alt eqbig">${PX.other(r.bv, r.mon)}</span><span class="alt"><span>${a ? fnum(a) + ' m²' : 'área s/d'}</span></span></div>
+      ${r.poly ? `<div class="formap">${formaSVG(r)}</div>` : ''}
       <div class="gate emph">
         <h3>Crea tu cuenta gratis para ver la ficha</h3><small>Con tu cuenta gratis:</small>
         <ul>${ven.map(([i, t]) => `<li><span class="ri" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
@@ -674,14 +695,19 @@
     </div>`;
     f.hidden = false; $('fx').onclick = closeFicha;
     selLayer.clearLayers();
-    if (r.ll) { selLayer.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false })); }
+    if (r.ll) selLayer.addLayer(r.poly ? L.polygon(ringLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.45 }) : L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false }));
     try { history.replaceState(null, '', '#' + r.key); } catch (err) {}
   }
   // Acercar al remate: máximo zoom (17) si está ubicado exacto; 14 si es aproximado al distrito.
   // En pantallas anchas se corre el punto a la izquierda para que no quede detrás de la ficha.
   const irA = r => {
+    const ancho = window.innerWidth > 900;
+    if (r.poly && r.exact !== false) {   // con predio: encuadrarlo completo, con contexto alrededor (hasta zoom 19)
+      const b = L.polygon(ringLL(r)).getBounds();
+      return map.fitBounds(b, { maxZoom: 19, paddingTopLeft: [140, 140], paddingBottomRight: ancho ? [140 + 480, 140] : [140, 140] });
+    }
     const z = r.exact || r.isPlano ? 17 : 14, ll = L.latLng(r.ll[1], r.ll[0]);
-    const desp = window.innerWidth > 900 ? 240 : 0, p = map.project(ll, z).add([desp, 0]);
+    const p = map.project(ll, z).add([ancho ? 240 : 0, 0]);
     map.setView(map.unproject(p, z), z);
   };
   function openFicha(key, fly) {
@@ -727,7 +753,7 @@
       ${r.rev ? `<div class="note">${esc(r.rev)}</div>` : ''}
       <div class="fgrp">Información base</div>
       ${r.isPlano ? '' : sec(PX.ICON.gavel, 'Remate', `<div class="timeline">${tl || '<div class="tl">Sin fechas legibles en el edicto.</div>'}</div>`, PX.whenTag(r.next))}
-      ${sec(I.terreno, 'Terreno', `<dl class="kv">
+      ${sec(I.terreno, 'Terreno', `${formaSVG(r)}<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm && ese ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
         <dt>Topografía</dt><dd>${topo ? esc(topo.txt) : 'Sin cartografía 1:5 000 en el sitio'}${topo ? '<small class="sub">Según curvas de nivel del IGN</small>' : ''}</dd>
@@ -736,7 +762,7 @@
       </dl>`)}
       ${sec(I.norma, 'Normativa', `<p style="margin:0"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="note" style="padding:6px 9px">${esc(t)}</div>`).join('')}`)}
       <div class="fgrp">${PX.ESE} Con el plan Esencial</div>
-      ${ESEsec('Número de finca y plano, servidumbres citadas y el predio dibujado según el catastro.', I.registro, 'Registro y ubicación', `<dl class="kv">
+      ${ESEsec('Número de finca y plano, servidumbres citadas y origen de la ubicación.', I.registro, 'Registro y ubicación', `<dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
         ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
@@ -772,10 +798,10 @@
     selLayer.clearLayers();
     if (r.ll) {
       const col = r.isPlano ? css('--accent') : XC[r.st];
-      if (r.poly && ese) {
-        const pg = L.polygon(ringLL(r), { color: css('--ink'), weight: 2.5, fillColor: col, fillOpacity: 0.35 });
+      if (r.poly) {
+        const pg = L.polygon(ringLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.45 });
         selLayer.addLayer(pg);
-        if (fly !== false) map.fitBounds(pg.getBounds(), { maxZoom: 17, paddingTopLeft: [60, 60], paddingBottomRight: window.innerWidth > 900 ? [480, 60] : [60, 60] });
+        if (fly !== false) irA(r);
       } else {
         selLayer.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { radius: 14, color: css('--ink'), weight: 2, dashArray: '4 4', fill: false }));
         if (fly !== false) irA(r);
@@ -948,11 +974,11 @@
       ${why ? `<div class="note">${esc(why)}</div>` : ''}
       <div class="plans p3">
         <div class="plan${n === 1 ? ' hl' : ''}"><h3>Cuenta gratis</h3><div class="pr sm">Con tu correo</div>
-          <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Listas y seguimiento</li><li><b>${PX.PRECIOS.semanal} expediente por semana</b></li></ul>
+          <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Predio exacto en el mapa, con su forma según el catastro</li><li>Listas y seguimiento</li><li><b>${PX.PRECIOS.semanal} expediente por semana</b></li></ul>
           ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : n === 1 ? '<span class="tag ok">Tu plan actual</span>' : ''}</div>
         <div class="plan${n === 2 ? ' hl' : ''}"><h3>${PX.ESE} Lo esencial para decidir</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año</div>
-          <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b></li></ul>
+          <ul><li>Todo lo de la cuenta gratis</li><li>Número de finca y plano, servidumbres y gravámenes citados</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b></li></ul>
           ${n === 2 ? '<button class="btn" data-pagar="basico">Renovar Esencial</button>' : n < 2 ? '<button class="btn" data-pagar="basico">Activar Esencial</button>' : ''}</div>
         <div class="plan${n === 3 ? ' hl' : ''}"><h3>${PX.PRO} Acceso total</h3><div class="pr">${PX.mh(PX.PRECIOS.pro, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)</div>

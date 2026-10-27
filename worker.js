@@ -472,7 +472,7 @@ async function guardarCatastro(request, env) {
 }
 
 // ---------- Remates para visitantes sin cuenta: solo lo que se ve en el mapa y la lista ----------
-const VISIBLES = ["id", "prov", "finca", "der", "filial", "multi", "base", "mon", "f", "area", "tipo", "ll", "loc", "dc", "dn", "cn", "pn", "nom", "pubF", "bol", "bols"];
+const VISIBLES = ["id", "prov", "finca", "der", "filial", "multi", "base", "mon", "f", "area", "tipo", "ll", "poly", "loc", "dc", "dn", "cn", "pn", "nom", "pubF", "bol", "bols"];
 let LITE = { etag: null, body: null };
 async function rematesLibres(u, env) {
   const r = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)));
