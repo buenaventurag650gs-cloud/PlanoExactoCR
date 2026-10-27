@@ -14,7 +14,7 @@ routes = [
 [vars]
 DOMINIO = "planoexactocr.com"
 # Correo que recibe los avisos de cuentas nuevas y solicitudes de plan (debe estar verificado en Email Routing)
-AVISOS_A = ""
+AVISOS_A = "buenaventurag650gs@gmail.com"
 
 [assets]
 directory = "."
