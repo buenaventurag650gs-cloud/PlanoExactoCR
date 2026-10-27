@@ -668,6 +668,11 @@ export default {
       const archivo = p === "/" ? "/inicio" : p === "/mapa" ? "/" : null;
       res = await env.ASSETS.fetch(archivo ? new Request(new URL(archivo, u), request) : request);
     }
+    // Versión en las direcciones de scripts y estilos: cada publicación los renueva sin esperar cachés
+    if (env.VER && (res.headers.get("content-type") || "").includes("text/html")) {
+      const v = (env.VER.id || "").slice(0, 8), conV = (el, at) => { const x = el.getAttribute(at); if (x && /^\/?assets\/[^?]+\.(js|css)$/.test(x)) el.setAttribute(at, x + "?v=" + v); };
+      res = new HTMLRewriter().on("script[src]", { element: (el) => conV(el, "src") }).on("link[href]", { element: (el) => conV(el, "href") }).transform(res);
+    }
     const out = new Response(res.body, res);
     if (!(env.DOMINIO && u.hostname === env.DOMINIO && esIndexable(p))) out.headers.set("X-Robots-Tag", "noindex, nofollow");
     out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");

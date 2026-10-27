@@ -19,6 +19,10 @@ AVISOS_A = "buenaventurag650gs@gmail.com"
 SINPE_NUMERO = ""
 SINPE_NOMBRE = ""
 
+# Identificador de cada publicación (se usa para renovar scripts y estilos en el navegador)
+[version_metadata]
+binding = "VER"
+
 [assets]
 directory = "."
 binding = "ASSETS"
