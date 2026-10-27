@@ -633,10 +633,10 @@ footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font
 </style></head><body><div class="franja"></div><div class="wrap">
 <header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.webp" alt="" width="50" height="34"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.webp" alt="" width="50" height="34"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
 ${cuerpo}
-<footer>PlanoExactoCR reúne información pública del Boletín Judicial, el Registro Inmobiliario y otras fuentes oficiales con fines orientativos. No es asesoría legal ni un avalúo: verifique siempre en el expediente judicial y el Registro Nacional. · <a href="/privacidad">Privacidad</a></footer>
+<footer>PlanoExactoCR reúne información pública del Boletín Judicial, el Registro Inmobiliario y otras fuentes oficiales con fines orientativos. No es asesoría legal ni un avalúo: verifica siempre en el expediente judicial y el Registro Nacional. · <a href="/privacidad">Privacidad</a></footer>
 </div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
 }
-const CTA = (r) => `<div class="cta"><b>¿Qué más hay que saber antes de ofertar?</b><p>Con tu cuenta gratis ves la ficha de cada remate y generas un expediente PDF completo por semana: ubicación exacta en el catastro, plan regulador, valor de Hacienda, agua potable y entorno.</p>
+const CTA = (r) => `<div class="cta"><b>¿Qué más conviene saber antes de ofertar?</b><p>Con la cuenta gratis abres la ficha de cada remate y generas un expediente PDF completo por semana, con el predio en el catastro, el plan regulador, el valor de Hacienda, el agua potable y el entorno.</p>
 <div class="acts"><a class="btn pri" href="/mapa?crear=1${r ? "#r" + r.id : ""}">Crear cuenta gratis</a>${r ? `<a class="btn" href="/mapa#r${r.id}">Ver en el mapa</a>` : `<a class="btn" href="/mapa">Explorar el mapa</a>`}</div></div>`;
 const itemLista = (r) => { const bv = r.base * PCT[r.st]; return `<li><a href="/remate/${r.id}"><span><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}${r.area ? " · " + miles(r.area) + " m²" : ""} · ${ETAPA[r.st]} el ${fechaTxt(r.f[r.st]).split(",")[0]}</small></span><span class="p">${dinero(bv, r.mon)}</span></a></li>`; };
 const migas = (items) => `<nav class="migas" aria-label="Ruta">${items.map(([t, h]) => h ? `<a href="${h}">${esc(t)}</a>` : esc(t)).join(" › ")}</nav>`;

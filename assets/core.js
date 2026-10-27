@@ -271,7 +271,7 @@
   PX.IPH = [
     [30, 'Muy por debajo de Hacienda', '#1E7A4C', 'La puja arranca en menos de un tercio del valor de Hacienda.'],
     [60, 'Por debajo de Hacienda', '#5E9E4A', 'La puja arranca entre un tercio y dos tercios del valor de Hacienda.'],
-    [100, 'Cerca del valor de Hacienda', '#C9A227', 'La puja arranca un poco por debajo del valor de Hacienda.'],
+    [100, 'Cerca del valor de Hacienda', '#C9A227', 'La puja arranca entre dos tercios del valor de Hacienda y ese mismo valor.'],
     [200, 'Por encima de Hacienda', '#D9822B', 'La puja arranca por encima del valor de Hacienda, hasta el doble.'],
     [Infinity, 'Muy por encima de Hacienda', '#B42318', 'La puja arranca en más del doble del valor de Hacienda.']
   ];
