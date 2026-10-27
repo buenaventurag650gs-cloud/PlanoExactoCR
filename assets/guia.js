@@ -12,7 +12,7 @@
       <p class="gpara">${para}</p>${pasos ? `<div class="glbl">Cómo se usa</div>${steps(pasos)}` : ''}${ej ? `<p class="gej"><b>Ejemplo:</b> ${ej}</p>` : ''}</div>`;
     const tip = t => `<p class="gtip"><b>Consejo</b> ${t}</p>`;
     const sec = (id, t, intro, body) => `<section class="gsec" id="g-${id}"><h3>${t}</h3>${intro ? `<p class="gintro">${intro}</p>` : ''}${body}</section>`;
-    const toc = [['inicio', 'En 5 pasos'], ['mapa', 'El mapa'], ['buscar', 'Buscar y filtrar'], ['ficha', 'La ficha'], ['herr', 'Herramientas'], ['exp', 'Expediente'], ['met', 'Índices y metodología'], ['fuentes', 'Fuentes'], ['gloss', 'Glosario']];
+    const toc = [['inicio', 'En 5 pasos'], ['mapa', 'El mapa'], ['buscar', 'Buscar y filtrar'], ['ficha', 'La ficha'], ['herr', 'Herramientas'], ['exp', 'Expediente'], ['met', 'Índices y metodología'], ['gloss', 'Glosario']];
     const flow = [[I.pin, 'Ubica', 'Cada punto del mapa es una propiedad en remate.'], [I.list, 'Filtra', 'Por zona, base, tamaño o tipo.'], [I.Lote, 'Abre la ficha', 'Con un clic en el punto o en la lista.'], [I.valor, 'Analiza', 'Valor, potencial, números y riesgos.'], [I.gavel, 'Verifica', 'Genera el expediente y revísalo con tu abogado.']];
     return `<div class="about guide">
       <nav class="gtoc" aria-label="Contenido">${toc.map(([k, t]) => `<button class="chip" data-gto="${k}">${t}</button>`).join('')}</nav>
@@ -109,21 +109,6 @@
           <div><b>Zona marítimo terrestre</b><span>Si el lote está cerca de la costa, señala si cae dentro de la franja pública o la restringida. Es un cálculo propio a partir de la línea de costa del IGN, no el amojonamiento oficial, así que no reemplaza la certificación municipal.</span></div>
           <div><b>Tipo de cambio</b><span>El que usamos para convertir entre colones y dólares, del Banco Central, actualizado en cada publicación.</span></div>
         </div>`)}
-
-      ${sec('fuentes', 'De dónde salen los datos', 'Todo viene de fuentes públicas. PlanoExactoCR las reúne, las cruza y las presenta en un mismo lugar.',
-        `<div class="gtable srctab">
-          <div><b>Remates</b><span>Edictos del <b>Boletín Judicial</b> (Imprenta Nacional): fechas, bases, gravámenes y expediente. Se omiten nombres y cédulas.</span></div>
-          <div><b>Catastro y planos</b><span><b>Registro Inmobiliario</b>, servicios del SNIT: predios, planos catastrados y vías públicas.</span></div>
-          <div><b>Límites, ríos, curvas e infraestructura</b><span><b>Instituto Geográfico Nacional (IGN)</b>, SNIT: cantones y distritos, ríos y sus nombres, curvas de nivel, línea de costa, aeropuertos, aeródromos y muelles (escalas de 1:5.000 a 1:200.000).</span></div>
-          <div><b>Valor del terreno</b><span><b>Ministerio de Hacienda, Órgano de Normalización Técnica (ONT)</b>: zonas homogéneas y manual de tipologías constructivas 2023.</span></div>
-          <div><b>Agua potable</b><span><b>AyA</b>: áreas de cobertura del AyA, la ESPH, las ASADAS y los acueductos municipales.</span></div>
-          <div><b>Planes reguladores</b><span><b>INVU</b>: estado y año de publicación de cada plan regulador.</span></div>
-          <div><b>Ambiente</b><span><b>MINAE</b>: mapa agropecuario y forestal 2020 y zonas de vida (CENIGA). <b>FONAFIFO</b>: pago por servicios ambientales 2025. Franjas de protección de ríos: PNUD-TEVU, como referencia no oficial.</span></div>
-          <div><b>Salud y educación</b><span><b>CCSS</b>: EBAIS, áreas de salud y hospitales. Escuelas y colegios: puntos de interés del <b>IGN</b>.</span></div>
-          <div><b>Tipo de cambio</b><span><b>Banco Central de Costa Rica (BCCR)</b>.</span></div>
-          <div><b>Mapas base</b><span>Esri (claro, calles, relieve, oscuro y ortofoto de Maxar y Earthstar Geographics), OpenStreetMap y OpenTopoMap.</span></div>
-        </div>
-        <p class="gmini">Cada fuente tiene su escala y su fecha de actualización, así que dos capas pueden no coincidir del todo. Ante la duda, manda la fuente oficial.</p>`)}
 
       ${sec('gloss', 'Glosario', '',
         `<div class="gtable">
