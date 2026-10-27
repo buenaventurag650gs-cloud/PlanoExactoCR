@@ -564,14 +564,20 @@ async function guardarCatastro(request, env) {
 }
 
 // ---------- Remates para visitantes sin cuenta: solo lo que se ve en el mapa y la lista ----------
-const VISIBLES = ["id", "prov", "finca", "der", "filial", "multi", "base", "mon", "f", "area", "tipo", "ll", "poly", "loc", "dc", "dn", "cn", "pn", "nom", "pubF", "bol", "bols"];
+// Capa pública (sin cuenta): solo lo necesario para ver el punto en el mapa y la vista previa de la ficha.
+// Sin finca, plano, polígono, Boletín ni datos del entorno; la ubicación va redondeada (~100 m).
+const VISIBLES = ["id", "prov", "base", "mon", "f", "area", "tipo", "ll", "loc", "dc", "dn", "cn", "pn", "nom"];
+const redondear = (ll) => Array.isArray(ll) ? ll.map((v) => Math.round(v * 1000) / 1000) : ll;
+// Archivos que solo se entregan con cuenta (datos de capas y lógica de la guía, el expediente y la lámina)
+const SOLO_CUENTA_DATOS = new Set(["/data/planes_reguladores.geojson", "/data/salud.json", "/data/zonasvida.geojson", "/data/infra.geojson", "/data/zmt.geojson"]);
+const SOLO_CUENTA_JS = { "/assets/guia.js": "window.PX_GUIA = null;", "/assets/expediente.js": "", "/assets/lamina.js": "" };
 let LITE = { etag: null, body: null };
 async function rematesLibres(u, env) {
   const r = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)));
   const et = r.headers.get("etag") || "";
   if (LITE.body && et && LITE.etag === et) return LITE.body;
   const R = await r.json();
-  const body = JSON.stringify(R.map((x) => { const o = { ent: {}, lite: 1 }; for (const k of VISIBLES) if (x[k] !== undefined) o[k] = x[k]; return o; }));
+  const body = JSON.stringify(R.map((x) => { const o = { ent: {}, lite: 1 }; for (const k of VISIBLES) if (x[k] !== undefined) o[k] = k === "ll" ? redondear(x[k]) : x[k]; return o; }));
   LITE = { etag: et, body };
   return body;
 }
@@ -679,7 +685,7 @@ ${cn ? "" : `<ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(
     const titulo = `Remate judicial: ${tipoTxt(r.tipo).toLowerCase()} en ${[r.dn, r.cn].filter(Boolean).join(", ")}`;
     const ruta = [["Inicio", "/"], ["Remates", "/remates"], [r.pn, "/remates/" + slug(r.pn)], [r.cn, "/remates/" + slug(r.pn) + "/" + slug(r.cn)], [r.nom || "Remate"]];
     const vecinos = R.filter((x) => x.cn === r.cn && x.id !== r.id).slice(0, 6);
-    const cuerpo = `${migas(ruta)}<h1>${esc(titulo.charAt(0).toUpperCase() + titulo.slice(1))}</h1><p class="sub">${esc(lugar)} · publicado en el Boletín Judicial N.º ${esc((r.bols || [r.bol]).join(" y "))}</p>
+    const cuerpo = `${migas(ruta)}<h1>${esc(titulo.charAt(0).toUpperCase() + titulo.slice(1))}</h1><p class="sub">${esc(lugar)}</p>
 <div class="datos"><div><b>${dinero(bv, r.mon)}</b><span>Base del ${ETAPA[r.st]}</span></div><div><b>${fechaTxt(r.f[r.st]).split(",")[0]}</b><span>Próximo remate${r.f[r.st].includes("T") ? " · " + r.f[r.st].split("T")[1] : ""}</span></div><div><b>${r.area ? miles(r.area) + " m²" : "—"}</b><span>Área según el edicto</span></div><div><b>${esc(tipoTxt(r.tipo))}</b><span>Tipo de propiedad</span></div></div>
 <h2>Fechas y bases</h2><div class="card" style="padding:4px 14px"><table><thead><tr><th>Remate</th><th>Fecha</th><th style="text-align:right">Base</th></tr></thead><tbody>
 ${(r.f || []).map((f, k) => `<tr class="${k < r.st ? "ya" : k === r.st ? "ahora" : ""}"><td>${ETAPA[k]}${k ? ` (${PCT[k] * 100} %)` : ""}</td><td>${fechaTxt(f)}</td><td class="n">${dinero(r.base * PCT[k], r.mon)}</td></tr>`).join("")}
@@ -692,7 +698,7 @@ ${vecinos.length ? `<h2>Otros remates en ${esc(r.cn)}</h2><ul class="lista">${ve
   return null;
 }
 
-const SOLO_ADMIN = new Set(["/admin", "/admin.html", "/catastro", "/catastro.html", "/data/pendientes.json", "/data/catastro_resultados.json", "/data/estado.json", "/admin/registros.csv", "/admin/usuarios.csv"]);
+const SOLO_ADMIN = new Set(["/assets/ubicar.js", "/admin", "/admin.html", "/catastro", "/catastro.html", "/data/pendientes.json", "/data/catastro_resultados.json", "/data/estado.json", "/admin/registros.csv", "/admin/usuarios.csv"]);
 const INDEXABLES = new Set(["/", "/mapa", "/privacidad", "/robots.txt", "/sitemap.xml"]);
 const esIndexable = (p) => INDEXABLES.has(p) || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/");
 
@@ -748,6 +754,8 @@ export default {
     if (p === "/index.html") return Response.redirect(new URL("/mapa" + u.search, u).toString(), 301);
     if (p === "/inicio.html") return Response.redirect(new URL("/" + u.search, u).toString(), 301);
     if ((p === "/expediente" || p === "/expediente.html") && !dentro) return Response.redirect(new URL("/mapa?entrar=1", u).toString(), 302);
+    if (!dentro && SOLO_CUENTA_DATOS.has(p)) return json({ error: "Entra con tu cuenta para ver esta información." }, 401, 0);
+    if (!dentro && p in SOLO_CUENTA_JS) return new Response(`/* PlanoExactoCR: contenido para cuentas */\n${SOLO_CUENTA_JS[p]}\n`, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "private, no-store", "vary": "Cookie", "X-Robots-Tag": "noindex" } });
     if ((p === "/api/plano" || p === "/api/finca") && !dentro) return json({ error: "Entra con tu cuenta para buscar planos y fincas." }, 401, 0);
 
     let res;
@@ -772,6 +780,7 @@ export default {
     out.headers.set("X-Content-Type-Options", "nosniff");
     if (p.startsWith("/data/")) out.headers.set("Cache-Control", dentro && p === "/data/remates.json" ? "private, max-age=0, must-revalidate" : "public, max-age=0, must-revalidate");
     if (p === "/data/remates.json") out.headers.set("Vary", "Cookie");
+    if (SOLO_CUENTA_DATOS.has(p) || p in SOLO_CUENTA_JS) { out.headers.set("Cache-Control", "private, max-age=0, must-revalidate"); out.headers.set("Vary", "Cookie"); }
     if (p === "/" || p === "/mapa" || p.endsWith(".html")) out.headers.set("Cache-Control", "no-cache");
     return out;
   }
