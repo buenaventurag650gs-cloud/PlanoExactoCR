@@ -6,7 +6,8 @@
   PX.ETAPA = ['1.er remate', '2.º remate', '3.er remate'];
   PX.SC = ['--s1', '--s2', '--s3'];
   PX.PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
-  PX.PRECIOS = { expediente: 20, suscripcion: 200, cupo: 200, cortesia: 3 };
+  // Precios en colones (se muestran también en dólares). PRO incluye hasta «cupo» expedientes al mes; la cuenta gratis, «diario» al día.
+  PX.PRECIOS = { pro: 12900, anual: 129000, expediente: 1900, cupo: 100, diario: 1, cupon: 30 };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -394,22 +395,23 @@
   PX.saveAcct = () => { PX.store.set('px-acct', PX.acct); guardarEnCuenta(); document.dispatchEvent(new CustomEvent('px-acct')); };
   PX.isPro = () => PX.admin ? PX.acct.plan === 'pro' : !!(PX.yo && PX.yo.plan === 'pro');
   PX.mesKey = () => PX.now.getFullYear() + '-' + String(PX.now.getMonth() + 1).padStart(2, '0');
+  PX.diaKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   PX.usoMes = () => PX.acct.usados[PX.mesKey()] || 0;
-  // Cupo mensual de expedientes: PRO, o de cortesía durante el acceso anticipado para cuentas gratis
-  PX.cupoMes = () => PX.isPro() ? PX.PRECIOS.cupo : PX.conCuenta() ? PX.PRECIOS.cortesia : 0;
-  PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && (x.via === 'pro' || x.via === 'cortesia'));
-  PX.puedeGenerar = key => PX.tieneExp(key) || PX.usoMes() < PX.cupoMes();
-  // Registra la generación: descuenta del cupo mensual la primera vez en el mes.
+  PX.usoHoy = () => PX.acct.expedientes.filter(x => x.via === 'dia' && x.d === PX.diaKey()).length;
+  // Cuenta gratis: 1 expediente al día. PRO: hasta PRECIOS.cupo al mes.
+  PX.quedan = () => PX.isPro() ? Math.max(0, PX.PRECIOS.cupo - PX.usoMes()) : PX.conCuenta() ? Math.max(0, PX.PRECIOS.diario - PX.usoHoy()) : 0;
+  PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && x.via !== 'compra');
+  PX.puedeGenerar = key => PX.tieneExp(key) || PX.quedan() > 0;
+  // Registra la generación: descuenta del cupo la primera vez (en el mes) que se abre el expediente de un lote.
   PX.registrarExp = (key, label) => {
     const a = PX.acct;
     if (!PX.tieneExp(key)) {
-      if (!(PX.usoMes() < PX.cupoMes())) return false;
-      a.usados[PX.mesKey()] = PX.usoMes() + 1;
-      a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: PX.isPro() ? 'pro' : 'cortesia' });
+      if (!(PX.quedan() > 0)) return false;
+      if (PX.isPro()) { a.usados[PX.mesKey()] = PX.usoMes() + 1; a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'pro' }); }
+      else a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), d: PX.diaKey(), via: 'dia' });
     } else if (!a.expedientes.some(x => x.k === key)) a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'compra' });
     PX.saveAcct(); return true;
   };
-  PX.comprar = (key, label) => { if (!PX.acct.comprados.includes(key)) PX.acct.comprados.push(key); PX.saveAcct(); PX.registrarExp(key, label); };
   PX.toggleSigo = key => { const s = PX.acct.sigo; const i = s.indexOf(key); i >= 0 ? s.splice(i, 1) : s.unshift(key); PX.saveAcct(); return i < 0; };
   PX.sigo = key => PX.acct.sigo.includes(key);
   // Favoritos = la primera lista de Mi cuenta («Mis favoritos»)

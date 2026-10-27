@@ -443,3 +443,8 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 #bCuenta.primary .ic { color: inherit; }
 @media (max-width: 520px) { .authf .row2 { grid-template-columns: 1fr; } }
 #bCuenta.primary > span:not(.ic):not(.badge) { display: inline !important; }
+/* Secciones de la ficha reservadas a PRO */
+.fs.locked .fb { position: relative; }
+.lockb { display: grid; gap: 8px; padding: 12px; border-radius: 10px; border: 1px dashed var(--line); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--gold) 6%, transparent) 8px 16px); }
+.lockb > span { font-size: 13.5px; color: var(--muted); }
+.lockb .acts { display: flex; flex-wrap: wrap; gap: 6px; }

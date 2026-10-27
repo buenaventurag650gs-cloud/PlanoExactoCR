@@ -17,7 +17,7 @@
   if (!PX.tieneExp(r.key) && !PX.registrarExp(r.key, r.nom)) {
     doc.innerHTML = `<div class="wall"><span class="lbl">Expediente del lote</span><h1>${esc(r.nom)}</h1><p class="muted">${esc(r.lugar)}</p>
       <p>Este expediente reúne en una lámina el mapa del predio con sus variables, el índice PlanoExacto, las potencialidades y los riesgos, más el edicto, los datos registrales y los gravámenes explicados.</p>
-      <p>${PX.conCuenta() ? `Ya usaste los ${PX.cupoMes()} expedientes de este mes. Los pagos en línea llegan pronto; mientras tanto puedes solicitar el acceso PRO desde Mi cuenta.` : 'Entra con tu cuenta para generar el expediente.'}</p>
+      <p>${PX.conCuenta() ? (PX.isPro() ? `Ya usaste los ${PX.PRECIOS.cupo} expedientes de este mes.` : `Ya usaste tu expediente gratis de hoy: mañana puedes generar otro. Con PRO generas hasta ${PX.PRECIOS.cupo} al mes.`) + ' Puedes solicitar el acceso PRO desde Mi cuenta.' : 'Entra con tu cuenta para generar el expediente.'}</p>
       <div class="acts"><a class="btn primary" href="/mapa${PX.conCuenta() ? '#' + r.key : '?entrar=1'}">Volver al mapa</a></div>
       <div class="legal">${PX.DISCLAIMER}</div></div>`;
     $('print').hidden = true;

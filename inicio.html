@@ -54,6 +54,13 @@ h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--f-display); margin: 0 0 8px; te
 .rasgo .ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
 .rasgo .ic svg { width: 18px; height: 18px; }
 .rasgo b { font: 600 16px/1.3 var(--f-display); } .rasgo span { font-size: 14px; color: var(--muted); }
+.planes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.plan { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 8px; }
+.plan.dest { border: 2px solid var(--accent); }
+.plan h3 { margin: 0; font: 700 18px/1.2 var(--f-display); }
+.precio { font: 600 26px/1.1 var(--f-mono); } .precio small { font: 500 13px var(--f-body); color: var(--muted); }
+.plan .alt, .plan .nota { font-size: 13px; color: var(--muted); } .plan .nota { color: var(--terra); font-weight: 600; }
+.plan ul { margin: 4px 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
 .para { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .para li { padding: 7px 12px; border-radius: 999px; background: var(--soft); font-size: 14px; font-weight: 600; }
 .registro { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 28px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
@@ -73,7 +80,7 @@ input, select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); 
 .acceso label { flex: 1 1 220px; }
 footer { padding-block: 30px 40px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 13.5px; color: var(--muted); display: grid; gap: 10px; }
 footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-@media (max-width: 860px) { .hero, .registro { grid-template-columns: 1fr; } .rasgos { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 860px) { .hero, .registro, .planes { grid-template-columns: 1fr; } .rasgos { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .rasgos, .fila { grid-template-columns: 1fr; } .wm { font-size: 16px; } .registro { padding: 18px; } }
 @media (prefers-reduced-motion: no-preference) { .vista { transition: transform .4s ease; } .vista:hover { transform: translateY(-3px); } }
 </style>
@@ -120,13 +127,28 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
     <ul class="para"><li>Compradores de vivienda</li><li>Inversionistas</li><li>Abogados</li><li>Corredores de bienes raíces</li><li>Desarrolladores</li><li>Topógrafos y valuadores</li></ul>
   </section>
 
+  <section id="planes">
+    <h2>Planes</h2>
+    <p class="sub">Empieza gratis. Suscríbete cuando necesites toda la información de cada remate.</p>
+    <div class="planes">
+      <div class="plan"><h3>Visitante</h3><div class="precio">₡0</div>
+        <ul><li>Mapa con todos los remates vigentes</li><li>Filtros por ubicación, etapa, precio y tipo</li><li>Base vigente y fecha de cada remate</li></ul></div>
+      <div class="plan dest"><h3>Cuenta gratis</h3><div class="precio">₡0</div>
+        <ul><li>Ficha con la información base: fechas y bases, área, finca, plano, ubicación en el catastro y plan regulador</li><li><b>1 expediente PDF completo al día</b></li><li>Listas, seguimiento y búsquedas guardadas</li></ul>
+        <a class="btn pri" href="#registro">Crear cuenta gratis</a></div>
+      <div class="plan"><h3>PRO</h3><div class="precio">₡12 900 <small>al mes</small></div><div class="alt">o ₡129 000 al año (2 meses gratis)</div>
+        <ul><li>Toda la información de cada ficha: valor de Hacienda, índice Puja/Hacienda, escala PECR, agua, salud, escuela, ríos y costa</li><li>Hasta 100 expedientes al mes</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas</li></ul>
+        <span class="nota">30 % de descuento el primer mes con tu cupón de lanzamiento</span></div>
+    </div>
+  </section>
+
   <section id="registro">
     <div class="registro">
       <div>
         <span class="cupon">Cupón de lanzamiento · 30 % de descuento</span>
         <h2>Crea tu cuenta gratis</h2>
-        <p class="sub">El mapa está abierto para todos. Con tu cuenta ves la ficha completa de cada remate y guardas listas y seguimientos. Mientras dura el acceso anticipado, también generas 3 expedientes en PDF al mes.</p>
-        <p class="sub">Al registrarte recibes un cupón de 30 % para tu primer mes PRO o tu primer expediente, que podrás usar cuando abramos los pagos.</p>
+        <p class="sub">El mapa está abierto para todos. Con tu cuenta gratis ves la información base de cada remate, guardas listas y seguimientos, y generas 1 expediente PDF completo al día.</p>
+        <p class="sub">Al registrarte recibes un cupón de 30 % para tu primer mes PRO, que podrás usar cuando abramos los pagos.</p>
       </div>
       <div>
         <form id="f" novalidate>
