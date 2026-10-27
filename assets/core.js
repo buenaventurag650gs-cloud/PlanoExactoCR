@@ -150,7 +150,7 @@
   // Ícono para cada fila de la ficha según su etiqueta
   PX.rowIcon = t => {
     const n = PX.norm(t), I = PX.ICON;
-    const m = [[/zona homog|valor de ref|base|precio|puja/, I.moneda], [/area|superficie/, I.regla], [/dimension/, I.regla], [/topograf|pendiente|elevac/, I.monte], [/uso del suelo|cobertura/, I.capas], [/zona de vida/, I.hoja],
+    const m = [[/zona homog|valor de ref|base|precio|puja/, I.moneda], [/forma del predio/, I.plano], [/area|superficie/, I.regla], [/dimension/, I.regla], [/topograf|pendiente|elevac/, I.monte], [/uso del suelo|cobertura/, I.capas], [/zona de vida/, I.hoja],
       [/agua/, I.agua], [/via|camino|calle/, I.via], [/salud|ebais|hospital/, I.salud], [/escuela|colegio/, I.escuela], [/rio|quebrada|cuenca/, I.rio], [/costa|zmt|playa/, I.costa],
       [/plan regulador|normativa|zona/, I.norma], [/finca/, I.registro], [/plano/, I.plano], [/ubicac|distrito|lugar/, I.pin], [/naturaleza/, I.Lote], [/expediente|juzgado|despacho|proceso/, I.juzgado],
       [/publicac|boletin|fecha/, I.cal], [/gravamen|servidumbre|anotac/, I.alerta]];

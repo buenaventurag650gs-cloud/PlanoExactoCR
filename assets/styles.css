@@ -493,8 +493,9 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .fgrp { display: flex; align-items: center; gap: 8px; margin: 14px 0 -2px; font: 700 11.5px/1.2 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
 .fgrp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 /* Forma del predio en la ficha */
-.forma { float: right; margin: 0 0 6px 12px; display: grid; justify-items: center; gap: 2px; color: var(--muted); }
+.forma { margin: 0; display: grid; justify-items: start; gap: 2px; color: var(--muted); }
 .forma svg { display: block; background: var(--chip); border-radius: 10px; }
 .forma figcaption { font-size: 10.5px; color: var(--faint, var(--muted)); }
 .formap { display: flex; justify-content: center; margin: 4px 0 10px; } .formap .forma { float: none; margin: 0; }
-@media (max-width: 520px) { .forma { float: none; margin: 0 auto 8px; } }
+.formadd .forma svg { width: 132px; height: auto; }
+.formap .forma { justify-items: center; }
