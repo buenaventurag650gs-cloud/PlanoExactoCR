@@ -633,7 +633,7 @@
       <div class="p"><b>Expediente del lote</b>${has ? '<span class="tag ok">Disponible</span>' : `<span class="tag ${n >= 2 ? 'gold' : 'ok'}">${n >= 3 ? 'Incluido en PRO' : n === 2 ? `Esencial: ${PX.cupoTxt()}` : `Gratis: ${PX.cupoTxt()}`}</span>`}</div>
       <ul><li>Texto del edicto${r.isPlano ? ' (si está en remate)' : ''}, datos registrales y despacho</li><li>Gravámenes y servidumbres explicados en lenguaje claro</li><li>Valor de Hacienda, índices y entorno completo del predio</li><li>Análisis multidimensional y comparables de la zona</li><li>Versión imprimible con mapa del predio</li></ul>
       <div class="acts"><button class="btn primary" data-act="exp">${label}</button>${!has && n < 3 ? '<button class="btn gold" data-planes>Ver planes</button>' : ''}</div>
-      <div class="foot">Cada expediente adicional cuesta ${PX.mt(PX.PRECIOS.expediente, 'CRC')}. No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div>`;
+      <div class="foot">${n < 3 ? `Cada expediente adicional cuesta ${PX.mt(PX.PRECIOS.expediente, 'CRC')}. ` : ''}No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.</div></div>`;
   }
   function proBox(r) {
     const rs = PX.pro.riesgos(r), alto = rs.filter(x => x.n === 3).length, med = rs.filter(x => x.n === 2).length, pro = PX.isPro();
@@ -952,7 +952,7 @@
           <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b>, para imprimir todos los informes que quieras</li></ul>
           ${n === 3 ? '<button class="btn" data-pagar="pro">Renovar PRO</button>' : '<button class="btn primary" data-pagar="pro">Activar PRO</button>'}</div>
       </div>
-      <div class="foot">Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad.</div>`);
+      <div class="foot">${n < 3 ? `Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. ` : ''}Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad.</div>`);
   }
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
