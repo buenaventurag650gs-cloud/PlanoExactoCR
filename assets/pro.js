@@ -10,16 +10,16 @@
   // Catálogo de herramientas (las disponibles y las que vienen)
   // nv: plan desde el que se usa la herramienta completa (2 Esencial, 3 PRO)
   P.TOOLS = [
-    { k: 'valor', n: 'Valor de referencia', q: 'Terreno según la zona homogénea de Hacienda y construcción por tipología, frente a la base', st: 'ok', nv: 3 },
+    { k: 'valor', n: 'Valor de referencia', q: '¿Cuánto vale realmente frente a la base?', st: 'ok', nv: 3 },
     { k: 'potencial', n: 'Potencial constructivo', q: '¿Cuántos m² y unidades caben en el lote?', st: 'ok', nv: 3 },
     { k: 'prefa', n: 'Prefactibilidad financiera', q: '¿Cuánto invierto, cuánto podría valer y qué margen deja?', st: 'ok', nv: 3 },
     { k: 'riesgos', n: 'Riesgos del proceso', q: '¿Qué puede salir mal y qué revisar antes de ofertar?', st: 'ok', nv: 2 },
-    { k: 'alertas', n: 'Alertas del remate', q: 'Avisos de cambio de etapa, nuevos edictos y fechas próximas', st: 'ok', nv: 2 },
-    { k: 'precios', n: 'Mapa de precios por m²', q: 'Mediana de las bases de remate por cantón, en el mapa', st: 'ok', map: true, nv: 3 },
-    { k: 'top', n: 'Top 10 del mes', q: 'Los mejores remates por provincia según el índice', st: 'ok', list: true, nv: 3 },
-    { k: 'normativa', n: 'Normativa urbana del lote', q: 'Zona del plan regulador, usos, cobertura, altura y lote mínimo', st: 'soon', nv: 2 },
-    { k: 'amenazas', n: 'Amenazas naturales (CNE)', q: 'Inundación, deslizamiento y amenaza sísmica en el lote', st: 'soon', nv: 3 },
-    { k: 'historia', n: 'Historia del sitio', q: 'Ortofotos del IGN de distintos años y cambio de cobertura', st: 'soon', nv: 3 }
+    { k: 'alertas', n: 'Alertas del remate', q: '¿Cómo me entero sin estar pendiente del sitio?', st: 'ok', nv: 2 },
+    { k: 'precios', n: 'Mapa de precios por m²', q: '¿Dónde están los precios más bajos por m²?', st: 'ok', map: true, nv: 3 },
+    { k: 'top', n: 'Top 10 del mes', q: '¿Cuáles valen más la pena en mi provincia?', st: 'ok', list: true, nv: 3 },
+    { k: 'normativa', n: 'Normativa urbana del lote', q: '¿Qué me deja construir el plan regulador?', st: 'soon', nv: 2 },
+    { k: 'amenazas', n: 'Amenazas naturales (CNE)', q: '¿El lote tiene amenazas naturales?', st: 'soon', nv: 3 },
+    { k: 'historia', n: 'Historia del sitio', q: '¿Cómo ha cambiado el sitio con los años?', st: 'soon', nv: 3 }
   ];
 
   // ---------- Riesgos del proceso ----------
