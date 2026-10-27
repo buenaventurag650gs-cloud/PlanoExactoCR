@@ -669,7 +669,7 @@
         <h3>Crea tu cuenta gratis para ver la ficha</h3><small>Con tu cuenta gratis:</small>
         <ul>${ven.map(([i, t]) => `<li><span class="ri" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
         <div class="acts"><button class="btn primary" data-auth="crear">Crear cuenta gratis</button><button class="btn" data-auth="entrar">Ya tengo cuenta</button></div>
-        <small class="muted">Acceso anticipado: al registrarte recibes un cupón de 30 % de descuento para cuando abramos los planes de pago.</small>
+        <small class="muted">Al registrarte recibes un cupón de 30 % de descuento en la primera mensualidad de cualquier plan.</small>
       </div>
     </div>`;
     f.hidden = false; $('fx').onclick = closeFicha;
@@ -808,26 +808,74 @@
     if (r.isPlano) PX.savePlano(r);
     if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis para generar expedientes.');
     if (PX.registrarExp(r.key, r.nom)) { location.href = 'expediente.html?k=' + encodeURIComponent(r.key); return; }
-    const n = PX.nivel();
+    const n = PX.nivel(), cr = PX.yo ? PX.yo.creditos || 0 : 0;
     modal(`<div class="hd"><h2>Expediente adicional</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.semanalEsencial} expedientes por semana y ya los usaste.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`} Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con ${PX.PRO} generas todos los que quieras.</p>
-      <p class="muted">Los pagos en línea llegan pronto. Si lo necesitas ahora, solicita un plan y te escribimos.</p>
-      <div class="acts"><button class="btn primary" data-planes>Ver planes</button><button class="btn" data-close>Cerrar</button></div>`, true);
+      <p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.semanalEsencial} expedientes por semana y ya los usaste.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`} ${cr ? `Tienes <b>${cr}</b> expediente${cr > 1 ? 's' : ''} adicional${cr > 1 ? 'es' : ''} pagado${cr > 1 ? 's' : ''}.` : `Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con ${PX.PRO} generas todos los que quieras.`}</p>
+      <p class="aerr" id="crErr" hidden></p>
+      <div class="acts">${cr ? `<button class="btn primary" id="usarCr">Usar 1 expediente adicional</button>` : `<button class="btn primary" data-pagar="expedientes">Comprar expedientes adicionales</button>`}<button class="btn" data-planes>Ver planes</button></div>`, true);
+    const b = $('usarCr');
+    if (b) b.onclick = async () => { b.disabled = true; try { await PX.usarCredito(r.key, r.nom); location.href = 'expediente.html?k=' + encodeURIComponent(r.key); } catch (x) { const e = $('crErr'); e.textContent = x.message; e.hidden = false; b.disabled = false; } };
   }
-  // Solicitud de PRO: durante el acceso anticipado se activa a mano desde /admin
-  async function pedirPro(plan) {
-    if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis y luego solicita el acceso PRO.');
-    plan = plan === 'basico' ? 'basico' : 'pro';
-    if (PX.nivel() >= (plan === 'pro' ? 3 : 2)) return toast('Ya tienes ese plan activo');
-    if (PX.yo) await fetch('/api/cuenta/solicitar-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) }).catch(() => {});
-    if (PX.yo) PX.yo.solicitaPro = plan + ' ' + new Date().toISOString();
-    modal(`<div class="hd"><h2>Recibimos tu solicitud</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <p>Estamos en acceso anticipado: activamos el plan ${plan === 'pro' ? 'PRO' : 'Esencial'} personalmente. Te escribiremos a <b>${esc(PX.yo ? PX.yo.correo : '')}</b> con los detalles.</p>
-      ${PX.yo && PX.yo.cupon ? `<p>Tu cupón <b class="num">${esc(PX.yo.cupon)}</b> te da ${PX.PRECIOS.cupon} % de descuento en tu primer mes.</p>` : ''}
-      <div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
+  // ---------- pago por SINPE Móvil ----------
+  // El usuario elige plan (o cantidad de expedientes), hace el SINPE y reporta el comprobante; el administrador lo aprueba en /admin.
+  const comprimir = f => new Promise((ok, no) => {
+    const img = new Image();
+    img.onload = () => { const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg', 0.72)); };
+    img.onerror = () => no(new Error('No pudimos leer la imagen. Usa una captura de pantalla (JPG o PNG).'));
+    img.src = URL.createObjectURL(f);
+  });
+  async function openPago(tipo) {
+    if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis y luego eliges tu plan.');
+    if (!PX.yo) return toast('Para pagar, entra con una cuenta de usuario (no con la sesión de administración).');
+    tipo = tipo === 'expedientes' ? 'expedientes' : tipo === 'basico' ? 'basico' : 'pro';
+    if (tipo !== 'expedientes' && PX.nivel() > (tipo === 'pro' ? 3 : 2)) return toast('Ya tienes un plan superior activo');
+    let periodo = 'mes', cant = 1, form = { ref: '', tel: '' };
+    const concepto = () => tipo === 'expedientes' ? 'expedientes' : (tipo === 'basico' ? 'esencial' : 'pro') + '-' + periodo;
+    async function pintar() {
+      const q = await (await fetch('/api/cuenta/cotizar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant }) })).json().catch(() => ({}));
+      const listo = q.sinpe && q.monto;
+      const renov = tipo !== 'expedientes' && PX.plan() === tipo && PX.yo.proHasta;
+      modal(`<div class="hd">${PX.marca('dlgmark')}<h2>${tipo === 'expedientes' ? 'Expedientes adicionales' : (tipo === 'pro' ? PX.PRO : PX.ESE) + (renov ? ' Renovar plan' : ' Activar plan')}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+        ${tipo === 'expedientes' ? `<div class="fld"><label for="pgCant">Cantidad</label><select id="pgCant">${[1, 2, 3, 5, 10].map(k => `<option value="${k}"${k === cant ? ' selected' : ''}>${k} expediente${k > 1 ? 's' : ''} · ${PX.mt(k * PX.PRECIOS.expediente, 'CRC')}</option>`).join('')}</select></div>`
+          : `<div class="seg" role="group"><button data-per="mes" aria-pressed="${periodo === 'mes'}">Mensual</button><button data-per="anual" aria-pressed="${periodo === 'anual'}">Anual · 2 meses gratis</button></div>`}
+        <div class="pgmonto"><span>Total a pagar</span><b class="num">${PX.mt(q.monto, 'CRC')}</b>${q.descuento ? `<small>Incluye tu cupón ${esc(PX.yo.cupon)}: −${PX.mt(q.descuento, 'CRC')}</small>` : ''}${renov ? `<small>Se suma a tu plan actual, vigente hasta el ${fdate(new Date(PX.yo.proHasta + 'T12:00'))}.</small>` : ''}</div>
+        ${listo ? `<ol class="pgpasos">
+          <li><span>Desde tu banco, haz un <b>SINPE Móvil</b> por <b>${PX.mt(q.monto, 'CRC')}</b> al <b class="num">${esc(q.sinpe)}</b>${q.titular ? ` (a nombre de ${esc(q.titular)})` : ''}.</span></li>
+          <li><span>En la descripción escribe <b class="num">${esc(q.referencia)}</b>.</span></li>
+          <li><span>Reporta el pago aquí:</span>
+            <form id="pgF" class="authf" novalidate>
+              <div class="row2"><div class="fld"><label for="pgRef">Número de comprobante</label><input id="pgRef" inputmode="numeric" autocomplete="off" required value="${esc(form.ref)}"></div>
+              <div class="fld"><label for="pgTel">Teléfono desde el que pagaste <small>(opcional)</small></label><input id="pgTel" inputmode="tel" value="${esc(form.tel)}"></div></div>
+              <div class="fld"><label for="pgImg">Captura del comprobante <small>(recomendado)</small></label><input id="pgImg" type="file" accept="image/*"></div>
+              <p class="aerr" id="pgErr" role="alert" hidden></p>
+              <button class="btn primary" type="submit" id="pgBtn">Enviar comprobante</button>
+            </form></li></ol>
+          <p class="muted" style="font-size:13px;margin:0">Revisamos cada pago a mano: tu plan queda activo en horas hábiles, normalmente el mismo día, y te escribimos a ${esc(PX.yo.correo)}.</p>`
+          : `<div class="note">Estamos terminando de configurar el pago por SINPE Móvil. Escríbenos a hola@planoexactocr.com y te ayudamos.</div>`}`, true);
+      document.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { periodo = b.dataset.per; guardar(); pintar(); });
+      const c = $('pgCant'); if (c) c.onchange = () => { cant = +c.value; guardar(); pintar(); };
+      const f = $('pgF'); if (!f) return;
+      f.onsubmit = async ev => {
+        ev.preventDefault();
+        const err = t => { const e = $('pgErr'); e.textContent = t; e.hidden = !t; }, btn = $('pgBtn'); err('');
+        const ref = $('pgRef').value.trim(); if (ref.replace(/\D/g, '').length < 4) return err('Escribe el número de comprobante que te dio el banco.');
+        btn.disabled = true; btn.textContent = 'Enviando…';
+        try {
+          const file = $('pgImg').files[0], img = file ? await comprimir(file) : null;
+          const r = await fetch('/api/cuenta/pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant, ref, telefono: $('pgTel').value.trim(), img }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || 'No se pudo enviar. Intenta de nuevo.');
+          modal(`<div class="hd"><h2>¡Recibimos tu comprobante!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+            <p>Gracias. Vamos a confirmar tu pago de <b>${PX.mt(j.monto, 'CRC')}</b> y ${tipo === 'expedientes' ? 'te acreditamos los expedientes' : 'activamos tu plan'} en horas hábiles, normalmente el mismo día. Te escribiremos a <b>${esc(PX.yo.correo)}</b>.</p>
+            <p class="muted">Puedes ver el estado en Mi cuenta → Pagos.</p><div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
+        } catch (x) { err(x.message); btn.disabled = false; btn.textContent = 'Enviar comprobante'; }
+      };
+    }
+    const guardar = () => { const a = $('pgRef'), b = $('pgTel'); if (a) form.ref = a.value; if (b) form.tel = b.value; };
+    pintar();
   }
   document.addEventListener('click', e => {
-    { const sb = e.target.closest('[data-sub]'); if (sb) { e.preventDefault(); pedirPro(sb.dataset.sub); return; } }
+    { const sb = e.target.closest('[data-sub],[data-pagar]'); if (sb) { e.preventDefault(); openPago(sb.dataset.pagar || sb.dataset.sub); return; } }
     const au = e.target.closest('[data-auth]'); if (au) { openAuth(au.dataset.auth); return; }
     if (e.target.closest('[data-close]') || e.target.classList.contains('scrim')) closeLayer();
   });
@@ -894,13 +942,13 @@
         <div class="plan${n === 2 ? ' hl' : ''}"><h3>${PX.ESE} Lo esencial para decidir</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año</div>
           <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b></li></ul>
-          ${n === 2 ? '<span class="tag gold">Tu plan actual</span>' : n < 2 ? '<button class="btn" data-sub="basico">Solicitar Esencial</button>' : ''}</div>
+          ${n === 2 ? '<button class="btn" data-pagar="basico">Renovar Esencial</button>' : n < 2 ? '<button class="btn" data-pagar="basico">Activar Esencial</button>' : ''}</div>
         <div class="plan${n === 3 ? ' hl' : ''}"><h3>${PX.PRO} Acceso total</h3><div class="pr">${PX.mh(PX.PRECIOS.pro, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)</div>
           <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b>, para imprimir todos los informes que quieras</li></ul>
-          ${n === 3 ? '<span class="tag gold">Tu plan actual</span>' : '<button class="btn primary" data-sub="pro">Solicitar PRO</button>'}</div>
+          ${n === 3 ? '<button class="btn" data-pagar="pro">Renovar PRO</button>' : '<button class="btn primary" data-pagar="pro">Activar PRO</button>'}</div>
       </div>
-      <div class="foot">Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Acceso anticipado: los planes se activan por solicitud mientras habilitamos los pagos en línea; quienes se registren ahora tienen ${PX.PRECIOS.cupon} % de descuento el primer mes con su cupón.</div>`);
+      <div class="foot">Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad.</div>`);
   }
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
@@ -1086,13 +1134,15 @@
       <div class="dbody">
         ${yo ? `<section class="acc"><h3>Tu cuenta</h3>
           <div class="li"><div><b>${esc(yo.nombre || yo.correo)}</b>${yo.nombre ? `<br><small>${esc(yo.correo)}</small>` : ''}</div><div><a class="btn sm" href="/__salir">Cerrar sesión</a></div></div>
-          ${yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en tu primer mes ${PX.PRO} cuando abramos los pagos.</small></div>` : ''}
+          ${yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(yo.cupon)}</b><small>${yo.cuponUsado ? 'Ya lo usaste en tu primer pago. ¡Gracias!' : `${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar.`}</small></div>` : ''}
         </section>` : `<div class="demo">Sesión de administración: con «Ver como» revisas el sitio como usuario gratis o PRO. <a href="/admin">Panel de administración</a> · <a href="/__salir">Salir</a></div>`}
         <section class="acc"><h3>Plan</h3>
           <div class="li"><div><b>${n >= 2 ? 'Plan ' + (pro ? PX.PRO : PX.ESE) : 'Cuenta gratis'}</b><br><small>${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste un plan: te escribiremos pronto' : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
-            <div>${pro ? '' : '<button class="btn sm primary" data-planes>Ver planes</button>'}</div></div>
+            <div>${n >= 2 ? `<button class="btn sm" data-pagar="${pro ? 'pro' : 'basico'}">Renovar</button> ` : ''}${pro ? '' : '<button class="btn sm primary" data-planes>Ver planes</button>'}</div></div>
+          ${yo && yo.creditos ? `<small class="muted">Expedientes adicionales pagados: <b class="num">${yo.creditos}</b></small>` : ''}
           ${pro ? '<small class="muted">Expedientes sin límite.</small>' : `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados esta semana: <b class="num">${uso}</b> de ${cupo} · adicional ${PX.mt(PX.PRECIOS.expediente, 'CRC')}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>`}
         </section>
+        ${yo ? '<section class="acc" id="accPagos"><h3>Pagos</h3><small class="muted">Cargando…</small></section>' : ''}
         <section class="acc"><h3>Seguimiento <span class="tag">${sig.length}</span></h3>
           ${sig.length ? sig.map(r => { const s0 = snap[r.key]; const cambio = s0 && s0.st !== r.st ? (r.st < 0 ? 'Ya pasaron todas las fechas' : `Pasó a ${PX.ETAPA[r.st]}`) : ''; return `<div class="li"><div><button class="linkbtn" data-open="${r.key}">${esc(r.nom)}</button><br><small>${r.st >= 0 ? `${PX.ETAPA[r.st]} · ${fdate(r.next)} · ${when(r.next)}` : 'Sin fechas pendientes'}</small>${cambio ? ` <span class="tag warn">${cambio}</span>` : ''}</div><div>${r.st >= 0 ? PX.duo(r.bv, r.mon) : ''}<br><button class="linkbtn" data-unsig="${r.key}" style="font-weight:500;font-size:12px">Dejar de seguir</button></div></div>`; }).join('') : '<small class="muted">Usa «Seguir» en la ficha de un remate para ver aquí su próxima fecha y los cambios de etapa.</small>'}
         </section>
@@ -1115,7 +1165,16 @@
         </section>` : ''}
       </div></aside></div>`;
   }
-  $('bCuenta').onclick = renderCuenta;
+  const CONC = { 'esencial-mes': 'Esencial · 1 mes', 'esencial-anual': 'Esencial · 1 año', 'pro-mes': 'PRO · 1 mes', 'pro-anual': 'PRO · 1 año', expedientes: 'Expedientes adicionales' };
+  const EST = { pendiente: ['En revisión', 'gold'], aprobado: ['Confirmado', 'ok'], rechazado: ['No confirmado', 'warn'] };
+  async function pintarPagos() {
+    const sec = $('accPagos'); if (!sec) return;
+    const j = await (await fetch('/api/cuenta/pagos', { cache: 'no-store' })).json().catch(() => ({ pagos: [] }));
+    const L = j.pagos || [];
+    if (!$('accPagos')) return;
+    $('accPagos').innerHTML = `<h3>Pagos</h3>${L.length ? L.map(p => `<div class="li"><div><b>${CONC[p.concepto] || p.concepto}${p.concepto === 'expedientes' ? ' · ' + p.cantidad : ''}</b><br><small>${fdate(new Date(p.creado))} · comprobante ${esc(p.ref)}${p.nota ? ' · ' + esc(p.nota) : ''}</small></div><div style="text-align:right">${PX.mh(p.monto, 'CRC')}<br><span class="tag ${EST[p.estado][1]}">${EST[p.estado][0]}</span></div></div>`).join('') : '<small class="muted">Aún no has hecho pagos. Los planes se pagan por SINPE Móvil desde «Ver planes».</small>'}`;
+  }
+  $('bCuenta').onclick = () => { renderCuenta(); pintarPagos(); };
   $('layer').addEventListener('click', async e => {
     const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb]'); if (!d) return;
     const a = PX.acct, ds = d.dataset;
@@ -1127,7 +1186,7 @@
     if (ds.newl !== undefined) { const n = await prompt_('Nombre de la lista', 'Para visitar'); if (n) a.listas.push({ id: 'l' + Date.now(), n, items: [] }); }
     if (ds.bus) { closeLayer(); setFilt(a.busquedas[+ds.bus].s); return; }
     if (ds.delb) a.busquedas.splice(+ds.delb, 1);
-    PX.saveAcct(); renderCuenta(); renderList();
+    PX.saveAcct(); renderCuenta(); pintarPagos(); renderList();
   });
   $('layer').addEventListener('input', e => {
     const n = e.target.dataset.nota; if (!n) return;
@@ -1257,7 +1316,7 @@
     if (!PX.isPro()) {
       $('topOut').innerHTML = `<div class="teaser"><h3>Los 10 mejores remates de cada provincia</h3><span>Los 10 remates con mejor combinación de:</span>
         <ul><li><b>Sanidad jurídica</b> (${WTOP.juridica} %): servidumbres, gravámenes, derechos y certeza de ubicación</li><li><b>Precio por m²</b> (${WTOP.precio} %) frente a la mediana de la zona</li><li><b>Potencial por servicios</b> (${WTOP.servicios} %): plan regulador, acceso, salud, escuela, zona urbana</li></ul>
-        <div class="acts"><button class="btn primary" data-sub>Solicitar acceso PRO</button><button class="btn" data-planes>Ver planes</button></div></div>
+        <div class="acts"><button class="btn primary" data-pagar="pro">Activar PRO</button><button class="btn" data-planes>Ver planes</button></div></div>
         <div class="blur" aria-hidden="true">${[1, 2, 3].map(i => `<div class="item"><span></span><span class="mid"><div class="t1">Lote destacado ${i}</div><div class="t2">Cantón · 1 000 m²</div></span><span class="rt">₡ 00 M</span></div>`).join('')}</div>`;
       return;
     }
@@ -1301,6 +1360,6 @@
   let bienv = null; try { bienv = sessionStorage.getItem('px-bienvenida'); sessionStorage.removeItem('px-bienvenida'); } catch (e) {}
   if (bienv === '1' && PX.yo) modal(`<div class="hd">${PX.marca('dlgmark')}<h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
     <p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
-    ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en tu primer mes ${PX.PRO} cuando abramos los pagos. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
+    ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
     <div class="acts"><button class="btn primary" data-close>Ir al mapa</button><button class="btn" data-about="guia">Cómo usar</button></div>`, true);
 })();

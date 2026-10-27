@@ -48,8 +48,13 @@ function initDB(env) {
       creado TEXT, ultimo TEXT, solicita_pro TEXT, nota TEXT, datos TEXT)`),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS config (k TEXT PRIMARY KEY, v TEXT)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS tokens (t TEXT PRIMARY KEY, uid INTEGER NOT NULL, vence INTEGER NOT NULL)"),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS intentos (correo TEXT NOT NULL, ts INTEGER NOT NULL)")
-  ]).catch((e) => { listo = null; throw e; });
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS intentos (correo TEXT NOT NULL, ts INTEGER NOT NULL)"),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER NOT NULL, correo TEXT, concepto TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
+      monto INTEGER NOT NULL, descuento INTEGER DEFAULT 0, ref TEXT, telefono TEXT, estado TEXT NOT NULL DEFAULT 'pendiente', nota TEXT, creado TEXT, resuelto TEXT, img TEXT)`)
+  ]).then(async (r) => {   // columnas agregadas después de la primera versión (fallan sin daño si ya existen)
+    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
+    return r;
+  }).catch((e) => { listo = null; throw e; });
   return listo;
 }
 async function secreto(env) {
@@ -92,7 +97,26 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 // Planes: free (cuenta gratis), basico (Esencial) y pro (acceso total). pro_hasta vale para los dos de pago.
 const PLANES = new Set(["free", "basico", "pro"]);
 const planVigente = (u) => (u.plan !== "free" && PLANES.has(u.plan) && (!u.pro_hasta || u.pro_hasta >= hoy()) ? u.plan : "free");
-const publico = (u) => ({ correo: u.correo, nombre: u.nombre || "", perfil: u.perfil, prov: u.prov || "", plan: planVigente(u), proHasta: u.pro_hasta, cupon: u.cupon, solicitaPro: u.solicita_pro, creado: u.creado });
+const publico = (u) => ({ correo: u.correo, nombre: u.nombre || "", perfil: u.perfil, prov: u.prov || "", plan: planVigente(u), proHasta: u.pro_hasta, cupon: u.cupon, solicitaPro: u.solicita_pro, creado: u.creado, creditos: u.creditos || 0, cuponUsado: !!u.cupon_usado });
+
+// ---------- Pagos por SINPE Móvil: el usuario reporta el pago con su comprobante y el administrador lo aprueba ----------
+// Precios en colones (deben coincidir con PX.PRECIOS en assets/core.js). El cupón de lanzamiento descuenta un 30 % de
+// una mensualidad en el primer pago de un plan.
+const CATALOGO = {
+  "esencial-mes": { plan: "basico", meses: 1, monto: 5190, mensual: 5190, txt: "Plan Esencial · 1 mes" },
+  "esencial-anual": { plan: "basico", meses: 12, monto: 51900, mensual: 5190, txt: "Plan Esencial · 1 año" },
+  "pro-mes": { plan: "pro", meses: 1, monto: 11290, mensual: 11290, txt: "Plan PRO · 1 mes" },
+  "pro-anual": { plan: "pro", meses: 12, monto: 112900, mensual: 11290, txt: "Plan PRO · 1 año" },
+  "expedientes": { unidad: 1300, txt: "Expedientes adicionales" }
+};
+const CUPON_PCT = 0.3;
+function cotizar(us, concepto, cantidad) {
+  const c = CATALOGO[concepto]; if (!c) return null;
+  if (c.unidad) { const n = Math.max(1, Math.min(20, Math.round(Number(cantidad) || 1))); return { concepto, cantidad: n, monto: c.unidad * n, descuento: 0, txt: `${c.txt} · ${n}` }; }
+  const descuento = us && us.cupon && !us.cupon_usado ? Math.round(c.mensual * CUPON_PCT) : 0;
+  return { concepto, cantidad: 1, monto: c.monto - descuento, descuento, txt: c.txt };
+}
+const sumarMeses = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
 
 async function cupon(correo) {   // determinista: el mismo correo recibe siempre el mismo cupón
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode("pecr-cupon:" + correo)));
@@ -131,6 +155,12 @@ async function cuenta(request, env, u, pw) {
     let datos = null;
     if (us && us.datos) try { datos = JSON.parse(us.datos); } catch (_) {}
     return json({ user: us ? publico(us) : null, datos, admin: await esAdmin(request, pw) }, 200, 0);
+  }
+  if (ruta === "pagos" && request.method === "GET") {
+    const us = await usuarioActual(request, env);
+    if (!us) return json({ error: "Tu sesión terminó. Entra de nuevo." }, 401, 0);
+    const r = await env.DB.prepare("SELECT id, concepto, cantidad, monto, descuento, ref, estado, nota, creado, resuelto FROM pagos WHERE uid = ? ORDER BY id DESC LIMIT 20").bind(us.id).all();
+    return json({ pagos: r.results }, 200, 0);
   }
   if (request.method !== "POST" && request.method !== "PUT") return json({ error: "Método no permitido" }, 405, 0);
   const b = await leerJSON(request);
@@ -216,6 +246,31 @@ async function cuenta(request, env, u, pw) {
     const nu = await env.DB.prepare("UPDATE usuarios SET hash = ?, sal = ?, ver = ver + 1 WHERE id = ? RETURNING *").bind(h.hash, h.sal, us.id).first();
     return json({ ok: true }, 200, 0, { "Set-Cookie": await crearSesion(env, nu) });
   }
+  if (ruta === "cotizar") return json(Object.assign({ sinpe: env.SINPE_NUMERO || "", titular: env.SINPE_NOMBRE || "", referencia: us.cupon || us.correo }, cotizar(us, b.concepto, b.cantidad) || { error: "Concepto inválido" }), 200, 0);
+  if (ruta === "pagar") {
+    const q = cotizar(us, b.concepto, b.cantidad);
+    if (!q) return json({ error: "Elige un plan o una cantidad de expedientes." }, 400, 0);
+    const ref = String(b.ref || "").replace(/[^\w-]/g, "").slice(0, 40);
+    if (ref.length < 4) return json({ error: "Escribe el número de comprobante del SINPE Móvil." }, 400, 0);
+    let img = typeof b.img === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(b.img) ? b.img : null;
+    if (img && img.length > 1400000) return json({ error: "La imagen del comprobante es muy pesada. Prueba con una captura de pantalla." }, 413, 0);
+    const pend = await env.DB.prepare("SELECT COUNT(*) AS n FROM pagos WHERE uid = ? AND estado = 'pendiente'").bind(us.id).first();
+    if (pend && pend.n >= 3) return json({ error: "Ya tienes pagos en revisión. Te avisaremos apenas los confirmemos." }, 429, 0);
+    const r = await env.DB.prepare("INSERT INTO pagos (uid, correo, concepto, cantidad, monto, descuento, ref, telefono, creado, img) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id")
+      .bind(us.id, us.correo, q.concepto, q.cantidad, q.monto, q.descuento, ref, String(b.telefono || "").replace(/[^\d]/g, "").slice(0, 12), ahora, img).first();
+    await avisar(env, `Pago SINPE por revisar: ₡${q.monto} · ${us.correo}`, [`${us.nombre || us.correo} reportó un pago por SINPE Móvil.`, "", "Concepto: " + q.txt, "Monto: ₡" + q.monto + (q.descuento ? ` (con cupón, −₡${q.descuento})` : ""),
+      "Comprobante: " + ref, "Teléfono desde el que pagó: " + (b.telefono || "—"), img ? "Adjuntó una captura del comprobante." : "Sin captura adjunta.", "", "Revísalo y actívalo en: https://" + (env.DOMINIO || u.host) + "/admin"]);
+    return json({ ok: true, id: r.id, monto: q.monto }, 200, 0);
+  }
+  if (ruta === "pagos") {
+    const r = await env.DB.prepare("SELECT id, concepto, cantidad, monto, descuento, ref, estado, nota, creado, resuelto FROM pagos WHERE uid = ? ORDER BY id DESC LIMIT 20").bind(us.id).all();
+    return json({ pagos: r.results }, 200, 0);
+  }
+  if (ruta === "usar-credito") {   // un expediente adicional pagado
+    const r = await env.DB.prepare("UPDATE usuarios SET creditos = creditos - 1 WHERE id = ? AND creditos > 0 RETURNING creditos").bind(us.id).first();
+    if (!r) return json({ error: "No tienes expedientes adicionales disponibles." }, 400, 0);
+    return json({ ok: true, creditos: r.creditos }, 200, 0);
+  }
   if (ruta === "solicitar-pro") {
     const quiere = b.plan === "basico" ? "basico" : "pro";   // se guarda «plan fecha»
     await env.DB.prepare("UPDATE usuarios SET solicita_pro = ? WHERE id = ?").bind(quiere + " " + ahora, us.id).run();
@@ -238,6 +293,16 @@ async function admin(request, env, u) {
   if (!env.DB) return json({ error: "Falta la base de datos (D1)." }, 503, 0);
   await initDB(env);
   const ruta = u.pathname.slice("/api/admin/".length);
+  if (ruta === "pagos") {
+    const r = await env.DB.prepare("SELECT p.id, p.uid, p.correo, p.concepto, p.cantidad, p.monto, p.descuento, p.ref, p.telefono, p.estado, p.nota, p.creado, p.resuelto, (p.img IS NOT NULL) AS conimg, u.nombre, u.plan, u.pro_hasta FROM pagos p LEFT JOIN usuarios u ON u.id = p.uid ORDER BY (p.estado = 'pendiente') DESC, p.id DESC LIMIT 200").all();
+    return json({ pagos: r.results }, 200, 0);
+  }
+  if (ruta === "pago-img") {
+    const r = await env.DB.prepare("SELECT img FROM pagos WHERE id = ?").bind(Number(u.searchParams.get("id"))).first();
+    if (!r || !r.img) return txt("Sin imagen", 404);
+    const [cab, datos] = r.img.split(","), tipo = cab.slice(5, cab.indexOf(";"));
+    return new Response(Uint8Array.from(atob(datos), (c) => c.charCodeAt(0)), { headers: { "content-type": tipo, "cache-control": "no-store" } });
+  }
   if (ruta === "usuarios") {
     const r = await env.DB.prepare("SELECT id, correo, nombre, perfil, prov, plan, pro_hasta, cupon, fuente, pais, creado, ultimo, solicita_pro, nota FROM usuarios ORDER BY id DESC").all();
     return json({ usuarios: r.results, hoy: hoy() }, 200, 0);
@@ -250,6 +315,23 @@ async function admin(request, env, u) {
     await env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, nota = ?, solicita_pro = CASE WHEN ? <> 'free' THEN NULL ELSE solicita_pro END WHERE id = ?")
       .bind(plan, plan !== "free" ? hasta : null, String(b.nota || "").slice(0, 300), plan, b.id).run();
     return json({ ok: true }, 200, 0);
+  }
+  if (ruta === "pago") {   // aprobar o rechazar un pago reportado
+    const pg = await env.DB.prepare("SELECT * FROM pagos WHERE id = ?").bind(b.id).first();
+    if (!pg || pg.estado !== "pendiente") return json({ error: "Ese pago ya fue resuelto." }, 400, 0);
+    const ahora = new Date().toISOString(), nota = String(b.nota || "").slice(0, 300);
+    if (b.accion === "rechazar") { await env.DB.prepare("UPDATE pagos SET estado = 'rechazado', nota = ?, resuelto = ? WHERE id = ?").bind(nota, ahora, pg.id).run(); return json({ ok: true }, 200, 0); }
+    const us = await env.DB.prepare("SELECT * FROM usuarios WHERE id = ?").bind(pg.uid).first();
+    if (!us) return json({ error: "La cuenta ya no existe." }, 400, 0);
+    const c = CATALOGO[pg.concepto], st = [env.DB.prepare("UPDATE pagos SET estado = 'aprobado', nota = ?, resuelto = ? WHERE id = ?").bind(nota, ahora, pg.id)];
+    let hasta = null;
+    if (c && c.plan) {
+      const vigente = planVigente(us) === c.plan && us.pro_hasta && us.pro_hasta >= hoy() ? us.pro_hasta : hoy();   // renovación: se suma al final
+      hasta = sumarMeses(vigente, c.meses);
+      st.push(env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, solicita_pro = NULL, cupon_usado = CASE WHEN ? > 0 THEN ? ELSE cupon_usado END WHERE id = ?").bind(c.plan, hasta, pg.descuento, ahora, us.id));
+    } else st.push(env.DB.prepare("UPDATE usuarios SET creditos = creditos + ? WHERE id = ?").bind(pg.cantidad || 1, us.id));
+    await env.DB.batch(st);
+    return json({ ok: true, hasta }, 200, 0);
   }
   if (ruta === "enlace") {   // enlace para que el usuario elija una contraseña nueva (vale 72 horas)
     const t = azar(24);

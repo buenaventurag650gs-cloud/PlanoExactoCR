@@ -423,6 +423,14 @@
     } else if (!a.expedientes.some(x => x.k === key)) a.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'compra' });
     PX.saveAcct(); return true;
   };
+  // Expediente adicional pagado (crédito en el servidor): se descuenta y el lote queda disponible en esta cuenta
+  PX.comprar = (key, label) => { if (!PX.acct.comprados.includes(key)) PX.acct.comprados.push(key); if (!PX.acct.expedientes.some(x => x.k === key)) PX.acct.expedientes.unshift({ k: key, n: label, t: Date.now(), m: PX.mesKey(), via: 'compra' }); PX.saveAcct(); };
+  PX.usarCredito = async (key, label) => {
+    const r = await fetch('/api/cuenta/usar-credito', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'No se pudo usar el expediente adicional.');
+    if (PX.yo) PX.yo.creditos = j.creditos; PX.comprar(key, label); return true;
+  };
   PX.toggleSigo = key => { const s = PX.acct.sigo; const i = s.indexOf(key); i >= 0 ? s.splice(i, 1) : s.unshift(key); PX.saveAcct(); return i < 0; };
   PX.sigo = key => PX.acct.sigo.includes(key);
   // Favoritos = la primera lista de Mi cuenta («Mis favoritos»)

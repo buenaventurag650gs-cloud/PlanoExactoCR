@@ -481,3 +481,11 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .leaflet-marker-icon:hover .gr { transform: scale(1.08); }
 .gr.mini { width: 22px; height: 22px; } .gr.mini::before { width: 15px; height: 15px; } .gr.mini b { font-size: 8.5px; }
 .legend .pd { width: 13px; height: 13px; flex: none; margin: 0 2px; }
+/* Pago por SINPE Móvil */
+.pgmonto { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--chip); margin: 10px 0; }
+.pgmonto span { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.pgmonto b { font: 700 28px/1.15 var(--f-body); }
+.pgmonto small { color: var(--muted); }
+.pgpasos { margin: 0 0 10px; padding-left: 20px; display: grid; gap: 10px; }
+.pgpasos li > span { display: block; margin-bottom: 6px; }
+.pgpasos .authf { margin-top: 4px; }
