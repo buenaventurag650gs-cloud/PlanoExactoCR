@@ -504,3 +504,13 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .gbtn:hover { background: #f8f9fa !important; }
 .sep-o { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
 .sep-o::before, .sep-o::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* ---------- Tabler (Bootstrap) en ventanas: solo color de marca y tipografía del sitio ---------- */
+.tb, .tb[data-bs-theme=light], .tb[data-bs-theme=dark] { --tblr-primary: #1F5A47; --tblr-primary-rgb: 31, 90, 71; --tblr-primary-fg: #fff; --tblr-font-sans-serif: var(--f-body); --tblr-body-font-family: var(--f-body); }
+.tb[data-bs-theme=dark] { --tblr-primary: #3E9A7C; --tblr-primary-rgb: 62, 154, 124; }
+.tb { position: relative; z-index: 2000; font-family: var(--f-body); }
+/* Neutraliza estilos del mapa que comparten nombre con clases de Tabler */
+.tb .row { gap: 0; } .tb .card { padding: 0; gap: 0; display: flex; } .tb .badge { letter-spacing: normal; }
+.tb .btn { gap: 0; } .tb .btn:hover { border-color: var(--tblr-btn-hover-border-color); }
+.tb .modal-title .pro, .tb .modal-title .ese { vertical-align: 2px; }
+.tb .tbmarca { width: 40px; height: auto; }

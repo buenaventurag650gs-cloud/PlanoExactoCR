@@ -852,17 +852,35 @@
   });
 
   // ---------- expediente: acceso ----------
+  // ---------- Ventanas con Tabler (Bootstrap) ----------
+  // Componentes de Tabler tal cual (modal, offcanvas, card, form, btn, badge, steps, alert), dentro de un contenedor
+  // .tb para no chocar con los estilos del mapa. Solo se personaliza el color de marca.
+  const TCHK = '<svg xmlns="http://www.w3.org/2000/svg" class="icon me-1 text-success flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>';
+  const tbTema = () => dark() ? 'dark' : 'light';
+  function ventana({ titulo, cuerpo, pie = '', tam = '', marca = false, estado = '' }) {
+    $('layer').innerHTML = `<div class="tb" data-bs-theme="${tbTema()}"><div class="modal modal-blur show d-block" tabindex="-1" role="dialog" aria-modal="true" data-fondo>
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable${tam ? ' modal-' + tam : ''}"><div class="modal-content">
+        ${estado ? `<div class="modal-status bg-${estado}"></div>` : ''}
+        <div class="modal-header">${marca ? `<span class="me-2 d-inline-flex">${PX.marca('tbmarca', 40, 27)}</span>` : ''}<h5 class="modal-title">${titulo}</h5><button type="button" class="btn-close" data-close aria-label="Cerrar"></button></div>
+        <div class="modal-body">${cuerpo}</div>${pie ? `<div class="modal-footer">${pie}</div>` : ''}
+      </div></div></div><div class="modal-backdrop fade show"></div></div>`;
+    const f = $('layer').querySelector('.modal-body input:not([type=file]), .modal-body select, .modal-footer .btn-primary, .btn-close'); if (f) f.focus();
+  }
+  const alerta = (id, tipo = 'danger') => `<div class="alert alert-${tipo}" id="${id}" role="alert" hidden></div>`;
+  const mostrar = (id, t) => { const e = $(id); if (!e) return; e.textContent = t || ''; e.hidden = !t; };
+  const cuponCard = (cp, usado) => `<div class="card card-sm bg-primary-lt mb-3"><div class="card-body"><div class="subheader">Tu cupón de lanzamiento</div><div class="h2 mb-1 font-monospace">${esc(cp)}</div><div class="text-secondary small">${usado ? 'Ya lo usaste en tu primer pago. ¡Gracias!' : `${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar.`}</div></div></div>`;
+
   function goExpediente(r) {
     if (r.isPlano) PX.savePlano(r);
     if (!PX.conCuenta()) return openAuth('crear', 'Crea tu cuenta gratis para generar expedientes.');
     if (PX.registrarExp(r.key, r.nom)) { location.href = 'expediente.html?k=' + encodeURIComponent(r.key); return; }
     const n = PX.nivel(), cr = PX.yo ? PX.yo.creditos || 0 : 0;
-    modal(`<div class="hd"><h2>Expediente adicional</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.semanalEsencial} expedientes por semana y ya los usaste.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`} ${cr ? `Tienes <b>${cr}</b> expediente${cr > 1 ? 's' : ''} adicional${cr > 1 ? 'es' : ''} pagado${cr > 1 ? 's' : ''}.` : `Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con ${PX.PRO} generas todos los que quieras.`}</p>
-      <p class="aerr" id="crErr" hidden></p>
-      <div class="acts">${cr ? `<button class="btn primary" id="usarCr">Usar 1 expediente adicional</button>` : `<button class="btn primary" data-pagar="expedientes">Comprar expedientes adicionales</button>`}<button class="btn" data-planes>Ver planes</button></div>`, true);
+    ventana({ titulo: 'Expediente adicional', tam: 'sm',
+      cuerpo: `<p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.semanalEsencial} expedientes por semana y ya los usaste.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`}</p>
+        <p class="text-secondary mb-0">${cr ? `Tienes <b>${cr}</b> expediente${cr > 1 ? 's' : ''} adicional${cr > 1 ? 'es' : ''} pagado${cr > 1 ? 's' : ''}.` : `Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con PRO generas todos los que quieras.`}</p>${alerta('crErr')}`,
+      pie: `<button class="btn me-auto" data-planes>Ver planes</button>${cr ? '<button class="btn btn-primary" id="usarCr">Usar 1 expediente adicional</button>' : '<button class="btn btn-primary" data-pagar="expedientes">Comprar expedientes</button>'}` });
     const b = $('usarCr');
-    if (b) b.onclick = async () => { b.disabled = true; try { await PX.usarCredito(r.key, r.nom); location.href = 'expediente.html?k=' + encodeURIComponent(r.key); } catch (x) { const e = $('crErr'); e.textContent = x.message; e.hidden = false; b.disabled = false; } };
+    if (b) b.onclick = async () => { b.disabled = true; try { await PX.usarCredito(r.key, r.nom); location.href = 'expediente.html?k=' + encodeURIComponent(r.key); } catch (x) { mostrar('crErr', x.message); b.disabled = false; } };
   }
   // ---------- pago por SINPE Móvil ----------
   // El usuario elige plan (o cantidad de expedientes), hace el SINPE y reporta el comprobante; el administrador lo aprueba en /admin.
@@ -883,40 +901,42 @@
       const q = await (await fetch('/api/cuenta/cotizar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant }) })).json().catch(() => ({}));
       const listo = q.sinpe && q.monto;
       const renov = tipo !== 'expedientes' && PX.plan() === tipo && PX.yo.proHasta;
-      modal(`<div class="hd">${PX.marca('dlgmark')}<h2>${tipo === 'expedientes' ? 'Expedientes adicionales' : (tipo === 'pro' ? PX.PRO : PX.ESE) + (renov ? ' Renovar plan' : ' Activar plan')}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-        ${tipo === 'expedientes' ? `<div class="fld"><label for="pgCant">Cantidad</label><select id="pgCant">${[1, 2, 3, 5, 10].map(k => `<option value="${k}"${k === cant ? ' selected' : ''}>${k} expediente${k > 1 ? 's' : ''} · ${PX.mt(k * PX.PRECIOS.expediente, 'CRC')}</option>`).join('')}</select></div>`
-          : `<div class="seg" role="group"><button data-per="mes" aria-pressed="${periodo === 'mes'}">Mensual</button><button data-per="anual" aria-pressed="${periodo === 'anual'}">Anual · 2 meses gratis</button></div>`}
-        <div class="pgmonto"><span>Total a pagar</span><b class="num">${PX.mt(q.monto, 'CRC')}</b>${q.descuento ? `<small>Incluye tu cupón ${esc(PX.yo.cupon)}: −${PX.mt(q.descuento, 'CRC')}</small>` : ''}${renov ? `<small>Se suma a tu plan actual, vigente hasta el ${fdate(new Date(PX.yo.proHasta + 'T12:00'))}.</small>` : ''}</div>
-        ${listo ? `<ol class="pgpasos">
-          <li><span>Desde tu banco, haz un <b>SINPE Móvil</b> por <b>${PX.mt(q.monto, 'CRC')}</b> al <b class="num">${esc(q.sinpe)}</b>${q.titular ? ` (a nombre de ${esc(q.titular)})` : ''}.</span></li>
-          <li><span>En la descripción escribe <b class="num">${esc(q.referencia)}</b>.</span></li>
-          <li><span>Reporta el pago aquí:</span>
-            <form id="pgF" class="authf" novalidate>
-              <div class="row2"><div class="fld"><label for="pgRef">Número de comprobante</label><input id="pgRef" inputmode="numeric" autocomplete="off" required value="${esc(form.ref)}"></div>
-              <div class="fld"><label for="pgTel">Teléfono desde el que pagaste <small>(opcional)</small></label><input id="pgTel" inputmode="tel" value="${esc(form.tel)}"></div></div>
-              <div class="fld"><label for="pgImg">Captura del comprobante <small>(recomendado)</small></label><input id="pgImg" type="file" accept="image/*"></div>
-              <p class="aerr" id="pgErr" role="alert" hidden></p>
-              <button class="btn primary" type="submit" id="pgBtn">Enviar comprobante</button>
-            </form></li></ol>
-          <p class="muted" style="font-size:13px;margin:0">Revisamos cada pago a mano: tu plan queda activo en horas hábiles, normalmente el mismo día, y te escribimos a ${esc(PX.yo.correo)}.</p>`
-          : `<div class="note">Estamos terminando de configurar el pago por SINPE Móvil. Escríbenos a hola@planoexactocr.com y te ayudamos.</div>`}`, true);
+      ventana({ marca: true,
+        titulo: tipo === 'expedientes' ? 'Expedientes adicionales' : `${tipo === 'pro' ? PX.PRO : PX.ESE} <span class="ms-2">${renov ? 'Renovar plan' : 'Activar plan'}</span>`,
+        cuerpo: `${tipo === 'expedientes' ? `<div class="mb-3"><label class="form-label" for="pgCant">Cantidad</label><select class="form-select" id="pgCant">${[1, 2, 3, 5, 10].map(k => `<option value="${k}"${k === cant ? ' selected' : ''}>${k} expediente${k > 1 ? 's' : ''} · ${PX.mt(k * PX.PRECIOS.expediente, 'CRC')}</option>`).join('')}</select></div>`
+            : `<div class="btn-group w-100 mb-3" role="group"><button type="button" class="btn${periodo === 'mes' ? ' btn-primary' : ''}" data-per="mes">Mensual</button><button type="button" class="btn${periodo === 'anual' ? ' btn-primary' : ''}" data-per="anual">Anual · 2 meses gratis</button></div>`}
+          <div class="card card-sm mb-3"><div class="card-body"><div class="subheader">Total a pagar</div><div class="h1 mb-0">${PX.mt(q.monto, 'CRC')}</div>
+            ${q.descuento ? `<div class="text-success small">Incluye tu cupón ${esc(PX.yo.cupon)}: −${PX.mt(q.descuento, 'CRC')}</div>` : ''}${renov ? `<div class="text-secondary small">Se suma a tu plan actual, vigente hasta el ${fdate(new Date(PX.yo.proHasta + 'T12:00'))}.</div>` : ''}</div></div>
+          ${listo ? `<ul class="steps steps-vertical steps-green mb-3">
+              <li class="step-item"><div class="fw-medium">Haz un SINPE Móvil</div><div class="text-secondary">por <b>${PX.mt(q.monto, 'CRC')}</b> al <b class="font-monospace">${esc(q.sinpe)}</b>${q.titular ? ` (a nombre de ${esc(q.titular)})` : ''}</div></li>
+              <li class="step-item"><div class="fw-medium">Escribe la referencia</div><div class="text-secondary">En la descripción del SINPE: <code>${esc(q.referencia)}</code></div></li>
+              <li class="step-item active"><div class="fw-medium">Reporta el pago aquí</div></li></ul>
+            <form id="pgF" novalidate>
+              <div class="row g-2"><div class="col-sm-6 mb-2"><label class="form-label required" for="pgRef">Número de comprobante</label><input class="form-control" id="pgRef" inputmode="numeric" autocomplete="off" required value="${esc(form.ref)}"></div>
+                <div class="col-sm-6 mb-2"><label class="form-label" for="pgTel">Teléfono desde el que pagaste</label><input class="form-control" id="pgTel" inputmode="tel" value="${esc(form.tel)}" placeholder="Opcional"></div></div>
+              <div class="mb-2"><label class="form-label" for="pgImg">Captura del comprobante <span class="form-label-description">Recomendado</span></label><input class="form-control" id="pgImg" type="file" accept="image/*"></div>
+              ${alerta('pgErr')}
+            </form>
+            <div class="text-secondary small">Revisamos cada pago a mano: tu plan queda activo en horas hábiles, normalmente el mismo día, y te escribimos a ${esc(PX.yo.correo)}.</div>`
+            : `<div class="alert alert-warning mb-0">Estamos terminando de configurar el pago por SINPE Móvil. Escríbenos a hola@planoexactocr.com y te ayudamos.</div>`}`,
+        pie: listo ? '<button class="btn me-auto" data-close>Cancelar</button><button class="btn btn-primary" type="submit" form="pgF" id="pgBtn">Enviar comprobante</button>' : '<button class="btn" data-close>Cerrar</button>' });
       document.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { periodo = b.dataset.per; guardar(); pintar(); });
       const c = $('pgCant'); if (c) c.onchange = () => { cant = +c.value; guardar(); pintar(); };
       const f = $('pgF'); if (!f) return;
       f.onsubmit = async ev => {
         ev.preventDefault();
-        const err = t => { const e = $('pgErr'); e.textContent = t; e.hidden = !t; }, btn = $('pgBtn'); err('');
-        const ref = $('pgRef').value.trim(); if (ref.replace(/\D/g, '').length < 4) return err('Escribe el número de comprobante que te dio el banco.');
+        const btn = $('pgBtn'); mostrar('pgErr', '');
+        const ref = $('pgRef').value.trim(); if (ref.replace(/\D/g, '').length < 4) return mostrar('pgErr', 'Escribe el número de comprobante que te dio el banco.');
         btn.disabled = true; btn.textContent = 'Enviando…';
         try {
           const file = $('pgImg').files[0], img = file ? await comprimir(file) : null;
           const r = await fetch('/api/cuenta/pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant, ref, telefono: $('pgTel').value.trim(), img }) });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(j.error || 'No se pudo enviar. Intenta de nuevo.');
-          modal(`<div class="hd"><h2>¡Recibimos tu comprobante!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-            <p>Gracias. Vamos a confirmar tu pago de <b>${PX.mt(j.monto, 'CRC')}</b> y ${tipo === 'expedientes' ? 'te acreditamos los expedientes' : 'activamos tu plan'} en horas hábiles, normalmente el mismo día. Te escribiremos a <b>${esc(PX.yo.correo)}</b>.</p>
-            <p class="muted">Puedes ver el estado en Mi cuenta → Pagos.</p><div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
-        } catch (x) { err(x.message); btn.disabled = false; btn.textContent = 'Enviar comprobante'; }
+          ventana({ titulo: '¡Recibimos tu comprobante!', tam: 'sm', estado: 'success',
+            cuerpo: `<p>Vamos a confirmar tu pago de <b>${PX.mt(j.monto, 'CRC')}</b> y ${tipo === 'expedientes' ? 'te acreditamos los expedientes' : 'activamos tu plan'} en horas hábiles, normalmente el mismo día. Te escribiremos a <b>${esc(PX.yo.correo)}</b>.</p><p class="text-secondary mb-0">Puedes ver el estado en Mi cuenta → Pagos.</p>`,
+            pie: '<button class="btn btn-primary w-100" data-close>Entendido</button>' });
+        } catch (x) { mostrar('pgErr', x.message); btn.disabled = false; btn.textContent = 'Enviar comprobante'; }
       };
     }
     const guardar = () => { const a = $('pgRef'), b = $('pgTel'); if (a) form.ref = a.value; if (b) form.tel = b.value; };
@@ -925,62 +945,59 @@
   document.addEventListener('click', e => {
     { const sb = e.target.closest('[data-sub],[data-pagar]'); if (sb) { e.preventDefault(); openPago(sb.dataset.pagar || sb.dataset.sub); return; } }
     const au = e.target.closest('[data-auth]'); if (au) { openAuth(au.dataset.auth); return; }
-    if (e.target.closest('[data-close]') || e.target.classList.contains('scrim')) closeLayer();
+    if (e.target.closest('[data-close]') || e.target.classList.contains('scrim') || e.target.hasAttribute('data-fondo')) closeLayer();
   });
 
   // ---------- crear cuenta / entrar ----------
   const PERF = [['comprador', 'Comprador'], ['inversionista', 'Inversionista'], ['abogado', 'Abogado'], ['corredor', 'Corredor'], ['desarrollador', 'Desarrollador'], ['otro', 'Otro']];
   // Ingreso sin contraseña: Google y enlace por correo (si están configurados en el servidor)
-  const GLOGO = '<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+  const GLOGO = '<svg viewBox="0 0 48 48" width="18" height="18" class="me-2" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
   const utmQ = () => { const q = new URLSearchParams(location.search), u = {}; ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) u[k] = q.get(k).slice(0, 60); }); return u; };
   function openIngreso(porque) {
     const I = PX.ingreso, vuelta = location.pathname + location.hash, f = Object.values(utmQ()).join('/');
-    modal(`<div class="hd">${PX.marca('dlgmark')}<h2>Entra a PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      ${porque ? `<div class="note">${esc(porque)}</div>` : ''}
-      <p class="muted" style="margin:0">Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón de lanzamiento. Sin contraseñas.</p>
-      <div class="authf">
-        ${I.google ? `<a class="btn gbtn" href="/auth/google?v=${encodeURIComponent(vuelta)}${f ? '&f=' + encodeURIComponent(f) : ''}">${GLOGO}<span>Continuar con Google</span></a>` : ''}
-        ${I.google && I.correo ? '<div class="sep-o"><span>o con tu correo</span></div>' : ''}
-        ${I.correo ? `<form id="mlF" class="authf" novalidate><div class="fld"><label for="mlCorreo">Correo electrónico</label><input id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></div>
-          <p class="aerr" id="mlErr" role="alert" hidden></p><button class="btn primary" type="submit" id="mlBtn">Enviarme un enlace para entrar</button></form>` : ''}
-        <small class="muted">Al continuar aceptas la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</small>
-      </div>`, true);
+    ventana({ titulo: 'Entra a PlanoExactoCR', tam: 'sm', marca: true,
+      cuerpo: `${porque ? `<div class="alert alert-info"><div>${esc(porque)}</div></div>` : ''}
+        <p class="text-secondary">Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón de lanzamiento. Sin contraseñas.</p>
+        ${I.google ? `<a class="btn w-100" href="/auth/google?v=${encodeURIComponent(vuelta)}${f ? '&f=' + encodeURIComponent(f) : ''}">${GLOGO}Continuar con Google</a>` : ''}
+        ${I.google && I.correo ? '<div class="hr-text">o con tu correo</div>' : ''}
+        ${I.correo ? `<form id="mlF" novalidate><div class="mb-3"><label class="form-label" for="mlCorreo">Correo electrónico</label><input class="form-control" id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></div>
+          ${alerta('mlErr')}<button class="btn btn-primary w-100" type="submit" id="mlBtn">Enviarme un enlace para entrar</button></form>` : ''}
+        <div class="text-secondary small mt-3">Al continuar aceptas la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>.</div>` });
     const fm = $('mlF'); if (!fm) return;
     fm.onsubmit = async ev => {
       ev.preventDefault();
-      const correo = $('mlCorreo').value.trim(), err = t => { const e = $('mlErr'); e.textContent = t; e.hidden = !t; }, b = $('mlBtn'); err('');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) return err('Revisa el correo: parece incompleto.');
+      const correo = $('mlCorreo').value.trim(), b = $('mlBtn'); mostrar('mlErr', '');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) return mostrar('mlErr', 'Revisa el correo: parece incompleto.');
       b.disabled = true; b.textContent = 'Enviando…';
       try {
         const r = await fetch('/api/cuenta/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, vuelta, utm: utmQ() }) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j.error || 'No se pudo enviar.');
-        modal(`<div class="hd"><h2>Revisa tu correo</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-          <p>Te enviamos un enlace a <b>${esc(correo)}</b>. Ábrelo desde este mismo dispositivo para entrar; vale 20 minutos.</p>
-          <p class="muted">¿No llega? Revisa la carpeta de spam o promociones, o vuelve a pedirlo en unos minutos.</p><div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
-      } catch (x) { err(x.message); b.disabled = false; b.textContent = 'Enviarme un enlace para entrar'; }
+        ventana({ titulo: 'Revisa tu correo', tam: 'sm', estado: 'success',
+          cuerpo: `<p>Te enviamos un enlace a <b>${esc(correo)}</b>. Ábrelo desde este mismo dispositivo para entrar; vale 20 minutos.</p><p class="text-secondary mb-0">¿No llega? Revisa la carpeta de spam o promociones, o vuelve a pedirlo en unos minutos.</p>`,
+          pie: '<button class="btn btn-primary w-100" data-close>Entendido</button>' });
+      } catch (x) { mostrar('mlErr', x.message); b.disabled = false; b.textContent = 'Enviarme un enlace para entrar'; }
     };
-    $('mlCorreo').focus();
   }
+  // Ingreso con contraseña: solo mientras no estén configurados Google o el correo
   function openAuth(modo, porque) {
     if (PX.ingreso.google || PX.ingreso.correo) return openIngreso(porque);
-    const crear = modo === 'crear', olvido = modo === 'olvide';
-    const utm = {}; const q = new URLSearchParams(location.search); ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
-    modal(`<div class="hd">${PX.marca('dlgmark')}<h2>${olvido ? 'Restablecer contraseña' : crear ? 'Crea tu cuenta gratis' : 'Entrar'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      ${porque ? `<div class="note">${esc(porque)}</div>` : ''}
-      ${olvido ? '' : `<div class="seg" role="group"><button data-auth="crear" aria-pressed="${crear}">Crear cuenta</button><button data-auth="entrar" aria-pressed="${!crear}">Ya tengo cuenta</button></div>`}
-      <form id="authF" class="authf" novalidate>
-        <div class="fld"><label for="aCorreo">Correo electrónico</label><input id="aCorreo" type="email" autocomplete="email" required></div>
-        ${olvido ? '' : `<div class="fld"><label for="aClave">Contraseña${crear ? ' <small>(mínimo 8 caracteres)</small>' : ''}</label><input id="aClave" type="password" minlength="8" autocomplete="${crear ? 'new-password' : 'current-password'}" required></div>`}
-        ${crear ? `<div class="row2"><div class="fld"><label for="aNom">Nombre <small>(opcional)</small></label><input id="aNom" autocomplete="name" maxlength="80"></div>
-          <div class="fld"><label for="aPerf">Te interesa como</label><select id="aPerf">${PERF.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></div></div>
-          <div class="fld"><label for="aProv">Provincia de interés</label><select id="aProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option>${p}</option>`).join('')}</select></div>
-          <label class="chk"><input id="aOk" type="checkbox"> <span>Acepto la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>: PlanoExactoCR guarda mi correo y mis preferencias para mi cuenta y para avisarme novedades. Puedo pedir que los borren.</span></label>` : ''}
-        <p class="aerr" id="aErr" role="alert" hidden></p>
-        <button class="btn primary" type="submit" id="aBtn">${olvido ? 'Enviar enlace' : crear ? 'Crear cuenta y recibir mi cupón' : 'Entrar'}</button>
-        ${crear || olvido ? '' : '<button type="button" class="linkbtn" data-auth="olvide">¿Olvidaste tu contraseña?</button>'}
-      </form>`, true);
-    const err = t => { const x = $('aErr'); x.textContent = t; x.hidden = !t; };
+    const crear = modo === 'crear', olvido = modo === 'olvide', utm = utmQ();
+    ventana({ marca: true, titulo: olvido ? 'Restablecer contraseña' : crear ? 'Crea tu cuenta gratis' : 'Entrar',
+      cuerpo: `${porque ? `<div class="alert alert-info"><div>${esc(porque)}</div></div>` : ''}
+        ${olvido ? '' : `<div class="btn-group w-100 mb-3" role="group"><button type="button" class="btn${crear ? ' btn-primary' : ''}" data-auth="crear">Crear cuenta</button><button type="button" class="btn${crear ? '' : ' btn-primary'}" data-auth="entrar">Ya tengo cuenta</button></div>`}
+        <form id="authF" novalidate>
+          <div class="mb-3"><label class="form-label" for="aCorreo">Correo electrónico</label><input class="form-control" id="aCorreo" type="email" autocomplete="email" required></div>
+          ${olvido ? '' : `<div class="mb-3"><label class="form-label" for="aClave">Contraseña${crear ? ' <span class="form-label-description">mínimo 8 caracteres</span>' : ''}</label><input class="form-control" id="aClave" type="password" minlength="8" autocomplete="${crear ? 'new-password' : 'current-password'}" required></div>`}
+          ${crear ? `<div class="row g-2"><div class="col-sm-6 mb-3"><label class="form-label" for="aNom">Nombre</label><input class="form-control" id="aNom" autocomplete="name" maxlength="80" placeholder="Opcional"></div>
+            <div class="col-sm-6 mb-3"><label class="form-label" for="aPerf">Te interesa como</label><select class="form-select" id="aPerf">${PERF.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></div></div>
+            <div class="mb-3"><label class="form-label" for="aProv">Provincia de interés</label><select class="form-select" id="aProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option>${p}</option>`).join('')}</select></div>
+            <label class="form-check mb-3"><input class="form-check-input" id="aOk" type="checkbox"><span class="form-check-label">Acepto la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>: PlanoExactoCR guarda mi correo y mis preferencias para mi cuenta y para avisarme novedades.</span></label>` : ''}
+          ${alerta('aErr')}
+          ${crear || olvido ? '' : '<a href="#" class="small" data-auth="olvide">¿Olvidaste tu contraseña?</a>'}
+        </form>`,
+      pie: `<button class="btn btn-primary w-100" type="submit" form="authF" id="aBtn">${olvido ? 'Enviar enlace' : crear ? 'Crear cuenta y recibir mi cupón' : 'Entrar'}</button>` });
+    const err = t => mostrar('aErr', t);
     $('authF').onsubmit = async ev => {
       ev.preventDefault(); err('');
       const correo = $('aCorreo').value.trim(), btn = $('aBtn');
@@ -993,43 +1010,45 @@
         const r = await fetch('/api/cuenta/' + ruta, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) { btn.disabled = false; return err(j.error || 'No se pudo completar. Intenta de nuevo.'); }
-        if (olvido) return modal(`<div class="hd"><h2>Restablecer contraseña</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-          <p>${j.enviado ? 'Si existe una cuenta con ese correo, te enviamos un enlace para elegir una contraseña nueva. Revisa también la carpeta de correo no deseado.' : `Escríbenos a <b>${esc(j.contacto)}</b> desde el correo de tu cuenta y te enviamos un enlace para elegir una contraseña nueva.`}</p>
-          <div class="acts"><button class="btn primary" data-close>Entendido</button></div>`, true);
+        if (olvido) return ventana({ titulo: 'Restablecer contraseña', tam: 'sm', cuerpo: `<p class="mb-0">${j.enviado ? 'Si existe una cuenta con ese correo, te enviamos un enlace para elegir una contraseña nueva. Revisa también la carpeta de correo no deseado.' : `Escríbenos a <b>${esc(j.contacto)}</b> desde el correo de tu cuenta y te enviamos un enlace para elegir una contraseña nueva.`}</p>`, pie: '<button class="btn btn-primary w-100" data-close>Entendido</button>' });
         sessionStorage.setItem('px-bienvenida', crear ? '1' : '');
         location.reload();
       } catch (x) { btn.disabled = false; err('No hay conexión. Intenta de nuevo.'); }
     };
-    $('aCorreo').focus();
   }
   // ---------- ventanas ----------
+  // Ventana anterior (aún la usan la guía y las herramientas; pasarán a Tabler en la fase de la ficha)
   function modal(html, small) { $('layer').innerHTML = `<div class="scrim"><div class="dlg${small ? ' sm' : ''}" role="dialog" aria-modal="true">${html}</div></div>`; const f = $('layer').querySelector('button, input'); if (f) f.focus(); }
   function closeLayer() { $('layer').innerHTML = ''; }
   function prompt_(title, def) {
     return new Promise(res => {
-      modal(`<div class="hd"><h2>${esc(title)}</h2></div><form id="pf" class="fld"><input id="pv" value="${esc(def || '')}" aria-label="${esc(title)}"><div class="acts"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-close>Cancelar</button></div></form>`, true);
+      ventana({ titulo: esc(title), tam: 'sm', cuerpo: `<form id="pf"><input class="form-control" id="pv" value="${esc(def || '')}" aria-label="${esc(title)}"></form>`,
+        pie: '<button class="btn me-auto" type="button" data-close>Cancelar</button><button class="btn btn-primary" type="submit" form="pf">Guardar</button>' });
       $('pf').onsubmit = ev => { ev.preventDefault(); const v = $('pv').value.trim(); closeLayer(); res(v); };
       $('pv').select();
     });
   }
   function openPlanes(why) {
     const n = PX.nivel();
-    modal(`<div class="hd">${PX.marca('dlgmark')}<h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      ${why ? `<div class="note">${esc(why)}</div>` : ''}
-      <div class="plans p3">
-        <div class="plan${n === 1 ? ' hl' : ''}"><h3>Cuenta gratis</h3><div class="pr sm">Con tu correo</div>
-          <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Predio exacto en el mapa, con su forma según el catastro</li><li>Listas y seguimiento</li><li><b>${PX.PRECIOS.semanal} expediente por semana</b></li></ul>
-          ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : n === 1 ? '<span class="tag ok">Tu plan actual</span>' : ''}</div>
-        <div class="plan${n === 2 ? ' hl' : ''}"><h3>${PX.ESE} Lo esencial para decidir</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
-          <div class="muted alt">o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año</div>
-          <ul><li>Todo lo de la cuenta gratis</li><li>Número de finca y plano, servidumbres y gravámenes citados</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b></li></ul>
-          ${n === 2 ? '<button class="btn" data-pagar="basico">Renovar Esencial</button>' : n < 2 ? '<button class="btn" data-pagar="basico">Activar Esencial</button>' : ''}</div>
-        <div class="plan${n === 3 ? ' hl' : ''}"><h3>${PX.PRO} Acceso total</h3><div class="pr">${PX.mh(PX.PRECIOS.pro, 'CRC')} <small>al mes</small></div>
-          <div class="muted alt">o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)</div>
-          <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b>, para imprimir todos los informes que quieras</li></ul>
-          ${n === 3 ? '<button class="btn" data-pagar="pro">Renovar PRO</button>' : '<button class="btn primary" data-pagar="pro">Activar PRO</button>'}</div>
+    const plan = (activo, nombre, precio, alt, items, boton) => `<div class="col-md-4"><div class="card card-md h-100${activo ? ' border-primary' : ''}">
+      ${activo ? '<div class="ribbon ribbon-top bg-primary">Tu plan</div>' : ''}
+      <div class="card-body d-flex flex-column"><div class="text-uppercase text-secondary fw-medium d-flex align-items-center gap-2">${nombre}</div>
+        <div class="display-6 fw-bold my-2">${precio}</div>${alt ? `<div class="text-secondary small mb-2">${alt}</div>` : ''}
+        <ul class="list-unstyled lh-lg mb-4">${items.map(t => `<li class="d-flex">${TCHK}<span>${t}</span></li>`).join('')}</ul>
+        <div class="mt-auto">${boton}</div></div></div></div>`;
+    ventana({ titulo: 'Planes de PlanoExactoCR', tam: 'xl', marca: true,
+      cuerpo: `${why ? `<div class="alert alert-info"><div>${esc(why)}</div></div>` : ''}<div class="row row-cards">
+        ${plan(n === 1, 'Cuenta gratis', '₡0', 'Con tu correo o tu cuenta de Google',
+          ['Fechas y bases de cada remate, área y estado del plan regulador', 'Predio exacto en el mapa, con su forma según el catastro', 'Listas y seguimiento', `<b>${PX.PRECIOS.semanal} expediente por semana</b>`],
+          !PX.conCuenta() ? '<button class="btn btn-primary w-100" data-auth="crear">Crear cuenta gratis</button>' : '')}
+        ${plan(n === 2, `${PX.ESE}`, `${PX.mt(PX.PRECIOS.esencial, 'CRC')} <span class="fs-4 fw-normal text-secondary">/ mes</span>`, `o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año`,
+          ['Todo lo de la cuenta gratis', 'Número de finca y plano, servidumbres y gravámenes citados', 'Agua potable, vía, salud, escuela, ríos y costa', 'Búsquedas guardadas y comparar 2 lotes', `<b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b>`],
+          n === 2 ? '<button class="btn w-100" data-pagar="basico">Renovar Esencial</button>' : n < 2 ? '<button class="btn w-100" data-pagar="basico">Activar Esencial</button>' : '')}
+        ${plan(n === 3, `${PX.PRO} <span class="text-body">Acceso total</span>`, `${PX.mt(PX.PRECIOS.pro, 'CRC')} <span class="fs-4 fw-normal text-secondary">/ mes</span>`, `o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)`,
+          ['Todo lo de Esencial', 'Valor de Hacienda, índice Puja/Hacienda y escala PECR', 'Todas las capas, mapa de precios y Top 10 por provincia', 'Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas', '<b>Expedientes sin límite</b>'],
+          n === 3 ? '<button class="btn w-100" data-pagar="pro">Renovar PRO</button>' : '<button class="btn btn-primary w-100" data-pagar="pro">Activar PRO</button>')}
       </div>
-      <div class="foot">${n < 3 ? `Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. ` : ''}Precios en colones con IVA incluido. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad.</div>`);
+      <div class="text-secondary small mt-3">${n < 3 ? `Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. ` : ''}Precios en colones con IVA incluido. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos.</div>` });
   }
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
@@ -1210,54 +1229,53 @@
     const nameOf = k => { const it = PX.item(k); return it ? it.nom : k; };
     const sig = a.sigo.map(k => PX.item(k)).filter(Boolean);
     const snap = a.snap || {};
-    $('layer').innerHTML = `<div class="scrim" style="place-items:stretch end;padding:0"><aside class="drawer" role="dialog" aria-modal="true" aria-label="Mi cuenta">
-      <div class="fhead"><h2 style="margin:0;font:600 19px/1.2 var(--f-display)">Mi cuenta</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <div class="dbody">
-        ${yo ? `<section class="acc"><h3>Tu cuenta</h3>
-          <div class="li"><div><b>${esc(yo.nombre || yo.correo)}</b>${yo.nombre ? `<br><small>${esc(yo.correo)}</small>` : ''}</div><div><a class="btn sm" href="/__salir">Cerrar sesión</a></div></div>
-          ${yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(yo.cupon)}</b><small>${yo.cuponUsado ? 'Ya lo usaste en tu primer pago. ¡Gracias!' : `${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar.`}</small></div>` : ''}
-        </section>` : `<div class="demo">Sesión de administración: con «Ver como» revisas el sitio como usuario gratis o PRO. <a href="/admin">Panel de administración</a> · <a href="/__salir">Salir</a></div>`}
-        <section class="acc"><h3>Plan</h3>
-          <div class="li"><div><b>${n >= 2 ? 'Plan ' + (pro ? PX.PRO : PX.ESE) : 'Cuenta gratis'}</b><br><small>${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste un plan: te escribiremos pronto' : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
-            <div>${n >= 2 ? `<button class="btn sm" data-pagar="${pro ? 'pro' : 'basico'}">Renovar</button> ` : ''}${pro ? '' : '<button class="btn sm primary" data-planes>Ver planes</button>'}</div></div>
-          ${yo && yo.creditos ? `<small class="muted">Expedientes adicionales pagados: <b class="num">${yo.creditos}</b></small>` : ''}
-          ${pro ? '<small class="muted">Expedientes sin límite.</small>' : `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados esta semana: <b class="num">${uso}</b> de ${cupo} · adicional ${PX.mt(PX.PRECIOS.expediente, 'CRC')}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>`}
-        </section>
-        ${yo ? '<section class="acc" id="accPagos"><h3>Pagos</h3><small class="muted">Cargando…</small></section>' : ''}
-        <section class="acc"><h3>Seguimiento <span class="tag">${sig.length}</span></h3>
-          ${sig.length ? sig.map(r => { const s0 = snap[r.key]; const cambio = s0 && s0.st !== r.st ? (r.st < 0 ? 'Ya pasaron todas las fechas' : `Pasó a ${PX.ETAPA[r.st]}`) : ''; return `<div class="li"><div><button class="linkbtn" data-open="${r.key}">${esc(r.nom)}</button><br><small>${r.st >= 0 ? `${PX.ETAPA[r.st]} · ${fdate(r.next)} · ${when(r.next)}` : 'Sin fechas pendientes'}</small>${cambio ? ` <span class="tag warn">${cambio}</span>` : ''}</div><div>${r.st >= 0 ? PX.duo(r.bv, r.mon) : ''}<br><button class="linkbtn" data-unsig="${r.key}" style="font-weight:500;font-size:12px">Dejar de seguir</button></div></div>`; }).join('') : '<small class="muted">Usa «Seguir» en la ficha de un remate para ver aquí su próxima fecha y los cambios de etapa.</small>'}
-        </section>
-        <section class="acc"><h3>Listas</h3>
-          ${a.listas.map(l => `<details ${l.items.length ? 'open' : ''} style="border-top:1px solid var(--line);padding:6px 0"><summary style="cursor:pointer;font-weight:600">${esc(l.n)} <span class="muted">(${l.items.length})</span></summary>
-            ${l.items.map(i => `<div class="li"><div><button class="linkbtn" data-open="${i.k}">${esc(nameOf(i.k) || i.n)}</button></div><div><button class="linkbtn" data-rmi="${l.id}|${i.k}" style="font-weight:500;font-size:12px">Quitar</button></div>
-              <textarea data-nota="${l.id}|${i.k}" placeholder="Notas: visita, preguntas al juzgado, tope de oferta…">${esc(i.nota || '')}</textarea></div>`).join('') || '<small class="muted">Vacía. Agrega lotes con «Guardar en lista».</small>'}
-            <div class="acts" style="margin-top:6px"><button class="btn sm" data-ren="${l.id}">Renombrar</button>${a.listas.length > 1 ? `<button class="btn sm" data-dell="${l.id}">Eliminar lista</button>` : ''}</div></details>`).join('')}
-          <div class="acts" style="margin-top:8px"><button class="btn sm" data-newl>Nueva lista</button></div>
-        </section>
-        <section class="acc"><h3>Expedientes <span class="tag">${a.expedientes.length}</span></h3>
-          ${a.expedientes.length ? a.expedientes.map(x => `<div class="li"><div><a href="expediente.html?k=${encodeURIComponent(x.k)}">${esc(x.n || nameOf(x.k))}</a><br><small>${x.via === 'pro' ? 'PRO' : x.via === 'esencial' ? 'Esencial' : x.via === 'compra' ? 'Compra individual' : 'Cuenta gratis'} · ${fdate(new Date(x.t))}</small></div><div></div></div>`).join('') : '<small class="muted">Aún no has generado expedientes.</small>'}
-        </section>
-        <section class="acc"><h3>Búsquedas guardadas</h3>
-          ${a.busquedas.length ? a.busquedas.map((b, i) => `<div class="li"><div><button class="linkbtn" data-bus="${i}">${esc(b.n)}</button><br><small>${fdate(new Date(b.t))}</small></div><div><button class="linkbtn" data-delb="${i}" style="font-weight:500;font-size:12px">Eliminar</button></div></div>`).join('') : '<small class="muted">Usa «Guardar» sobre la lista de remates para volver a una búsqueda.</small>'}
-        </section>
-        ${PX.admin ? `<section class="acc"><h3>Administración</h3>
-          <div class="li"><div><a href="/admin">Usuarios y planes</a><br><small>Lista de cuentas, solicitudes de PRO y exportación.</small></div></div>
-          <div class="li"><div><a href="catastro.html">Ubicar remates en el catastro</a><br><small>Botón para consultar el SNIT desde Costa Rica los remates nuevos que quedaron ubicados por distrito.</small></div></div>
-        </section>` : ''}
-      </div></aside></div>`;
+    // Tarjeta de Tabler con encabezado y lista
+    const tarjeta = (titulo, cuerpo, extra = '', id = '') => `<div class="card mb-3"${id ? ` id="${id}"` : ''}><div class="card-header"><h3 class="card-title">${titulo}</h3>${extra ? `<div class="card-actions">${extra}</div>` : ''}</div>${cuerpo}</div>`;
+    const vacio = t => `<div class="card-body text-secondary small">${t}</div>`;
+    const cuenta = n => `<span class="badge bg-secondary-lt ms-2">${n}</span>`;
+    $('layer').innerHTML = `<div class="tb" data-bs-theme="${tbTema()}"><div class="offcanvas offcanvas-end show" tabindex="-1" role="dialog" aria-modal="true" aria-label="Mi cuenta" style="visibility:visible;width:min(460px,100vw)">
+      <div class="offcanvas-header"><h2 class="offcanvas-title">Mi cuenta</h2><button type="button" class="btn-close" data-close aria-label="Cerrar"></button></div>
+      <div class="offcanvas-body">
+        ${yo ? `<div class="card mb-3"><div class="card-body"><div class="d-flex align-items-center"><span class="avatar avatar-md me-3 bg-primary-lt">${esc((yo.nombre || yo.correo).slice(0, 1).toUpperCase())}</span>
+            <div class="flex-fill"><div class="fw-medium">${esc(yo.nombre || yo.correo)}</div>${yo.nombre ? `<div class="text-secondary small">${esc(yo.correo)}</div>` : ''}</div>
+            <a class="btn btn-sm" href="/__salir">Cerrar sesión</a></div></div></div>
+          ${yo.cupon ? cuponCard(yo.cupon, yo.cuponUsado) : ''}`
+        : `<div class="alert alert-info"><div>Sesión de administración: con «Ver como» revisas el sitio como usuario gratis, Esencial o PRO. <a href="/admin">Panel</a> · <a href="/__salir">Salir</a></div></div>`}
+        ${tarjeta('Plan', `<div class="card-body">
+          <div class="d-flex align-items-center mb-2"><div class="flex-fill"><div class="fw-medium">${n >= 2 ? (pro ? PX.PRO : PX.ESE) : 'Cuenta gratis'}</div>
+            <div class="text-secondary small">${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</div></div>
+            <div class="btn-list">${n >= 2 ? `<button class="btn btn-sm" data-pagar="${pro ? 'pro' : 'basico'}">Renovar</button>` : ''}${pro ? '' : '<button class="btn btn-sm btn-primary" data-planes>Ver planes</button>'}</div></div>
+          ${pro ? '<div class="text-secondary small">Expedientes sin límite.</div>' : `<div class="d-flex mb-1 small"><span>Expedientes esta semana</span><span class="ms-auto fw-medium">${uso} de ${cupo}</span></div>
+            <div class="progress progress-sm"><div class="progress-bar bg-primary" style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%" role="progressbar" aria-valuenow="${uso}" aria-valuemin="0" aria-valuemax="${cupo}"></div></div>
+            <div class="text-secondary small mt-1">Adicional: ${PX.mt(PX.PRECIOS.expediente, 'CRC')} cada uno${yo && yo.creditos ? ` · tienes <b>${yo.creditos}</b> pagado${yo.creditos > 1 ? 's' : ''}` : ''}</div>`}</div>`)}
+        ${yo ? tarjeta('Pagos', vacio('Cargando…'), '', 'accPagos') : ''}
+        ${tarjeta('Seguimiento' + cuenta(sig.length), sig.length ? `<div class="list-group list-group-flush">${sig.map(r => { const s0 = snap[r.key]; const cambio = s0 && s0.st !== r.st ? (r.st < 0 ? 'Ya pasaron todas las fechas' : `Pasó a ${PX.ETAPA[r.st]}`) : '';
+            return `<div class="list-group-item"><div class="row align-items-center"><div class="col text-truncate"><a href="#" class="text-reset d-block fw-medium" data-open="${r.key}">${esc(r.nom)}</a>
+              <div class="text-secondary small">${r.st >= 0 ? `${PX.ETAPA[r.st]} · ${fdate(r.next)} · ${when(r.next)}` : 'Sin fechas pendientes'}${cambio ? ` <span class="badge bg-yellow-lt">${cambio}</span>` : ''}</div></div>
+              <div class="col-auto text-end small">${r.st >= 0 ? PX.mt(PX.conv(r.bv, r.mon, PX.cur), PX.cur) : ''}<br><a href="#" class="text-secondary" data-unsig="${r.key}">Dejar de seguir</a></div></div></div>`; }).join('')}</div>`
+          : vacio('Usa «Seguir» en la ficha de un remate para ver aquí su próxima fecha y los cambios de etapa.'))}
+        ${tarjeta('Listas', `<div class="list-group list-group-flush">${a.listas.map(l => `<details class="list-group-item" ${l.items.length ? 'open' : ''}><summary class="fw-medium" style="cursor:pointer">${esc(l.n)} <span class="text-secondary fw-normal">(${l.items.length})</span></summary>
+            ${l.items.map(i => `<div class="mt-2"><div class="d-flex"><a href="#" class="text-reset flex-fill" data-open="${i.k}">${esc(nameOf(i.k) || i.n)}</a><a href="#" class="text-secondary small" data-rmi="${l.id}|${i.k}">Quitar</a></div>
+              <textarea class="form-control form-control-sm mt-1" rows="2" data-nota="${l.id}|${i.k}" placeholder="Notas: visita, preguntas al juzgado, tope de oferta…">${esc(i.nota || '')}</textarea></div>`).join('') || '<div class="text-secondary small mt-2">Vacía. Agrega lotes con «Guardar en lista».</div>'}
+            <div class="btn-list mt-2"><button class="btn btn-sm" data-ren="${l.id}">Renombrar</button>${a.listas.length > 1 ? `<button class="btn btn-sm btn-ghost-danger" data-dell="${l.id}">Eliminar lista</button>` : ''}</div></details>`).join('')}</div>`, '<button class="btn btn-sm" data-newl>Nueva lista</button>')}
+        ${tarjeta('Expedientes' + cuenta(a.expedientes.length), a.expedientes.length ? `<div class="list-group list-group-flush">${a.expedientes.map(x => `<a class="list-group-item list-group-item-action" href="expediente.html?k=${encodeURIComponent(x.k)}"><div class="fw-medium">${esc(x.n || nameOf(x.k))}</div><div class="text-secondary small">${x.via === 'pro' ? 'PRO' : x.via === 'esencial' ? 'Esencial' : x.via === 'compra' ? 'Expediente adicional' : 'Cuenta gratis'} · ${fdate(new Date(x.t))}</div></a>`).join('')}</div>` : vacio('Aún no has generado expedientes.'))}
+        ${tarjeta('Búsquedas guardadas', a.busquedas.length ? `<div class="list-group list-group-flush">${a.busquedas.map((b, i) => `<div class="list-group-item d-flex align-items-center"><a href="#" class="text-reset flex-fill" data-bus="${i}">${esc(b.n)}<div class="text-secondary small">${fdate(new Date(b.t))}</div></a><a href="#" class="text-secondary small" data-delb="${i}">Eliminar</a></div>`).join('')}</div>` : vacio('Usa «Guardar búsqueda» sobre la lista de remates para volver a una búsqueda.'))}
+        ${PX.admin ? tarjeta('Administración', `<div class="list-group list-group-flush"><a class="list-group-item list-group-item-action" href="/admin"><div class="fw-medium">Usuarios, planes y pagos</div><div class="text-secondary small">Cuentas, pagos por SINPE y exportación.</div></a>
+          <a class="list-group-item list-group-item-action" href="catastro.html"><div class="fw-medium">Ubicar remates en el catastro</div><div class="text-secondary small">Botón para consultar el SNIT desde Costa Rica.</div></a></div>`) : ''}
+      </div></div><div class="offcanvas-backdrop fade show" data-close></div></div>`;
   }
   const CONC = { 'esencial-mes': 'Esencial · 1 mes', 'esencial-anual': 'Esencial · 1 año', 'pro-mes': 'PRO · 1 mes', 'pro-anual': 'PRO · 1 año', expedientes: 'Expedientes adicionales' };
-  const EST = { pendiente: ['En revisión', 'gold'], aprobado: ['Confirmado', 'ok'], rechazado: ['No confirmado', 'warn'] };
+  const EST = { pendiente: ['En revisión', 'yellow'], aprobado: ['Confirmado', 'green'], rechazado: ['No confirmado', 'red'] };
   async function pintarPagos() {
-    const sec = $('accPagos'); if (!sec) return;
-    const j = await (await fetch('/api/cuenta/pagos', { cache: 'no-store' })).json().catch(() => ({ pagos: [] }));
-    const L = j.pagos || [];
     if (!$('accPagos')) return;
-    $('accPagos').innerHTML = `<h3>Pagos</h3>${L.length ? L.map(p => `<div class="li"><div><b>${CONC[p.concepto] || p.concepto}${p.concepto === 'expedientes' ? ' · ' + p.cantidad : ''}</b><br><small>${fdate(new Date(p.creado))} · comprobante ${esc(p.ref)}${p.nota ? ' · ' + esc(p.nota) : ''}</small></div><div style="text-align:right">${PX.mh(p.monto, 'CRC')}<br><span class="tag ${EST[p.estado][1]}">${EST[p.estado][0]}</span></div></div>`).join('') : '<small class="muted">Aún no has hecho pagos. Los planes se pagan por SINPE Móvil desde «Ver planes».</small>'}`;
+    const j = await (await fetch('/api/cuenta/pagos', { cache: 'no-store' })).json().catch(() => ({ pagos: [] }));
+    const L = j.pagos || [], sec = $('accPagos'); if (!sec) return;
+    sec.innerHTML = `<div class="card-header"><h3 class="card-title">Pagos</h3></div>${L.length ? `<div class="list-group list-group-flush">${L.map(p => `<div class="list-group-item"><div class="row align-items-center"><div class="col"><div class="fw-medium">${CONC[p.concepto] || p.concepto}${p.concepto === 'expedientes' ? ' · ' + p.cantidad : ''}</div><div class="text-secondary small">${fdate(new Date(p.creado))} · comprobante ${esc(p.ref)}${p.nota ? ' · ' + esc(p.nota) : ''}</div></div>
+      <div class="col-auto text-end"><div class="fw-medium">${PX.mt(p.monto, 'CRC')}</div><span class="badge bg-${EST[p.estado][1]}-lt">${EST[p.estado][0]}</span></div></div></div>`).join('')}</div>` : '<div class="card-body text-secondary small">Aún no has hecho pagos. Los planes se pagan por SINPE Móvil desde «Ver planes».</div>'}`;
   }
   $('bCuenta').onclick = () => { renderCuenta(); pintarPagos(); };
   $('layer').addEventListener('click', async e => {
-    const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb]'); if (!d) return;
+    const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb]'); if (!d) return; e.preventDefault();
     const a = PX.acct, ds = d.dataset;
     if (ds.open) { closeLayer(); const it = PX.item(ds.open); if (it && it.isPlano) setTab('pla'); openFicha(ds.open, true); return; }
     if (ds.unsig) PX.toggleSigo(ds.unsig);
@@ -1440,12 +1458,12 @@
   if (!PX.conCuenta() && (qs.has('crear') || qs.has('entrar'))) openAuth(qs.has('crear') ? 'crear' : 'entrar');
   let bienv = null; try { bienv = sessionStorage.getItem('px-bienvenida'); sessionStorage.removeItem('px-bienvenida'); } catch (e) {}
   if (qs.has('bienvenida')) { bienv = '1'; try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
-  if (bienv === '1' && PX.yo) modal(`<div class="hd">${PX.marca('dlgmark')}<h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-    <p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
-    ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
-    <form id="bvF" class="authf" style="margin-top:6px"><div class="row2"><div class="fld"><label for="bvPerf">Te interesa como <small>(opcional)</small></label><select id="bvPerf">${PERF.map(([v, t]) => `<option value="${v}"${PX.yo.perfil === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
-      <div class="fld"><label for="bvProv">Provincia de interés</label><select id="bvProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option${PX.yo.prov === p ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div>
-    <div class="acts"><button class="btn primary" type="submit">Ir al mapa</button><button class="btn" type="button" data-about="guia">Cómo usar</button></div></form>`, true);
+  if (bienv === '1' && PX.yo) ventana({ titulo: '¡Bienvenido a PlanoExactoCR!', marca: true, estado: 'success',
+    cuerpo: `<p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
+      ${PX.yo.cupon ? cuponCard(PX.yo.cupon, PX.yo.cuponUsado) : ''}
+      <form id="bvF"><div class="row g-2"><div class="col-sm-6"><label class="form-label" for="bvPerf">Te interesa como <span class="form-label-description">Opcional</span></label><select class="form-select" id="bvPerf">${PERF.map(([v, t]) => `<option value="${v}"${PX.yo.perfil === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="col-sm-6"><label class="form-label" for="bvProv">Provincia de interés</label><select class="form-select" id="bvProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option${PX.yo.prov === p ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div></form>`,
+    pie: '<button class="btn me-auto" type="button" data-about="guia">Cómo usar</button><button class="btn btn-primary" type="submit" form="bvF">Ir al mapa</button>' });
   const bvF = $('bvF');
   if (bvF) bvF.onsubmit = ev => { ev.preventDefault(); fetch('/api/cuenta/perfil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: PX.yo.nombre || '', perfil: $('bvPerf').value, prov: $('bvProv').value }) }).catch(() => {}); closeLayer(); };
 })();
