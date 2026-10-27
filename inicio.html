@@ -71,6 +71,17 @@ h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--f-display); margin: 0 0 8px; te
 .precio { font: 600 26px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; } .precio.sm { font: 600 18px/1.3 var(--f-body); color: var(--muted); } .precio small { font: 500 13px var(--f-body); color: var(--muted); }
 .plan .alt, .plan .nota { font-size: 13px; color: var(--muted); } .plan .nota { color: var(--terra); font-weight: 600; }
 .plan ul { margin: 4px 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
+.comp-h { font: 700 18px/1.3 var(--f-display); margin: 26px 0 10px; }
+.comp-hint { display: none; font-size: 12.5px; color: var(--muted); margin: -4px 0 8px; }
+.comp-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.comp { width: 100%; border-collapse: collapse; min-width: 560px; }
+.comp th, .comp td { padding: 10px 14px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; }
+.comp thead th { font: 700 13px/1.3 var(--f-body); color: var(--muted); background: var(--soft); white-space: nowrap; }
+.comp th.c, .comp td.c { text-align: center; white-space: nowrap; }
+.comp tbody tr:last-child td { border-bottom: none; }
+.comp tr.grp td { background: var(--bg); font: 700 11.5px/1.3 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 9px 14px; }
+.comp .yes { color: var(--accent); font-weight: 700; }
+.comp .no { color: var(--line); }
 .para { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .para a { color: inherit; text-decoration: none; }
 .para li { padding: 7px 12px; border-radius: 999px; background: var(--soft); font-size: 14px; font-weight: 600; }
@@ -94,7 +105,7 @@ input, select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); 
 .acceso label { flex: 1 1 220px; }
 footer { padding-block: 30px 40px; border-top: 1px solid var(--line); margin-top: 20px; font-size: 13.5px; color: var(--muted); display: grid; gap: 10px; }
 footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-@media (max-width: 860px) { .hero, .registro, .planes { grid-template-columns: 1fr; } .rasgos { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 860px) { .hero, .registro, .planes { grid-template-columns: 1fr; } .rasgos { grid-template-columns: 1fr 1fr; } .comp-hint { display: block; } }
 @media (max-width: 520px) { .rasgos, .fila { grid-template-columns: 1fr; } .wm { font-size: 16px; } .registro { padding: 18px; } }
 @media (prefers-reduced-motion: no-preference) { .vista { transition: transform .4s ease; } .vista:hover { transform: translateY(-3px); } }
 </style>
@@ -149,6 +160,40 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b></li></ul></div>
     </div>
     <p class="sub" style="margin-top:14px">Si necesitas más expedientes de los que incluye tu plan, cada uno adicional cuesta <b>₡1.300</b>. Con el cupón de lanzamiento, el primer mes de cualquier plan tiene 30 % de descuento.</p>
+
+    <h3 class="comp-h">Qué incluye cada plan</h3>
+    <p class="comp-hint">Deslizá la tabla hacia los lados para ver Esencial y PRO →</p>
+    <div class="comp-wrap"><table class="comp">
+      <thead><tr><th></th><th class="c">Gratis</th><th class="c">Esencial</th><th class="c">PRO</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="4">El mapa</td></tr>
+        <tr><td>Ver los remates en el mapa</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Capas de valor del terreno, agua potable, vías, salud, zonas de vida, curvas de nivel y zona marítimo terrestre</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+
+        <tr class="grp"><td colspan="4">La ficha de cada propiedad</td></tr>
+        <tr><td>Fechas, base y área de cada remate</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Predio dibujado según el catastro</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Número de finca y plano, servidumbres y gravámenes</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Agua potable, vía, salud, escuela, ríos y costa</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Valor de Hacienda, índice Puja/Hacienda, escala PECR e Índice PlanoExacto</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+
+        <tr class="grp"><td colspan="4">Herramientas</td></tr>
+        <tr><td>Riesgos del proceso y alertas de cambios</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Valor de referencia y potencial constructivo</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+        <tr><td>Prefactibilidad financiera</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+        <tr><td>Mapa de precios por m² y Top 10 del mes</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+        <tr><td>Filtrar por atributos del lote</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+
+        <tr class="grp"><td colspan="4">Organizar tu búsqueda</td></tr>
+        <tr><td>Favoritos, seguimiento y listas</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Búsquedas guardadas</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Comparar remates a la vez</td><td class="c">2</td><td class="c">2</td><td class="c yes">4</td></tr>
+
+        <tr class="grp"><td colspan="4">Expedientes</td></tr>
+        <tr><td>Expedientes PDF por semana</td><td class="c">1</td><td class="c">10</td><td class="c yes">Sin límite</td></tr>
+        <tr><td>Expediente adicional, fuera del cupo</td><td class="c">₡1.300 c/u</td><td class="c">₡1.300 c/u</td><td class="c yes">Incluido</td></tr>
+      </tbody>
+    </table></div>
   </section>
 
   <section id="registro">
