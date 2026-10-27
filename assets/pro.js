@@ -7,17 +7,18 @@
   PX.PRO = '<span class="pro" title="Herramienta de la versión PRO">PRO</span>';
 
   // Catálogo de herramientas (las disponibles y las que vienen)
+  // nv: plan desde el que se usa la herramienta completa (2 Esencial, 3 PRO)
   P.TOOLS = [
-    { k: 'valor', n: 'Valor de referencia', q: 'Terreno según la zona homogénea de Hacienda y construcción por tipología, frente a la base', st: 'ok' },
-    { k: 'potencial', n: 'Potencial constructivo', q: '¿Cuántos m² y unidades caben en el lote?', st: 'ok' },
-    { k: 'prefa', n: 'Prefactibilidad financiera', q: '¿Cuánto invierto, cuánto podría valer y qué margen deja?', st: 'ok' },
-    { k: 'riesgos', n: 'Riesgos del proceso', q: '¿Qué puede salir mal y qué revisar antes de ofertar?', st: 'ok' },
-    { k: 'alertas', n: 'Alertas del remate', q: 'Avisos de cambio de etapa, nuevos edictos y fechas próximas', st: 'ok' },
-    { k: 'precios', n: 'Mapa de precios por m²', q: 'Mediana de las bases de remate por cantón, en el mapa', st: 'ok', map: true },
-    { k: 'top', n: 'Top 10 del mes', q: 'Los mejores remates por provincia según el índice', st: 'ok', list: true },
-    { k: 'normativa', n: 'Normativa urbana del lote', q: 'Zona del plan regulador, usos, cobertura, altura y lote mínimo', st: 'soon' },
-    { k: 'amenazas', n: 'Amenazas naturales (CNE)', q: 'Inundación, deslizamiento y amenaza sísmica en el lote', st: 'soon' },
-    { k: 'historia', n: 'Historia del sitio', q: 'Ortofotos del IGN de distintos años y cambio de cobertura', st: 'soon' }
+    { k: 'valor', n: 'Valor de referencia', q: 'Terreno según la zona homogénea de Hacienda y construcción por tipología, frente a la base', st: 'ok', nv: 3 },
+    { k: 'potencial', n: 'Potencial constructivo', q: '¿Cuántos m² y unidades caben en el lote?', st: 'ok', nv: 3 },
+    { k: 'prefa', n: 'Prefactibilidad financiera', q: '¿Cuánto invierto, cuánto podría valer y qué margen deja?', st: 'ok', nv: 3 },
+    { k: 'riesgos', n: 'Riesgos del proceso', q: '¿Qué puede salir mal y qué revisar antes de ofertar?', st: 'ok', nv: 2 },
+    { k: 'alertas', n: 'Alertas del remate', q: 'Avisos de cambio de etapa, nuevos edictos y fechas próximas', st: 'ok', nv: 2 },
+    { k: 'precios', n: 'Mapa de precios por m²', q: 'Mediana de las bases de remate por cantón, en el mapa', st: 'ok', map: true, nv: 3 },
+    { k: 'top', n: 'Top 10 del mes', q: 'Los mejores remates por provincia según el índice', st: 'ok', list: true, nv: 3 },
+    { k: 'normativa', n: 'Normativa urbana del lote', q: 'Zona del plan regulador, usos, cobertura, altura y lote mínimo', st: 'soon', nv: 2 },
+    { k: 'amenazas', n: 'Amenazas naturales (CNE)', q: 'Inundación, deslizamiento y amenaza sísmica en el lote', st: 'soon', nv: 3 },
+    { k: 'historia', n: 'Historia del sitio', q: 'Ortofotos del IGN de distintos años y cambio de cobertura', st: 'soon', nv: 3 }
   ];
 
   // ---------- Riesgos del proceso ----------
@@ -243,7 +244,7 @@
       const cnt = [3, 2, 1].map(n => rs.filter(x => x.n === n).length);
       return `<div class="sem"><span class="s3"><b class="num">${cnt[0]}</b> altos</span><span class="s2"><b class="num">${cnt[1]}</b> medios</span><span class="s1"><b class="num">${cnt[2]}</b> informativos</span></div>
         <div class="rlist">${rs.length ? rs.map(x => `<div class="rk r${x.n}"><i></i><div><b>${esc(x.t)}</b><span class="tag">${lv[x.n]}</span><p>${esc(x.d)}</p></div></div>`).join('') : '<p>No se detectaron riesgos en los datos disponibles.</p>'}</div>
-        <div class="lbl" style="margin-top:6px">Antes de ofertar</div><ul class="chk">${P.CHECK.map(t => `<li><label><input type="checkbox"${PX.isPro() ? '' : ' disabled'}> ${t}</label></li>`).join('')}</ul>
+        <div class="lbl" style="margin-top:6px">Antes de ofertar</div><ul class="chk">${P.CHECK.map(t => `<li><label><input type="checkbox"${P.puede('riesgos') ? '' : ' disabled'}> ${t}</label></li>`).join('')}</ul>
         <div class="foot">Detección automática a partir del edicto y de capas públicas. No es asesoría legal.</div>`;
     },
     valor(r, st) {
@@ -264,7 +265,7 @@
           <div class="foot">Reposición nueva ${PX.duoI(c.vrn, 'CRC')} (${c.tip[0]}, ${PX.duoI(c.tip[2], 'CRC', '/m²')}, vida útil ${c.tip[3]} años); factor de edad ${fnum(c.fd, 3)}. Referencia orientativa, no es un avalúo.</div></div></div>`;
     },
     alertas(r) {
-      const a = P.alertas(), dis = !PX.isPro() ? ' disabled' : '', sig = r && !r.isPlano ? PX.sigo(r.key) : false;
+      const a = P.alertas(), dis = !P.puede('alertas') ? ' disabled' : '', sig = r && !r.isPlano ? PX.sigo(r.key) : false;
       return `<p class="lead">Recibe avisos sin entrar al sitio. ${r && !r.isPlano ? `Este lote ${sig ? '<b>está en tu seguimiento</b>' : 'no está en tu seguimiento todavía'}.` : ''}</p>
         <div class="pform" style="max-width:520px">
           <div class="lbl">Canales</div>
@@ -282,19 +283,23 @@
 
   // ---------- Espacio de trabajo PRO (ventana) ----------
   const states = {};
+  P.nivelDe = k => (P.TOOLS.find(t => t.k === k) || { nv: 3 }).nv;
+  P.puede = k => PX.nivel() >= P.nivelDe(k);
+  // Etiqueta del plan de cada herramienta
+  P.tag = k => P.nivelDe(k) === 2 ? '<span class="tag ese">Esencial</span>' : PX.PRO;
   P.open = (r, tool, layer, hooks) => {
     const st = states[r.key] = states[r.key] || {};
     let cur = tool || 'potencial';
     const tools = P.TOOLS.filter(t => P.view[t.k]);
     function paint() {
-      const pro = PX.isPro();
-      layer.innerHTML = `<div class="scrim"><div class="dlg prows" role="dialog" aria-modal="true" aria-label="Herramientas PRO">
-        <div class="hd">${PX.PRO}<h2>Herramientas PRO</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+      const pro = P.puede(cur), ese = P.nivelDe(cur) === 2;
+      layer.innerHTML = `<div class="scrim"><div class="dlg prows" role="dialog" aria-modal="true" aria-label="Herramientas">
+        <div class="hd">${P.tag(cur)}<h2>Herramientas</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
         <div class="prolot"><b>${esc(r.nom)}</b><span class="muted">${esc(r.lugar || '')}${r.bv ? ' · base ' + PX.duoT(r.bv, r.mon) : ''}${PX.prof(r) ? ' · ' + fnum(PX.prof(r)) + ' m²' : ''}</span></div>
-        ${pro ? '' : `<div class="probar">${PX.PRO}<span>Estás viendo una <b>vista previa</b>. Con la suscripción PRO editas los supuestos y ves todos los resultados.</span><button class="btn sm primary" data-sub>Activar PRO</button></div>`}
-        <div class="pnav" role="tablist">${tools.map(t => `<button role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n}</button>`).join('')}</div>
+        ${pro ? '' : `<div class="probar">${PX.PRO}<span>Estás viendo una <b>vista previa</b>. Esta herramienta viene en el plan <b>${ese ? 'Esencial' : 'PRO'}</b>${ese ? ' (y en PRO)' : ''}: con él editas los supuestos y ves todos los resultados.</span><button class="btn sm primary" data-planes>Ver planes</button></div>`}
+        <div class="pnav" role="tablist">${tools.map(t => `<button role="tab" data-tool="${t.k}" aria-selected="${t.k === cur}">${t.n} ${P.nivelDe(t.k) === 2 ? '<small class="tnv ese">Esencial</small>' : '<small class="tnv">PRO</small>'}</button>`).join('')}</div>
         <div class="pbody${pro ? '' : ' preview'}" data-tool-body>${P.view[cur](r, st)}</div>
-        <div class="foot">Herramienta PRO de PlanoExactoCR. Resultados orientativos: no son un avalúo, un certificado de uso de suelo ni asesoría legal o financiera.</div>
+        <div class="foot">Herramienta ${ese ? 'del plan Esencial' : 'PRO'} de PlanoExactoCR. Resultados orientativos: no son un avalúo, un certificado de uso de suelo ni asesoría legal o financiera.</div>
       </div></div>`;
     }
     paint();
@@ -304,10 +309,10 @@
       root2.addEventListener('click', e => {
         const t = e.target.closest('[data-tool]'); if (t) { cur = t.dataset.tool; paint(); bind(); return; }
         const m = e.target.closest('[data-modo]'); if (m && PX.isPro()) { st.pref.modo = m.dataset.modo; refresh(); return; }
-        if (e.target.closest('[data-sig]') && PX.isPro()) { PX.toggleSigo(r.key); refresh(); if (hooks && hooks.changed) hooks.changed(); }
+        if (e.target.closest('[data-sig]') && P.puede('alertas')) { PX.toggleSigo(r.key); refresh(); if (hooks && hooks.changed) hooks.changed(); }
       });
       root2.addEventListener('change', e => {
-        const k = e.target.dataset.al; if (k == null || !PX.isPro()) return;
+        const k = e.target.dataset.al; if (k == null || !P.puede('alertas')) return;
         const a = P.alertas(); if (k === 'correo' || k === 'whatsapp') a.canal[k] = e.target.checked; else a[k] = e.target.checked; PX.saveAcct();
       });
       root2.addEventListener('change', e => { const k = e.target.dataset.vs; if (!k || !PX.isPro()) return; st.val[k] = k === 'est' ? +e.target.value : e.target.value; refresh(); });

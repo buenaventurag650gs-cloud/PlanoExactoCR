@@ -7,8 +7,8 @@
   PX.SC = ['--s1', '--s2', '--s3'];
   PX.PROVS = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
   // Precios en colones (se muestran también en dólares).
-  // Cuenta gratis: «semanal» expedientes por semana. Esencial: «diarioEsencial» al día. PRO: sin límite.
-  PX.PRECIOS = { esencial: 5900, esencialAnual: 59000, pro: 12900, anual: 129000, expediente: 1500, semanal: 1, diarioEsencial: 5, cupon: 30 };
+  // Cuenta gratis: «semanal» expedientes por semana. Esencial: «semanalEsencial» por semana. PRO: sin límite.
+  PX.PRECIOS = { esencial: 5900, esencialAnual: 59000, pro: 12900, anual: 129000, expediente: 1500, semanal: 1, semanalEsencial: 10, cupon: 30 };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -102,6 +102,8 @@
   // Quita las frases de "libre de …" para no confundirlas con cargas reales
   PX.limpiarGrav = t => PX.norm(t).replace(/libres? de (gravamenes|anotaciones|hipotecas)( hipotecarios)?((,| y| e) (gravamenes|anotaciones|hipotecas))*/g, ' ');
 
+  // Logo: versión clara y versión para fondo oscuro; CSS muestra la que corresponde al tema
+  PX.marca = (cls, w, h) => `<img src="assets/img/logo-mark.webp" alt="" width="${w || 56}" height="${h || 38}" class="${cls || ''} lg-claro"><img src="assets/img/logo-mark-oscuro.webp" alt="" width="${w || 56}" height="${h || 38}" class="${cls || ''} lg-oscuro">`;
   // ---------- Íconos (trazo simple, color por CSS) ----------
   const ic = (d, vb) => `<svg viewBox="${vb || '0 0 24 24'}" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   PX.ICON = {
@@ -405,10 +407,10 @@
   PX.semKey = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   PX.usoMes = () => PX.acct.usados[PX.mesKey()] || 0;
   PX.usoHoy = () => PX.acct.expedientes.filter(x => x.via !== 'compra' && x.d === PX.diaKey()).length;
-  PX.usoSemana = () => PX.acct.expedientes.filter(x => x.via === 'sem' && x.w === PX.semKey()).length;
+  PX.usoSemana = () => PX.acct.expedientes.filter(x => (x.via === 'sem' || x.via === 'esencial') && x.w === PX.semKey()).length;
   // Cuántos expedientes nuevos puede abrir ahora (PRO: sin límite)
-  PX.quedan = () => { const n = PX.nivel(); return n >= 3 ? Infinity : n === 2 ? Math.max(0, PX.PRECIOS.diarioEsencial - PX.usoHoy()) : n === 1 ? Math.max(0, PX.PRECIOS.semanal - PX.usoSemana()) : 0; };
-  PX.cupoTxt = () => { const n = PX.nivel(); return n >= 3 ? 'sin límite' : n === 2 ? `${PX.PRECIOS.diarioEsencial} al día` : `${PX.PRECIOS.semanal} por semana`; };
+  PX.quedan = () => { const n = PX.nivel(); return n >= 3 ? Infinity : n === 2 ? Math.max(0, PX.PRECIOS.semanalEsencial - PX.usoSemana()) : n === 1 ? Math.max(0, PX.PRECIOS.semanal - PX.usoSemana()) : 0; };
+  PX.cupoTxt = () => { const n = PX.nivel(); return n >= 3 ? 'sin límite' : n === 2 ? `${PX.PRECIOS.semanalEsencial} por semana` : `${PX.PRECIOS.semanal} por semana`; };
   PX.tieneExp = key => PX.acct.comprados.includes(key) || PX.acct.expedientes.some(x => x.k === key && x.m === PX.mesKey() && x.via !== 'compra');
   PX.puedeGenerar = key => PX.tieneExp(key) || PX.quedan() > 0;
   // Registra la generación: descuenta del cupo la primera vez (en el mes) que se abre el expediente de un lote.

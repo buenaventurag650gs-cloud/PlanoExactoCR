@@ -251,7 +251,7 @@
   // ---------- mapa ----------
   const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
-  map.attributionControl.setPrefix('<span class="attrb"><img src="assets/img/logo-mark.webp" alt="" width="18" height="12"><b>PlanoExacto</b>CR</span>');
+  map.attributionControl.setPrefix('<span class="attrb">' + PX.marca('', 18, 12) + '<b>PlanoExacto</b>CR</span>');
   map.zoomControl.setPosition('topright');
   PX.map = map;
   // Indicador del nivel de zoom entre + y −
@@ -596,9 +596,11 @@
   function proBox(r) {
     const rs = PX.pro.riesgos(r), alto = rs.filter(x => x.n === 3).length, med = rs.filter(x => x.n === 2).length, pro = PX.isPro();
     const pot = PX.pro.potCalc(PX.pro.potDefaults(r));
-    return `<div class="procard"><h3>${PX.PRO} Herramientas</h3>
-      <p>${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : 'Potencial constructivo, prefactibilidad financiera, riesgos del proceso y alertas de este lote.'}</p>
-      <div class="acts"><button class="btn sm" data-protool="potencial">Potencial constructivo</button><button class="btn sm" data-protool="prefa">Prefactibilidad</button><button class="btn sm" data-protool="riesgos">Riesgos${pro ? ` <span class="tag${alto ? ' warn' : ''}">${alto + med}</span>` : ''}</button><button class="btn sm" data-protool="alertas">Alertas</button></div></div>`;
+    const T = k => PX.pro.nivelDe(k) === 2 ? ' <small class="tnv ese">Esencial</small>' : ' <small class="tnv">PRO</small>';
+    const rsk = PX.pro.puede('riesgos');
+    return `<div class="procard"><h3>Herramientas</h3>
+      <p>${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : rsk ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Con PRO, además, potencial constructivo y prefactibilidad.` : 'Riesgos del proceso y alertas vienen en Esencial; potencial constructivo y prefactibilidad, en PRO.'}</p>
+      <div class="acts"><button class="btn sm" data-protool="riesgos">Riesgos${rsk ? ` <span class="tag${alto ? ' warn' : ''}">${alto + med}</span>` : ''}${T('riesgos')}</button><button class="btn sm" data-protool="alertas">Alertas${T('alertas')}</button><button class="btn sm" data-protool="potencial">Potencial constructivo${T('potencial')}</button><button class="btn sm" data-protool="prefa">Prefactibilidad${T('prefa')}</button></div></div>`;
   }
   const openPro = (r, t) => PX.pro.open(r, t, $('layer'), { changed: () => { renderList(); if (open) openFicha(open, false); } });
   function listMenu(r) {
@@ -766,7 +768,7 @@
     if (PX.registrarExp(r.key, r.nom)) { location.href = 'expediente.html?k=' + encodeURIComponent(r.key); return; }
     const n = PX.nivel();
     modal(`<div class="hd"><h2>Expediente adicional</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
-      <p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.diarioEsencial} expedientes al día y ya los usaste hoy.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`} Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con ${PX.PRO} generas todos los que quieras.</p>
+      <p>${n === 2 ? `Tu plan Esencial incluye ${PX.PRECIOS.semanalEsencial} expedientes por semana y ya los usaste.` : `Tu cuenta gratis incluye ${PX.PRECIOS.semanal} expediente por semana y ya lo usaste.`} Cada expediente adicional cuesta <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b>; con ${PX.PRO} generas todos los que quieras.</p>
       <p class="muted">Los pagos en línea llegan pronto. Si lo necesitas ahora, solicita un plan y te escribimos.</p>
       <div class="acts"><button class="btn primary" data-planes>Ver planes</button><button class="btn" data-close>Cerrar</button></div>`, true);
   }
@@ -793,7 +795,7 @@
   function openAuth(modo, porque) {
     const crear = modo === 'crear', olvido = modo === 'olvide';
     const utm = {}; const q = new URLSearchParams(location.search); ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
-    modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>${olvido ? 'Restablecer contraseña' : crear ? 'Crea tu cuenta gratis' : 'Entrar'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+    modal(`<div class="hd">${PX.marca('dlgmark')}<h2>${olvido ? 'Restablecer contraseña' : crear ? 'Crea tu cuenta gratis' : 'Entrar'}</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
       ${porque ? `<div class="note">${esc(porque)}</div>` : ''}
       ${olvido ? '' : `<div class="seg" role="group"><button data-auth="crear" aria-pressed="${crear}">Crear cuenta</button><button data-auth="entrar" aria-pressed="${!crear}">Ya tengo cuenta</button></div>`}
       <form id="authF" class="authf" novalidate>
@@ -841,7 +843,7 @@
   }
   function openPlanes(why) {
     const n = PX.nivel();
-    modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+    modal(`<div class="hd">${PX.marca('dlgmark')}<h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
       ${why ? `<div class="note">${esc(why)}</div>` : ''}
       <div class="plans p4">
         <div class="plan"><h3>Visitante</h3><div class="pr sm">Sin registro</div>
@@ -851,7 +853,7 @@
           ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : n === 1 ? '<span class="tag ok">Tu plan actual</span>' : ''}</div>
         <div class="plan${n === 2 ? ' hl' : ''}"><h3>Esencial</h3><div class="pr">${PX.mh(PX.PRECIOS.esencial, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año</div>
-          <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>Hasta ${PX.PRECIOS.diarioEsencial} expedientes al día</b></li></ul>
+          <ul><li>Todo lo de la cuenta gratis</li><li>Predio dibujado según el catastro, finca, plano y servidumbres</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li>Búsquedas guardadas y comparar 2 lotes</li><li><b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b></li></ul>
           ${n === 2 ? '<span class="tag gold">Tu plan actual</span>' : n < 2 ? '<button class="btn" data-sub="basico">Solicitar Esencial</button>' : ''}</div>
         <div class="plan${n === 3 ? ' hl' : ''}"><h3>${PX.PRO} Acceso total</h3><div class="pr">${PX.mh(PX.PRECIOS.pro, 'CRC')} <small>al mes</small></div>
           <div class="muted alt">o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)</div>
@@ -863,7 +865,7 @@
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
   function guideHTML() {
-    const I = PX.ICON, cupo = PX.PRECIOS.diarioEsencial, P_ = PX.PRO;
+    const I = PX.ICON, cupo = PX.PRECIOS.semanalEsencial, P_ = PX.PRO;
     // Bloques didácticos: tarjeta con «para qué sirve», pasos numerados y un ejemplo
     const steps = arr => `<ol class="gsteps">${arr.map(t => `<li><span>${t}</span></li>`).join('')}</ol>`;
     const card = (ic, t, pro, para, pasos, ej) => `<div class="gcard"><h4><span class="gi">${ic || ''}</span>${t}${pro ? ' ' + P_ : ''}</h4>
@@ -939,7 +941,7 @@
 
       ${sec('exp', 'El expediente en PDF', 'Un informe de 4 hojas con todo lo importante de una propiedad, listo para imprimir, guardar o compartir con tu abogado.',
         `<div class="gflow g4">${[['Mapa', 'El lote, su entorno y una vista satelital.'], ['Ficha', 'Fechas, registro, valor y análisis.'], ['Normativa y riesgos', 'Lo que se puede hacer y lo que hay que revisar.'], ['Edicto', 'El texto oficial del remate.']].map(([t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
-        <p class="gmini">Se genera con el botón <b>Generar expediente</b> de la ficha. Se compra por propiedad o viene incluido en ${P_} (hasta ${cupo} al mes).</p>`)}
+        <p class="gmini">Se genera con el botón <b>Generar expediente</b> de la ficha. Se compra por propiedad o viene incluido en ${P_} (sin límite; en Esencial, ${cupo} por semana).</p>`)}
 
       ${sec('met', 'Índices y metodología', 'Cómo se calcula cada número que ves en la ficha y en el expediente. Son referencias para comparar, no avalúos.',
         `${card(I.valor, 'Índice Puja/Hacienda (IPH)', false, 'Saber en un solo número si el precio con que arranca la puja es bajo o alto frente al valor que Hacienda le da a la propiedad.',
@@ -995,7 +997,7 @@
   // ---------- Quiénes somos y descargo de responsabilidad ----------
   function openAbout(which) {
     const us = `<div class="about">
-      <img src="assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="481" style="width:220px;height:auto">
+      <img class="lg-claro" src="assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463" style="width:220px;height:auto"><img class="lg-oscuro" src="assets/img/logo-oscuro.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463" style="width:220px;height:auto">
       <p><b>PlanoExactoCR</b> reúne en un solo mapa los remates judiciales de propiedades de Costa Rica y los cruza con la información pública que normalmente está dispersa: catastro, planes reguladores, zonas homogéneas de Hacienda, agua potable, ríos, relieve, cobertura del suelo, salud, escuelas y normativa.</p>
       <h3>Quiénes somos</h3>
       <p>Somos un equipo de profesionales en urbanismo, arquitectura y planificación territorial con experiencia en planes reguladores, sistemas de información geográfica y gestión municipal en distintos cantones del país. Creamos PlanoExactoCR para que cualquier persona pueda <b>ubicar</b> un lote con precisión, <b>comprender</b> su contexto territorial y legal, y <b>decidir</b> con más información antes de participar en un remate.</p>
@@ -1035,7 +1037,7 @@
   // ---------- Mi cuenta ----------
   function renderCuenta() {
     if (!PX.conCuenta()) return openAuth('entrar');
-    const a = PX.acct, pro = PX.isPro(), n = PX.nivel(), uso = n === 2 ? PX.usoHoy() : PX.usoSemana(), cupo = n === 2 ? PX.PRECIOS.diarioEsencial : PX.PRECIOS.semanal, yo = PX.yo;
+    const a = PX.acct, pro = PX.isPro(), n = PX.nivel(), uso = PX.usoSemana(), cupo = n === 2 ? PX.PRECIOS.semanalEsencial : PX.PRECIOS.semanal, yo = PX.yo;
     const nameOf = k => { const it = PX.item(k); return it ? it.nom : k; };
     const sig = a.sigo.map(k => PX.item(k)).filter(Boolean);
     const snap = a.snap || {};
@@ -1049,7 +1051,7 @@
         <section class="acc"><h3>Plan</h3>
           <div class="li"><div><b>${n >= 2 ? 'Plan ' + (pro ? PX.PRO : 'Esencial') : 'Cuenta gratis'}</b><br><small>${n >= 2 ? (yo && yo.proHasta ? 'Activo hasta el ' + fdate(new Date(yo.proHasta + 'T12:00')) : 'Activo') : yo && yo.solicitaPro ? 'Solicitaste un plan: te escribiremos pronto' : `Esencial ${PX.mt(PX.PRECIOS.esencial, 'CRC')} · PRO ${PX.mt(PX.PRECIOS.pro, 'CRC')} al mes`}</small></div>
             <div>${pro ? '' : '<button class="btn sm primary" data-planes>Ver planes</button>'}</div></div>
-          ${pro ? '<small class="muted">Expedientes sin límite.</small>' : `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados ${n === 2 ? 'hoy' : 'esta semana'}: <b class="num">${uso}</b> de ${cupo} · adicional ${PX.mt(PX.PRECIOS.expediente, 'CRC')}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>`}
+          ${pro ? '<small class="muted">Expedientes sin límite.</small>' : `<div style="display:grid;gap:4px;margin-top:6px"><small class="muted">Expedientes usados esta semana: <b class="num">${uso}</b> de ${cupo} · adicional ${PX.mt(PX.PRECIOS.expediente, 'CRC')}</small><div class="meter"><i style="width:${Math.min(100, uso / Math.max(cupo, 1) * 100)}%"></i></div></div>`}
         </section>
         <section class="acc"><h3>Seguimiento <span class="tag">${sig.length}</span></h3>
           ${sig.length ? sig.map(r => { const s0 = snap[r.key]; const cambio = s0 && s0.st !== r.st ? (r.st < 0 ? 'Ya pasaron todas las fechas' : `Pasó a ${PX.ETAPA[r.st]}`) : ''; return `<div class="li"><div><button class="linkbtn" data-open="${r.key}">${esc(r.nom)}</button><br><small>${r.st >= 0 ? `${PX.ETAPA[r.st]} · ${fdate(r.next)} · ${when(r.next)}` : 'Sin fechas pendientes'}</small>${cambio ? ` <span class="tag warn">${cambio}</span>` : ''}</div><div>${r.st >= 0 ? PX.duo(r.bv, r.mon) : ''}<br><button class="linkbtn" data-unsig="${r.key}" style="font-weight:500;font-size:12px">Dejar de seguir</button></div></div>`; }).join('') : '<small class="muted">Usa «Seguir» en la ficha de un remate para ver aquí su próxima fecha y los cambios de etapa.</small>'}
@@ -1092,7 +1094,7 @@
     const [l, k] = n.split('|'); const it = PX.acct.listas.find(x => x.id === l).items.find(i => i.k === k);
     it.nota = e.target.value; PX.store.set('px-acct', PX.acct);
   });
-  document.addEventListener('px-acct', () => { paintPlan(); paintAttrs(); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (!PX.isPro()) { attrOn.clear(); } if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop(); $('cmpN').textContent = cmp.length; });
+  document.addEventListener('px-acct', () => { paintPlan(); renderList(); paintAttrs(); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (!PX.isPro()) { attrOn.clear(); } if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop(); $('cmpN').textContent = cmp.length; });
 
   // ---------- buscar plano ----------
   let plaMode = 'plano';
@@ -1195,11 +1197,11 @@
   let topProv = PX.store.get('px-topprov', 1), topMes = 0;
   function renderHub() {
     const r = open ? PX.item(open) : null, pro = PX.isPro();
-    $('proHub').innerHTML = `<div class="procard"><h3>${PX.PRO} Herramientas de la versión PRO</h3>
-        <p>${pro ? 'Tu suscripción PRO está activa.' : 'Puedes abrirlas como vista previa. Con la suscripción PRO las usas completas.'}</p>
+    $('proHub').innerHTML = `<div class="procard"><h3>Herramientas</h3>
+        <p>${pro ? 'Tu plan PRO está activo: todas las herramientas completas.' : 'Cada herramienta indica su plan: <span class="tag ese">Esencial</span> o ' + PX.PRO + '. Sin ese plan la abres como vista previa.'}</p>
         <p>${r ? `Lote abierto: <b>${esc(r.nom)}</b>` : 'Abre un lote en el mapa o busca un plano para usar las herramientas de lote.'}</p>
         <div class="acts"><button class="btn sm" data-about="guia">Cómo usar las herramientas</button></div></div>
-      ${PX.pro.TOOLS.map(t => `<div class="procard${t.st === 'soon' ? ' soon' : ''}"><h3>${PX.PRO} ${t.n} ${t.st === 'soon' ? '<span class="tag">Próximamente</span>' : ''}</h3><p>${t.q}</p>
+      ${PX.pro.TOOLS.map(t => `<div class="procard${t.st === 'soon' ? ' soon' : ''}"><h3>${PX.pro.tag(t.k)} ${t.n} ${t.st === 'soon' ? '<span class="tag">Próximamente</span>' : ''}</h3><p>${t.q}</p>
         ${t.st === 'soon' ? '' : t.map ? `<div class="acts"><button class="btn sm" data-hubmap>${lyrState.precios && pro ? 'Ver en el mapa' : 'Activar en el mapa'}</button></div>` : t.list ? '' : `<div class="acts"><button class="btn sm" data-hubtool="${t.k}"${r ? '' : ' disabled'}>${r ? 'Abrir para este lote' : 'Primero abre un lote'}</button></div>`}</div>`).join('')}
       <h3 style="margin:8px 0 0;font:600 16px/1.2 var(--f-display);display:flex;gap:8px;align-items:center">${PX.PRO} Top 10 del mes</h3>`;
   }
@@ -1257,7 +1259,7 @@
   const qs = new URLSearchParams(location.search);
   if (!PX.conCuenta() && (qs.has('crear') || qs.has('entrar'))) openAuth(qs.has('crear') ? 'crear' : 'entrar');
   let bienv = null; try { bienv = sessionStorage.getItem('px-bienvenida'); sessionStorage.removeItem('px-bienvenida'); } catch (e) {}
-  if (bienv === '1' && PX.yo) modal(`<div class="hd"><img src="assets/img/logo-mark.webp" alt="" width="56" height="40" class="dlgmark"><h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
+  if (bienv === '1' && PX.yo) modal(`<div class="hd">${PX.marca('dlgmark')}<h2>¡Bienvenido a PlanoExactoCR!</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
     <p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
     ${PX.yo.cupon ? `<div class="cupon"><span>Tu cupón de lanzamiento</span><b class="num">${esc(PX.yo.cupon)}</b><small>${PX.PRECIOS.cupon} % de descuento en tu primer mes ${PX.PRO} cuando abramos los pagos. Lo encuentras siempre en Mi cuenta.</small></div>` : ''}
     <div class="acts"><button class="btn primary" data-close>Ir al mapa</button><button class="btn" data-about="guia">Cómo usar</button></div>`, true);

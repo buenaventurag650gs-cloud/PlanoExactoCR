@@ -1,3 +1,4 @@
+import { EmailMessage } from "cloudflare:email";
 // PlanoExactoCR en Cloudflare Workers (con archivos estáticos).
 // · Cuentas de usuario con correo y contraseña (base de datos D1, binding DB): mapa abierto, ficha con cuenta gratis.
 // · Administración con la contraseña del sitio (variable secreta SITE_PASSWORD): /admin, catastro y vista PRO de prueba.
@@ -103,6 +104,21 @@ const leerJSON = async (request) => {
   return request.json().catch(() => null);
 };
 
+// ---------- Avisos por correo al administrador ----------
+// Usa el envío de correos de Cloudflare (binding AVISOS, tipo send_email) hacia AVISOS_A, que debe ser una
+// dirección verificada en Email Routing. Si falta alguno de los dos, no hace nada.
+async function avisar(env, asunto, lineas) {
+  if (!env.AVISOS || !env.AVISOS_A) return;
+  try {
+    const de = "avisos@" + (env.DOMINIO || "planoexactocr.com");
+    const cuerpo = b64(lineas.join("\n")).replace(/.{1,76}/g, "$&\r\n");
+    const raw = [`From: PlanoExactoCR <${de}>`, `To: ${env.AVISOS_A}`, `Subject: =?UTF-8?B?${b64(asunto)}?=`, `Date: ${new Date().toUTCString()}`,
+      `Message-ID: <${azar(12)}@${env.DOMINIO || "planoexactocr.com"}>`, "MIME-Version: 1.0", "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", cuerpo].join("\r\n");
+    await env.AVISOS.send(new EmailMessage(de, env.AVISOS_A, raw));
+  } catch (_) {}   // un aviso fallido nunca impide el registro
+}
+const NOMPLAN = { free: "Gratis", basico: "Esencial", pro: "PRO" };
+
 // ---------- /api/cuenta/* ----------
 async function cuenta(request, env, u, pw) {
   if (!env.DB) return json({ error: "Las cuentas no están disponibles en este momento." }, 503, 0);
@@ -132,6 +148,8 @@ async function cuenta(request, env, u, pw) {
     const h = await hashClave(clave), cp = await cupon(correo);
     const r = await env.DB.prepare(`INSERT INTO usuarios (correo, nombre, perfil, prov, hash, sal, cupon, fuente, pais, creado, ultimo) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING *`)
       .bind(correo, String(b.nombre || "").trim().slice(0, 80), PERFILES.has(b.perfil) ? b.perfil : "otro", String(b.prov || "").slice(0, 20), h.hash, h.sal, cp, fuente, (request.cf && request.cf.country) || "", ahora, ahora).first();
+    await avisar(env, "Nueva cuenta: " + correo, ["Se creó una cuenta en PlanoExactoCR.", "", "Correo: " + correo, "Nombre: " + (r.nombre || "—"), "Perfil: " + r.perfil,
+      "Provincia de interés: " + (r.prov || "Todo el país"), "Llegó por: " + (fuente || "directo"), "País: " + (r.pais || "—"), "Cupón: " + cp, "", "Panel: https://" + (env.DOMINIO || u.host) + "/admin"]);
     return json({ ok: true, user: publico(r) }, 200, 0, { "Set-Cookie": await crearSesion(env, r) });
   }
 
@@ -201,6 +219,8 @@ async function cuenta(request, env, u, pw) {
   if (ruta === "solicitar-pro") {
     const quiere = b.plan === "basico" ? "basico" : "pro";   // se guarda «plan fecha»
     await env.DB.prepare("UPDATE usuarios SET solicita_pro = ? WHERE id = ?").bind(quiere + " " + ahora, us.id).run();
+    await avisar(env, `Solicitud de plan ${NOMPLAN[quiere]}: ${us.correo}`, [`${us.nombre || us.correo} pidió el plan ${NOMPLAN[quiere]}.`, "", "Correo: " + us.correo, "Plan actual: " + NOMPLAN[planVigente(us)], "Cupón: " + (us.cupon || "—"), "",
+      "Para activarlo: https://" + (env.DOMINIO || u.host) + "/admin"]);
     return json({ ok: true }, 200, 0);
   }
   if (ruta === "borrar") {
@@ -276,7 +296,7 @@ const ESTILO = `:root{--bg:#F1EEE7;--panel:#FCFBF8;--ink:#15302A;--muted:#4C5953
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
 .card{width:min(380px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 26px;display:grid;gap:16px;box-shadow:0 10px 30px rgba(20,35,30,.12);position:relative;overflow:hidden}
 .card:before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg,#15302A 0 46%,#539279 46% 82%,#D9906E 82%)}
-.logo{justify-self:center;width:230px;max-width:100%;height:auto;background:#F1EEE7;border-radius:10px;padding:6px}
+picture{justify-self:center}.logo{display:block;width:230px;max-width:100%;height:auto}
 h1{margin:0;font-size:17px;text-align:center}p{margin:0;color:var(--muted);text-align:center;font-size:13.5px}
 label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
 input{width:100%;margin-top:6px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
@@ -286,7 +306,7 @@ a{color:var(--accent)}.err{color:var(--bad);font-size:13px;text-align:center}`;
 const pagina = (titulo, cuerpo, status = 200) => new Response(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PlanoExactoCR · ${titulo}</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/img/favicon.png"><style>${ESTILO}</style></head><body>${cuerpo}</body></html>`,
   { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "X-Robots-Tag": "noindex, nofollow" } });
-const LOGO = '<img class="logo" src="/assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463">';
+const LOGO = '<picture><source srcset="/assets/img/logo-oscuro.webp" media="(prefers-color-scheme: dark)"><img class="logo" src="/assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463"></picture>';
 function paginaAdmin(error, sig) {
   return pagina("Administración", `<form class="card" method="post" action="/__acceso">${LOGO}
 <h1>Administración</h1><p>Ingresa la contraseña del sitio.</p>${error ? '<div class="err" role="alert">La contraseña no es correcta. Intenta de nuevo.</div>' : ""}

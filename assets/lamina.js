@@ -1,5 +1,5 @@
 /* PlanoExactoCR — lámina cartográfica del expediente (primera hoja, carta horizontal).
-   Mapa completo del sitio (satélite con nombres, vías, ríos, curvas, catastro, límite distrital, radios, salud y escuela),
+   Mapa completo del sitio (satélite con nombres, vías, ríos, curvas, límite distrital, radios, salud y escuela),
    recuadros de detalle del predio y de ubicación en el país, variables medidas, índice, potencialidades y riesgos. */
 (function () {
   'use strict';
@@ -62,7 +62,6 @@
               <span><i class="ln" style="border-top:2px dashed #fff"></i>Radios 100, 250 y 500 m</span>
               <span><i class="ln" style="border-top:2.5px solid ${HIDRO}"></i>Ríos y quebradas</span>
               <span><i class="sw" style="background:#E6E3DC;border:1px solid #C9C6BB"></i>Vías públicas (Registro)</span>
-              <span><i class="sw" style="background:transparent;border:1px solid #7B8782"></i>Predios del catastro</span>
               <span><i class="ln" style="border-top:1px solid ${CURV}"></i>Curvas cada 10 m</span>
               <span><i class="ln" style="border-top:1.5px dashed #F4F1EA"></i>Límite distrital</span>
               <span><i class="nb">1</i>Salud${e.salud ? ' · ' + esc(e.salud.n) : ''}</span>
@@ -114,7 +113,7 @@
     const esriC = v => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${v}/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 20, maxNativeZoom: 16 });
     esriC('World_Light_Gray_Base').addTo(m);
     esri('Elevation/World_Hillshade', { opacity: 0.22, className: 'tl-hill' }).addTo(m);
-    SNIT.vias().addTo(m); SNIT.curvas().addTo(m); SNIT.cat().addTo(m); SNIT.hidro().addTo(m);
+    SNIT.vias().addTo(m); SNIT.curvas().addTo(m); SNIT.hidro().addTo(m);   // mapa limpio: sin la malla del catastro
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 16, pane: 'lbl' }).addTo(m);
     wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', sld_body: sldText('IGN_NG:hidronimos_25k') }).addTo(m);
     [100, 250, 500].forEach(rad => {
@@ -138,7 +137,7 @@
     // Recuadro: detalle del predio
     const d = L.map('ldet', opt).setView(c, 18);
     d.getContainer().classList.add('on-sat');
-    esri('World_Imagery').addTo(d); SNIT.curvas().addTo(d); SNIT.cat().addTo(d); SNIT.hidro().addTo(d);
+    esri('World_Imagery').addTo(d); SNIT.curvas().addTo(d); SNIT.hidro().addTo(d);
     if (r.poly) L.polygon(ringsLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.3 }).addTo(d);
     else L.circle(c, { radius: 600, color: TERRA_D, weight: 2, dashArray: '6 5', fill: false }).addTo(d);
     const dfit = () => pg ? d.fitBounds(pg.getBounds(), { padding: [16, 16], maxZoom: 20 }) : d.setView(c, 14);

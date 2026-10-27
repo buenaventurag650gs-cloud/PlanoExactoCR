@@ -13,6 +13,8 @@ routes = [
 ]
 [vars]
 DOMINIO = "planoexactocr.com"
+# Correo que recibe los avisos de cuentas nuevas y solicitudes de plan (debe estar verificado en Email Routing)
+AVISOS_A = ""
 
 [assets]
 directory = "."
@@ -29,3 +31,7 @@ binding = "REGISTROS"
 [[d1_databases]]
 binding = "DB"
 database_name = "planoexactocr-usuarios"
+
+# Envío de avisos por correo desde avisos@planoexactocr.com (Email Routing de Cloudflare)
+[[send_email]]
+name = "AVISOS"
