@@ -169,12 +169,12 @@
     // contadores por grupo
     const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size;
     [['onU', nU], ['onR', nR], ['onC', nC]].forEach(([id, n]) => { $(id).hidden = !n; $(id).textContent = n + (n === 1 ? ' filtro' : ' filtros'); });
-    const nt = nU + nR + nC + onlyFav; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = !nt;
+    const nt = nU + nR + nC + onlyFav; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = false;
     limit = 100; renderList(); renderMarkers();
   }
   ['q', 'fMin', 'fMax', 'aMin', 'aMax'].forEach(id => $(id).addEventListener('input', apply));
   ['fCanton', 'order'].concat(CHK).forEach(id => $(id).addEventListener('change', apply));
-  $('resetF').onclick = () => { setFilt({ order: $('order').value }); calDay = null; toast('Filtros restablecidos'); };
+  $('resetF').onclick = () => { setFilt({ order: $('order').value }); calDay = null; if (open) closeFicha(); vistaInicial(); toast('Filtros y mapa restablecidos'); };
   $('fProv').addEventListener('change', () => { fillCantones(); $('fCanton').value = ''; apply(); fitShown(); });
   $('fCanton').addEventListener('change', fitShown);
   $('saveSearch').onclick = () => {
@@ -247,10 +247,12 @@
     const fv = e.target.closest('[data-fav]'); if (fv) { e.stopPropagation(); favToggle(fv.dataset.fav); return; }
     const b = e.target.closest('.item'); if (b) openFicha(b.dataset.k, true);
   });
+  $('list').addEventListener('dblclick', e => { const b = e.target.closest('.item'); if (!b) return; const r = PX.item(b.dataset.k); if (r && r.ll) irA(r); });
 
   // ---------- mapa ----------
   const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 19, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
+  const vistaInicial = () => map.fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.attributionControl.setPrefix('<a class="attrb" href="/" title="Ir al inicio">' + PX.marca('', 18, 12) + '<b>PlanoExacto</b>CR</a>');
   map.zoomControl.setPosition('topright');
   PX.map = map;
@@ -591,14 +593,17 @@
   function renderMarkers() {
     markers.clearLayers(); polys.clearLayers();
     const z = map.getZoom();
-    const on = (l, r) => { l.on('click', () => openFicha(r.key, true)); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
+    const on = (l, r) => { l.on('click', () => openFicha(r.key, true)); l.on('dblclick', e => { L.DomEvent.stop(e); if (open !== r.key) openFicha(r.key, false); irA(r); }); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
     const punto = r => {
       const col = XC[r.st], ll = [r.ll[1], r.ll[0]];
       if (r.exact && r.poly && z >= 15) {   // el predio exacto, en el terracota del logo
         const pg = L.polygon(ringLL(r), { color: TERRA_D, weight: 2, fillColor: TERRA, fillOpacity: 0.32 });
         on(pg, r); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
+        // Cuando el predio ya se distingue en pantalla, se ve solo el polígono (sin el punto)
+        const b = pg.getBounds(), a = map.project(b.getNorthWest(), z), c = map.project(b.getSouthEast(), z);
+        if (Math.min(Math.abs(c.x - a.x), Math.abs(c.y - a.y)) >= 18) return;
       }
-      // Con el predio dibujado (zoom 16+), el punto se achica para no tapar la forma
+      // Predio todavía pequeño en pantalla: el punto se achica para no taparlo
       const chico = r.exact && r.poly && z >= 16;
       const m = L.marker(ll, { opacity: chico ? 0.9 : 1, icon: chico ? xIcon(r.st, 0, PX.isFav(r.key), true) : xIcon(r.st, z >= 14 ? 2 : z >= 11 ? 1 : 0, PX.isFav(r.key), r.exact), keyboard: false, riseOnHover: true });
       on(m, r); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -10] });
@@ -1026,7 +1031,7 @@
           'lotes en Guanacaste, de 500 a 2&nbsp;000&nbsp;m², con base menor a ₡20&nbsp;millones.')}
         <div class="ggrid">
           <div class="gcard"><h4>Botones útiles</h4><ul class="gkey">
-            <li><span class="gk">Restablecer</span><span>Borra todos los filtros de una vez.</span></li>
+            <li><span class="gk">Restablecer</span><span>Borra todos los filtros y vuelve el mapa a la vista inicial.</span></li>
             <li><span class="gk">Favoritos</span><span>Muestra solo los que marcaste con ♥.</span></li>
             <li><span class="gk">Calendario</span><span>Ve los remates día por día. Los de <b>mañana</b> salen resaltados.</span></li>
             <li><span class="gk">Guardar búsqueda</span><span>Guarda tus filtros para usarlos otra vez.</span></li></ul></div>
