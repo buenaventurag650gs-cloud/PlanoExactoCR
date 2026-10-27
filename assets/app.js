@@ -845,9 +845,7 @@
     const n = PX.nivel();
     modal(`<div class="hd">${PX.marca('dlgmark')}<h2>Planes de PlanoExactoCR</h2><button class="x" data-close aria-label="Cerrar">×</button></div>
       ${why ? `<div class="note">${esc(why)}</div>` : ''}
-      <div class="plans p4">
-        <div class="plan"><h3>Visitante</h3><div class="pr sm">Sin registro</div>
-          <ul><li>Mapa con todos los remates vigentes</li><li>Filtros por ubicación, etapa y precio</li><li>Base vigente y fecha de cada remate</li></ul></div>
+      <div class="plans p3">
         <div class="plan${n === 1 ? ' hl' : ''}"><h3>Cuenta gratis</h3><div class="pr sm">Con tu correo</div>
           <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Listas y seguimiento</li><li><b>${PX.PRECIOS.semanal} expediente por semana</b></li></ul>
           ${!PX.conCuenta() ? '<button class="btn primary" data-auth="crear">Crear cuenta gratis</button>' : n === 1 ? '<span class="tag ok">Tu plan actual</span>' : ''}</div>

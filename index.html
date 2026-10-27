@@ -261,7 +261,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 .dlg h2 { margin: 0; font: 600 21px/1.2 var(--f-display); }
 .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .plans.p4 { grid-template-columns: repeat(4, 1fr); }
-.dlg:has(.plans.p4) { width: min(1180px, 100%); }
+.dlg:has(.plans.p4), .dlg:has(.plans.p3) { width: min(1060px, 100%); }
 @media (max-width: 1100px) { .plans.p4 { grid-template-columns: repeat(2, 1fr); } }
 .plan .pr.sm { font-size: 17px; font-family: var(--f-body); } .plan .alt { font-size: 12.5px; margin: -4px 0 4px; }
 .tag.ese { background: var(--chip); color: var(--ink); }
