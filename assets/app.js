@@ -1061,6 +1061,39 @@
         <div class="display-6 fw-bold my-2">${precio}</div>${alt ? `<div class="text-secondary small mb-2">${alt}</div>` : ''}
         <ul class="list-unstyled lh-lg mb-4">${items.map(t => `<li class="d-flex">${TCHK}<span>${t}</span></li>`).join('')}</ul>
         <div class="mt-auto">${boton}</div></div></div></div>`;
+    const compCell = v => typeof v === 'boolean'
+      ? `<td class="text-center">${v ? TCHK : '<span class="text-secondary">—</span>'}</td>`
+      : `<td class="text-center${v === 'Sin límite' || v === '4' || v === 'Incluido' ? ' fw-bold text-primary' : ''}">${esc(v)}</td>`;
+    const compFila = (t, g, e, p) => `<tr><td>${esc(t)}</td>${compCell(g)}${compCell(e)}${compCell(p)}</tr>`;
+    const compGrp = t => `<tr class="table-active"><td colspan="4" class="text-uppercase text-secondary fw-bold small">${esc(t)}</td></tr>`;
+    const compTabla = `<div class="card mt-3"><div class="card-header"><h3 class="card-title">Qué incluye cada plan</h3></div>
+      <div class="table-responsive"><table class="table table-vcenter card-table mb-0">
+        <thead><tr><th></th><th class="text-center">Gratis</th><th class="text-center">Esencial</th><th class="text-center">PRO</th></tr></thead>
+        <tbody>
+          ${compGrp('El mapa')}
+          ${compFila('Ver los remates en el mapa', true, true, true)}
+          ${compFila('Capas de valor del terreno, agua potable, vías, salud, zonas de vida, curvas de nivel y zona marítimo terrestre', false, false, true)}
+          ${compGrp('La ficha de cada propiedad')}
+          ${compFila('Fechas, base y área de cada remate', true, true, true)}
+          ${compFila('Predio dibujado según el catastro', true, true, true)}
+          ${compFila('Número de finca y plano, servidumbres y gravámenes', false, true, true)}
+          ${compFila('Agua potable, vía, salud, escuela, ríos y costa', false, true, true)}
+          ${compFila('Valor de Hacienda, índice Puja/Hacienda, escala PECR e Índice PlanoExacto', false, false, true)}
+          ${compGrp('Herramientas')}
+          ${compFila('Riesgos del proceso y alertas de cambios', false, true, true)}
+          ${compFila('Valor de referencia y potencial constructivo', false, false, true)}
+          ${compFila('Prefactibilidad financiera', false, false, true)}
+          ${compFila('Mapa de precios por m² y Top 10 del mes', false, false, true)}
+          ${compFila('Filtrar por atributos del lote', false, false, true)}
+          ${compGrp('Organizar tu búsqueda')}
+          ${compFila('Favoritos, seguimiento y listas', true, true, true)}
+          ${compFila('Búsquedas guardadas', true, true, true)}
+          ${compFila('Comparar remates a la vez', '2', '2', '4')}
+          ${compGrp('Expedientes')}
+          ${compFila('Expedientes PDF por semana', String(PX.PRECIOS.semanal), String(PX.PRECIOS.semanalEsencial), 'Sin límite')}
+          ${compFila('Expediente adicional, fuera del cupo', `${PX.mt(PX.PRECIOS.expediente, 'CRC')} c/u`, `${PX.mt(PX.PRECIOS.expediente, 'CRC')} c/u`, 'Incluido')}
+        </tbody>
+      </table></div></div>`;
     ventana({ titulo: 'Planes de PlanoExactoCR', tam: 'xl', marca: true,
       cuerpo: `${why ? `<div class="alert alert-info"><div>${esc(why)}</div></div>` : ''}<div class="row row-cards">
         ${plan(n === 1, 'Cuenta gratis', '₡0', 'Con tu correo o tu cuenta de Google',
@@ -1073,6 +1106,7 @@
           ['Todo lo de Esencial', 'Valor de Hacienda, índice Puja/Hacienda y escala PECR', 'Todas las capas, mapa de precios y Top 10 por provincia', 'Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas', '<b>Expedientes sin límite</b>'],
           n === 3 ? '<button class="btn w-100" data-pagar="pro">Renovar PRO</button>' : '<button class="btn btn-primary w-100" data-pagar="pro">Activar PRO</button>')}
       </div>
+      ${compTabla}
       <div class="text-secondary small mt-3">${n < 3 ? `Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. ` : ''}Precios en colones con IVA incluido. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos.</div>` });
   }
   $('bPlanes').onclick = () => openPlanes();
