@@ -399,6 +399,7 @@
     { g: 'Abastecimiento de agua', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
     { id: 'asadas', n: 'ASADAS (acueductos comunales)', note: '1 305 operadores', lg: AS_COL.map(([n, c]) => ['', c, n]) },
     { id: 'aprovech', n: 'Concesiones de agua (fuentes y caudal)', note: 'acueductos rurales · caudal en l/s', lg: [['', '#3B8BD9', 'Subterránea (pozo/acuífero)'], ['', '#2A9D8F', 'Superficial (nacimiento/río)'], ['', '#9C9489', 'Otra']] },
+    { id: 'aguaHeat', n: 'Mapa de calor del caudal', note: 'densidad ponderada por l/s otorgados', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 24, blur: 20, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
@@ -498,11 +499,18 @@
       mk.bindTooltip(`<b>${esc(a.n)}</b>${a.tipo ? '<br>Sistema: ' + esc(a.tipo) : ''}${a.ab ? '<br>Abonados: ' + a.ab.toLocaleString('de-DE') : ''}${a.adm && a.adm !== 'ASADA' ? '<br>' + esc(a.adm) : ''}${a.zona ? '<br>Zona: ' + esc(a.zona) : ''}`, { direction: 'top', className: 'asada-tip' });
       vec.asadas.addLayer(mk);
     }
-    if (PX.ctx.aprovech) for (const f of PX.ctx.aprovech.aprovech || []) {
-      const r = f.q > 0 ? Math.min(3 + Math.sqrt(f.q) * 1.1, 12) : 3;
-      const mk = L.circleMarker([f.ll[1], f.ll[0]], { renderer: ctxR, radius: r, color: '#fff', weight: 0.7, fillColor: apCol(f.f), fillOpacity: 0.85 });
-      mk.bindTooltip(`<b>${esc(f.n || f.t || 'Fuente de agua')}</b><br>${esc(f.t || f.f)}${f.q > 0 ? '<br>Caudal: ' + f.q + ' l/s' : '<br>Sin caudal registrado'}${f.u ? '<br>Uso: ' + esc(f.u) : ''}`, { direction: 'top' });
-      vec.aprovech.addLayer(mk);
+    if (PX.ctx.aprovech) {
+      const heatPts = [];
+      for (const f of PX.ctx.aprovech.aprovech || []) {
+        const r = f.q > 0 ? Math.min(3 + Math.sqrt(f.q) * 1.1, 12) : 3;
+        const mk = L.circleMarker([f.ll[1], f.ll[0]], { renderer: ctxR, radius: r, color: '#fff', weight: 0.7, fillColor: apCol(f.f), fillOpacity: 0.85 });
+        mk.bindTooltip(`<b>${esc(f.n || f.t || 'Fuente de agua')}</b><br>${esc(f.t || f.f)}${f.q > 0 ? '<br>Caudal: ' + f.q + ' l/s' : '<br>Sin caudal registrado'}${f.u ? '<br>Uso: ' + esc(f.u) : ''}`, { direction: 'top' });
+        vec.aprovech.addLayer(mk);
+        // Mapa de calor ponderado por caudal (log para no aplastar fuentes pequeñas)
+        heatPts.push([f.ll[1], f.ll[0], f.q > 0 ? Math.log1p(f.q) : 0.3]);
+      }
+      const heatL = (LY.find(l => l.id === 'aguaHeat') || {}).layer;
+      if (heatL && heatL.setLatLngs) heatL.setLatLngs(heatPts);
     }
     syncLayers();
   }
