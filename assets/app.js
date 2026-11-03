@@ -484,6 +484,12 @@
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
+    { g: 'Telecomunicaciones', id: 'tg', n: 'Cobertura móvil 3G', note: 'ICE/Kolbi · setiembre 2026', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:tg', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura 3G &copy; ICE/Kolbi' }) },
+    { id: 'lte', n: 'Cobertura 4G (LTE)', note: 'ICE/Kolbi · setiembre 2026', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura LTE &copy; ICE/Kolbi' }) },
+    { id: 'ltea', n: 'Cobertura 4G+ (LTE Advanced)', note: 'ICE/Kolbi · setiembre 2026', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:ltea', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura LTE Advanced &copy; ICE/Kolbi' }) },
+    { id: 'tele5g', n: 'Cobertura 5G', note: 'ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:5g-omv', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura 5G &copy; ICE/Kolbi' }) },
+    { id: 'internetfijo', n: 'Internet residencial fijo', note: 'fibra/cable · ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:internet-voz', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura de internet residencial &copy; ICE/Kolbi' }) },
+    { id: 'wttx', n: 'WTTx · Internet LTE hogar', note: 'planes marzo 2021', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:planes-lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Planes LTE hogar &copy; ICE/Kolbi' }) },
     { g: 'Ambiente y restricciones', id: 'zv', n: 'Zonas de vida', hover: true, lg: ZVG.map(g => ['', g[2], g[1]]) },
     { id: 'cob', n: 'Uso y cobertura del suelo 2020', hover: true, lg: MAF.filter(m => m[0] !== 'Red vial').map(([n, c]) => ['', c, n]).concat([['', MAFO, 'Otros']]), mk: () => wms(SINIA + 'MAF2020/wms', 'MAF2020', { sld_body: mafSld, opacity: 0.9, zIndex: 3, attribution: 'Mapa agropecuario y forestal 2020 &copy; MINAE' }) },
     { id: 'hidro', n: 'Ríos y quebradas', z: 13, lg: [['ln', HIDRO, 'Cauce (IGN 1:5 000)']], mk: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:hidrografia_5000', { minZoom: 13, zIndex: 6, sld_body: sld('IGN_5:hidrografia_5000', lineRule(HIDRO, 1.6, 0.95)), attribution: 'Hidrografía &copy; IGN' }) },
@@ -550,7 +556,7 @@
         ${on && l.lg && l.lg.length ? `<span class="lg">${l.lg.map(([t, c, n]) => `<span><i class="${t}" style="--c:${c}"></i>${esc(n)}</span>`).join('')}</span>` : ''}</label>`;
     }
     if (open_) h += '</details>';
-    h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, Registro Inmobiliario, IGN, Hacienda, AyA, ARESEP, MINAE, INVU y CCSS con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar. Las amenazas de la CNE se agregarán cuando su servicio esté disponible.</div>`;
+    h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, Registro Inmobiliario, IGN, Hacienda, AyA, ARESEP, MINAE, INVU, CCSS e ICE/Kolbi con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar. Las amenazas de la CNE se agregarán cuando su servicio esté disponible.</div>`;
     $('lyrPanel').innerHTML = h;
   }
   $('lyrPanel').addEventListener('toggle', e => { const d = e.target.closest('details.lg-g'); if (d) { lyrOpen[d.dataset.g] = d.open; PX.store.set('px-lyrg', lyrOpen); } }, true);
