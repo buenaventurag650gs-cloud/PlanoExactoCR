@@ -441,6 +441,13 @@
 
     // Electricidad
     'Abastecimiento eléctrico': 'Electricity supply',
+    // Apagar categoría
+    'Apagar las capas activas de Referencia': 'Turn off active layers in Reference',
+    'Apagar las capas activas de Valor y mercado': 'Turn off active layers in Value & market',
+    'Apagar las capas activas de Abastecimiento de agua': 'Turn off active layers in Water supply',
+    'Apagar las capas activas de Abastecimiento eléctrico': 'Turn off active layers in Electricity supply',
+    'Apagar las capas activas de Servicios e infraestructura': 'Turn off active layers in Services & infrastructure',
+    'Apagar las capas activas de Ambiente y restricciones': 'Turn off active layers in Environment & restrictions',
     'Cobertura eléctrica por operador': 'Electric coverage by operator',
     'ICE, CNFL, ESPH, JASEC y cooperativas': 'ICE, CNFL, ESPH, JASEC and cooperatives',
     'Operador eléctrico': 'Electric operator',

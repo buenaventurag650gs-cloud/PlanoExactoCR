@@ -475,11 +475,20 @@
     if (e.target.closest('.bcur')) { d.classList.toggle('open'); paintBaseSw(); }
   });
   const lyrOpen = PX.store.get('px-lyrg', { 'Mapa base': true, Referencia: true });
+  // Grupo al que pertenece cada capa (los LY heredan el .g del último que lo seteó)
+  const grpOf = (() => { const m = {}; let cur = null; for (const l of LY) { if (l.g) cur = l.g; m[l.id] = cur; } return m; })();
+  const grpOnCount = g => LY.filter(x => grpOf[x.id] === g && lyrState[x.id] && allowed(x)).length;
   function renderLyrPanel() {
     let h = `<details class="lg-g"${lyrOpen['Mapa base'] ? ' open' : ''} data-g="Mapa base"><summary>Mapa base<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary><div class="bgrid">${BASES.map(([k, n, d, img]) => `<label class="bopt" title="${d}"><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}><img src="${img}" alt="" loading="lazy" width="64" height="44"><span>${n}</span></label>`).join('')}</div></details>`;
     let open_ = false;
     for (const l of LY) {
-      if (l.g) { if (open_) h += '</details>'; const nOn = LY.filter(x => x.g === l.g).length; h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`; open_ = true; }
+      if (l.g) {
+        if (open_) h += '</details>';
+        const nOn = grpOnCount(l.g);
+        const offBtn = nOn > 0 ? `<button class="goff" type="button" data-off="${esc(l.g)}" title="Apagar las capas activas de ${esc(l.g)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>${nOn}</button>` : '';
+        h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}${offBtn}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`;
+        open_ = true;
+      }
       const ok = allowed(l), on = lyrState[l.id] && ok;
       h += `<label class="lyr${ok ? '' : ' locked'}" data-id="${l.id}"><input type="checkbox"${on ? ' checked' : ''}${ok ? '' : ' disabled'}>
         <span>${l.n}${l.note ? ` <small>${l.note}</small>` : ''}${l.z ? ` <small>zoom ${l.z}+</small>` : ''}</span><span>${l.free ? '' : PX.PRO}${ok && l.hover && on ? ' <small>clic en el mapa</small>' : ''}</span>
@@ -492,6 +501,16 @@
   $('lyrPanel').addEventListener('toggle', e => { const d = e.target.closest('details.lg-g'); if (d) { lyrOpen[d.dataset.g] = d.open; PX.store.set('px-lyrg', lyrOpen); } }, true);
   $('lyrBtn').onclick = () => { const p = $('lyrPanel'); p.hidden = !p.hidden; $('lyrBtn').setAttribute('aria-expanded', !p.hidden); if (!p.hidden) renderLyrPanel(); };
   $('lyrPanel').addEventListener('click', e => {
+    // Botón «apagar todas las capas de esta categoría»
+    const off = e.target.closest('[data-off]');
+    if (off) {
+      e.preventDefault(); e.stopPropagation();
+      const g = off.dataset.off;
+      let changed = false;
+      for (const l of LY) if (grpOf[l.id] === g && lyrState[l.id]) { lyrState[l.id] = false; changed = true; }
+      if (changed) { syncLayers(); renderLyrPanel(); }
+      return;
+    }
     const lk = e.target.closest('.lyr.locked'); if (lk) { e.preventDefault(); return lockMsg('Las capas ambientales y de infraestructura se incluyen en la suscripción.'); }
   });
   $('lyrPanel').addEventListener('change', e => {

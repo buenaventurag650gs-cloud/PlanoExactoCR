@@ -187,6 +187,10 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 .lg-g > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 14px; font: 700 11.5px/1 var(--f-body); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); background: var(--chip); }
 .lg-g > summary::-webkit-details-marker { display: none; }
 .lg-g > summary .chev { margin-left: auto; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); transition: transform .15s; }
+.lg-g > summary .goff { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 3px 9px 3px 8px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font: 600 10.5px/1 var(--f-body); text-transform: none; letter-spacing: 0; cursor: pointer; }
+.lg-g > summary .goff + .chev { margin-left: 6px; }
+.lg-g > summary .goff:hover { color: var(--terra); border-color: var(--terra); }
+.lg-g > summary .goff svg { width: 11px; height: 11px; }
 .lg-g[open] > summary .chev { transform: rotate(180deg); }
 .lg-g > .lyr:first-of-type { margin-top: 4px; }
 /* Catastro y vías públicas: se atenúan sus colores originales (verde y rosado) para un mapa más sutil */
