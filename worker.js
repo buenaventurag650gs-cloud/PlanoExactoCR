@@ -536,6 +536,31 @@ async function api(u) {
   }
 }
 
+// ---------- Proxy de solo lectura al WMS del ICE/Kolbi (cobertura de telecomunicaciones) ----------
+// El GeoServer del ICE no manda cabeceras CORS, así que una página que necesite leer los
+// píxeles de sus imágenes (como herramientas/telecom.html) no puede pedirlas directo desde el
+// navegador. Este endpoint las pide desde el Worker (sin esa restricción) y las devuelve
+// same-origin. Solo reenvía GetMap de las capas públicas que ya mostramos en el mapa.
+const ICE_WMS_CAPAS = new Set(["ice:tg", "ice:lte", "ice:ltea", "ice:5g-omv", "ice:internet-shp", "ice:planes-lte"]);
+async function proxyIceWms(u) {
+  const layer = u.searchParams.get("layer") || "";
+  if (!ICE_WMS_CAPAS.has(layer)) return txt("Capa no permitida", 400);
+  const bbox = (u.searchParams.get("bbox") || "").split(",").map(Number);
+  if (bbox.length !== 4 || bbox.some((n) => !Number.isFinite(n))) return txt("bbox inválido", 400);
+  const w = Math.min(3000, Math.max(1, parseInt(u.searchParams.get("width"), 10) || 0));
+  const h = Math.min(3000, Math.max(1, parseInt(u.searchParams.get("height"), 10) || 0));
+  if (!w || !h) return txt("width/height inválidos", 400);
+  const q = new URLSearchParams({ SERVICE: "WMS", VERSION: "1.1.1", REQUEST: "GetMap", FORMAT: "image/png", TRANSPARENT: "true", LAYERS: layer, STYLES: "", SRS: "EPSG:4326", WIDTH: String(w), HEIGHT: String(h), BBOX: bbox.join(",") });
+  let r;
+  try {
+    r = await fetch("https://mapas.ice.go.cr/geoserver/ice/wms?" + q, { cf: { cacheTtl: 3600, cacheEverything: true } });
+  } catch (_) {
+    return txt("No se pudo contactar al servidor del ICE", 502);
+  }
+  if (!r.ok) return txt("El servidor del ICE respondió " + r.status, 502);
+  return new Response(r.body, { status: 200, headers: { "content-type": r.headers.get("content-type") || "image/png", "cache-control": "public, max-age=3600" } });
+}
+
 // ---------- Catastro desde Costa Rica (botón «Ubicar remates») ----------
 const REPO = "buenaventurag650gs-cloud/PlanoExactoCR";
 const ORIGENES_SNIT = new Set(["https://www.snitcr.go.cr", "https://snitcr.go.cr"]);
@@ -713,6 +738,7 @@ export default {
     if (env.DOMINIO && u.hostname !== env.DOMINIO && !p.startsWith("/api/catastro/") && u.hostname !== "localhost")
       return Response.redirect(`https://${env.DOMINIO}${p}${u.search}`, 301);
 
+    if (p === "/api/ice-wms") return proxyIceWms(u);
     if (p.startsWith("/api/catastro/")) {
       const h = cors(request);
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: h });

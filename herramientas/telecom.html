@@ -69,7 +69,11 @@
   // Extensión de Costa Rica (con margen), lon/lat EPSG:4326.
   const BBOX = [-86.05, 8.0, -82.45, 11.35];
   const W = 2400, H = Math.round(W * (BBOX[3] - BBOX[1]) / (BBOX[2] - BBOX[0]));
-  const BASE = 'https://mapas.ice.go.cr/geoserver/ice/wms';
+  // Vía nuestro propio Worker: el GeoServer del ICE no manda cabeceras CORS,
+  // así que el navegador no puede leer los píxeles de una imagen pedida
+  // directo a mapas.ice.go.cr. El Worker la pide por su cuenta (sin esa
+  // restricción) y la devuelve same-origin, lista para leer con canvas.
+  const BASE = '/api/ice-wms';
   // Orden: de menor a mayor tecnología. El índice+1 es el "nivel" (1=3G … 4=5G).
   const CAPAS = [
     ['3G', 'ice:tg'],
@@ -80,11 +84,7 @@
   const COLOR = ['', '#C8553D', '#E9C46A', '#7CC48E', '#1F5A47']; // índice 1..4
 
   function urlGetMap(layer) {
-    const q = new URLSearchParams({
-      SERVICE: 'WMS', VERSION: '1.1.1', REQUEST: 'GetMap', FORMAT: 'image/png',
-      TRANSPARENT: 'true', LAYERS: layer, STYLES: '', SRS: 'EPSG:4326',
-      WIDTH: W, HEIGHT: H, BBOX: BBOX.join(','),
-    });
+    const q = new URLSearchParams({ layer, bbox: BBOX.join(','), width: W, height: H });
     return BASE + '?' + q;
   }
 
