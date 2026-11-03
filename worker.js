@@ -550,7 +550,8 @@ async function proxyIceWms(u) {
   const w = Math.min(3000, Math.max(1, parseInt(u.searchParams.get("width"), 10) || 0));
   const h = Math.min(3000, Math.max(1, parseInt(u.searchParams.get("height"), 10) || 0));
   if (!w || !h) return txt("width/height inválidos", 400);
-  const q = new URLSearchParams({ SERVICE: "WMS", VERSION: "1.1.1", REQUEST: "GetMap", FORMAT: "image/png", TRANSPARENT: "true", LAYERS: layer, STYLES: "", SRS: "EPSG:4326", WIDTH: String(w), HEIGHT: String(h), BBOX: bbox.join(",") });
+  const srs = u.searchParams.get("srs") === "EPSG:3857" ? "EPSG:3857" : "EPSG:4326";
+  const q = new URLSearchParams({ SERVICE: "WMS", VERSION: "1.1.1", REQUEST: "GetMap", FORMAT: "image/png", TRANSPARENT: "true", LAYERS: layer, STYLES: "", SRS: srs, WIDTH: String(w), HEIGHT: String(h), BBOX: bbox.join(",") });
   let r;
   try {
     r = await fetch("https://mapas.ice.go.cr/geoserver/ice/wms?" + q, { cf: { cacheTtl: 3600, cacheEverything: true } });

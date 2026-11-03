@@ -447,6 +447,51 @@
   const MAFO = '#C9CED1';
   const mafSld = sld('MAF2020', MAF.map(([n, c]) => `<Rule><ogc:Filter><ogc:PropertyIsEqualTo><ogc:PropertyName>CATEGORIA</ogc:PropertyName><ogc:Literal>${n}</ogc:Literal></ogc:PropertyIsEqualTo></ogc:Filter><PolygonSymbolizer>${fill(c, 0.62)}</PolygonSymbolizer></Rule>`).join('') + `<Rule><ElseFilter/><PolygonSymbolizer>${fill(MAFO, 0.4)}</PolygonSymbolizer></Rule>`);
   const wms = (url, layers, o) => L.tileLayer.wms(url, Object.assign({ layers, version: '1.1.1', format: 'image/png', transparent: true, maxZoom: 21 }, o));
+
+  // Capa combinada de cobertura móvil: pide los 4 WMS (3G/4G/4G+/5G) por tile,
+  // lee los píxeles y pinta con la mejor tecnología disponible en cada punto.
+  const COB_MOVIL_CAPAS = ['ice:tg', 'ice:lte', 'ice:ltea', 'ice:5g-omv'];
+  const COB_MOVIL_RGB = [[200,85,61], [233,196,106], [124,196,142], [31,90,71]]; // tier 1–4
+  L.GridLayer.CobMovil = L.GridLayer.extend({
+    options: { tileSize: 256, opacity: 0.55, zIndex: 4, maxZoom: 21, attribution: 'Cobertura móvil &copy; ICE/Kolbi' },
+    createTile(coords, done) {
+      const tile = document.createElement('canvas');
+      const sz = this.getTileSize(); tile.width = sz.x; tile.height = sz.y;
+      // Calcular BBOX en EPSG:3857 (metros) a partir de las coordenadas del tile
+      const R = 6378137, O = Math.PI * R; // semieje y medio-perímetro
+      const res = 2 * O / (sz.x * Math.pow(2, coords.z));
+      const xMin = coords.x * sz.x * res - O;
+      const yMax = O - coords.y * sz.y * res;
+      const xMax = xMin + sz.x * res;
+      const yMin = yMax - sz.y * res;
+      const bbox = [xMin, yMin, xMax, yMax].join(',');
+      const urls = COB_MOVIL_CAPAS.map(l =>
+        `/api/ice-wms?layer=${l}&bbox=${bbox}&width=${sz.x}&height=${sz.y}&srs=EPSG:3857`);
+      Promise.all(urls.map(u =>
+        fetch(u).then(r => r.ok ? r.blob() : null).then(b => b ? createImageBitmap(b) : null).catch(() => null)
+      )).then(imgs => {
+        const ctx = tile.getContext('2d');
+        const datas = imgs.map(img => {
+          if (!img) return null;
+          ctx.clearRect(0, 0, sz.x, sz.y);
+          ctx.drawImage(img, 0, 0, sz.x, sz.y);
+          try { return ctx.getImageData(0, 0, sz.x, sz.y); } catch (_) { return null; }
+        });
+        const final = ctx.createImageData(sz.x, sz.y);
+        const px = sz.x * sz.y;
+        for (let p = 0; p < px; p++) {
+          let nivel = 0;
+          for (let t = 3; t >= 0; t--) if (datas[t] && datas[t].data[p * 4 + 3] > 10) { nivel = t + 1; break; }
+          if (!nivel) continue;
+          const o = p * 4, c = COB_MOVIL_RGB[nivel - 1];
+          final.data[o] = c[0]; final.data[o+1] = c[1]; final.data[o+2] = c[2]; final.data[o+3] = 200;
+        }
+        ctx.putImageData(final, 0, 0);
+        done(null, tile);
+      }).catch(() => done(null, tile));
+      return tile;
+    }
+  });
   const SINIA = 'https://geodatos.sinia.go.cr/geoserver/';
   const HIDRO = '#3B8BD9', CURV = '#A0826D', PSA = '#6A994E', PROT = '#3B8BD9';
 
@@ -484,10 +529,7 @@
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
-    { g: 'Telecomunicaciones', id: 'tg', n: 'Cobertura móvil 3G', note: 'ICE/Kolbi · setiembre 2026', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:tg', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura 3G &copy; ICE/Kolbi' }) },
-    { id: 'lte', n: 'Cobertura 4G (LTE)', note: 'ICE/Kolbi · setiembre 2026', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura LTE &copy; ICE/Kolbi' }) },
-    { id: 'ltea', n: 'Cobertura 4G+ (LTE Advanced)', note: 'ICE/Kolbi · setiembre 2026', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:ltea', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura LTE Advanced &copy; ICE/Kolbi' }) },
-    { id: 'tele5g', n: 'Cobertura 5G', note: 'ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:5g-omv', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Cobertura 5G &copy; ICE/Kolbi' }) },
+    { g: 'Telecomunicaciones', id: 'cobmovil', n: 'Cobertura móvil', note: 'mejor tecnología disponible · ICE/Kolbi', opacity: 0.55, lg: [['', '#C8553D', 'Solo 3G'], ['', '#E9C46A', '4G (LTE)'], ['', '#7CC48E', '4G+ (LTE Advanced)'], ['', '#1F5A47', '5G']], mk: () => new L.GridLayer.CobMovil() },
     { id: 'internetfijo', n: 'Internet residencial fijo', note: 'fibra/cable · ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:internet-shp', { zIndex: 4, opacity: 0.55, attribution: 'Cobertura de internet residencial &copy; ICE/Kolbi' }) },
     { id: 'wttx', n: 'WTTx · Internet LTE hogar', note: 'planes marzo 2021', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:planes-lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Planes LTE hogar &copy; ICE/Kolbi' }) },
     { g: 'Ambiente y restricciones', id: 'zv', n: 'Zonas de vida', hover: true, lg: ZVG.map(g => ['', g[2], g[1]]) },
