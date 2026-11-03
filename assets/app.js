@@ -18,8 +18,8 @@
     PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => []),
     PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null),
     PX.get('data/asadas.json').catch(() => null), PX.get('data/aprovechamientos.json').catch(() => null),
-    PX.get('data/cobertura_concesiones.geojson').catch(() => null)
-  ]).then(([p, s, c, z, inf, asadasData, apData, cobDA]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, cobDA: cobDA, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
+    PX.get('data/cobertura_concesiones.geojson').catch(() => null), PX.get('data/electricidad.geojson').catch(() => null)
+  ]).then(([p, s, c, z, inf, asadasData, apData, cobDA, elec]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, cobDA: cobDA, elec: elec, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
 
   const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
   const lockMsg = (t) => { openPlanes(t); };
@@ -369,6 +369,19 @@
   const asCol = tipo => (AS_COL.find(c => c[0] === tipo) || AS_COL[3])[1];
   // Concesiones de agua: color por clasificación de la fuente
   const apCol = f => f === 'Subterranea' ? '#3B8BD9' : f === 'Superficial' ? '#2A9D8F' : '#9C9489';
+
+  // Cobertura eléctrica por operador (ARESEP): paleta oficial del servicio
+  const EL_COL = {
+    'ICE':                   'rgb(252,190,182)',
+    'CNFL':                  'rgb(252,215,242)',
+    'ESPH':                  'rgb(249,184,252)',
+    'JASEC':                 'rgb(184,215,252)',
+    'COOPELESCA':            'rgb(252,239,204)',
+    'COOPEGUANACASTE R.L.':  'rgb(184,248,252)',
+    'COOPESANTOS':           'rgb(179,179,252)',
+    'COOPEALFARORUIZ':       'rgb(179,252,182)',
+  };
+  const elCol = o => EL_COL[o] || '#C9CED1';
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   // Mapas base con miniatura (tesela de Costa Rica central) y para qué sirve cada uno
   const T8 = { esri: s => `https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/9/241/136`, xyz: u => u.replace('{z}', 9).replace('{x}', 136).replace('{y}', 241).replace('{s}', 'a') };
@@ -422,6 +435,7 @@
     { id: 'asadas', n: 'ASADAS (acueductos comunales)', note: '1 305 operadores', lg: AS_COL.map(([n, c]) => ['', c, n]) },
     { id: 'aprovech', n: 'Concesiones de agua (fuentes y caudal)', note: 'acueductos rurales · caudal en l/s', lg: [['', '#3B8BD9', 'Subterránea (pozo/acuífero)'], ['', '#2A9D8F', 'Superficial (nacimiento/río)'], ['', '#9C9489', 'Otra']] },
     { id: 'aguaHeat', n: 'Mapa de calor integrado del agua', note: 'concesiones + ASADAS + cobertura implícita', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
+    { g: 'Abastecimiento eléctrico', id: 'elec', n: 'Cobertura eléctrica por operador', note: 'ICE, CNFL, ESPH, JASEC y cooperativas', lg: [['', EL_COL['ICE'], 'ICE'], ['', EL_COL['CNFL'], 'CNFL'], ['', EL_COL['ESPH'], 'ESPH'], ['', EL_COL['JASEC'], 'JASEC'], ['', EL_COL['COOPELESCA'], 'COOPELESCA'], ['', EL_COL['COOPEGUANACASTE R.L.'], 'COOPEGUANACASTE'], ['', EL_COL['COOPESANTOS'], 'COOPESANTOS'], ['', EL_COL['COOPEALFARORUIZ'], 'COOPEALFARORUIZ']] },
     { id: 'cobDA', n: 'Cobertura implícita (concesiones)', note: 'derivada de las tomas · comparar con AyA', lg: [['', 'rgba(106,153,78,0.35)', 'Área con tomas registradas por la Dirección de Agua']] },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
@@ -436,7 +450,7 @@
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base2', dark() ? 'oscuro' : 'claro'); if (!base[baseId]) baseId = 'claro';
-  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup() };
+  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup(), elec: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   function syncLayers() {
@@ -536,6 +550,14 @@
         style: { color: 'rgb(106,153,78)', weight: 1, opacity: 0.75, dashArray: '4,3', fillColor: 'rgb(106,153,78)', fillOpacity: 0.28 },
         attribution: 'Cobertura implícita derivada de concesiones &copy; MINAE (DA)',
         onEachFeature: (f, l) => { if (f.properties && f.properties.area_km2) l.bindTooltip(`Cobertura implícita · ${f.properties.area_km2.toLocaleString('de-DE')} km²`, { sticky: true }); },
+      }));
+    }
+    if (PX.ctx.elec) {
+      vec.elec.addLayer(L.geoJSON(PX.ctx.elec, {
+        pane: 'ctx',
+        style: f => { const c = elCol(f.properties.OPERADOR); return { color: '#6E6E6E', weight: 0.6, opacity: 0.85, fillColor: c, fillOpacity: 0.55 }; },
+        attribution: 'Zonas de concesión eléctrica &copy; ARESEP',
+        onEachFeature: (f, l) => { const p = f.properties || {}; l.bindTooltip(`<b>${esc(p.OPERADOR || 'Operador eléctrico')}</b>${p.AREAKM ? '<br>Área: ' + Math.round(p.AREAKM).toLocaleString('de-DE') + ' km²' : ''}`, { sticky: true }); },
       }));
     }
     if (PX.ctx.aprovech) {

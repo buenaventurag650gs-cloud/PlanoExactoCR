@@ -439,6 +439,13 @@
     'Muy alto': 'Very high',
     'Área con tomas registradas por la Dirección de Agua': 'Area with intakes registered by the Water Directorate',
 
+    // Electricidad
+    'Abastecimiento eléctrico': 'Electricity supply',
+    'Cobertura eléctrica por operador': 'Electric coverage by operator',
+    'ICE, CNFL, ESPH, JASEC y cooperativas': 'ICE, CNFL, ESPH, JASEC and cooperatives',
+    'Operador eléctrico': 'Electric operator',
+    'Área:': 'Area:',
+
     // Tooltips de las capas vectoriales
     'Fuente de agua': 'Water source',
     'Sin caudal registrado': 'No flow registered',
