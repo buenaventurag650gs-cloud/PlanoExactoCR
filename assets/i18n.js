@@ -483,7 +483,6 @@
     // Ficha de propiedad (bloques comunes)
     'Agua potable': 'Potable water',
     'Cobertura de': 'Coverage from',
-    'Sin cobertura registrada': 'No coverage registered',
     'Favoritos': 'Favorites',
     'Agregar a favoritos': 'Add to favorites',
     'Quitar de favoritos': 'Remove from favorites',
@@ -491,7 +490,6 @@
     'Agregar al comparador': 'Add to compare',
     'Agregado al comparador': 'Added to compare',
     'Quitar del comparador': 'Remove from compare',
-    'Abrir expediente': 'Open file',
     'Abrir para este lote': 'Open for this lot',
     'Activar en el mapa': 'Activate on the map',
     'Activar plan': 'Activate plan',
@@ -517,5 +515,199 @@
 
     // Nivel de zoom
     'Nivel de zoom': 'Zoom level',
+
+    // ============================================================
+    // FICHA DE PROPIEDAD / EXPEDIENTE / HERRAMIENTAS PRO
+    // ============================================================
+
+    // Encabezados y secciones
+    'Información base': 'Base information',
+    'Remate': 'Auction',
+    'Terreno': 'Land',
+    'Normativa': 'Zoning rules',
+    'Registro y ubicación': 'Registry & location',
+    'Servicios y entorno': 'Services & surroundings',
+    'Valor y mercado': 'Value & market',
+    'Índice Puja/Hacienda': 'Bid/Hacienda index',
+    'Escala de valor PECR': 'PECR value scale',
+    'Índice PlanoExacto': 'PlanoExacto Index',
+    'Atributos del lote': 'Lot attributes',
+    'Expediente': 'Report',
+    'Expediente del lote': 'Lot report',
+    'Con el plan Esencial': 'With the Essential plan',
+    'Con el plan PRO': 'With the PRO plan',
+
+    // Labels (dt) de la ficha
+    'Área': 'Area',
+    'Dimensiones': 'Dimensions',
+    'Forma del predio': 'Parcel shape',
+    'Topografía': 'Topography',
+    'Uso del suelo': 'Land use',
+    'Zona de vida': 'Life zone',
+    'Finca': 'Property №',
+    'Plano': 'Survey plan',
+    'Servidumbres': 'Easements',
+    'Ubicación': 'Location',
+    'Publicado': 'Published',
+    'Agua potable': 'Potable water',
+    'Vía más cercana': 'Nearest road',
+    'Salud': 'Health',
+    'Escuela': 'School',
+    'Ríos': 'Rivers',
+    'Costa': 'Coastline',
+    'Zona homogénea': 'Homogeneous zone',
+
+    // Valores / estados
+    'Sin dato': 'No data',
+    'Sin dato del MINAE': 'No data from MINAE',
+    'Sin cobertura registrada': 'No registered coverage',
+    'Sin cartografía 1:5 000 en el sitio': 'No 1:5,000 cartography at this location',
+    'Ninguna citada en el edicto': 'None cited in the notice',
+    'Ninguno a menos de 400 m': 'None within 400 m',
+    'Sin fechas legibles en el edicto.': 'No readable dates in the notice.',
+    'Sin atributos destacados': 'No notable attributes',
+    'Sin ríos a menos de 50 m': 'No rivers within 50 m',
+    'Sin servidumbres': 'No easements',
+    'No indicado': 'Not stated',
+    'Ubicación por definir': 'Location to be defined',
+    'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio': 'Approximate: the dot marks the center of the stated district, because the cadastre did not return the parcel',
+    'Predio del catastro consultado por plano': 'Cadastral parcel looked up by survey plan',
+    'área s/d': 'area n/a',
+    'Una citada': 'One cited',
+    'citadas': 'cited',
+    'varias fincas o derechos': 'multiple properties or rights',
+
+    // Textos de ayuda (card lock)
+    'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.': 'Confirm zone, uses, coverage and height with the land-use certificate.',
+    'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.': 'Minimum lot 90 to 120 m², minimum frontage 6 m, depth up to 7 times the frontage.',
+    'Número de finca y plano, servidumbres citadas y origen de la ubicación.': 'Property and survey plan numbers, cited easements and location origin.',
+    'Agua potable, vía de acceso, salud, escuela, ríos y distancia a la costa.': 'Potable water, access road, health, school, rivers and distance to the coast.',
+    'Valor de Hacienda de la zona y en qué porcentaje de ese valor arranca la puja.': 'Hacienda land value for the zone and the percentage of it at which the bidding starts.',
+    'Nivel del predio en la escala de valor PECR, de 1 a 10.': 'Parcel level on the PECR value scale, from 1 to 10.',
+    'Sanidad jurídica, precio por m², servicios y restricciones': 'Legal soundness, price per m², services and restrictions',
+    'Según curvas de nivel del IGN': 'According to IGN contour lines',
+    'AyA, ESPH, ASADAS y acueductos municipales': 'AyA, ESPH, ASADAS and municipal aqueducts',
+    'Desglose en el expediente o en PRO': 'Breakdown in the report or in PRO',
+    'Información orientativa de fuentes públicas. No sustituye la certificación del Registro Nacional, el certificado de uso de suelo ni la revisión del expediente judicial.': 'Guidance based on public sources. It does not replace the National Registry certification, the land-use certificate or review of the court file.',
+    'Términos y descargo': 'Terms & disclaimer',
+
+    // Botones y acciones
+    'En favoritos': 'In favorites',
+    'Está en remate: ver ficha': 'It is in auction: open card',
+    'O abre el expediente de este lote': 'Or open the report for this lot',
+    'Abrir expediente': 'Open report',
+    'Generar expediente': 'Generate report',
+    'Expediente adicional': 'Extra report',
+    'Disponible': 'Available',
+    'Incluido en PRO': 'Included in PRO',
+    'sin límite': 'unlimited',
+    'te queda 1': '1 left',
+    'te quedan': 'left',
+
+    // Expediente — bullets
+    'Texto del edicto, datos registrales y despacho': 'Notice text, registry data and court office',
+    'Texto del edicto (si está en remate), datos registrales y despacho': 'Notice text (if in auction), registry data and court office',
+    'Gravámenes y servidumbres explicados en lenguaje claro': 'Encumbrances and easements explained in plain language',
+    'Valor de Hacienda, índices y entorno completo del predio': 'Hacienda value, indices and full surroundings of the parcel',
+    'Análisis multidimensional y comparables de la zona': 'Multidimensional analysis and comparables for the area',
+    'Versión imprimible con mapa del predio': 'Printable version with map of the parcel',
+    'No es un certificado de uso de suelo ni una certificación registral: es un compendio de información pública con un análisis orientativo.': 'It is neither a land-use certificate nor a registry certification: it is a compendium of public information with guidance-level analysis.',
+
+    // Herramientas PRO (botones)
+    'Herramientas': 'Tools',
+    'Riesgos': 'Risks',
+    'Alertas': 'Alerts',
+    'Potencial constructivo': 'Build-out potential',
+    'Prefactibilidad': 'Feasibility',
+    'Alertas del remate': 'Auction alerts',
+    'Antes de ofertar': 'Before bidding',
+    'Avisarme cuando': 'Notify me when',
+    'Dejar de seguir este lote': 'Stop following this lot',
+    'Mis favoritos': 'My favorites',
+
+    // Niveles / calidad
+    'Favorable': 'Favorable',
+    'Muy favorable': 'Very favorable',
+    'Desfavorable': 'Unfavorable',
+    'Intermedio': 'Intermediate',
+    'Con reparos': 'With caveats',
+    'Bueno': 'Good',
+    'Muy bueno': 'Very good',
+    'Malo': 'Poor',
+    'Alto': 'High',
+    'Altos': 'High',
+    'altos': 'high',
+    'medios': 'medium',
+
+    // Topografía
+    'Terreno plano': 'Flat terrain',
+    'Ondulada': 'Rolling',
+    'Quebrada': 'Steep',
+    'Muy quebrada': 'Very steep',
+
+    // Entorno
+    'Zona urbana': 'Urban zone',
+    'Frente a vía': 'Fronting a road',
+    'Entorno urbano': 'Urban surroundings',
+    'Escuela cerca': 'School nearby',
+    'Cauce cercano': 'Nearby watercourse',
+    'Cauce a': 'Watercourse at',
+    'Cobertura forestal': 'Forest cover',
+    'Contrato de pago por servicios ambientales': 'Payment-for-environmental-services contract',
+    'Franja de protección de ríos': 'River protection strip',
+
+    // Normativa / lote
+    'Frente mínimo': 'Minimum frontage',
+    'Fondo máximo': 'Maximum depth',
+    'Cobertura máxima': 'Maximum coverage',
+    'Cantón con plan regulador vigente': 'Canton with current zoning plan',
+    'Cantón sin plan regulador vigente': 'Canton without current zoning plan',
+    'Fuera de las áreas de cobertura registradas': 'Outside registered coverage areas',
+    'Forma del lote fuera de la norma nacional': 'Lot shape outside the national norm',
+    'El catastro no coincide con el edicto': 'The cadastre does not match the notice',
+    'El catastro devolvió un predio que no coincide con el edicto': 'The cadastre returned a parcel that does not match the notice',
+    'El edicto incluye varias fincas o derechos': 'The notice includes several properties or rights',
+    'Acceso a confirmar': 'Access to confirm',
+    'Acceso por servidumbre': 'Access via easement',
+    'Filial de condominio': 'Condominium unit',
+
+    // Tipo de propiedad (catálogo)
+    'Lote': 'Lot',
+    'Con construcción': 'With building',
+    'Agrícola': 'Agricultural',
+    'Filial': 'Condo unit',
+    'Construcción': 'Building',
+    'Construcción depreciada': 'Depreciated building',
+    'Edad': 'Age',
+    'Circulaciones y muros': 'Circulation & walls',
+
+    // Gravámenes y servidumbres
+    'Hipoteca': 'Mortgage',
+    'Hipoteca citada': 'Mortgage cited',
+    'Hipoteca citada en el edicto': 'Mortgage cited in the notice',
+    'Embargo': 'Attachment',
+    'Embargo inscrito': 'Attachment on record',
+    'Demanda inscrita': 'Lawsuit on record',
+    'Anotación': 'Annotation',
+    'Anotaciones o demandas': 'Annotations or lawsuits',
+    'Arrendamiento': 'Lease',
+
+    // Prefactibilidad / mercado
+    'Base vigente frente a referencia': 'Opening price vs. reference',
+    'Base vigente frente a la mediana de remates de la zona': 'Opening price vs. the median auction in the zone',
+    'De la compra a la venta': 'From purchase to resale',
+    'Ganancia': 'Gain',
+    'Comisión de venta': 'Sales commission',
+    'Gastos de adjudicación': 'Award costs',
+    'Historia del sitio': 'Site history',
+
+    // Varios
+    'Correo electrónico': 'Email',
+    'Canales': 'Channels',
+    'El lote': 'The lot',
+    'Buscar por': 'Search by',
+
+    // Provincias — se dejan en español por regla (nombres propios).
+    // No se traducen: San José, Alajuela, Cartago, Heredia, Guanacaste, Puntarenas, Limón.
   });
 })();
