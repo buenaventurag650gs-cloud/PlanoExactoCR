@@ -490,7 +490,7 @@
     'poste a poste (ARESEP) · desde zoom 14': 'pole by pole (ARESEP) · from zoom 14',
     'Poste individual': 'Single pole',
     'Cobertura del tendido eléctrico': 'Electric grid coverage',
-    'derivada de ~495 000 postes · 7 600 km²': 'derived from ~495,000 poles · 7,600 km²',
+    'derivada de ~495 000 postes · 1 900 km²': 'derived from ~495,000 poles · 1,900 km²',
     'Tendido eléctrico cercano': 'Nearby electric grid',
     'Tendido eléctrico': 'Electric grid',
     'Poste más cercano a': 'Nearest pole at',
