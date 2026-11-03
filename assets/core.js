@@ -25,6 +25,23 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   };
   PX.get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); });
+  // Postes del tendido eléctrico — se carga una vez a demanda (~8 MB plano, ~1,5 MB
+  // gzip) y queda en caché del navegador. Se usa SOLO cuando se abre el expediente,
+  // no al cargar el sitio, para no hacerle pagar el peso a quien solo mira el mapa.
+  PX.cargarPostes = () => (PX._postesP ||= PX.get('data/postes.json').then(d => (PX._postesCache = d)).catch(() => null));
+  PX.posteMasCercano = async (lon, lat) => {
+    const p = PX._postesCache || await PX.cargarPostes();
+    if (!p || !p.ll) return null;
+    const cosLat = Math.cos(lat * Math.PI / 180);
+    let bi = -1, bd = Infinity;
+    for (let i = 0; i < p.ll.length; i++) {
+      const dx = (p.ll[i][0] - lon) * cosLat, dy = p.ll[i][1] - lat;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bd) { bd = d2; bi = i; }
+    }
+    if (bi < 0) return null;
+    return { ll: p.ll[bi], d: Math.round(Math.sqrt(bd) * 111320) };
+  };
   PX.fdate = (d, withTime) => d ? `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()}` + (withTime ? ` · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '') : '—';
   PX.fnum = (v, dec) => v == null || isNaN(v) ? '—' : v.toLocaleString('de-DE', { maximumFractionDigits: dec != null ? dec : v < 100 ? 2 : 0 });
   PX.days = d => d ? Math.ceil((d - PX.now) / 864e5) : null;

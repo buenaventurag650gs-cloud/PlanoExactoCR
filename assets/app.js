@@ -18,8 +18,9 @@
     PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => []),
     PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null),
     PX.get('data/asadas.json').catch(() => null), PX.get('data/aprovechamientos.json').catch(() => null),
-    PX.get('data/cobertura_concesiones.geojson').catch(() => null), PX.get('data/electricidad.geojson').catch(() => null)
-  ]).then(([p, s, c, z, inf, asadasData, apData, cobDA, elec]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, cobDA: cobDA, elec: elec, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
+    PX.get('data/cobertura_concesiones.geojson').catch(() => null), PX.get('data/electricidad.geojson').catch(() => null),
+    PX.get('data/postes_cov.geojson').catch(() => null)
+  ]).then(([p, s, c, z, inf, asadasData, apData, cobDA, elec, postesCov]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, cobDA: cobDA, elec: elec, postesCov: postesCov, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
 
   const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
   const lockMsg = (t) => { openPlanes(t); };
@@ -478,7 +479,8 @@
     { id: 'cobDA', n: 'Cobertura implícita (concesiones)', note: 'derivada de las tomas · comparar con AyA', lg: [['', 'rgba(106,153,78,0.35)', 'Área con tomas registradas por la Dirección de Agua']] },
     { id: 'aguaHeat', n: 'Mapa de calor integrado del agua', note: 'concesiones + ASADAS + cobertura implícita', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
     { g: 'Abastecimiento eléctrico', id: 'elec', n: 'Cobertura eléctrica por operador', note: 'ICE, CNFL, ESPH, JASEC y cooperativas', lg: [['', EL_COL['ICE'], 'ICE'], ['', EL_COL['CNFL'], 'CNFL'], ['', EL_COL['ESPH'], 'ESPH'], ['', EL_COL['JASEC'], 'JASEC'], ['', EL_COL['COOPELESCA'], 'COOPELESCA'], ['', EL_COL['COOPEGUANACASTE R.L.'], 'COOPEGUANACASTE'], ['', EL_COL['COOPESANTOS'], 'COOPESANTOS'], ['', EL_COL['COOPEALFARORUIZ'], 'COOPEALFARORUIZ']] },
-    { id: 'postes', n: 'Postes del tendido eléctrico', note: '125 906 postes (ARESEP)', z: 14, minZ: 14, lg: [['', 'rgb(218,139,55)', 'Poste del tendido']], mk: () => ags('https://mapas.aresep.go.cr/server/rest/services/I_Energia_Externo/Infraestructura_vertical_energia_electrica/MapServer', { dyn: POSTE_DYN, minZoom: 14, zIndex: 5, attribution: 'Postes del tendido eléctrico &copy; ARESEP' }) },
+    { id: 'postesCov', n: 'Cobertura del tendido eléctrico', note: 'derivada de ~495 000 postes · 19 800 km²', lg: [['', 'rgba(218,139,55,0.35)', 'Área con postes del tendido a <200 m']] },
+    { id: 'postes', n: 'Postes del tendido eléctrico', note: 'poste a poste (ARESEP) · desde zoom 14', z: 14, minZ: 14, lg: [['', 'rgb(218,139,55)', 'Poste individual']], mk: () => ags('https://mapas.aresep.go.cr/server/rest/services/I_Energia_Externo/Infraestructura_vertical_energia_electrica/MapServer', { dyn: POSTE_DYN, minZoom: 14, zIndex: 5, attribution: 'Postes del tendido eléctrico &copy; ARESEP' }) },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
@@ -492,7 +494,7 @@
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base2', dark() ? 'oscuro' : 'claro'); if (!base[baseId]) baseId = 'claro';
-  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup(), elec: L.layerGroup() };
+  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup(), elec: L.layerGroup(), postesCov: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   function syncLayers() {
@@ -619,6 +621,14 @@
         style: f => { const c = elCol(f.properties.OPERADOR); return { color: '#6E6E6E', weight: 0.6, opacity: 0.85, fillColor: c, fillOpacity: 0.55 }; },
         attribution: 'Zonas de concesión eléctrica &copy; ARESEP',
         onEachFeature: (f, l) => { const p = f.properties || {}; l.bindTooltip(`<b>${esc(p.OPERADOR || 'Operador eléctrico')}</b>${p.AREAKM ? '<br>Área: ' + Math.round(p.AREAKM).toLocaleString('de-DE') + ' km²' : ''}`, { sticky: true }); },
+      }));
+    }
+    if (PX.ctx.postesCov) {
+      vec.postesCov.addLayer(L.geoJSON(PX.ctx.postesCov, {
+        pane: 'ctx',
+        style: { color: 'rgb(218,139,55)', weight: 0.9, opacity: 0.8, dashArray: '3,3', fillColor: 'rgb(218,139,55)', fillOpacity: 0.28 },
+        attribution: 'Cobertura implícita del tendido eléctrico &copy; ARESEP',
+        onEachFeature: (f, l) => { if (f.properties && f.properties.area_km2) l.bindTooltip(`Tendido eléctrico cercano · ${f.properties.area_km2.toLocaleString('de-DE')} km²`, { sticky: true }); },
       }));
     }
     if (PX.ctx.aprovech) {
