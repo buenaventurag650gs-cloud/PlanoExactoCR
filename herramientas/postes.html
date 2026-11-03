@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Descargar postes del tendido eléctrico · PlanoExactoCR</title>
+<style>
+  :root { --bg:#F1EEE7; --panel:#FCFBF8; --ink:#15302A; --muted:#4C5953; --line:#DCD8CE; --accent:#1F5A47; --accent-ink:#FFF; --terra:#C8553D; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#070A09; --panel:#0C1110; --ink:#E5ECE8; --muted:#A7B4AE; --line:#1E2724; --accent:#5FB8AE; --accent-ink:#08201D; --terra:#F08C74; color-scheme: dark; } }
+  html,body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 32px 18px; }
+  h1 { font: 700 24px/1.2 var(--ink); margin: 0 0 6px; }
+  p { color: var(--muted); margin: 6px 0 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-top: 14px; }
+  button { display:inline-flex; align-items:center; gap:8px; padding: 12px 18px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font: 600 15px/1 inherit; cursor: pointer; }
+  button[disabled] { opacity: .6; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .bar { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 10px 0 4px; }
+  .bar > span { display:block; height: 100%; background: var(--accent); transition: width .2s; }
+  .log { margin: 10px 0 0; max-height: 180px; overflow: auto; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); }
+  .log b { color: var(--ink); font-weight: 600; }
+  .err { color: var(--terra); }
+  .ok { color: var(--accent); }
+  .mt { margin-top: 14px; }
+  small { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Descargar postes del tendido eléctrico</h1>
+  <p>Baja los ~125 906 postes del tendido eléctrico de Costa Rica desde el ArcGIS del ARESEP, los compacta y te genera un archivo <code>postes_raw.json</code> listo para adjuntar. Toma unos 2 minutos.</p>
+
+  <div class="card">
+    <button id="go">Descargar postes</button>
+    <button id="save" class="ghost" hidden>Guardar <code>postes_raw.json</code></button>
+    <div class="bar" id="bar" hidden><span style="width:0%"></span></div>
+    <div id="estado" class="mt"><small>Al dar clic, se van pidiendo páginas de 2 000 en 2 000 al servidor del ARESEP. El archivo final queda solo en tu computadora.</small></div>
+    <div id="log" class="log" hidden></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const URL_BASE = 'https://mapas.aresep.go.cr/server/rest/services/I_Energia_Externo/Infraestructura_vertical_energia_electrica/MapServer/0/query';
+  const PAGE = 2000;
+  const TOTAL_APROX = 125906; // para la barra; ajusta solo
+  const $ = id => document.getElementById(id);
+  const log = (msg, cls) => {
+    const d = $('log'); d.hidden = false;
+    const p = document.createElement('div');
+    if (cls) p.className = cls;
+    p.innerHTML = msg;
+    d.appendChild(p); d.scrollTop = d.scrollHeight;
+  };
+  const setBar = pct => {
+    $('bar').hidden = false;
+    $('bar').firstElementChild.style.width = Math.min(100, Math.max(0, pct)) + '%';
+  };
+
+  async function pagina(offset) {
+    const q = new URLSearchParams({
+      where: '1=1',
+      outFields: 'OBJECTID',
+      returnGeometry: 'true',
+      outSR: '4326',
+      f: 'geojson',
+      resultOffset: offset,
+      resultRecordCount: PAGE,
+      orderByFields: 'OBJECTID ASC',
+    });
+    const r = await fetch(URL_BASE + '?' + q, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  let blob = null;
+
+  $('go').addEventListener('click', async () => {
+    $('go').disabled = true;
+    $('log').innerHTML = ''; $('log').hidden = true;
+    $('save').hidden = true; blob = null;
+    log('Empezando descarga del ArcGIS de ARESEP…');
+    const puntos = [];
+    const t0 = performance.now();
+    let offset = 0, pagina_i = 0, done = false;
+    while (!done) {
+      pagina_i++;
+      try {
+        const d = await pagina(offset);
+        const feats = (d && d.features) || [];
+        for (const f of feats) {
+          const c = f.geometry && f.geometry.coordinates;
+          if (c && c.length >= 2) puntos.push([+c[0].toFixed(5), +c[1].toFixed(5)]);
+        }
+        log(`página <b>${pagina_i}</b> · offset ${offset.toLocaleString('de-DE')} · +${feats.length} · total ${puntos.length.toLocaleString('de-DE')}`);
+        setBar(100 * puntos.length / TOTAL_APROX);
+        if (feats.length < PAGE) { done = true; }
+        else { offset += PAGE; await new Promise(r => setTimeout(r, 200)); }
+      } catch (e) {
+        log('Error en página ' + pagina_i + ': ' + (e.message || e) + '. Reintento en 2 s…', 'err');
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    const seg = ((performance.now() - t0) / 1000).toFixed(1);
+    log(`<b>Listo:</b> ${puntos.length.toLocaleString('de-DE')} postes en ${seg} s.`, 'ok');
+    setBar(100);
+    const doc = {
+      fuente: 'ARESEP — Infraestructura_vertical_energia_electrica (capa 0: Postes)',
+      n: puntos.length,
+      ll: puntos,
+    };
+    blob = new Blob([JSON.stringify(doc)], { type: 'application/json' });
+    log(`Tamaño del archivo: ${(blob.size / 1024 / 1024).toFixed(2)} MB. Hacé clic en «Guardar» para bajarlo.`, 'ok');
+    $('save').hidden = false;
+    $('go').disabled = false;
+    $('go').textContent = 'Volver a descargar';
+  });
+
+  $('save').addEventListener('click', () => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'postes_raw.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+})();
+</script>
+</body>
+</html>
