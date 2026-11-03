@@ -374,7 +374,7 @@
   // La sesión y el plan vienen del servidor (/api/cuenta/yo). Listas, seguimiento, búsquedas y expedientes
   // se guardan en este navegador y, con sesión, también en la cuenta (se sincronizan entre dispositivos).
   // Administración (contraseña del sitio): puede ver el sitio como usuario gratis o PRO con el selector «Ver como».
-  const A0 = { plan: 'pro', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {} };
+  const A0 = { plan: 'pro', comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {}, ocultos: [] };
   PX.acct = Object.assign({}, A0, PX.store.get('px-acct', {}));
   PX.yo = null; PX.admin = false; PX.ingreso = {};
   let subir = null;
@@ -437,6 +437,10 @@
   };
   PX.toggleSigo = key => { const s = PX.acct.sigo; const i = s.indexOf(key); i >= 0 ? s.splice(i, 1) : s.unshift(key); PX.saveAcct(); return i < 0; };
   PX.sigo = key => PX.acct.sigo.includes(key);
+  // Remates ocultados por el usuario — se pueden recuperar desde Mi cuenta
+  PX.ocultos = () => (PX.acct.ocultos ||= []);
+  PX.estaOculto = key => PX.ocultos().includes(key);
+  PX.toggleOculto = key => { const o = PX.ocultos(); const i = o.indexOf(key); i >= 0 ? o.splice(i, 1) : o.unshift(key); PX.saveAcct(); return i < 0; };
   // Favoritos = la primera lista de Mi cuenta («Mis favoritos»)
   PX.favList = () => { let l = PX.acct.listas.find(x => x.id === 'l1'); if (!l) { l = { id: 'l1', n: 'Mis favoritos', items: [] }; PX.acct.listas.unshift(l); } return l; };
   PX.isFav = key => PX.favList().items.some(i => i.k === key);

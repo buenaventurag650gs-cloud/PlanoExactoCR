@@ -35,6 +35,11 @@
     $('bCuenta').classList.toggle('primary', !PX.conCuenta());
     const vs = document.querySelector('.vista'); if (vs) vs.style.display = PX.admin ? '' : 'none';
     $('attrHint').hidden = PX.isPro();
+    // Filtros PRO por IPH y por USD/m²: inputs se deshabilitan y se marca el hint
+    const rhHint = $('rangoHint'); if (rhHint) rhHint.hidden = PX.isPro();
+    for (const id of ['m2Min', 'm2Max', 'iphMin', 'iphMax']) {
+      const el = $(id); if (el) { el.disabled = !PX.isPro(); if (!PX.isPro()) el.value = ''; }
+    }
     $('vFree').setAttribute('aria-pressed', PX.plan() === 'free'); $('vBas').setAttribute('aria-pressed', PX.plan() === 'basico'); $('vPro').setAttribute('aria-pressed', PX.isPro());
   }
 
@@ -114,13 +119,14 @@
   }
 
   const CHK = ['fSemana', 'fMes', 'fNoServ', 'fPR', 'fAgua', 'fAyA'];
-  const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, cur: PX.cur,
+  const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, m2min: $('m2Min').value, m2max: $('m2Max').value, iphmin: $('iphMin').value, iphmax: $('iphMax').value, cur: PX.cur,
     tipos: [...tipoOn], chk: Object.fromEntries(CHK.map(k => [k, $(k).checked])), attrs: [...attrOn], order: $('order').value, fav: onlyFav });
   function setFilt(s) {
     $('q').value = s.q || ''; $('fProv').value = s.prov || ''; fillCantones(); $('fCanton').value = s.canton || '';
     (s.st || [true, true, true]).forEach((v, i) => { stOn[i] = v; document.querySelector(`.stg[data-i="${i}"]`).setAttribute('aria-pressed', v); });
     if (s.cur && s.cur !== PX.cur) { PX.setCur(s.cur); setCurUI(); }
     $('fMin').value = s.min || ''; $('fMax').value = s.max || ''; $('aMin').value = s.amin || ''; $('aMax').value = s.amax || '';
+    $('m2Min').value = s.m2min || ''; $('m2Max').value = s.m2max || ''; $('iphMin').value = s.iphmin || ''; $('iphMax').value = s.iphmax || '';
     tipoOn.clear(); (s.tipos || (s.tipo ? [s.tipo] : [])).forEach(t => tipoOn.add(t)); paintTipos();
     CHK.forEach(k => $(k).checked = !!(s.chk ? s.chk[k] : (k === 'fSemana' ? s.wk : k === 'fNoServ' ? s.ns : k === 'fPR' ? s.pr : k === 'fAgua' ? s.ag : false)));
     onlyFav = !!s.fav; $('favOnly').setAttribute('aria-pressed', onlyFav);
@@ -139,9 +145,14 @@
     const mnV = isNaN(mn) ? null : mn * mult, mxV = isNaN(mx) ? null : mx * mult;
     const ns = $('fNoServ').checked, wk = $('fSemana').checked, pr = $('fPR').checked, ag = $('fAgua').checked, mes = $('fMes').checked, aya = $('fAyA').checked;
     const an = parseFloat($('aMin').value), ax = parseFloat($('aMax').value);
+    // Filtros PRO por IPH y por USD/m² (no aplican si el usuario no es PRO)
+    const proOK = PX.isPro();
+    const m2n = proOK ? parseFloat($('m2Min').value) : NaN, m2x = proOK ? parseFloat($('m2Max').value) : NaN;
+    const iphN = proOK ? parseFloat($('iphMin').value) : NaN, iphX = proOK ? parseFloat($('iphMax').value) : NaN;
     const hace30 = new Date(PX.now - 30 * 864e5);
     const af = ATTR.filter(a => attrOn.has(a[0]));
     shown = live.filter(r => {
+      if (!verOcultos && PX.estaOculto(r.key)) return false;
       if (onlyFav && !PX.isFav(r.key)) return false;
       if (!stOn[r.st]) return false;
       if (p && r.prov !== p) return false;
@@ -158,6 +169,10 @@
       const v = PX.conv(r.bv, r.mon, PX.cur);
       if (mnV != null && v < mnV) return false;
       if (mxV != null && v > mxV) return false;
+      if (!isNaN(m2n) && !(r.usdm2 != null && r.usdm2 >= m2n)) return false;
+      if (!isNaN(m2x) && !(r.usdm2 != null && r.usdm2 <= m2x)) return false;
+      if (!isNaN(iphN) && !(r.iphV != null && r.iphV >= iphN)) return false;
+      if (!isNaN(iphX) && !(r.iphV != null && r.iphV <= iphX)) return false;
       if (af.length && !af.every(a => a[2](r))) return false;
       if (q) {
         const textHit = q.split(/\s+/).filter(Boolean).every(w => r.search.includes(w));
@@ -176,12 +191,12 @@
       : o === 'iph' ? (a, b) => (a.iphV ?? Infinity) - (b.iphV ?? Infinity)
       : (a, b) => a.next - b.next);
     // contadores por grupo
-    const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size;
+    const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size + !isNaN(m2n) + !isNaN(m2x) + !isNaN(iphN) + !isNaN(iphX);
     [['onU', nU], ['onR', nR], ['onC', nC]].forEach(([id, n]) => { $(id).hidden = !n; $(id).textContent = n + (n === 1 ? ' filtro' : ' filtros'); });
     const nt = nU + nR + nC + onlyFav; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = false;
     limit = 100; renderList(); renderMarkers();
   }
-  ['q', 'fMin', 'fMax', 'aMin', 'aMax'].forEach(id => $(id).addEventListener('input', apply));
+  ['q', 'fMin', 'fMax', 'aMin', 'aMax', 'm2Min', 'm2Max', 'iphMin', 'iphMax'].forEach(id => $(id).addEventListener('input', apply));
   ['fCanton', 'order'].concat(CHK).forEach(id => $(id).addEventListener('change', apply));
   $('resetF').onclick = () => { setFilt({ order: $('order').value }); calDay = null; if (open) closeFicha(); vistaInicial(); toast('Filtros y mapa restablecidos'); };
   $('fProv').addEventListener('change', () => { fillCantones(); $('fCanton').value = ''; apply(); fitShown(); });
@@ -217,8 +232,11 @@
     if (onlyFav) apply(); else renderList();
     if (open === key) openFicha(open, false);
   }
-  let onlyFav = false;
+  let onlyFav = false, verOcultos = false;
   $('favOnly').onclick = () => { onlyFav = !onlyFav; $('favOnly').setAttribute('aria-pressed', onlyFav); apply(); };
+  // Toggle «ver remates ocultos» desde Mi cuenta / botón flotante cuando hay ocultos
+  PX.setVerOcultos = v => { verOcultos = !!v; apply(); };
+  PX.getVerOcultos = () => verOcultos;
   // Vista lista (agrupada por fecha cuando se ordena por fecha) o calendario
   let view = 'list', calDay = null, calMonth = null;
   const dayKey = d => d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
@@ -270,6 +288,17 @@
   const zr = L.DomUtil.create('div', 'zread');
   zr.title = 'Nivel de zoom'; zr.setAttribute('aria-live', 'polite');
   zc.insertBefore(zr, zc.querySelector('.leaflet-control-zoom-out'));
+  // Botón «volver a la vista general» (zoom out directo a Costa Rica entera).
+  // Aparece solo cuando el zoom es >= 11 — al zoom nacional no tiene sentido.
+  const zBack = L.DomUtil.create('a', 'leaflet-control-zoom-out zback');
+  zBack.href = '#'; zBack.setAttribute('role', 'button');
+  zBack.title = 'Volver a la vista general de Costa Rica';
+  zBack.setAttribute('aria-label', 'Volver a la vista general');
+  zBack.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10h4v4"/><path d="M14 6h-4V2"/><path d="M2 10l5-5"/><path d="M14 6l-5 5"/></svg>';
+  zc.appendChild(zBack);
+  L.DomEvent.on(zBack, 'click', e => { L.DomEvent.stop(e); vistaInicial(); });
+  const paintZBack = () => { zBack.style.display = map.getZoom() >= 11 ? '' : 'none'; };
+  map.on('zoomend', paintZBack); paintZBack();
   const paintZ = () => { const z = map.getZoom(); zr.textContent = Number.isInteger(z) ? z : z.toFixed(1).replace('.', ','); };
   map.on('zoomend', paintZ); paintZ();
   map.on('zoomend', () => { if (typeof syncLayers === 'function') syncLayers(); });
@@ -827,13 +856,14 @@
       <div class="input-group input-group-sm mt-2"><input type="text" class="form-control" id="lnew" placeholder="Nueva lista" aria-label="Nombre de la nueva lista"><button class="btn" id="lnewb">Crear</button></div></div></div>`;
   }
   function actionsHTML(r) {
-    const inCmp = cmp.includes(r.key), sg = PX.sigo(r.key);
+    const inCmp = cmp.includes(r.key), sg = PX.sigo(r.key), oc = PX.estaOculto(r.key);
     return `<div class="btn-list mb-3">
       <button class="btn btn-sm${inCmp ? ' btn-primary' : ''}" data-act="cmp" aria-pressed="${inCmp}">${inCmp ? 'En comparación' : 'Comparar'}</button>
       ${r.isPlano ? '' : `<button class="btn btn-sm${sg ? ' btn-primary' : ''}" data-act="sigo" aria-pressed="${sg}">${sg ? 'Siguiendo' : 'Seguir'}</button>`}
       <button class="btn btn-sm" data-act="lista">Guardar en lista</button>
       ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Abrir el predio en Google Maps">Google Maps</a>` : ''}
       ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Si hay cobertura de Street View, abre la vista a nivel calle; si no, Google Maps muestra el punto">Street View</a>` : ''}
+      ${r.isPlano ? '' : `<button class="btn btn-sm${oc ? ' btn-outline-primary' : ''}" data-act="ocultar" title="${oc ? 'Volver a mostrar este remate' : 'Ocúltalo del mapa y de las listas. Podés recuperarlo desde «Mi cuenta → Ocultos».'}">${oc ? 'Volver a mostrar' : 'No ver más'}</button>`}
     </div>${listMenu(r)}`;
   }
   // Forma del predio en pequeño: contorno a escala con norte y barra de escala
@@ -1024,6 +1054,13 @@
     if (act === 'sigo') { const on = PX.toggleSigo(r.key); if (on) { PX.acct.snap = PX.acct.snap || {}; PX.acct.snap[r.key] = { st: r.st, bv: r.bv }; PX.saveAcct(); } toast(on ? 'Lo verás en Mi cuenta → Seguimiento' : 'Dejaste de seguir este remate'); openFicha(open, false); renderList(); return; }
     if (act === 'lista') { $('lmenu').hidden = !$('lmenu').hidden; return; }
     if (act === 'rem') { openFicha(r.remate, true); return; }
+    if (act === 'ocultar') {
+      const on = PX.toggleOculto(r.key);
+      toast(on ? 'Oculto. Lo podés recuperar en «Mi cuenta → Ocultos».' : 'Volvió a aparecer en el mapa.');
+      if (on && !PX.getVerOcultos()) closeFicha(); else openFicha(open, false);
+      apply();
+      return;
+    }
   });
   $('ficha').addEventListener('change', e => {
     const id = e.target.dataset.l; if (!id || !open) return;

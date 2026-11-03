@@ -383,6 +383,18 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
             <label><input type="checkbox" id="fAgua"><span>Sin ríos a menos de 50 m</span></label>
             <label><input type="checkbox" id="fAyA"><span>Con servicio de agua</span></label>
           </div></div>
+          <div class="sub" id="proRangos"><span class="lbl">Precio por m² (base vigente) <span class="pro">PRO</span></span>
+            <div class="row">
+              <div class="amt"><span class="u">$</span><input id="m2Min" type="number" min="0" step="any" inputmode="decimal" placeholder="Mínimo" aria-label="Precio por m² mínimo"><span class="sfx">/m²</span></div>
+              <div class="amt"><span class="u">$</span><input id="m2Max" type="number" min="0" step="any" inputmode="decimal" placeholder="Máximo" aria-label="Precio por m² máximo"><span class="sfx">/m²</span></div>
+            </div>
+            <span class="lbl" style="margin-top:8px">Índice Puja/Hacienda <span class="pro">PRO</span></span>
+            <div class="row">
+              <div class="amt"><input id="iphMin" type="number" min="0" step="1" inputmode="decimal" placeholder="Mínimo" aria-label="IPH mínimo"><span class="sfx">%</span></div>
+              <div class="amt"><input id="iphMax" type="number" min="0" step="1" inputmode="decimal" placeholder="Máximo" aria-label="IPH máximo"><span class="sfx">%</span></div>
+            </div>
+            <div class="prohint" id="rangoHint"><span>Filtros disponibles con el plan PRO</span><button class="linkbtn" data-planes>Ver planes</button></div>
+          </div>
           <div class="sub"><span class="lbl">Atributos del lote <span class="pro">PRO</span></span><div class="attrs" id="attrs"></div>
           <div class="prohint" id="attrHint"><span>Atributos de la versión PRO</span><button class="linkbtn" data-planes>Ver planes</button></div></div>
         </div></details>
