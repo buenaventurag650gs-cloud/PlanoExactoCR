@@ -205,7 +205,7 @@
     'Todo lo de la cuenta gratis': 'Everything in the free account',
     'Número de finca y plano, servidumbres y gravámenes citados': 'Property and survey plan numbers, easements and encumbrances mentioned',
     'Agua potable, vía, salud, escuela, ríos y costa': 'Potable water, roads, health, schools, rivers and coastline',
-    '10 expedientes por semana': '10 reports per week',
+    '5 expedientes por semana': '5 reports per week',
     'Acceso total': 'Full access',
     'Todo lo de Esencial': 'Everything in Essential',
     'Valor de Hacienda, índice Puja/Hacienda y escala PECR': 'Hacienda land value, Bid/Hacienda ratio and PECR scale',
