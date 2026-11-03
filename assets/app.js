@@ -522,6 +522,11 @@
   // Grupo al que pertenece cada capa (los LY heredan el .g del último que lo seteó)
   const grpOf = (() => { const m = {}; let cur = null; for (const l of LY) { if (l.g) cur = l.g; m[l.id] = cur; } return m; })();
   const grpOnCount = g => LY.filter(x => grpOf[x.id] === g && lyrState[x.id] && allowed(x)).length;
+  // Memoria de capas ocultadas por categoría: al apagar con el ojo, guardamos
+  // las que estaban prendidas para restaurarlas al volver a prender el ojo.
+  const grpMuted = PX.store.get('px-lyrg-muted', {});
+  const EYE_ON = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 8s2.7-5 7-5 7 5 7 5-2.7 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>';
+  const EYE_OFF = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l12 12"/><path d="M6.3 3.7A6.8 6.8 0 0 1 8 3.5c4.3 0 7 5 7 5s-.7 1.3-2.1 2.6"/><path d="M11.5 11.5A6.8 6.8 0 0 1 8 12.5c-4.3 0-7-5-7-5s1-1.8 3-3.4"/><path d="M6.6 6.6a2 2 0 0 0 2.8 2.8"/></svg>';
   function renderLyrPanel() {
     let h = `<details class="lg-g"${lyrOpen['Mapa base'] ? ' open' : ''} data-g="Mapa base"><summary>Mapa base<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary><div class="bgrid">${BASES.map(([k, n, d, img]) => `<label class="bopt" title="${d}"><input type="radio" name="base" value="${k}"${baseId === k ? ' checked' : ''}><img src="${img}" alt="" loading="lazy" width="64" height="44"><span>${n}</span></label>`).join('')}</div></details>`;
     let open_ = false;
@@ -529,8 +534,14 @@
       if (l.g) {
         if (open_) h += '</details>';
         const nOn = grpOnCount(l.g);
-        const offBtn = nOn > 0 ? `<button class="goff" type="button" data-off="${esc(l.g)}" title="Apagar las capas activas de ${esc(l.g)}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>${nOn}</button>` : '';
-        h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}${offBtn}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`;
+        const muted = (grpMuted[l.g] || []).filter(id => LY.some(x => x.id === id));
+        let eyeBtn = '';
+        if (nOn > 0) {
+          eyeBtn = `<button class="goff" type="button" data-eye="${esc(l.g)}" aria-pressed="true" title="Ocultar las capas activas de ${esc(l.g)}">${EYE_ON}${nOn}</button>`;
+        } else if (muted.length > 0) {
+          eyeBtn = `<button class="goff muted" type="button" data-eye="${esc(l.g)}" aria-pressed="false" title="Volver a mostrar las capas ocultas de ${esc(l.g)}">${EYE_OFF}${muted.length}</button>`;
+        }
+        h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}${eyeBtn}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`;
         open_ = true;
       }
       const ok = allowed(l), on = lyrState[l.id] && ok;
@@ -545,14 +556,22 @@
   $('lyrPanel').addEventListener('toggle', e => { const d = e.target.closest('details.lg-g'); if (d) { lyrOpen[d.dataset.g] = d.open; PX.store.set('px-lyrg', lyrOpen); } }, true);
   $('lyrBtn').onclick = () => { const p = $('lyrPanel'); p.hidden = !p.hidden; $('lyrBtn').setAttribute('aria-expanded', !p.hidden); if (!p.hidden) renderLyrPanel(); };
   $('lyrPanel').addEventListener('click', e => {
-    // Botón «apagar todas las capas de esta categoría»
-    const off = e.target.closest('[data-off]');
-    if (off) {
+    // Ojo de la categoría: apaga lo que está prendido (guardando qué eran) y,
+    // si todo está apagado y hay memoria, las vuelve a prender.
+    const eye = e.target.closest('[data-eye]');
+    if (eye) {
       e.preventDefault(); e.stopPropagation();
-      const g = off.dataset.off;
-      let changed = false;
-      for (const l of LY) if (grpOf[l.id] === g && lyrState[l.id]) { lyrState[l.id] = false; changed = true; }
-      if (changed) { syncLayers(); renderLyrPanel(); }
+      const g = eye.dataset.eye;
+      const prendidas = LY.filter(l => grpOf[l.id] === g && lyrState[l.id] && allowed(l)).map(l => l.id);
+      if (prendidas.length) {
+        grpMuted[g] = prendidas;
+        for (const id of prendidas) lyrState[id] = false;
+      } else if ((grpMuted[g] || []).length) {
+        for (const id of grpMuted[g]) if (LY.some(x => x.id === id)) lyrState[id] = true;
+        delete grpMuted[g];
+      }
+      PX.store.set('px-lyrg-muted', grpMuted);
+      syncLayers(); renderLyrPanel();
       return;
     }
     const lk = e.target.closest('.lyr.locked'); if (lk) { e.preventDefault(); return lockMsg('Las capas ambientales y de infraestructura se incluyen en la suscripción.'); }
