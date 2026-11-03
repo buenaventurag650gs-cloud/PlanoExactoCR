@@ -959,9 +959,9 @@
   // En pantallas anchas se corre el punto a la izquierda para que no quede detrás de la ficha.
   const irA = r => {
     const ancho = window.innerWidth > 900;
-    if (r.poly && r.exact !== false) {   // con predio: encuadrarlo completo, con contexto alrededor (hasta zoom 19)
+    if (r.poly && r.exact !== false) {   // con predio: encuadrarlo completo, con contexto alrededor (hasta zoom 17)
       const b = L.polygon(ringLL(r)).getBounds();
-      return map.fitBounds(b, { maxZoom: 19, paddingTopLeft: [140, 140], paddingBottomRight: ancho ? [140 + 480, 140] : [140, 140] });
+      return map.fitBounds(b, { maxZoom: 17, paddingTopLeft: [140, 140], paddingBottomRight: ancho ? [140 + 480, 140] : [140, 140] });
     }
     const z = r.lite ? (r.exact ? 15 : 14) : r.exact || r.isPlano ? 17 : 14, ll = L.latLng(r.ll[1], r.ll[0]);
     const p = map.project(ll, z).add([ancho ? 240 : 0, 0]);
