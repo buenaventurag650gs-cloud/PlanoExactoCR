@@ -491,7 +491,6 @@
     'Poste individual': 'Single pole',
     'Cobertura del tendido eléctrico': 'Electric grid coverage',
     'derivada de ~495 000 postes · 7 600 km²': 'derived from ~495,000 poles · 7,600 km²',
-    'Área con postes del tendido a <80 m': 'Area with poles within <80 m',
     'Tendido eléctrico cercano': 'Nearby electric grid',
     'Tendido eléctrico': 'Electric grid',
     'Poste más cercano a': 'Nearest pole at',
