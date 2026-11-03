@@ -16,8 +16,9 @@
   // capas secundarias: no bloquean el arranque
   const extra = Promise.all([
     PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => []),
-    PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null)
-  ]).then(([p, s, c, z, inf]) => { Object.assign(PX.ctx, { planes: p, salud: s, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
+    PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null),
+    PX.get('data/asadas.json').catch(() => null)
+  ]).then(([p, s, c, z, inf, asadasData]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
 
   const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
   const lockMsg = (t) => { openPlanes(t); };
@@ -341,6 +342,11 @@
   const AG_LBL = ["'AyA · ' + $feature.sistema", "'ESPH'", "$feature.Operador + IIf(IsEmpty(Trim($feature.Sistema)), '', ' · ' + $feature.Sistema)", "$feature.Operador + IIf(IsEmpty(Trim($feature.Sistema)), '', ' · ' + $feature.Sistema)"];
   const AG_DYN = [3, 2, 1, 0].map(i => ({ id: i, source: { type: 'mapLayer', mapLayerId: i }, drawingInfo: { renderer: { type: 'simple', symbol: sfs(AG_COL[i][1].concat(80), AG_COL[i][1].concat(i === 0 ? 0 : 110), 0.5) }, showLabels: true,
     labelingInfo: [{ labelExpressionInfo: { expression: AG_LBL[i] }, labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal', minScale: 150000, maxScale: 0, symbol: { type: 'esriTS', color: AG_COL[i][1].map(c => Math.round(c * 0.55)).concat(255), haloColor: [255, 255, 255, 235], haloSize: 1.6, font: { family: 'Arial', size: 8, weight: 'bold' } } }] } }));
+  // ASADAS: color por tipo de sistema de abastecimiento
+  const AS_COL = [['Gravedad', '#2A9D8F'], ['Bombeo', '#E76F51'], ['Mixto', '#E9C46A'], ['Sin dato', '#9C9489']];
+  const asCol = tipo => (AS_COL.find(c => c[0] === tipo) || AS_COL[3])[1];
+  // AyA SNIT ASADAS: coberturas de ASADAS registradas (polígonos) + entes operadores (puntos)
+  const ASADA_DYN = [2, 0].map(id => ({ id, source: { type: 'mapLayer', mapLayerId: id }, drawingInfo: { renderer: { type: 'simple', symbol: id === 2 ? sfs([106, 153, 78, 50], [106, 153, 78, 130], 0.6) : { type: 'esriSMS', style: 'esriSMSCircle', color: [42, 157, 143, 200], size: 6, outline: { color: [255, 255, 255, 200], width: 0.8 } } } } }));
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   // Mapas base con miniatura (tesela de Costa Rica central) y para qué sirve cada uno
   const T8 = { esri: s => `https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/9/241/136`, xyz: u => u.replace('{z}', 9).replace('{x}', 136).replace('{y}', 241).replace('{s}', 'a') };
@@ -390,8 +396,10 @@
     { id: 'planes', n: 'Estado del plan regulador', free: true, hover: true, lg: PRC.map(p => ['', p[2], p[1]]) },
     { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea: valor del terreno en ₡ y $ por m²']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
     { id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
-    { g: 'Servicios e infraestructura', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
-    { id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
+    { g: 'Abastecimiento de agua', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
+    { id: 'asadas', n: 'ASADAS (acueductos comunales)', note: '1 305 operadores', lg: AS_COL.map(([n, c]) => ['', c, n]) },
+    { id: 'asadaCob', n: 'Coberturas ASADA (AyA)', hover: true, lg: [['', '#6A994E', 'Área de cobertura ASADA'], ['', '#2A9D8F', 'Ente operador']], mk: () => ags('https://gis.aya.go.cr/server/rest/services/AyA_SNIT_ASADAS/MapServer', { dyn: ASADA_DYN, zIndex: 3, opacity: 0.85, attribution: 'ASADAS &copy; AyA' }) },
+    { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
     { g: 'Ambiente y restricciones', id: 'zv', n: 'Zonas de vida', hover: true, lg: ZVG.map(g => ['', g[2], g[1]]) },
@@ -404,7 +412,7 @@
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base2', dark() ? 'oscuro' : 'claro'); if (!base[baseId]) baseId = 'claro';
-  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup() };
+  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   function syncLayers() {
@@ -440,7 +448,7 @@
         ${on && l.lg && l.lg.length ? `<span class="lg">${l.lg.map(([t, c, n]) => `<span><i class="${t}" style="--c:${c}"></i>${esc(n)}</span>`).join('')}</span>` : ''}</label>`;
     }
     if (open_) h += '</details>';
-    h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, Registro Inmobiliario, IGN, Hacienda, AyA, MINAE, INVU y CCSS con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar. Las amenazas de la CNE se agregarán cuando su servicio esté disponible.</div>`;
+    h += `<div class="foot" style="padding:8px 14px 0">Servicios del SNIT, Registro Inmobiliario, IGN, Hacienda, AyA, ARESEP, MINAE, INVU y CCSS con estilos propios de PlanoExactoCR. Algunos tardan unos segundos en cargar. Las amenazas de la CNE se agregarán cuando su servicio esté disponible.</div>`;
     $('lyrPanel').innerHTML = h;
   }
   $('lyrPanel').addEventListener('toggle', e => { const d = e.target.closest('details.lg-g'); if (d) { lyrOpen[d.dataset.g] = d.open; PX.store.set('px-lyrg', lyrOpen); } }, true);
@@ -485,6 +493,11 @@
     if (INFRA) for (const f of INFRA.features) { const t = f.properties.t, big = t !== 'Aeródromo'; const mk = L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { pane: 'ctx', icon: L.divIcon({ className: 'infra' + (big ? ' big' : ''), iconSize: big ? [26, 26] : [18, 18], html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICX[t]}</svg>` }) }).bindTooltip(`<b>${esc(f.properties.n)}</b><br>${t}`, { direction: 'top' }); vec.infra.addLayer(mk); }
     if (ZMT) vec.zmt.addLayer(L.geoJSON(ZMT, Object.assign({ style: f => f.properties.t === 'publica' ? { stroke: false, fillColor: '#4FA3F0', fillOpacity: 0.45 } : { stroke: false, fillColor: '#E9C46A', fillOpacity: 0.38 } }, o)));
     for (const s of PX.ctx.salud || []) vec.salud.addLayer(L.circleMarker([s.ll[1], s.ll[0]], { renderer: ctxR, pane: 'ctx', radius: s.c === 'EBAIS' ? 3 : 5, color: css('--panel'), weight: 1, fillColor: css('--accent'), fillOpacity: 0.9, interactive: false }));
+    if (PX.ctx.asadas) for (const a of PX.ctx.asadas.asadas || []) {
+      const mk = L.circleMarker([a.ll[1], a.ll[0]], { renderer: ctxR, radius: 4.5, color: '#fff', weight: 1, fillColor: asCol(a.tipo), fillOpacity: 0.9 });
+      mk.bindTooltip(`<b>${esc(a.n)}</b>${a.tipo ? '<br>Sistema: ' + esc(a.tipo) : ''}${a.ab ? '<br>Abonados: ' + a.ab.toLocaleString('de-DE') : ''}${a.adm && a.adm !== 'ASADA' ? '<br>' + esc(a.adm) : ''}${a.zona ? '<br>Zona: ' + esc(a.zona) : ''}`, { direction: 'top', className: 'asada-tip' });
+      vec.asadas.addLayer(mk);
+    }
     syncLayers();
   }
 
@@ -508,6 +521,20 @@
     hb.hidden = false;
   }
 
+  // ASADA más cercana al punto dado
+  function nearAsada(lon, lat) {
+    if (!PX.ctx.asadas) return null;
+    let best = null, bd = Infinity;
+    for (const a of PX.ctx.asadas.asadas) {
+      const dx = (a.ll[0] - lon) * Math.cos(lat * Math.PI / 180), dy = a.ll[1] - lat;
+      const d = Math.sqrt(dx * dx + dy * dy) * 111320;
+      if (d < bd) { bd = d; best = a; }
+    }
+    if (!best || bd > 15000) return null; // máx 15 km
+    best = Object.assign({}, best, { dTxt: bd < 1000 ? Math.round(bd) + ' m' : (bd / 1000).toFixed(1) + ' km' });
+    return best;
+  }
+
   // Clic en el mapa: datos de las capas temáticas activas en ese punto
   const idPop = L.popup({ className: 'idpop', maxWidth: 300, autoPanPadding: [20, 20] });
   map.on('click', async e => {
@@ -517,7 +544,8 @@
     const rows = [], w = where(x, y), jobs = [];
     if (w) rows.push(['Ubicación', `${w.d}, ${w.k}, ${w.p}`]);
     if (on('zh')) jobs.push(['Zona homogénea', PX.zhAt(x, y)]);
-    if (on('agua')) jobs.push(['Agua potable', PX.aguaAt(x, y)]);
+    if (on('agua') || on('asadaCob')) jobs.push(['Agua potable', PX.aguaAt(x, y)]);
+    if (on('asadas') && PX.ctx.asadas) { const near = nearAsada(x, y); if (near) rows.push(['ASADA más cercana', `${near.n} (${near.tipo || 'sin tipo'})${near.ab ? ', ' + near.ab.toLocaleString('de-DE') + ' abonados' : ''} — ${near.dTxt}`]); }
     if (on('cob')) jobs.push(['Uso del suelo', PX.cobertura(x.toFixed(5), y.toFixed(5))]);
     if (on('zv')) { const f = hit(ZV, x, y); if (f) rows.push(['Zona de vida', f.properties.n]); }
     if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador', PX.prText(f.properties)]); }
