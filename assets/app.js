@@ -265,6 +265,19 @@
   const paintZ = () => { const z = map.getZoom(); zr.textContent = Number.isInteger(z) ? z : z.toFixed(1).replace('.', ','); };
   map.on('zoomend', paintZ); paintZ();
   map.on('zoomend', () => { if (typeof syncLayers === 'function') syncLayers(); });
+  // Mapa de calor: radio en metros fijos (~1,2 km de "cobertura"), topado para que
+  // nunca se vuelva un punto ni cubra toda la pantalla al hacer zoom extremo
+  function heatRadiusPx() {
+    const z = map.getZoom(), lat = map.getCenter().lat;
+    const mpp = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
+    const km = 1.2;
+    return Math.max(14, Math.min(80, (km * 1000) / mpp));
+  }
+  function syncHeatRadius() {
+    const l = (LY || []).find(x => x.id === 'aguaHeat'); if (!l || !l.layer || !l.layer.setOptions) return;
+    const r = heatRadiusPx(); l.layer.setOptions({ radius: r, blur: r * 0.78 });
+  }
+  map.on('zoomend', syncHeatRadius);
   map.createPane('ctx').style.zIndex = 350;
   const ctxR = L.canvas({ pane: 'ctx' });
   const dark = () => (matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark';
@@ -399,7 +412,7 @@
     { g: 'Abastecimiento de agua', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
     { id: 'asadas', n: 'ASADAS (acueductos comunales)', note: '1 305 operadores', lg: AS_COL.map(([n, c]) => ['', c, n]) },
     { id: 'aprovech', n: 'Concesiones de agua (fuentes y caudal)', note: 'acueductos rurales · caudal en l/s', lg: [['', '#3B8BD9', 'Subterránea (pozo/acuífero)'], ['', '#2A9D8F', 'Superficial (nacimiento/río)'], ['', '#9C9489', 'Otra']] },
-    { id: 'aguaHeat', n: 'Mapa de calor del caudal', note: 'densidad ponderada por l/s otorgados', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 24, blur: 20, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
+    { id: 'aguaHeat', n: 'Mapa de calor del caudal', note: 'densidad ponderada por l/s otorgados', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
@@ -511,6 +524,7 @@
       }
       const heatL = (LY.find(l => l.id === 'aguaHeat') || {}).layer;
       if (heatL && heatL.setLatLngs) heatL.setLatLngs(heatPts);
+      if (typeof syncHeatRadius === 'function') syncHeatRadius();
     }
     syncLayers();
   }
