@@ -197,7 +197,7 @@
 
     // ---- Sección Conversemos ----
     '¿Dudas sobre un remate? Conversemos.': 'Questions about an auction? Let’s talk.',
-    'Si querés que miremos un lote específico contigo, si una ficha te suena rara, o si simplemente no sabés por dónde empezar: escribinos. No es un formulario que termina en una pila. Lo leemos nosotros y respondemos.': 'If you’d like us to look at a specific lot with you, if a card seems off, or you just don’t know where to start — write to us. It’s not a form that lands in a stack. We read it ourselves and reply.',
+    'Si querés que miremos un lote específico contigo, si una ficha te suena rara, o si simplemente no sabés por dónde empezar: escribinos. Lo leemos nosotros y respondemos.': 'If you’d like us to look at a specific lot with you, if a card seems off, or you just don’t know where to start — write to us. We read it ourselves and reply.',
     'No hay vendedores detrás, no te vamos a llamar «para seguir conversando».': 'No salespeople behind this. We won’t call you to «keep the conversation going».',
     'Si lo que necesitás es un abogado o un avaluador, también te decimos — tenemos gente de confianza.': 'If what you really need is a lawyer or an appraiser, we’ll tell you — we have people we trust.',
     'Respondemos en el día, de lunes a viernes.': 'We reply the same day, Monday to Friday.',
