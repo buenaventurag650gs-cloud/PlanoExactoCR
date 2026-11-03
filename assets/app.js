@@ -382,6 +382,18 @@
     'COOPEALFARORUIZ':       'rgb(179,252,182)',
   };
   const elCol = o => EL_COL[o] || '#C9CED1';
+
+  // Postes del tendido eléctrico (ARESEP): 125 906 puntos, se piden como tiles
+  // dinámicos y solo a partir de zoom 14 (minScale del servicio: 1:10 000).
+  const POSTE_DYN = [{
+    id: 0,
+    source: { type: 'mapLayer', mapLayerId: 0 },
+    drawingInfo: { renderer: { type: 'simple', symbol: {
+      type: 'esriSMS', style: 'esriSMSCircle',
+      color: [218, 139, 55, 230], size: 4,
+      outline: { color: [255, 255, 255, 210], width: 0.6 }
+    } } }
+  }];
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   // Mapas base con miniatura (tesela de Costa Rica central) y para qué sirve cada uno
   const T8 = { esri: s => `https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/9/241/136`, xyz: u => u.replace('{z}', 9).replace('{x}', 136).replace('{y}', 241).replace('{s}', 'a') };
@@ -437,6 +449,7 @@
     { id: 'cobDA', n: 'Cobertura implícita (concesiones)', note: 'derivada de las tomas · comparar con AyA', lg: [['', 'rgba(106,153,78,0.35)', 'Área con tomas registradas por la Dirección de Agua']] },
     { id: 'aguaHeat', n: 'Mapa de calor integrado del agua', note: 'concesiones + ASADAS + cobertura implícita', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
     { g: 'Abastecimiento eléctrico', id: 'elec', n: 'Cobertura eléctrica por operador', note: 'ICE, CNFL, ESPH, JASEC y cooperativas', lg: [['', EL_COL['ICE'], 'ICE'], ['', EL_COL['CNFL'], 'CNFL'], ['', EL_COL['ESPH'], 'ESPH'], ['', EL_COL['JASEC'], 'JASEC'], ['', EL_COL['COOPELESCA'], 'COOPELESCA'], ['', EL_COL['COOPEGUANACASTE R.L.'], 'COOPEGUANACASTE'], ['', EL_COL['COOPESANTOS'], 'COOPESANTOS'], ['', EL_COL['COOPEALFARORUIZ'], 'COOPEALFARORUIZ']] },
+    { id: 'postes', n: 'Postes del tendido eléctrico', note: '125 906 postes (ARESEP)', z: 14, minZ: 14, lg: [['', 'rgb(218,139,55)', 'Poste del tendido']], mk: () => ags('https://mapas.aresep.go.cr/server/rest/services/I_Energia_Externo/Infraestructura_vertical_energia_electrica/MapServer', { dyn: POSTE_DYN, minZoom: 14, zIndex: 5, attribution: 'Postes del tendido eléctrico &copy; ARESEP' }) },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },

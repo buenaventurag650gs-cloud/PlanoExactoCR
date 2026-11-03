@@ -465,6 +465,9 @@
 
     // Electricidad
     'Abastecimiento eléctrico': 'Electricity supply',
+    'Postes del tendido eléctrico': 'Electric utility poles',
+    '125 906 postes (ARESEP)': '125,906 poles (ARESEP)',
+    'Poste del tendido': 'Utility pole',
     // Apagar categoría
     'Apagar las capas activas de Referencia': 'Turn off active layers in Reference',
     'Apagar las capas activas de Valor y mercado': 'Turn off active layers in Value & market',
