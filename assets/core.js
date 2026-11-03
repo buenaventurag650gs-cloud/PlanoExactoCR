@@ -11,7 +11,7 @@
   PX.PRECIOS = { esencial: 5190, esencialAnual: 51900, pro: 11290, anual: 112900, expediente: 1300, semanal: 1, semanalEsencial: 10, cupon: 30 };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
-  const DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  const DIA = PX.DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
   PX.now = new Date();
 
   // ---------- utilidades ----------

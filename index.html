@@ -39,9 +39,9 @@ a.brand { text-decoration: none; color: inherit; }
 .vista button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; }
 .vista #vFree[aria-pressed="true"], .vista #vBas[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
 .vista #vPro[aria-pressed="true"] { background: linear-gradient(135deg, #C9A227, #8A6A00); color: #FFFDF5; }
-.cur { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
-.cur button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
-.cur button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.cur, .lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.cur button, .lang button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
+.cur button[aria-pressed="true"], .lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .money { white-space: nowrap; }
 .money .sx { font-family: var(--f-body); font-size: .72em; font-weight: 600; color: var(--muted); margin-left: .25em; }
 
@@ -329,6 +329,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
       <button class="btn sm ib" id="bPlanes" title="Planes y precios"><i data-ic="tag"></i><span>Planes</span></button>
       <button class="btn sm ib" id="bCuenta" title="Mi cuenta"><i data-ic="user"></i><span>Mi cuenta</span> <span class="badge" id="planBadge">Gratis</span></button>
       <button class="btn sm ib themeb" id="bTheme" title="Cambiar colores"></button>
+      <div class="lang" role="group" aria-label="Idioma"><button id="lES" aria-pressed="true">ES</button><button id="lEN" aria-pressed="false">EN</button></div>
       <div class="cur" role="group" aria-label="Moneda"><button id="cCRC" aria-pressed="true">₡</button><button id="cUSD" aria-pressed="false">$</button></div>
     </nav>
   </header>
@@ -437,6 +438,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" crossorigin=""></script>
 <script src="https://unpkg.com/proj4@2.9.0/dist/proj4.js" integrity="sha256-tsjlDiRXDSAsuQALr13ta74LzDw1fOf0yfPGMB2FmfU=" crossorigin=""></script>
 <script src="assets/core.js"></script>
+<script src="assets/i18n.js"></script>
 <script src="assets/pro.js"></script>
 <script src="assets/guia.js"></script>
 <script src="assets/app.js"></script>

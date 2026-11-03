@@ -105,6 +105,13 @@
     PX.setCur(c); setCurUI(); apply(); drawVectors(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop();
   }
   $('cCRC').onclick = () => setCur('CRC'); $('cUSD').onclick = () => setCur('USD');
+  // Idioma: toggle ES/EN. El cambio recarga la página (ver assets/i18n.js).
+  if ($('lES') && $('lEN')) {
+    const paintLang = () => { $('lES').setAttribute('aria-pressed', PX.lang === 'es'); $('lEN').setAttribute('aria-pressed', PX.lang === 'en'); };
+    paintLang();
+    $('lES').onclick = () => PX.setLang('es');
+    $('lEN').onclick = () => PX.setLang('en');
+  }
 
   const CHK = ['fSemana', 'fMes', 'fNoServ', 'fPR', 'fAgua', 'fAyA'];
   const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, cur: PX.cur,

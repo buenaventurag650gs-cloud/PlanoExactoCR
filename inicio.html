@@ -40,6 +40,10 @@ header { padding-block: 14px; display: flex; align-items: center; justify-conten
 :root[data-theme="dark"] .lg-claro { display: none !important; } :root[data-theme="dark"] .lg-oscuro { display: inline-block !important; }
 .wm { font: 300 20px/1 "Montserrat", var(--f-body); letter-spacing: .09em; white-space: nowrap; } .wm b { font-weight: 700; } .wm i { font-style: normal; color: #539279; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 14.5px/1 var(--f-body); text-decoration: none; cursor: pointer; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.lang button { border: 0; background: transparent; padding: 5px 11px; cursor: pointer; font-weight: 600; font-size: 12.5px; color: inherit; }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+header .cab { display: inline-flex; gap: 10px; align-items: center; }
 .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; padding-block: 34px 40px; }
@@ -115,7 +119,10 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 <div class="wrap">
   <header>
     <a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.webp" alt="" width="54" height="37"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.webp" alt="" width="54" height="37"><span class="wm">PLANO<b>EXACTO</b><i>CR</i></span></a>
-    <a class="btn" href="/mapa?entrar=1" id="entrar">Entrar</a>
+    <span class="cab">
+      <div class="lang" role="group" aria-label="Idioma"><button id="lES" aria-pressed="true">ES</button><button id="lEN" aria-pressed="false">EN</button></div>
+      <a class="btn" href="/mapa?entrar=1" id="entrar">Entrar</a>
+    </span>
   </header>
 
   <div class="hero">
@@ -246,9 +253,18 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
     <span>PlanoExactoCR reúne información pública (Boletín Judicial, Registro Inmobiliario, IGN, Hacienda, AyA, INVU, MINAE) con fines orientativos. No es asesoría legal ni un avalúo: verifica siempre en el expediente judicial y en el Registro Nacional.</span>
   </footer>
 </div>
+<script src="/assets/i18n.js"></script>
 <script>
 (() => {
   const fmt = n => Number(n).toLocaleString('de-DE');
+  // Toggle de idioma
+  const lES = document.getElementById('lES'), lEN = document.getElementById('lEN');
+  if (lES && lEN) {
+    const paint = () => { lES.setAttribute('aria-pressed', PX.lang === 'es'); lEN.setAttribute('aria-pressed', PX.lang === 'en'); };
+    paint();
+    lES.onclick = () => PX.setLang('es');
+    lEN.onclick = () => PX.setLang('en');
+  }
   fetch('/data/resumen.json', { cache: 'no-store' }).then(r => r.json()).then(d => {
     document.querySelectorAll('#datos [data-k]').forEach(b => { const k = b.dataset.k; if (d[k] != null) b.textContent = k === 'boletin' ? 'N.º ' + d[k] : fmt(d[k]); });
   }).catch(() => {});
