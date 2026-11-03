@@ -108,7 +108,7 @@ const CATALOGO = {
   "esencial-anual": { plan: "basico", meses: 12, monto: 51900, mensual: 5190, txt: "Plan Esencial · 1 año" },
   "pro-mes": { plan: "pro", meses: 1, monto: 11290, mensual: 11290, txt: "Plan PRO · 1 mes" },
   "pro-anual": { plan: "pro", meses: 12, monto: 112900, mensual: 11290, txt: "Plan PRO · 1 año" },
-  "expedientes": { unidad: 1300, txt: "Expedientes adicionales" }
+  "expedientes": { unidad: 5000, txt: "Expedientes adicionales" }
 };
 const CUPON_PCT = 0.3;
 function cotizar(us, concepto, cantidad) {
