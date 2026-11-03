@@ -112,6 +112,37 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 @media (max-width: 860px) { .hero, .registro, .planes { grid-template-columns: 1fr; } .rasgos { grid-template-columns: 1fr 1fr; } .comp-hint { display: block; } }
 @media (max-width: 520px) { .rasgos, .fila { grid-template-columns: 1fr; } .wm { font-size: 16px; } .registro { padding: 18px; } }
 @media (prefers-reduced-motion: no-preference) { .vista { transition: transform .4s ease; } .vista:hover { transform: translateY(-3px); } }
+
+/* Rediseño cálido: bloque «detrás del mapa», sección Conversemos, placeholder de testimonios */
+.manif { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 26px; margin: 10px 0 24px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: start; }
+.manif .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--soft); color: var(--accent); display: grid; place-items: center; }
+.manif .ic svg { width: 20px; height: 20px; }
+.manif p { margin: 0; font-size: 15.5px; line-height: 1.65; color: var(--ink); }
+.manif .firma { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); font-style: italic; }
+
+.hablamos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 28px; }
+.hablamos h2 { margin: 0 0 10px; }
+.hablamos .sub { margin-bottom: 18px; }
+.hablamos ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; font-size: 14.5px; color: var(--ink); }
+.hablamos ul li { position: relative; padding-left: 18px; }
+.hablamos ul li::before { content: "·"; position: absolute; left: 6px; top: 0; color: var(--accent); font-weight: 800; }
+.canales { display: grid; gap: 10px; }
+.canal { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--ink); transition: border-color .15s, background .15s; }
+.canal:hover { border-color: var(--accent); background: var(--soft); }
+.canal .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
+.canal.wa .ic { background: #25D366; }
+.canal.ml .ic { background: var(--accent); color: var(--accent-ink); }
+.canal.ig .ic { background: linear-gradient(135deg, #FEDA75, #FA7E1E, #D62976, #962FBF, #4F5BD5); }
+.canal .ic svg { width: 20px; height: 20px; }
+.canal b { font-size: 14.5px; display: block; }
+.canal small { color: var(--muted); font-size: 12.5px; }
+.canal .chev { margin-left: auto; color: var(--muted); font-size: 20px; line-height: 1; }
+
+.vocesw { margin: 26px 0 0; padding: 20px 22px; border: 1px dashed var(--line); border-radius: 12px; background: var(--bg); display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; color: var(--muted); font-size: 14px; }
+.vocesw .ic { width: 32px; height: 32px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); }
+.vocesw b { color: var(--ink); display: block; font-size: 14.5px; margin-bottom: 2px; }
+
+@media (max-width: 860px) { .hablamos { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -127,46 +158,89 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 
   <div class="hero">
     <div>
-      <p class="eyebrow">Remates judiciales con contexto territorial</p>
-      <h1>Los remates judiciales de Costa Rica, <em>en un mapa</em>.</h1>
-      <p class="lead">Cada día hábil leemos el Boletín Judicial, buscamos cada propiedad en el catastro y la cruzamos con el plan regulador, el valor de Hacienda, el agua potable y su entorno. Así sabes qué estás comprando antes de ofertar.</p>
+      <p class="eyebrow">Antes de ofertar, mirá bien</p>
+      <h1>Los remates judiciales de Costa Rica, <em>sin tanto misterio</em>.</h1>
+      <p class="lead">Cada día hábil leemos el Boletín Judicial, buscamos cada propiedad en el catastro y juntamos lo que querés saber antes de ofrecer: dónde queda, qué tiene cerca, qué se puede construir y qué deuda arrastra. No reemplaza a tu abogado ni a un avalúo. Te ayuda a llegar bien a esa conversación.</p>
       <ul class="datos" id="datos" aria-live="polite">
-        <li><b data-k="remates">835</b><span>remates vigentes</span></li>
+        <li><b data-k="remates">835</b><span>remates vigentes hoy</span></li>
         <li><b data-k="nuevos7">76</b><span>nuevos esta semana</span></li>
-        <li><b data-k="ubicados">716</b><span>con predio exacto</span></li>
+        <li><b data-k="ubicados">716</b><span>con el predio ubicado</span></li>
         <li><b data-k="boletin">N.º 206</b><span>último Boletín Judicial</span></li>
       </ul>
-      <div class="cta"><a class="btn pri" href="#registro" id="ctaCrear">Crear cuenta gratis</a><a class="btn" href="/mapa" id="ctaMapa">Explorar el mapa</a></div>
+      <div class="cta"><a class="btn pri" href="#registro" id="ctaCrear">Probá gratis</a><a class="btn" href="/mapa" id="ctaMapa">Mirá el mapa primero</a></div>
     </div>
-    <div class="vista"><img src="/assets/img/vista-app.webp" alt="Mapa de PlanoExactoCR con los remates agrupados por zona y la ficha de una propiedad abierta" width="800" height="499"><span class="sello">Vista real del mapa · hoy</span></div>
+    <div class="vista"><img src="/assets/img/vista-app.webp" alt="Mapa de PlanoExactoCR con los remates agrupados por zona y la ficha de una propiedad abierta" width="800" height="499"><span class="sello">La vista real del mapa, hoy</span></div>
   </div>
 
+  <aside class="manif">
+    <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M4 11l2-6h12l2 6M9 15h6"/></svg></span>
+    <p>Somos un equipo pequeño en Costa Rica: arquitectura, derecho y datos. Compramos, vendemos y construimos con las mismas dudas de todo el mundo: ¿de dónde sale el agua?, ¿hay plano al día?, ¿la muni deja construir? Armamos esta herramienta para no andar abriendo diez pestañas cada vez que aparece un remate interesante.
+      <span class="firma">— Si algo no te cierra o querés que miremos un lote contigo, escribinos. Abajo están los medios.</span>
+    </p>
+  </aside>
+
   <section id="que">
-    <h2>Qué ves en cada remate</h2>
-    <p class="sub">Información pública que suele estar repartida en más de diez instituciones, reunida en una sola ficha.</p>
+    <h2>Qué juntamos de cada remate</h2>
+    <p class="sub">La información suele estar repartida en más de diez sitios públicos. La traemos a un solo lugar y la explicamos como si estuvieras hablando con alguien que ya la leyó.</p>
     <div class="rasgos">
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><b>Ubicación en el catastro</b><span>El predio dibujado en el mapa, con su área y su forma. Si no aparece en el catastro, lo indicamos.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/></svg></span><b>Base y fechas</b><span>Primer, segundo y tercer remate, en colones y dólares.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>Puja frente a Hacienda</b><span>En qué porcentaje del valor de Hacienda arranca la puja.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><b>Plan regulador</b><span>Qué normativa aplica al lote y una estimación de cuánto se podría construir.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><b>Agua y entorno</b><span>Cobertura de agua potable, salud, escuela, ríos y costa.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></span><b>Riesgos y expediente</b><span>Gravámenes explicados en lenguaje claro, riesgos del proceso y un informe PDF de cuatro hojas.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><b>Dónde queda, exactamente</b><span>El predio dibujado en el mapa, con su área y su forma. Si el catastro no lo tiene, lo decimos de frente — es un dato importante antes de ofertar.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/></svg></span><b>Cuándo y a cuánto arranca</b><span>Primer, segundo y tercer remate, en colones y dólares, con los días contados hasta la próxima fecha.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>Cuánto es, de verdad</b><span>En qué porcentaje del valor de Hacienda arranca la puja. Útil para saber si el precio inicial es un negocio o solo un número.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><b>Qué podés hacer en el lote</b><span>Qué normativa del plan regulador aplica y una estimación de cuánto se podría construir, para no comprar un terreno que no sirve para lo que querés.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><b>Cómo es vivir cerca</b><span>Cobertura de agua potable, salud, escuela, ríos y distancia a la costa. Lo básico para saber si el entorno sirve.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></span><b>Qué te podría complicar</b><span>Hipotecas, servidumbres y gravámenes explicados en lenguaje llano, riesgos del proceso y un informe PDF de cuatro páginas para llevarte.</span></div>
+    </div>
+  </section>
+
+  <section id="hablamos">
+    <div class="hablamos">
+      <div>
+        <h2>¿Dudas sobre un remate? Conversemos.</h2>
+        <p class="sub">Si querés que miremos un lote específico contigo, si una ficha te suena rara, o si simplemente no sabés por dónde empezar: escribinos. No es un formulario que termina en una pila. Lo leemos nosotros y respondemos.</p>
+        <ul>
+          <li>No hay vendedores detrás, no te vamos a llamar «para seguir conversando».</li>
+          <li>Si lo que necesitás es un abogado o un avaluador, también te decimos — tenemos gente de confianza.</li>
+          <li>Respondemos en el día, de lunes a viernes.</li>
+        </ul>
+      </div>
+      <div class="canales">
+        <!-- Reemplazar el número cuando esté disponible: wa.me/506XXXXXXXX  -->
+        <a class="canal wa" id="waBtn" href="https://wa.me/506XXXXXXXX?text=Hola%2C%20tengo%20una%20duda%20sobre%20un%20remate" target="_blank" rel="noopener">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A11 11 0 0 0 3.4 17.3L2 22l4.8-1.3A11 11 0 1 0 20.5 3.5zm-8.5 17a9 9 0 0 1-4.6-1.3l-.3-.2-2.8.7.8-2.7-.2-.3A9 9 0 1 1 12 20.5zm5-6.7c-.3-.1-1.6-.8-1.8-.9-.3-.1-.5-.1-.7.2-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1a7.4 7.4 0 0 1-3.7-3.2c-.3-.5.3-.4.8-1.5.1-.2 0-.3 0-.5s-.7-1.6-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4a3 3 0 0 0-1 2.2c0 1.3.9 2.6 1 2.8.1.2 1.9 3 4.7 4.2.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.6-.6 1.8-1.3.2-.6.2-1.2.2-1.3 0-.1-.2-.2-.4-.3z"/></svg></span>
+          <span><b>Escribinos por WhatsApp</b><small id="waTxt">Número por definir — pronto activo</small></span>
+          <span class="chev" aria-hidden="true">→</span>
+        </a>
+        <a class="canal ml" href="mailto:hola@planoexactocr.com?subject=Conversemos%20sobre%20un%20remate">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="m4 6 8 7 8-7"/></svg></span>
+          <span><b>Mandanos un correo</b><small>hola@planoexactocr.com</small></span>
+          <span class="chev" aria-hidden="true">→</span>
+        </a>
+        <a class="canal ig" href="https://instagram.com/planoexactocr" rel="noopener" target="_blank">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></span>
+          <span><b>DM en Instagram</b><small>@planoexactocr · publicamos remates que vale la pena mirar</small></span>
+          <span class="chev" aria-hidden="true">→</span>
+        </a>
+        <div class="vocesw">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10h.01M12 10h.01M16 10h.01"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg></span>
+          <span><b>Pronto, lo que dicen quienes lo usan</b>Estamos juntando las primeras experiencias. Si ya nos usaste y querés aparecer acá, contanos.</span>
+        </div>
+      </div>
     </div>
   </section>
 
   <section id="planes">
     <h2>Planes</h2>
-    <p class="sub">Empieza gratis. Suscríbete cuando necesites más detalle de cada remate.</p>
+    <p class="sub">Empezá gratis. Suscribite solo cuando lo que te damos ya te esté ahorrando tiempo o cuidando una decisión importante.</p>
     <div class="planes">
-      <div class="plan dest"><h3>Cuenta gratis</h3><div class="precio sm">Con tu correo</div>
-        <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Predio exacto en el mapa, con su forma según el catastro</li><li>Listas y seguimiento</li><li><b>1 expediente PDF completo por semana</b></li></ul>
-        <a class="btn pri" href="#registro">Crear cuenta gratis</a></div>
-      <div class="plan"><h3><span class="ese">Esencial</span> Lo esencial para decidir</h3><div class="precio">₡5.190 <small>al mes</small></div><div class="alt">o ₡51.900 al año (2 meses gratis)</div>
-        <ul><li>Todo lo de la cuenta gratis</li><li>Número de finca y plano, servidumbres y gravámenes citados</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li><b>5 expedientes por semana</b></li></ul></div>
-      <div class="plan"><h3><span class="pro">PRO</span> Acceso total</h3><div class="precio">₡11.290 <small>al mes</small></div><div class="alt">o ₡112.900 al año (2 meses gratis)</div>
-        <ul><li>Todo lo de Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Potencial constructivo, prefactibilidad, riesgos y alertas</li><li><b>Expedientes sin límite</b></li></ul></div>
+      <div class="plan dest"><h3>Cuenta gratis</h3><div class="precio sm">Solo con tu correo</div>
+        <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Predio exacto en el mapa, con su forma según el catastro</li><li>Guardás listas y seguís lotes</li><li><b>1 expediente PDF completo por semana</b></li></ul>
+        <a class="btn pri" href="#registro">Probá gratis</a></div>
+      <div class="plan"><h3><span class="ese">Esencial</span> Para decidir con calma</h3><div class="precio">₡5.190 <small>al mes</small></div><div class="alt">o ₡51.900 al año (dos meses de regalo)</div>
+        <ul><li>Todo lo de la cuenta gratis</li><li>Número de finca y plano, servidumbres y gravámenes citados en el edicto</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li><b>5 expedientes por semana</b></li></ul></div>
+      <div class="plan"><h3><span class="pro">PRO</span> Para quien compra en serio</h3><div class="precio">₡11.290 <small>al mes</small></div><div class="alt">o ₡112.900 al año (dos meses de regalo)</div>
+        <ul><li>Todo lo del plan Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Potencial constructivo, prefactibilidad, riesgos y alertas de cambio</li><li><b>Expedientes sin tope</b></li></ul></div>
     </div>
-    <p class="sub" style="margin-top:14px">Si necesitas más expedientes de los que incluye tu plan, cada uno adicional cuesta <b>₡5.000</b>. Con el cupón de lanzamiento, el primer mes de cualquier plan tiene 30 % de descuento.</p>
+    <p class="sub" style="margin-top:14px">Si en una semana necesitás más expedientes de los que trae tu plan, cada uno adicional vale <b>₡5.000</b>. El primer mes de cualquier plan tiene 30 % de descuento con el cupón de lanzamiento — se activa solo al registrarte.</p>
 
     <h3 class="comp-h">Qué incluye cada plan</h3>
     <p class="comp-hint">Desliza la tabla hacia los lados para ver Esencial y PRO →</p>
@@ -206,10 +280,10 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   <section id="registro">
     <div class="registro">
       <div>
-        <span class="cupon">Cupón de lanzamiento · 30 % de descuento</span>
-        <h2>Crea tu cuenta gratis</h2>
-        <p class="sub">El mapa está abierto para todos. Con la cuenta gratis abres la ficha de cada remate, ves el predio en el catastro, guardas listas y seguimientos, y generas un expediente PDF completo por semana.</p>
-        <p class="sub">Al registrarte recibes un cupón de 30 % de descuento para la primera mensualidad de cualquier plan. Los planes se pagan por SINPE Móvil.</p>
+        <span class="cupon">Primer mes con 30 % de descuento</span>
+        <h2>Entrá al mapa, sin compromiso</h2>
+        <p class="sub">El mapa en sí está abierto para todos. Con tu cuenta gratis abrís la ficha de cada remate, ves el predio en el catastro, guardás listas y seguís lotes, y generás un expediente PDF por semana. Nada de tarjeta ni letra chica.</p>
+        <p class="sub">Al registrarte te mandamos un cupón de 30 % de descuento para la primera mensualidad, por si más adelante querés probar un plan. Los pagos son por SINPE Móvil — sin suscripción automática, sin cobros sorpresa.</p>
       </div>
       <div>
         <div id="ingreso" class="ingreso" hidden>
@@ -218,7 +292,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
           <form id="mlF" novalidate hidden><label>Correo electrónico<input id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></label>
             <p class="error" id="mlErr" hidden></p><button class="btn pri" type="submit" id="mlBtn">Enviarme un enlace para entrar</button></form>
           <div class="resultado" id="mlOk" hidden><b>Revisa tu correo</b><span id="mlTxt"></span></div>
-          <p class="mini">Sin contraseñas. Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón. Al continuar aceptas la <a href="/privacidad">política de privacidad</a>.</p>
+          <p class="mini">Sin contraseñas. Si es tu primera vez, se crea tu cuenta gratis y te llega el cupón. Al continuar aceptás la <a href="/privacidad">política de privacidad</a>.</p>
         </div>
         <form id="f" novalidate>
           <label>Correo electrónico<input id="correo" name="correo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></label>
@@ -235,22 +309,30 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
             <select id="prov" name="prov"><option value="">Todo el país</option><option>San José</option><option>Alajuela</option><option>Cartago</option><option>Heredia</option><option>Guanacaste</option><option>Puntarenas</option><option>Limón</option></select></label>
           <label class="ok"><input id="acepto" type="checkbox" required> <span>Acepto la <a href="/privacidad">política de privacidad</a>: PlanoExactoCR guarda mi correo y mis preferencias para mi cuenta y para avisarme novedades. Puedo pedir que los borren cuando quiera.</span></label>
           <p class="error" id="err" hidden></p>
-          <button class="btn pri" type="submit" id="enviar">Crear cuenta y recibir mi cupón</button>
-          <p class="mini">¿Ya tienes cuenta? <a href="/mapa?entrar=1">Entra aquí</a>.</p>
+          <button class="btn pri" type="submit" id="enviar">Probar gratis</button>
+          <p class="mini">¿Ya tenés cuenta? <a href="/mapa?entrar=1">Entrá acá</a>.</p>
         </form>
         <div class="resultado" id="listo" hidden>
-          <b>¡Tu cuenta está lista! Este es tu cupón:</b>
+          <b>Listo. Guardate este cupón:</b>
           <code id="cod">—</code>
-          <span>Siempre lo encuentras en «Mi cuenta». En Instagram publicamos remates que vale la pena mirar.</span>
-          <a class="btn pri" href="/mapa">Ir al mapa</a>
+          <span>Siempre va a estar en «Mi cuenta». En Instagram publicamos remates que vale la pena mirar — <a href="https://instagram.com/planoexactocr" rel="noopener">@planoexactocr</a>.</span>
+          <a class="btn pri" href="/mapa">Entrar al mapa</a>
         </div>
       </div>
     </div>
   </section>
 
   <footer>
-    <nav><span>Correo: <a href="mailto:hola@planoexactocr.com">hola@planoexactocr.com</a></span><a href="https://instagram.com/planoexactocr" rel="noopener">Instagram @planoexactocr</a><a href="/remates">Remates por provincia</a><a href="/privacidad">Privacidad</a></nav>
-    <span>PlanoExactoCR reúne información pública (Boletín Judicial, Registro Inmobiliario, IGN, Hacienda, AyA, INVU, MINAE) con fines orientativos. No es asesoría legal ni un avalúo: verifica siempre en el expediente judicial y en el Registro Nacional.</span>
+    <nav>
+      <a href="#hablamos">Conversemos</a>
+      <a href="mailto:hola@planoexactocr.com">hola@planoexactocr.com</a>
+      <!-- Al pasar el número real: cambiar wa.me/506XXXXXXXX acá también -->
+      <a href="https://wa.me/506XXXXXXXX" target="_blank" rel="noopener">WhatsApp</a>
+      <a href="https://instagram.com/planoexactocr" rel="noopener">@planoexactocr</a>
+      <a href="/remates">Remates por provincia</a>
+      <a href="/privacidad">Privacidad</a>
+    </nav>
+    <span>PlanoExactoCR reúne información pública del Boletín Judicial, el Registro Inmobiliario, IGN, Hacienda, AyA, INVU, ARESEP y MINAE, y la ordena para que sea más fácil de entender. No es asesoría legal ni un avalúo: antes de ofertar, siempre revisá el expediente judicial y el Registro Nacional, o escribinos para orientarte.</span>
   </footer>
 </div>
 <script src="/assets/i18n.js"></script>
@@ -281,9 +363,9 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
       document.getElementById('gSep').hidden = !(I.google && I.correo);
     }
     if (!j.user && !j.admin) return;
-    const e = document.getElementById('entrar'); e.textContent = 'Ir al mapa'; e.href = '/mapa'; e.classList.add('pri');
-    const c = document.getElementById('ctaCrear'); c.textContent = 'Ir al mapa'; c.href = '/mapa'; document.getElementById('ctaMapa').hidden = true;
-    if (j.user) { document.getElementById('ingreso').hidden = true; document.getElementById('cod').textContent = j.user.cupon; document.getElementById('f').hidden = true; document.getElementById('listo').hidden = false; document.querySelector('#listo b').textContent = 'Ya tienes cuenta. Tu cupón:'; }
+    const e = document.getElementById('entrar'); e.textContent = 'Entrar al mapa'; e.href = '/mapa'; e.classList.add('pri');
+    const c = document.getElementById('ctaCrear'); c.textContent = 'Entrar al mapa'; c.href = '/mapa'; document.getElementById('ctaMapa').hidden = true;
+    if (j.user) { document.getElementById('ingreso').hidden = true; document.getElementById('cod').textContent = j.user.cupon; document.getElementById('f').hidden = true; document.getElementById('listo').hidden = false; document.querySelector('#listo b').textContent = 'Ya tenés cuenta. Tu cupón:'; }
   }).catch(() => {});
   const mlF = document.getElementById('mlF');
   mlF.addEventListener('submit', async e => {
