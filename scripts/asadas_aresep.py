@@ -8,12 +8,17 @@ Cada ASADA viene como PUNTO en CRTM05 (EPSG:5367), no como poligono: sirve para 
 «hay una ASADA registrada cerca», no para dibujar un area de servicio.
 No se publican telefono, fax ni correo (datos de contacto de personas/comites).
 
-Uso:  python3 scripts/asadas_aresep.py <respuesta_aresep.json> [data/asadas.json]
-      python3 scripts/asadas_aresep.py --url            (descarga el endpoint)
+Abonados y tipo de administracion: capa «PR05 Vista Asadas por Diagnostico» (ARESEP, MapServer/4),
+cruzada por numero de registro (IDEO = «00015-2014»). Se guardan solo agregados por operador.
+
+Uso:  python3 scripts/asadas_aresep.py <respuesta_aresep.json> [--abonados capa4.json] [--salida data/asadas.json]
+      python3 scripts/asadas_aresep.py --url [--abonados capa4.json]     (descarga el endpoint de ubicaciones)
 """
-import json, math, re, sys, urllib.request
+import argparse, json, math, re, urllib.request
 
 URL = 'https://datos.aresep.go.cr/ws.datosabiertos/Services/IA/Asadas.svc/ObtenerInformacionUbicacionAsadas'
+URL_ABONADOS = ('https://mapas.aresep.go.cr/server/rest/services/Base_de_datos_Geogr%C3%A1fica_ARESEP_MIL1/MapServer/4/query'
+                '?where=1%3D1&outFields=*&returnGeometry=false&f=json')
 
 # CRTM05: Mercator transversa, GRS80, meridiano central -84, k0 0.9999, falso este 500000
 _A = 6378137.0; _F = 1 / 298.257222101; _E2 = _F * (2 - _F); _EP2 = _E2 / (1 - _E2)
@@ -63,15 +68,49 @@ def normalizar(crudo):
     return out
 
 
+def agregar_abonados(asadas, capa):
+    """Suma abonados, tipo de administracion y zona (rural/urbana) por numero de registro. Devuelve (con_dato, sin_ubicacion)."""
+    por_reg = {}
+    for f in capa.get('features', []):
+        a = f.get('attributes', f)
+        if a.get('IDEO'): por_reg[str(a['IDEO']).strip()] = a
+    con = 0
+    for x in asadas:
+        a = por_reg.get(x['reg'] or '')
+        if not a: continue
+        ab = a.get('ABONADOS')
+        if isinstance(ab, (int, float)) and ab >= 0: x['ab'] = int(ab)
+        adm = titulo(a.get('Tipo_Administración'))
+        if adm and adm.lower() != 'sin selección': x['adm'] = adm
+        zona = titulo(a.get('Ubicación_Geográfica'))
+        if zona and zona.lower() != 'sin selección': x['zona'] = zona
+        con += 1
+    usados = {x['reg'] for x in asadas}
+    return con, sum(1 for k in por_reg if k not in usados)
+
+
 if __name__ == '__main__':
-    args = [a for a in sys.argv[1:] if a != '--url']
-    if '--url' in sys.argv:
+    ap = argparse.ArgumentParser()
+    ap.add_argument('entrada', nargs='?', help='respuesta JSON de ubicaciones de la ARESEP')
+    ap.add_argument('--url', action='store_true', help='descargar ubicaciones y abonados desde la ARESEP')
+    ap.add_argument('--abonados', help='JSON de la capa 4 (Asadas por Diagnostico)')
+    ap.add_argument('--salida', default='data/asadas.json')
+    a = ap.parse_args()
+    if a.url:
         with urllib.request.urlopen(URL, timeout=60) as f: crudo = json.load(f)
+    elif a.entrada:
+        crudo = json.load(open(a.entrada, encoding='utf-8'))
     else:
-        crudo = json.load(open(args[0], encoding='utf-8'))
+        ap.error('indica el archivo de entrada o --url')
     fecha = (crudo.get('metadata') or {}).get('date', '')[:10] if isinstance(crudo, dict) else ''
     asadas = normalizar(crudo)
-    destino = args[-1] if len(args) > 1 or ('--url' in sys.argv and args) else 'data/asadas.json'
-    with open(destino, 'w', encoding='utf-8') as f:
+    nota = ''
+    if a.abonados or a.url:
+        if a.abonados: capa = json.load(open(a.abonados, encoding='utf-8'))
+        else:
+            with urllib.request.urlopen(URL_ABONADOS, timeout=60) as f: capa = json.load(f)
+        con, sin_ubic = agregar_abonados(asadas, capa)
+        nota = f' · abonados en {con} ({sin_ubic} operadores de la capa no tienen ubicacion en el directorio)'
+    with open(a.salida, 'w', encoding='utf-8') as f:
         json.dump({'fuente': 'ARESEP · Intendencia de Agua', 'fecha_fuente': fecha, 'n': len(asadas), 'asadas': asadas}, f, ensure_ascii=False, separators=(',', ':'))
-    print(f'{len(asadas)} ASADAS -> {destino}')
+    print(f'{len(asadas)} ASADAS -> {a.salida}{nota}')
