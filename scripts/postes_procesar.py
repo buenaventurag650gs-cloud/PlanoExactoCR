@@ -29,6 +29,7 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageDraw
+from scipy.ndimage import gaussian_filter
 from skimage import measure
 
 # Reutilizamos las fórmulas CRTM05 de scripts/cobertura_concesiones.py
@@ -99,6 +100,14 @@ def main():
                     help='tolerancia de simplificación (default 100)')
     ap.add_argument('--min-area-km2', type=float, default=0.25,
                     help='descartar polígonos chicos (default 0.25)')
+    ap.add_argument('--suavizar-m', type=float, default=0.0,
+                    help='sigma del gaussian blur en metros antes de vectorizar '
+                         '(0 lo desactiva). Con 40–60 m produce curvas tipo burbuja '
+                         'y recorta protuberancias angulosas de marching squares.')
+    ap.add_argument('--chaikin', type=int, default=0,
+                    help='iteraciones del suavizado de Chaikin sobre cada polígono '
+                         '(0 lo desactiva). 2 iteraciones producen curvas tipo '
+                         'burbuja; cada iteración duplica los vértices.')
     ap.add_argument('--salida-cov', default='data/postes_cov.geojson')
     ap.add_argument('--salida-pts', default='data/postes.json')
     args = ap.parse_args()
@@ -140,11 +149,32 @@ def main():
         cy = H - (y - ymin) / args.res_m
         draw.ellipse([cx - r_px, cy - r_px, cx + r_px, cy + r_px], fill=255)
     arr = np.asarray(img, dtype=np.uint8)
-
-    contours = measure.find_contours(arr, 128)
+    if args.suavizar_m > 0:
+        sigma_px = args.suavizar_m / args.res_m
+        arr = gaussian_filter(arr.astype(np.float32), sigma=sigma_px)
+        # Umbral un poco por debajo del medio: compensa la caída del blur en
+        # los bordes y preserva aproximadamente el área original.
+        contours = measure.find_contours(arr, 110)
+    else:
+        contours = measure.find_contours(arr, 128)
     print(f'{len(contours)} contornos crudos', file=sys.stderr)
     tol_px = max(1.0, args.tol_m / args.res_m)
     min_area_px = (args.min_area_km2 * 1_000_000) / (args.res_m ** 2)
+
+    def chaikin(pts, iters):
+        # Corner-cutting: cada arista se reemplaza por dos puntos al 1/4 y 3/4
+        # del camino original. Convierte esquinas en arcos suaves y mantiene el
+        # perímetro cerrado. Preserva ~95 % del área por iteración.
+        for _ in range(iters):
+            out = []
+            n = len(pts)
+            for i in range(n - 1):  # pts viene cerrado; iteramos sin repetir
+                a, b = pts[i], pts[(i + 1) % (n - 1)]
+                out.append((0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]))
+                out.append((0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]))
+            out.append(out[0])  # cerrar
+            pts = out
+        return pts
 
     features = []
     for cnt in contours:
@@ -156,6 +186,19 @@ def main():
             xm = xmin + col * args.res_m
             ym = ymin + (H - row) * args.res_m
             coords_m.append((xm, ym))
+        # Antes del área y de proyectar: suavizado opcional de Chaikin para
+        # convertir las esquinas rectas de marching squares en arcos. Después,
+        # un segundo pase de simplificación con tolerancia menor recorta
+        # vértices redundantes manteniendo la curvatura.
+        if args.chaikin > 0:
+            if coords_m[0] != coords_m[-1]:
+                coords_m = coords_m + [coords_m[0]]
+            coords_m = chaikin(coords_m, args.chaikin)
+            # Re-simplificar al 25 % de la tolerancia original (preserva curvas)
+            arr_ch = np.array(coords_m)
+            tol_post = (args.tol_m * 0.25) / args.res_m  # en px-equivalente
+            simp = measure.approximate_polygon(arr_ch / args.res_m, tol_post) * args.res_m
+            coords_m = [tuple(p) for p in simp]
         n = len(coords_m)
         s = 0.0
         for i in range(n):

@@ -289,15 +289,15 @@
   const zr = L.DomUtil.create('div', 'zread');
   zr.title = 'Nivel de zoom'; zr.setAttribute('aria-live', 'polite');
   zc.insertBefore(zr, zc.querySelector('.leaflet-control-zoom-out'));
-  // Botón «volver a la vista general» (zoom out directo a Costa Rica entera).
-  // Aparece solo cuando el zoom es >= 11 — al zoom nacional no tiene sentido.
+  // Botón «volver a la vista provincial» (zoom out a nivel 10, centrado donde
+  // esté). Aparece solo cuando el zoom es >= 11 — por debajo ya se ve provincial.
   const zBack = L.DomUtil.create('a', 'leaflet-control-zoom-out zback');
   zBack.href = '#'; zBack.setAttribute('role', 'button');
-  zBack.title = 'Volver a la vista general de Costa Rica';
-  zBack.setAttribute('aria-label', 'Volver a la vista general');
+  zBack.title = 'Volver a la vista provincial (zoom 10)';
+  zBack.setAttribute('aria-label', 'Volver a la vista provincial');
   zBack.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10h4v4"/><path d="M14 6h-4V2"/><path d="M2 10l5-5"/><path d="M14 6l-5 5"/></svg>';
   zc.appendChild(zBack);
-  L.DomEvent.on(zBack, 'click', e => { L.DomEvent.stop(e); vistaInicial(); });
+  L.DomEvent.on(zBack, 'click', e => { L.DomEvent.stop(e); map.setView(map.getCenter(), 10); });
   const paintZBack = () => { zBack.style.display = map.getZoom() >= 11 ? '' : 'none'; };
   map.on('zoomend', paintZBack); paintZBack();
   const paintZ = () => { const z = map.getZoom(); zr.textContent = Number.isInteger(z) ? z : z.toFixed(1).replace('.', ','); };
@@ -479,7 +479,7 @@
     { id: 'cobDA', n: 'Cobertura implícita (concesiones)', note: 'derivada de las tomas · comparar con AyA', lg: [['', 'rgba(106,153,78,0.35)', 'Área con tomas registradas por la Dirección de Agua']] },
     { id: 'aguaHeat', n: 'Mapa de calor integrado del agua', note: 'concesiones + ASADAS + cobertura implícita', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
     { g: 'Abastecimiento eléctrico', id: 'elec', n: 'Cobertura eléctrica por operador', note: 'ICE, CNFL, ESPH, JASEC y cooperativas', lg: [['', EL_COL['ICE'], 'ICE'], ['', EL_COL['CNFL'], 'CNFL'], ['', EL_COL['ESPH'], 'ESPH'], ['', EL_COL['JASEC'], 'JASEC'], ['', EL_COL['COOPELESCA'], 'COOPELESCA'], ['', EL_COL['COOPEGUANACASTE R.L.'], 'COOPEGUANACASTE'], ['', EL_COL['COOPESANTOS'], 'COOPESANTOS'], ['', EL_COL['COOPEALFARORUIZ'], 'COOPEALFARORUIZ']] },
-    { id: 'postesCov', n: 'Cobertura del tendido eléctrico', note: 'derivada de ~495 000 postes · 1 900 km²', lg: [] },
+    { id: 'postesCov', n: 'Cobertura del tendido eléctrico', note: 'derivada de ~495 000 postes · 1 800 km²', lg: [] },
     { id: 'postes', n: 'Postes del tendido eléctrico', note: 'poste a poste (ARESEP) · desde zoom 14', z: 14, minZ: 14, lg: [['', 'rgb(218,139,55)', 'Poste individual']], mk: () => ags('https://mapas.aresep.go.cr/server/rest/services/I_Energia_Externo/Infraestructura_vertical_energia_electrica/MapServer', { dyn: POSTE_DYN, minZoom: 14, zIndex: 5, attribution: 'Postes del tendido eléctrico &copy; ARESEP' }) },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
