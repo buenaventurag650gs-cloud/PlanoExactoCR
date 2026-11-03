@@ -270,7 +270,8 @@
   function heatRadiusPx() {
     const z = map.getZoom(), lat = map.getCenter().lat;
     const mpp = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
-    const km = 1.2;
+    // Target ~1,5 km de cobertura, calibrado para alcanzar el tope a zoom 13
+    const km = 1.5;
     return Math.max(14, Math.min(80, (km * 1000) / mpp));
   }
   function syncHeatRadius() {
