@@ -832,7 +832,8 @@
       <button class="btn btn-sm${inCmp ? ' btn-primary' : ''}" data-act="cmp" aria-pressed="${inCmp}">${inCmp ? 'En comparación' : 'Comparar'}</button>
       ${r.isPlano ? '' : `<button class="btn btn-sm${sg ? ' btn-primary' : ''}" data-act="sigo" aria-pressed="${sg}">${sg ? 'Siguiendo' : 'Seguir'}</button>`}
       <button class="btn btn-sm" data-act="lista">Guardar en lista</button>
-      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a>` : ''}
+      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Abrir el predio en Google Maps">Google Maps</a>` : ''}
+      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Si hay cobertura de Street View, abre la vista a nivel calle; si no, Google Maps muestra el punto">Street View</a>` : ''}
     </div>${listMenu(r)}`;
   }
   // Forma del predio en pequeño: contorno a escala con norte y barra de escala

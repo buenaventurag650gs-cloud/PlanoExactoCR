@@ -466,6 +466,11 @@
     // Electricidad
     'Abastecimiento eléctrico': 'Electricity supply',
     'Postes del tendido eléctrico': 'Electric utility poles',
+    'Street View': 'Street View',
+    'Google Maps': 'Google Maps',
+    'Abrir el predio en Google Maps': 'Open the parcel in Google Maps',
+    'Si hay cobertura de Street View, abre la vista a nivel calle; si no, Google Maps muestra el punto': 'If Street View coverage exists it opens the street-level view; otherwise Google Maps shows the point',
+    'Mirar en línea:': 'Look online:',
     '125 906 postes (ARESEP)': '125,906 poles (ARESEP)',
     'Poste del tendido': 'Utility pole',
     // Apagar categoría
