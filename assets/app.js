@@ -541,11 +541,13 @@
         if (open_) h += '</details>';
         const nOn = grpOnCount(l.g);
         const muted = (grpMuted[l.g] || []).filter(id => LY.some(x => x.id === id));
-        let eyeBtn = '';
+        let eyeBtn;
         if (nOn > 0) {
           eyeBtn = `<button class="goff" type="button" data-eye="${esc(l.g)}" aria-pressed="true" title="Ocultar las capas activas de ${esc(l.g)}">${EYE_ON}${nOn}</button>`;
         } else if (muted.length > 0) {
           eyeBtn = `<button class="goff muted" type="button" data-eye="${esc(l.g)}" aria-pressed="false" title="Volver a mostrar las capas ocultas de ${esc(l.g)}">${EYE_OFF}${muted.length}</button>`;
+        } else {
+          eyeBtn = `<button class="goff muted" type="button" disabled aria-pressed="false" title="No hay capas activas en ${esc(l.g)}">${EYE_OFF}</button>`;
         }
         h += `<details class="lg-g"${lyrOpen[l.g] ? ' open' : ''} data-g="${l.g}"><summary>${l.g}${eyeBtn}<span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span></summary>`;
         open_ = true;
