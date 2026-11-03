@@ -421,7 +421,7 @@
     { g: 'Abastecimiento de agua', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
     { id: 'asadas', n: 'ASADAS (acueductos comunales)', note: '1 305 operadores', lg: AS_COL.map(([n, c]) => ['', c, n]) },
     { id: 'aprovech', n: 'Concesiones de agua (fuentes y caudal)', note: 'acueductos rurales · caudal en l/s', lg: [['', '#3B8BD9', 'Subterránea (pozo/acuífero)'], ['', '#2A9D8F', 'Superficial (nacimiento/río)'], ['', '#9C9489', 'Otra']] },
-    { id: 'aguaHeat', n: 'Mapa de calor del caudal', note: 'densidad ponderada por l/s otorgados', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
+    { id: 'aguaHeat', n: 'Mapa de calor integrado del agua', note: 'concesiones + ASADAS + cobertura implícita', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
     { id: 'cobDA', n: 'Cobertura implícita (concesiones)', note: 'derivada de las tomas · comparar con AyA', lg: [['', 'rgba(106,153,78,0.35)', 'Área con tomas registradas por la Dirección de Agua']] },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
@@ -517,10 +517,18 @@
     if (INFRA) for (const f of INFRA.features) { const t = f.properties.t, big = t !== 'Aeródromo'; const mk = L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { pane: 'ctx', icon: L.divIcon({ className: 'infra' + (big ? ' big' : ''), iconSize: big ? [26, 26] : [18, 18], html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICX[t]}</svg>` }) }).bindTooltip(`<b>${esc(f.properties.n)}</b><br>${t}`, { direction: 'top' }); vec.infra.addLayer(mk); }
     if (ZMT) vec.zmt.addLayer(L.geoJSON(ZMT, Object.assign({ style: f => f.properties.t === 'publica' ? { stroke: false, fillColor: '#4FA3F0', fillOpacity: 0.45 } : { stroke: false, fillColor: '#E9C46A', fillOpacity: 0.38 } }, o)));
     for (const s of PX.ctx.salud || []) vec.salud.addLayer(L.circleMarker([s.ll[1], s.ll[0]], { renderer: ctxR, pane: 'ctx', radius: s.c === 'EBAIS' ? 3 : 5, color: css('--panel'), weight: 1, fillColor: css('--accent'), fillOpacity: 0.9, interactive: false }));
+    // Heat map integrado: puntos ponderados por caudal (l/s) tanto de las
+    // concesiones DA como de las ASADAs (abonados × 0,01 ≈ l/s equivalente,
+    // regla de ~215 L/día/persona × 4 personas/hogar); se añade abajo también
+    // la cobertura implícita (polígonos muestreados en una grilla).
+    const heatPts = [];
     if (PX.ctx.asadas) for (const a of PX.ctx.asadas.asadas || []) {
       const mk = L.circleMarker([a.ll[1], a.ll[0]], { renderer: ctxR, radius: 4.5, color: '#fff', weight: 1, fillColor: asCol(a.tipo), fillOpacity: 0.9 });
       mk.bindTooltip(`<b>${esc(a.n)}</b>${a.tipo ? '<br>Sistema: ' + esc(a.tipo) : ''}${a.ab ? '<br>Abonados: ' + a.ab.toLocaleString('de-DE') : ''}${a.adm && a.adm !== 'ASADA' ? '<br>' + esc(a.adm) : ''}${a.zona ? '<br>Zona: ' + esc(a.zona) : ''}`, { direction: 'top', className: 'asada-tip' });
       vec.asadas.addLayer(mk);
+      // Peso del heat: equivalente de l/s por los abonados; sin dato → base 0,3
+      const qEq = a.ab ? a.ab * 0.01 : 0;
+      heatPts.push([a.ll[1], a.ll[0], qEq > 0 ? Math.log1p(qEq) : 0.3]);
     }
     if (PX.ctx.cobDA) {
       vec.cobDA.addLayer(L.geoJSON(PX.ctx.cobDA, {
@@ -531,19 +539,32 @@
       }));
     }
     if (PX.ctx.aprovech) {
-      const heatPts = [];
       for (const f of PX.ctx.aprovech.aprovech || []) {
         const r = f.q > 0 ? Math.min(3 + Math.sqrt(f.q) * 1.1, 12) : 3;
         const mk = L.circleMarker([f.ll[1], f.ll[0]], { renderer: ctxR, radius: r, color: '#fff', weight: 0.7, fillColor: apCol(f.f), fillOpacity: 0.85 });
         mk.bindTooltip(`<b>${esc(f.n || f.t || 'Fuente de agua')}</b><br>${esc(f.t || f.f)}${f.q > 0 ? '<br>Caudal: ' + f.q + ' l/s' : '<br>Sin caudal registrado'}${f.u ? '<br>Uso: ' + esc(f.u) : ''}`, { direction: 'top' });
         vec.aprovech.addLayer(mk);
-        // Mapa de calor ponderado por caudal (log para no aplastar fuentes pequeñas)
+        // Peso del heat: log del caudal l/s otorgado
         heatPts.push([f.ll[1], f.ll[0], f.q > 0 ? Math.log1p(f.q) : 0.3]);
       }
-      const heatL = (LY.find(l => l.id === 'aguaHeat') || {}).layer;
-      if (heatL && heatL.setLatLngs) heatL.setLatLngs(heatPts);
-      if (typeof syncHeatRadius === 'function') syncHeatRadius();
     }
+    // Añadir también los centroides de los polígonos de cobertura implícita,
+    // ponderados por el log del área km² (fuentes AyA cuando las obtengamos
+    // se incorporarán aquí con el mismo esquema).
+    if (PX.ctx.cobDA && PX.ctx.cobDA.features) {
+      for (const feat of PX.ctx.cobDA.features) {
+        const ring = feat.geometry && feat.geometry.coordinates && feat.geometry.coordinates[0];
+        if (!ring || ring.length < 3) continue;
+        let sx = 0, sy = 0;
+        for (const [lon, lat] of ring) { sx += lon; sy += lat; }
+        const cx = sx / ring.length, cy = sy / ring.length;
+        const w = Math.log1p((feat.properties && feat.properties.area_km2) || 1);
+        heatPts.push([cy, cx, w]);
+      }
+    }
+    const heatL = (LY.find(l => l.id === 'aguaHeat') || {}).layer;
+    if (heatL && heatL.setLatLngs) heatL.setLatLngs(heatPts);
+    if (typeof syncHeatRadius === 'function') syncHeatRadius();
     syncLayers();
   }
 
