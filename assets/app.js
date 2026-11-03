@@ -17,8 +17,9 @@
   const extra = Promise.all([
     PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => []),
     PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null),
-    PX.get('data/asadas.json').catch(() => null), PX.get('data/aprovechamientos.json').catch(() => null)
-  ]).then(([p, s, c, z, inf, asadasData, apData]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
+    PX.get('data/asadas.json').catch(() => null), PX.get('data/aprovechamientos.json').catch(() => null),
+    PX.get('data/cobertura_concesiones.geojson').catch(() => null)
+  ]).then(([p, s, c, z, inf, asadasData, apData, cobDA]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, cobDA: cobDA, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
 
   const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
   const lockMsg = (t) => { openPlanes(t); };
@@ -414,6 +415,7 @@
     { id: 'asadas', n: 'ASADAS (acueductos comunales)', note: '1 305 operadores', lg: AS_COL.map(([n, c]) => ['', c, n]) },
     { id: 'aprovech', n: 'Concesiones de agua (fuentes y caudal)', note: 'acueductos rurales · caudal en l/s', lg: [['', '#3B8BD9', 'Subterránea (pozo/acuífero)'], ['', '#2A9D8F', 'Superficial (nacimiento/río)'], ['', '#9C9489', 'Otra']] },
     { id: 'aguaHeat', n: 'Mapa de calor del caudal', note: 'densidad ponderada por l/s otorgados', lg: [['', '#4FA3F0', 'Bajo'], ['', '#2A9D8F', 'Medio'], ['', '#E9C46A', 'Alto'], ['', '#E76F51', 'Muy alto']], mk: () => L.heatLayer([], { radius: 22, blur: 18, minOpacity: 0.35, maxZoom: 12, max: 2.5, gradient: { 0.2: '#4FA3F0', 0.45: '#2A9D8F', 0.7: '#E9C46A', 1: '#E76F51' } }) },
+    { id: 'cobDA', n: 'Cobertura implícita (concesiones)', note: 'derivada de las tomas · comparar con AyA', lg: [['', 'rgba(106,153,78,0.35)', 'Área con tomas registradas por la Dirección de Agua']] },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
@@ -427,7 +429,7 @@
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base2', dark() ? 'oscuro' : 'claro'); if (!base[baseId]) baseId = 'claro';
-  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup() };
+  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   function syncLayers() {
@@ -512,6 +514,14 @@
       const mk = L.circleMarker([a.ll[1], a.ll[0]], { renderer: ctxR, radius: 4.5, color: '#fff', weight: 1, fillColor: asCol(a.tipo), fillOpacity: 0.9 });
       mk.bindTooltip(`<b>${esc(a.n)}</b>${a.tipo ? '<br>Sistema: ' + esc(a.tipo) : ''}${a.ab ? '<br>Abonados: ' + a.ab.toLocaleString('de-DE') : ''}${a.adm && a.adm !== 'ASADA' ? '<br>' + esc(a.adm) : ''}${a.zona ? '<br>Zona: ' + esc(a.zona) : ''}`, { direction: 'top', className: 'asada-tip' });
       vec.asadas.addLayer(mk);
+    }
+    if (PX.ctx.cobDA) {
+      vec.cobDA.addLayer(L.geoJSON(PX.ctx.cobDA, {
+        pane: 'ctx',
+        style: { color: 'rgb(106,153,78)', weight: 1, opacity: 0.75, dashArray: '4,3', fillColor: 'rgb(106,153,78)', fillOpacity: 0.28 },
+        attribution: 'Cobertura implícita derivada de concesiones &copy; MINAE (DA)',
+        onEachFeature: (f, l) => { if (f.properties && f.properties.area_km2) l.bindTooltip(`Cobertura implícita · ${f.properties.area_km2.toLocaleString('de-DE')} km²`, { sticky: true }); },
+      }));
     }
     if (PX.ctx.aprovech) {
       const heatPts = [];
