@@ -88,16 +88,30 @@
     return BASE + '?' + q;
   }
 
-  async function cargarImagen(url) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      // Sin crossOrigin: así carga aunque el servidor no mande cabeceras CORS.
-      // Si no las manda, el canvas queda "manchado" (tainted) y getImageData
-      // va a fallar más adelante — eso lo capturamos aparte, más claro.
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('No cargó la imagen (red o formato)'));
-      img.src = url;
-    });
+  async function cargarImagen(url, nombre, intentos = 3) {
+    for (let i = 1; i <= intentos; i++) {
+      let res;
+      try {
+        res = await fetch(url);
+      } catch (e) {
+        if (i < intentos) { log(`⏳ <b>${nombre}</b>: error de red, reintentando (${i}/${intentos})…`); await new Promise(r => setTimeout(r, 3000 * i)); continue; }
+        throw new Error(`${nombre}: no se pudo conectar después de ${intentos} intentos (${e.message})`);
+      }
+      if (!res.ok) {
+        const cuerpo = await res.text().catch(() => '');
+        if (i < intentos) { log(`⏳ <b>${nombre}</b>: servidor respondió ${res.status}${cuerpo ? ' — ' + cuerpo : ''}, reintentando en ${3 * i}s…`); await new Promise(r => setTimeout(r, 3000 * i)); continue; }
+        throw new Error(`${nombre}: el servidor respondió ${res.status}${cuerpo ? ' — ' + cuerpo : ''} (después de ${intentos} intentos)`);
+      }
+      // same-origin blob → canvas puede leer los píxeles sin restricción CORS
+      const blob = await res.blob();
+      const bmpUrl = URL.createObjectURL(blob);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(bmpUrl); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(bmpUrl); reject(new Error(`${nombre}: la respuesta no es una imagen válida`)); };
+        img.src = bmpUrl;
+      });
+    }
   }
 
   $('go').addEventListener('click', async () => {
@@ -113,7 +127,7 @@
         const [nombre, layer] = CAPAS[i];
         const url = urlGetMap(layer);
         log(`Pidiendo <b>${nombre}</b> (<code>${layer}</code>)…`);
-        const img = await cargarImagen(url);
+        const img = await cargarImagen(url, nombre);
         const c = document.createElement('canvas'); c.width = W; c.height = H;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0, W, H);
