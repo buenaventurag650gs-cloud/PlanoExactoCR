@@ -541,6 +541,20 @@
     return best;
   }
 
+  // Fuente de agua (concesión) más cercana al punto dado
+  function nearAprovech(lon, lat) {
+    if (!PX.ctx.aprovech) return null;
+    let best = null, bd = Infinity;
+    for (const f of PX.ctx.aprovech.aprovech || []) {
+      const dx = (f.ll[0] - lon) * Math.cos(lat * Math.PI / 180), dy = f.ll[1] - lat;
+      const d = Math.sqrt(dx * dx + dy * dy) * 111320;
+      if (d < bd) { bd = d; best = f; }
+    }
+    if (!best || bd > 15000) return null; // máx 15 km
+    best = Object.assign({}, best, { dTxt: bd < 1000 ? Math.round(bd) + ' m' : (bd / 1000).toFixed(1) + ' km' });
+    return best;
+  }
+
   // Clic en el mapa: datos de las capas temáticas activas en ese punto
   const idPop = L.popup({ className: 'idpop', maxWidth: 300, autoPanPadding: [20, 20] });
   map.on('click', async e => {
@@ -552,6 +566,7 @@
     if (on('zh')) jobs.push(['Zona homogénea', PX.zhAt(x, y)]);
     if (on('agua')) jobs.push(['Agua potable', PX.aguaAt(x, y)]);
     if (on('asadas') && PX.ctx.asadas) { const near = nearAsada(x, y); if (near) rows.push(['ASADA más cercana', `${near.n} (${near.tipo || 'sin tipo'})${near.ab ? ', ' + near.ab.toLocaleString('de-DE') + ' abonados' : ''} — ${near.dTxt}`]); }
+    if (on('aprovech') && PX.ctx.aprovech) { const nf = nearAprovech(x, y); if (nf) rows.push(['Fuente de agua más cercana', `${nf.n || nf.t || 'Fuente de agua'} (${nf.t || nf.f})${nf.q > 0 ? ', caudal ' + nf.q + ' l/s' : ', sin caudal registrado'} — ${nf.dTxt}`]); }
     if (on('cob')) jobs.push(['Uso del suelo', PX.cobertura(x.toFixed(5), y.toFixed(5))]);
     if (on('zv')) { const f = hit(ZV, x, y); if (f) rows.push(['Zona de vida', f.properties.n]); }
     if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador', PX.prText(f.properties)]); }
