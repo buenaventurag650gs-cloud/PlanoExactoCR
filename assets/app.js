@@ -121,7 +121,7 @@
 
   const CHK = ['fSemana', 'fMes', 'fNoServ', 'fPR', 'fAgua', 'fAyA'];
   const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, m2min: $('m2Min').value, m2max: $('m2Max').value, iphmin: $('iphMin').value, iphmax: $('iphMax').value, cur: PX.cur,
-    tipos: [...tipoOn], chk: Object.fromEntries(CHK.map(k => [k, $(k).checked])), attrs: [...attrOn], order: $('order').value, fav: onlyFav });
+    tipos: [...tipoOn], chk: Object.fromEntries(CHK.map(k => [k, $(k).checked])), attrs: [...attrOn], order: $('order').value, fav: onlyFav, nw: onlyNew });
   function setFilt(s) {
     $('q').value = s.q || ''; $('fProv').value = s.prov || ''; fillCantones(); $('fCanton').value = s.canton || '';
     (s.st || [true, true, true]).forEach((v, i) => { stOn[i] = v; document.querySelector(`.stg[data-i="${i}"]`).setAttribute('aria-pressed', v); });
@@ -131,6 +131,7 @@
     tipoOn.clear(); (s.tipos || (s.tipo ? [s.tipo] : [])).forEach(t => tipoOn.add(t)); paintTipos();
     CHK.forEach(k => $(k).checked = !!(s.chk ? s.chk[k] : (k === 'fSemana' ? s.wk : k === 'fNoServ' ? s.ns : k === 'fPR' ? s.pr : k === 'fAgua' ? s.ag : false)));
     onlyFav = !!s.fav; $('favOnly').setAttribute('aria-pressed', onlyFav);
+    onlyNew = !!s.nw; $('newOnly').setAttribute('aria-pressed', onlyNew);
     attrOn.clear(); if (PX.isPro()) (s.attrs || []).forEach(a => attrOn.add(a)); $('order').value = s.order || 'fecha';
     paintAttrs(); setTab('rem'); apply(); if (s.prov || s.canton || s.q) fitShown();
   }
@@ -155,6 +156,7 @@
     shown = live.filter(r => {
       if (!verOcultos && PX.estaOculto(r.key)) return false;
       if (onlyFav && !PX.isFav(r.key)) return false;
+      if (onlyNew && !(r.pub && PX.now - r.pub < 7 * 864e5)) return false;
       if (!stOn[r.st]) return false;
       if (p && r.prov !== p) return false;
       if (c && r.cn !== c) return false;
@@ -233,8 +235,9 @@
     if (onlyFav) apply(); else renderList();
     if (open === key) openFicha(open, false);
   }
-  let onlyFav = false, verOcultos = false;
+  let onlyFav = false, onlyNew = false, verOcultos = false;
   $('favOnly').onclick = () => { onlyFav = !onlyFav; $('favOnly').setAttribute('aria-pressed', onlyFav); apply(); };
+  $('newOnly').onclick = () => { onlyNew = !onlyNew; $('newOnly').setAttribute('aria-pressed', onlyNew); apply(); };
   // Toggle «ver remates ocultos» desde Mi cuenta / botón flotante cuando hay ocultos
   PX.setVerOcultos = v => { verOcultos = !!v; apply(); };
   PX.getVerOcultos = () => verOcultos;
