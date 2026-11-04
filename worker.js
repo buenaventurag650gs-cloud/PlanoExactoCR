@@ -438,15 +438,12 @@ function tarjetaPropiedadCorreo(r, env) {
   const etapa = ETAPA[st] || "";
   const baseActual = r.base != null ? r.base * (PCT[st] || 1) : null;
   const enlace = `https://${dom}/mapa#r${r.id}`;
-  // Con polígono: mini-plano topográfico con el lote dibujado (una sola imagen, servida por
-  // /api/plano-correo). Sin polígono: imagen satelital con un pin, como respaldo.
-  const tienePoly = r.poly && r.poly.length;
-  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}&v=5` : miniMapaURL(r.ll);
-  const imgBloque = !mapa ? "" : tienePoly ? `<img src="${mapa}" width="600" height="360" alt="Plano del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">`
-    : `<div style="position:relative;line-height:0">
+  // Imagen satelital centrada en el lote, con un pin, a un zoom que deja ver el entorno.
+  const mapa = miniMapaURL(r.ll);
+  const imgBloque = mapa ? `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
 <div style="position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-20px 0 0 -8px;background:#C8553D;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 3px rgba(0,0,0,.45)"></div>
-</div>`;
+</div>` : "";
   return { enlace, loc, fecha,
     html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;margin:0 0 10px;background:#F7F9F8;overflow:hidden">
 ${imgBloque}<div style="padding:12px 16px 14px">
