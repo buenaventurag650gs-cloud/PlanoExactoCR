@@ -30,27 +30,31 @@
   // de pintar, la ficha completa se sentiría lenta por un puñado de filas. En vez de
   // eso, renderizamos de inmediato sin estos datos y cada uno se inserta solo, por su
   // cuenta, cuando llega (o no aparece si la consulta falla).
-  let posteCerc = null, sutelCov = null, sutelListo = false, inetFijo = null, inetListo = false, transp = null;
+  let posteCerc = null, sutelCov = null, sutelListo = false, cobMovil = null, inetFijo = null, telecomListo = false, transp = null;
   function cargarServicios() {
     if (!r.ll) return;
     const [lon, lat] = r.ll;
     PX.posteMasCercano(lon, lat).then(pc => { if (pc) { posteCerc = pc; render(); } }).catch(() => {});
-    // Cobertura móvil: mediciones reales por operador (SUTEL/MedUX) — Kolbi, Claro
-    // y Liberty por igual, no solo lo que el WMS del ICE muestra de sí mismo.
+    // Cobertura móvil, por operador: mediciones reales de usuarios (SUTEL/MedUX) —
+    // Kolbi, Claro y Liberty por igual. Se deja además la capa del ICE (debajo) por
+    // si esa fuente llega a estabilizarse; mientras tanto son dos señales aparte.
     PX.coberturaSUTEL(lon, lat).then(c => { sutelCov = c; }).catch(() => { sutelCov = {}; }).finally(() => { sutelListo = true; render(); });
-    // Internet fijo: WMS del ICE (shapefile de cobertura residencial)
+    // Cobertura móvil (ICE) e internet fijo: consultas WMS paralelas al ICE
     (async () => {
       try {
         const d = 0.0005, bbox = `${lon - d},${lat - d},${lon + d},${lat + d}`;
-        const img = await fetch(`/api/ice-wms?layer=ice:internet-shp&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`)
-          .then(r => r.ok ? r.blob().then(b => createImageBitmap(b)) : null).catch(() => null);
-        if (img) {
-          const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
-          const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
-          inetFijo = ctx.getImageData(1, 1, 1, 1).data[3] > 10;
-        } else inetFijo = false;
+        const CAPAS = ['ice:5g-omv', 'ice:ltea', 'ice:lte', 'ice:tg'];
+        const TECH = ['5G', 'LTE-A', 'LTE', '3G/2G'];
+        const imgs = await Promise.all([...CAPAS, 'ice:internet-shp'].map(l =>
+          fetch(`/api/ice-wms?layer=${l}&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`)
+            .then(r => r.ok ? r.blob().then(b => createImageBitmap(b)) : null).catch(() => null)));
+        const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
+        const ctx = cv.getContext('2d');
+        const chk = bmp => { if (!bmp) return false; ctx.clearRect(0, 0, 3, 3); ctx.drawImage(bmp, 0, 0); return ctx.getImageData(1, 1, 1, 1).data[3] > 10; };
+        for (let i = 0; i < CAPAS.length; i++) if (chk(imgs[i])) { cobMovil = TECH[i]; break; }
+        inetFijo = chk(imgs[4]);
       } catch (_) {}
-      inetListo = true; render();
+      telecomListo = true; render();
     })();
     // Transporte público: distancia a ruta de bus y estación de tren
     PX.transporteCercano(lon, lat).then(t => { if (t) { transp = t; render(); } }).catch(() => {});
@@ -107,8 +111,9 @@
       ${e.aguaS ? `<dt>${I.agua}Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}<small class="sub">AyA / ASADAS / ESPH / municipal</small></dd>` : `<dt>${I.agua}Agua potable</dt><dd>Sin cobertura registrada<small class="sub">AyA / ASADAS / ESPH / municipal</small></dd>`}
       ${e.costa != null ? `<dt>${I.costa}Costa</dt><dd>A <b class="num">${PX.dist(e.costa)}</b>${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}<small class="sub">Distancia a la línea de costa (IGN)</small></dd>` : ''}
       ${posteCerc ? `<dt>${I.elec}Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura vertical del tendido eléctrico (ARESEP)</small></dd>` : `<dt>${I.elec}Tendido eléctrico</dt><dd class="muted">Buscando el poste más cercano…</dd>`}
-      ${sutelListo ? (sutelCov && Object.keys(sutelCov).length ? `<dt>${I.tele}Cobertura móvil</dt><dd>${Object.entries(sutelCov).map(([op, v]) => `<b>${esc(PX.SUTEL_OPS[op] || op)}</b> ${PX.rsrpLabel(v.rsrp)}`).join(' · ')}<small class="sub">Mediciones reales de usuarios cercanos (SUTEL/MedUX), no un mapa oficial de cobertura</small></dd>` : `<dt>${I.tele}Cobertura móvil</dt><dd>Sin mediciones cercanas registradas<small class="sub">SUTEL/MedUX</small></dd>`) : `<dt>${I.tele}Cobertura móvil</dt><dd class="muted">Consultando mediciones de SUTEL…</dd>`}
-      ${inetListo && inetFijo != null ? (inetFijo ? `<dt>${I.tele}Internet fijo</dt><dd>Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small></dd>` : `<dt>${I.tele}Internet fijo</dt><dd>Sin cobertura registrada</dd>`) : ''}
+      ${sutelListo ? (sutelCov && Object.keys(sutelCov).length ? `<dt>${I.tele}Cobertura móvil por operador</dt><dd>${Object.entries(sutelCov).map(([op, v]) => `<b>${esc(PX.SUTEL_OPS[op] || op)}</b> ${PX.rsrpLabel(v.rsrp)}`).join(' · ')}<small class="sub">Mediciones reales de usuarios cercanos (SUTEL/MedUX), no un mapa oficial de cobertura</small></dd>` : `<dt>${I.tele}Cobertura móvil por operador</dt><dd>Sin mediciones cercanas registradas<small class="sub">SUTEL/MedUX</small></dd>`) : `<dt>${I.tele}Cobertura móvil por operador</dt><dd class="muted">Consultando mediciones de SUTEL…</dd>`}
+      ${telecomListo ? (cobMovil ? `<dt>${I.tele}Cobertura móvil (ICE)</dt><dd><b>${cobMovil}</b><small class="sub">Mejor tecnología celular disponible según el ICE/Kolbi</small></dd>` : `<dt>${I.tele}Cobertura móvil (ICE)</dt><dd>Sin cobertura registrada (ICE)</dd>`) : `<dt>${I.tele}Cobertura móvil (ICE)</dt><dd class="muted">Consultando al ICE…</dd>`}
+      ${telecomListo && inetFijo != null ? (inetFijo ? `<dt>${I.tele}Internet fijo</dt><dd>Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small></dd>` : `<dt>${I.tele}Internet fijo</dt><dd>Sin cobertura registrada</dd>`) : ''}
       ${transp && transp.bus ? `<dt>${I.bus}Ruta de bus</dt><dd>A <b class="num">${PX.dist(transp.bus.d)}</b>${transp.bus.n ? `<small class="sub">${esc(transp.bus.n)}</small>` : '<small class="sub">Ramal concesionado (ARESEP)</small>'}</dd>` : transp ? `<dt>${I.bus}Ruta de bus</dt><dd>Sin rutas a menos de 5 km</dd>` : `<dt>${I.bus}Transporte público</dt><dd class="muted">Consultando a ARESEP…</dd>`}
       ${transp && transp.tren != null ? `<dt>${I.bus}Estación de tren</dt><dd>A <b class="num">${PX.dist(transp.tren)}</b><small class="sub">INCOFER (GAM)</small></dd>` : transp ? `<dt>${I.bus}Estación de tren</dt><dd>Sin estaciones a menos de 15 km</dd>` : ''}
       </dl></section>`;
