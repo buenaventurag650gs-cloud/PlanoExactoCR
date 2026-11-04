@@ -24,28 +24,36 @@
     return;
   }
   if (r.isPlano && r.ent && r.ent.cob === undefined && r.ll) { r.ent.cob = await PX.cobertura(r.ll[0], r.ll[1]); PX.savePlano(r); }
-  // Distancia al poste más cercano del tendido eléctrico: carga perezosa.
-  // Si falla la descarga, la fila simplemente no se muestra.
-  let posteCerc = null, cobMovil = null, inetFijo = null, transp = null;
-  if (r.ll) {
+  // Postes, cobertura móvil/internet fijo y transporte público: carga perezosa y NO
+  // bloqueante. Entre los tres, estas consultas pueden pesar varios MB (postes.json)
+  // y varias peticiones WMS al ICE; si el expediente esperara (await) todo esto antes
+  // de pintar, la ficha completa se sentiría lenta por un puñado de filas. En vez de
+  // eso, renderizamos de inmediato sin estos datos y cada uno se inserta solo, por su
+  // cuenta, cuando llega (o no aparece si la consulta falla).
+  let posteCerc = null, cobMovil = null, telecomListo = false, inetFijo = null, transp = null;
+  function cargarServicios() {
+    if (!r.ll) return;
     const [lon, lat] = r.ll;
-    try { posteCerc = await PX.posteMasCercano(lon, lat); } catch (_) {}
+    PX.posteMasCercano(lon, lat).then(pc => { if (pc) { posteCerc = pc; render(); } }).catch(() => {});
     // Cobertura móvil e internet fijo: consultas WMS paralelas al ICE
-    try {
-      const d = 0.0005, bbox = `${lon - d},${lat - d},${lon + d},${lat + d}`;
-      const CAPAS = ['ice:5g-omv', 'ice:ltea', 'ice:lte', 'ice:tg'];
-      const TECH = ['5G', 'LTE-A', 'LTE', '3G/2G'];
-      const imgs = await Promise.all([...CAPAS, 'ice:internet-shp'].map(l =>
-        fetch(`/api/ice-wms?layer=${l}&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`)
-          .then(r => r.ok ? r.blob().then(b => createImageBitmap(b)) : null).catch(() => null)));
-      const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
-      const ctx = cv.getContext('2d');
-      const chk = bmp => { if (!bmp) return false; ctx.clearRect(0, 0, 3, 3); ctx.drawImage(bmp, 0, 0); return ctx.getImageData(1, 1, 1, 1).data[3] > 10; };
-      for (let i = 0; i < CAPAS.length; i++) if (chk(imgs[i])) { cobMovil = TECH[i]; break; }
-      inetFijo = chk(imgs[4]);
-    } catch (_) {}
+    (async () => {
+      try {
+        const d = 0.0005, bbox = `${lon - d},${lat - d},${lon + d},${lat + d}`;
+        const CAPAS = ['ice:5g-omv', 'ice:ltea', 'ice:lte', 'ice:tg'];
+        const TECH = ['5G', 'LTE-A', 'LTE', '3G/2G'];
+        const imgs = await Promise.all([...CAPAS, 'ice:internet-shp'].map(l =>
+          fetch(`/api/ice-wms?layer=${l}&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`)
+            .then(r => r.ok ? r.blob().then(b => createImageBitmap(b)) : null).catch(() => null)));
+        const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
+        const ctx = cv.getContext('2d');
+        const chk = bmp => { if (!bmp) return false; ctx.clearRect(0, 0, 3, 3); ctx.drawImage(bmp, 0, 0); return ctx.getImageData(1, 1, 1, 1).data[3] > 10; };
+        for (let i = 0; i < CAPAS.length; i++) if (chk(imgs[i])) { cobMovil = TECH[i]; break; }
+        inetFijo = chk(imgs[4]);
+      } catch (_) {}
+      telecomListo = true; render();
+    })();
     // Transporte público: distancia a ruta de bus y estación de tren
-    try { transp = await PX.transporteCercano(lon, lat); } catch (_) {}
+    PX.transporteCercano(lon, lat).then(t => { if (t) { transp = t; render(); } }).catch(() => {});
   }
 
   const folio = `PX-${r.key.toUpperCase()}-${PX.now.getFullYear()}${String(PX.now.getMonth() + 1).padStart(2, '0')}${String(PX.now.getDate()).padStart(2, '0')}`;
@@ -61,15 +69,19 @@
     const pots = PX.pro.potencialidades(r), ries = PX.pro.riesgos(r);
     const nv = PX.pro.normativa(r);
     const lv = ['', 'Informativo', 'Medio', 'Alto'];
+    const I = PX.ICON;
     let h = PX.lamina.html(r, s, { folio });
 
     // ---------- Hoja 2: ficha sintética ----------
-    const tl = r.isPlano ? '' : `<section class="blk"><h2>Remate</h2>
+    // Dos columnas con un propósito distinto cada una, para que no se sienta
+    // como una sola chorrera de bloques: la izquierda son los datos técnicos
+    // y legales del lote; la derecha, el análisis de valor y mercado.
+    const tl = r.isPlano ? '' : `<section class="blk"><h2>${I.gavel}Remate</h2>
       <table class="tb"><thead><tr><th>Etapa</th><th>Fecha</th><th class="n">Base</th></tr></thead><tbody>
       ${r.fd.map((d, k) => `<tr class="${k < r.st ? 'past' : ''}${k === r.st ? ' now' : ''}"><td>${PX.ETAPA[k]}${k ? ` <small>${PX.PCT[k] * 100} %</small>` : ''}</td><td>${fdate(d, true)}</td><td class="n">${PX.duo(r.bases[k], r.mon)}</td></tr>`).join('')}</tbody></table>
       <dl class="kv sm"><dt>Expediente</dt><dd class="num">${esc(r.exp || '—')}</dd><dt>Despacho</dt><dd>${esc(r.juz || '—')}</dd><dt>Proceso</dt><dd>${esc(PX.cap(r.proc) || '—')}</dd><dt>Boletín Judicial</dt><dd>Nº ${(r.bols || [r.bol]).join(' y ')} de 2026</dd></dl></section>`;
     const diff = r.area && r.areaCat ? (r.areaCat - r.area) / r.area : null;
-    const reg = `<section class="blk"><h2>Registro y catastro</h2><dl class="kv sm">
+    const reg = `<section class="blk"><h2>${I.registro}Registro y catastro</h2><dl class="kv sm">
       <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.der && r.der !== '000' ? ' <span class="tag warn">derecho parcial</span>' : ''}</dd>
       <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : 'No indicado'))}</dd>
       ${r.nat ? `<dt>Naturaleza</dt><dd>${esc(r.nat)}</dd>` : ''}
@@ -79,47 +91,53 @@
       <dt>Ubicación</dt><dd>${esc(r.lugar || '—')}<small class="sub">${r.isPlano ? 'Predio del catastro' : r.exact ? 'Ubicada por ' + r.loc + ' en el catastro' : 'Aproximada al centro del distrito'}${r.ll ? ' · ' + r.ll[1].toFixed(5) + ', ' + r.ll[0].toFixed(5) : ''}</small>${r.ll ? `<small class="sub">Mirar en línea: <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Street View</a> · <a href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a></small>` : ''}</dd>
       ${r.rev ? `<dt>Revisión</dt><dd>${esc(r.rev)}</dd>` : ''}</dl></section>`;
     const gl = r.isPlano ? [] : PX.explicar(r.grav, r.serv);
-    const grav = r.isPlano ? '' : `<section class="blk"><h2>Gravámenes y servidumbres</h2>
+    const grav = r.isPlano ? '' : `<section class="blk"><h2>${I.alerta}Gravámenes y servidumbres</h2>
       ${(r.serv || []).length ? `<div class="chips">${r.serv.map(x => `<span class="chip warn">${esc(PX.cap(x))}</span>`).join('')}</div>` : '<p class="ok">El edicto no cita servidumbres.</p>'}
       ${r.grav ? `<p class="raw">${esc(r.grav)}</p>` : ''}
       ${gl.length ? `<div class="gl">${gl.map(g => `<div><b>${esc(g.n)}.</b> ${esc(g.d)}</div>`).join('')}</div>` : ''}</section>`;
-    const norm = `<section class="blk"><h2>Normativa aplicable</h2><p><b>${esc(nv.titulo)}.</b> ${esc(nv.texto)}</p>
+    // Servicios e infraestructura: todo lo que antes quedaba disuelto entre las
+    // filas de «Valor y mercado» — agua, electricidad, telecomunicaciones y
+    // transporte público — reunido en una sola sección con su propio ícono,
+    // igual al de su categoría en el mapa.
+    const serv = `<section class="blk"><h2>${I.servicios}Servicios e infraestructura</h2><dl class="kv sm">
+      ${e.aguaS ? `<dt>${I.agua}Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}<small class="sub">AyA / ASADAS / ESPH / municipal</small></dd>` : `<dt>${I.agua}Agua potable</dt><dd>Sin cobertura registrada<small class="sub">AyA / ASADAS / ESPH / municipal</small></dd>`}
+      ${posteCerc ? `<dt>${I.elec}Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura vertical del tendido eléctrico (ARESEP)</small></dd>` : `<dt>${I.elec}Tendido eléctrico</dt><dd class="muted">Buscando el poste más cercano…</dd>`}
+      ${telecomListo ? (cobMovil ? `<dt>${I.tele}Cobertura móvil</dt><dd><b>${cobMovil}</b> (ICE/Kolbi)<small class="sub">Mejor tecnología celular disponible en el punto</small></dd>` : `<dt>${I.tele}Cobertura móvil</dt><dd>Sin cobertura registrada (ICE)</dd>`) : `<dt>${I.tele}Cobertura móvil</dt><dd class="muted">Consultando al ICE…</dd>`}
+      ${telecomListo && inetFijo != null ? (inetFijo ? `<dt>${I.tele}Internet fijo</dt><dd>Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small></dd>` : `<dt>${I.tele}Internet fijo</dt><dd>Sin cobertura registrada</dd>`) : ''}
+      ${transp && transp.bus ? `<dt>${I.bus}Ruta de bus</dt><dd>A <b class="num">${PX.dist(transp.bus.d)}</b>${transp.bus.n ? `<small class="sub">${esc(transp.bus.n)}</small>` : '<small class="sub">Ramal concesionado (ARESEP)</small>'}</dd>` : transp ? `<dt>${I.bus}Ruta de bus</dt><dd>Sin rutas a menos de 5 km</dd>` : `<dt>${I.bus}Transporte público</dt><dd class="muted">Consultando a ARESEP…</dd>`}
+      ${transp && transp.tren != null ? `<dt>${I.bus}Estación de tren</dt><dd>A <b class="num">${PX.dist(transp.tren)}</b><small class="sub">INCOFER (GAM)</small></dd>` : transp ? `<dt>${I.bus}Estación de tren</dt><dd>Sin estaciones a menos de 15 km</dd>` : ''}
+      </dl></section>`;
+    const norm = `<section class="blk"><h2>${I.norma}Normativa aplicable</h2><p><b>${esc(nv.titulo)}.</b> ${esc(nv.texto)}</p>
       ${nv.reglas.length ? `<dl class="kv sm">${nv.reglas.map(([k, t]) => `<dt>${k}</dt><dd>${esc(t)}</dd>`).join('')}</dl>` : ''}
       ${nv.alertas.length ? `<div class="gl">${nv.alertas.map(t => `<div>${esc(t)}</div>`).join('')}</div>` : ''}
       ${nv.vigente ? '' : `<p class="note2">Fuente: ${esc(PX.pro.NAC.fuente)}.</p>`}</section>`;
     const pv = PX.pro.potDefaults(r), pc = PX.pro.potCalc(pv);
-    const potc = pv.area ? `<section class="blk"><h2>Potencial constructivo <small>supuestos generales</small></h2>
+    const potc = pv.area ? `<section class="blk"><h2>${I['Con construcción']}Potencial constructivo <small>supuestos generales</small></h2>
       <div class="k4"><div><small>Huella (${pv.cob} %)</small><b class="num">${fnum(pc.huella, 0)} m²</b></div><div><small>En ${pv.pisos} pisos</small><b class="num">${fnum(pc.total, 0)} m²</b></div><div><small>Unidades de ${pv.unidad} m²</small><b class="num">${pc.unidades}</b></div><div><small>Lotes de ${fnum(pv.loteMin)} m²</small><b class="num">${pc.lotes}</b></div></div>
       <p class="note2">${esc(nv.titulo)}. Lote mínimo usado: ${fnum(pv.loteMin)} m² (${nv.vigente ? 'supuesto; confirme la zona del plan regulador' : 'normativa nacional sin alcantarillado sanitario'}). Cobertura y pisos son supuestos.</p></section>` : '';
     const z = e.zh, pcr = PX.pecr(r), vd = PX.pro.valDefaults(r), vc = PX.pro.valCalc(r, vd), ip = PX.iph(r);
-    const val = `<section class="blk"><h2>Valor y mercado</h2><dl class="kv sm">
+    const val = `<section class="blk"><h2>${I.valor}Valor y mercado</h2><dl class="kv sm">
       ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : ''}
       ${vc.total ? `<dt>Valor de referencia</dt><dd>${PX.duoI(vc.total, 'CRC')}<small class="sub">Terreno ${PX.duoI(vc.terreno, 'CRC')}${vd.ac ? ` + construcción estimada ${fnum(vd.ac)} m² ${vd.tip} (${PX.duoI(vc.vnr, 'CRC')})` : ''}</small></dd>` : ''}
       ${ip ? `<dt>Índice Puja/Hacienda</dt><dd><b>${Math.round(ip.v)}</b> · ${esc(ip.band[1])}<small class="sub">Base vigente ÷ valor según Hacienda × 100. Por etapa: ${ip.etapas.map((v, i) => ['1.º', '2.º', '3.º'][i] + ' ' + Math.round(v)).join(' · ')}${ip.aviso ? '. ' + esc(ip.aviso) : ''}</small>${PX.iphBar(ip.v, true)}</dd>` : ''}
-      ${e.aguaS ? `<dt>Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}</dd>` : `<dt>Agua potable</dt><dd>Sin cobertura registrada (AyA)</dd>`}
-      ${posteCerc ? `<dt>Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura del tendido eléctrico (ARESEP)</small></dd>` : ''}
-      ${cobMovil ? `<dt>Cobertura móvil</dt><dd><b>${cobMovil}</b> (ICE/Kolbi)<small class="sub">Mejor tecnología celular disponible en el punto</small></dd>` : '<dt>Cobertura móvil</dt><dd>Sin cobertura registrada (ICE)</dd>'}
-      ${inetFijo === true ? `<dt>Internet fijo</dt><dd>Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small></dd>` : inetFijo === false ? `<dt>Internet fijo</dt><dd>Sin cobertura registrada</dd>` : ''}
-      ${transp && transp.bus ? `<dt>Ruta de bus</dt><dd>A <b class="num">${PX.dist(transp.bus.d)}</b>${transp.bus.n ? `<small class="sub">${esc(transp.bus.n)}</small>` : '<small class="sub">Ramal concesionado (ARESEP)</small>'}</dd>` : transp ? '<dt>Ruta de bus</dt><dd>Sin rutas a menos de 5 km</dd>' : ''}
-      ${transp && transp.tren != null ? `<dt>Estación de tren</dt><dd>A <b class="num">${PX.dist(transp.tren)}</b><small class="sub">INCOFER (GAM)</small></dd>` : transp ? '<dt>Estación de tren</dt><dd>Sin estaciones a menos de 15 km</dd>' : ''}
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de ${PX.PECR_N}</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
         ${PX.pecrTable(pcr, r.usdm2, z && z.v ? z.v / PX.tc.venta : null, '#2A6B4D')}</div>` : ''}
       <p class="note2">Referencias orientativas, no avalúo. Construcción estimada con supuestos editables en la herramienta PRO «Valor de referencia».</p></section>`;
-    const ana = `<section class="blk"><h2>Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
+    const ana = `<section class="blk"><h2>${I.entorno}Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
       ${PX.DIMS.map(d => `<div class="dm"><div class="dmh"><b>${d.n}</b><span class="num">${s[d.k] ?? '–'}</span></div><span class="track"><i style="width:${s[d.k] || 0}%"></i></span>
         <p>${(s.why[d.k] || []).slice(0, 2).map(([p, t]) => esc(t)).join(' · ')}</p></div>`).join('')}</section>`;
-    const riesg = `<section class="blk"><h2>Riesgos posibles</h2><div class="rl">${ries.length ? ries.map(x => `<div class="r${x.n}"><i>${x.n === 1 ? 'i' : '!'}</i><span><b>${esc(x.t)}</b> <em>${lv[x.n]}</em><br>${esc(x.d)}</span></div>`).join('') : '<p>Sin riesgos detectados en los datos disponibles.</p>'}</div></section>`;
-    const potl = `<section class="blk"><h2>Potencialidades</h2><div class="rl pos">${pots.length ? pots.slice(0, 6).map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div></section>`;
-    const chk = `<section class="blk"><h2>Antes de ofertar</h2><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul></section>`;
+    const riesg = `<section class="blk"><h2>${I.alerta}Riesgos posibles</h2><div class="rl">${ries.length ? ries.map(x => `<div class="r${x.n}"><i>${x.n === 1 ? 'i' : '!'}</i><span><b>${esc(x.t)}</b> <em>${lv[x.n]}</em><br>${esc(x.d)}</span></div>`).join('') : '<p>Sin riesgos detectados en los datos disponibles.</p>'}</div></section>`;
+    const potl = `<section class="blk"><h2>${I.star}Potencialidades</h2><div class="rl pos">${pots.length ? pots.slice(0, 6).map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div></section>`;
+    const chk = `<section class="blk"><h2>${I.list}Antes de ofertar</h2><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul></section>`;
 
-    const fuentes = `<section class="blk"><h2>Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · ICE: cobertura móvil e internet fijo · ARESEP: tendido eléctrico y transporte · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
-    h += `<section class="page">${head('Ficha del lote')}<div class="cols">
-        <div class="col">${tl}${reg}${grav}</div>
-        <div class="col">${val}${ana}</div></div>${foot(2)}</section>`;
+    const fuentes = `<section class="blk"><h2>${I.book}Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · ICE: cobertura móvil e internet fijo · ARESEP: tendido eléctrico y transporte · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
+    h += `<section class="page">${head('Detalles técnicos y de mercado')}<div class="cols">
+        <div class="col"><p class="colkick">Detalles técnicos y legales</p>${tl}${reg}${serv}${grav}</div>
+        <div class="col"><p class="colkick">Análisis de mercado</p>${val}${ana}</div></div>${foot(2)}</section>`;
     h += `<section class="page">${head('Normativa, potencial y riesgos')}<div class="cols">
-        <div class="col">${norm}${potc}${chk}</div>
-        <div class="col">${potl}${riesg}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
+        <div class="col"><p class="colkick">Normativa y potencial</p>${norm}${potc}${chk}</div>
+        <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
     if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
@@ -130,4 +148,5 @@
   $('print').onclick = () => window.print();
   setCur(PX.cur);
   document.title = `Expediente · ${r.nom} · PlanoExactoCR`;
+  cargarServicios();
 })();

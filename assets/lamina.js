@@ -50,7 +50,7 @@
       : [['Base vigente · ' + PX.ETAPA[r.st], PX.duo(r.bv, r.mon), 'w'], ['Fecha del remate', PX.fdate(r.next, true)], ['Área', a ? `<span class="num">${fnum(a)}</span> m²` : '—'], ['Precio por m²', r.usdm2 ? PX.duo(r.usdm2, 'USD') : '—'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : '—'))]];
     return `<section class="lamina page" aria-label="Lámina del lote">
       <header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="40" height="28"></span><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span></div>
-        <div class="pt"><b>${esc(r.nom)}</b><span>${esc(r.lugar || '')}</span></div><div class="pm"><b class="num">${meta.folio}</b><span>${PX.fdate(new Date())}</span></div></header>
+        <div class="pt"><span class="colkick">Resumen orientativo</span><b>${esc(r.nom)}</b><span>${esc(r.lugar || '')}</span></div><div class="pm"><b class="num">${meta.folio}</b><span>${PX.fdate(new Date())}</span></div></header>
       <div class="lbody">
         <div class="lmapcol">
           <div class="lmapwrap"><div id="lmap" class="lmap"></div>
@@ -66,6 +66,9 @@
               <span><i class="ln" style="border-top:1.5px dashed #F4F1EA"></i>Límite distrital</span>
               <span><i class="nb">1</i>Salud${e.salud ? ' · ' + esc(e.salud.n) : ''}</span>
               <span><i class="nb">2</i>Escuela${e.escP ? ' · ' + esc(titleCase(e.escP.t)) : ''}</span>
+              <span><i class="sw" style="background:rgba(106,153,78,.3);border:1px solid rgba(106,153,78,.8)"></i>Cobertura de agua (AyA/ASADA, implícita)</span>
+              <span><i class="sw" style="background:rgba(218,139,55,.3);border:1px solid rgba(218,139,55,.8)"></i>Postes y tendido eléctrico (ARESEP)</span>
+              <span>Zona eléctrica por operador y cobertura móvil 4G, si existen (ARESEP/ICE)</span>
             </div>
           </div>
           <div class="lvars">${variables(r).map(([k, v, w]) => `<div class="${w ? 'w' : ''}"><small>${k}</small><b>${esc(v)}</b></div>`).join('')}</div>
@@ -96,6 +99,58 @@
   };
   const tip = (mk, t) => mk.bindTooltip(t, { permanent: true, direction: 'right', offset: [12, 0], className: 'ltip' });
 
+  // Color por operador eléctrico: misma paleta oficial que usa el mapa principal (app.js),
+  // repetida aquí porque la lámina del expediente no carga app.js.
+  const EL_COL = { ICE: 'rgb(252,190,182)', CNFL: 'rgb(252,215,242)', ESPH: 'rgb(249,184,252)', JASEC: 'rgb(184,215,252)',
+    COOPELESCA: 'rgb(252,239,204)', 'COOPEGUANACASTE R.L.': 'rgb(184,248,252)', COOPESANTOS: 'rgb(179,179,252)', COOPEALFARORUIZ: 'rgb(179,252,182)' };
+  const elCol = o => EL_COL[o] || '#C9CED1';
+  // ¿Esta geometría (Polygon/MultiPolygon) toca el recuadro [lonMin,latMin,lonMax,latMax]?
+  function bboxToca(geom, bb) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    (function walk(a) { if (typeof a[0] === 'number') { const [x, y] = a; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } else a.forEach(walk); })(geom.coordinates);
+    return !(x1 < bb[0] || x0 > bb[2] || y1 < bb[1] || y0 > bb[3]);
+  }
+
+  // Servicios e infraestructura en la lámina: agua, electricidad por operador, postes
+  // del tendido y cobertura móvil. Carga perezosa y NO bloqueante — cada capa se agrega
+  // sola cuando llega, sin esperar a las demás ni retrasar el resto del mapa. Todas se
+  // mandan al fondo (bringToBack) para que el predio siempre quede encima y visible.
+  function cargarServicios(m, c) {
+    const pad = 0.015, bb = [c[1] - pad, c[0] - pad, c[1] + pad, c[0] + pad]; // c = [lat, lon]
+    PX.get('data/cobertura_concesiones.geojson').then(d => {
+      const f = (d.features || []).filter(x => bboxToca(x.geometry, bb));
+      if (!f.length) return;
+      L.geoJSON({ type: 'FeatureCollection', features: f }, { interactive: false,
+        style: { color: 'rgb(106,153,78)', weight: 1, opacity: 0.6, dashArray: '4,3', fillColor: 'rgb(106,153,78)', fillOpacity: 0.16 }
+      }).addTo(m).bringToBack();
+    }).catch(() => {});
+    PX.get('data/electricidad.geojson').then(d => {
+      const f = (d.features || []).filter(x => bboxToca(x.geometry, bb));
+      if (!f.length) return;
+      L.geoJSON({ type: 'FeatureCollection', features: f }, { interactive: false,
+        style: x => ({ color: '#6E6E6E', weight: 0.5, opacity: 0.5, fillColor: elCol(x.properties.OPERADOR), fillOpacity: 0.22 })
+      }).addTo(m).bringToBack();
+    }).catch(() => {});
+    PX.get('data/postes_cov.geojson').then(d => {
+      const f = (d.features || []).filter(x => bboxToca(x.geometry, bb));
+      if (!f.length) return;
+      L.geoJSON({ type: 'FeatureCollection', features: f }, { interactive: false,
+        style: { color: 'rgb(218,139,55)', weight: 0.8, opacity: 0.55, dashArray: '3,3', fillColor: 'rgb(218,139,55)', fillOpacity: 0.14 }
+      }).addTo(m).bringToBack();
+    }).catch(() => {});
+    PX.cargarPostes().then(p => {
+      if (!p || !p.ll) return;
+      const pts = [];
+      for (const [lon, lat] of p.ll) { if (lon >= bb[0] && lon <= bb[2] && lat >= bb[1] && lat <= bb[3]) { pts.push([lat, lon]); if (pts.length >= 400) break; } }
+      if (!pts.length) return;
+      const g = L.layerGroup(pts.map(ll => L.circleMarker(ll, { radius: 2.6, color: '#fff', weight: 0.8, fillColor: 'rgb(218,139,55)', fillOpacity: 0.95, interactive: false })));
+      g.addTo(m);
+    }).catch(() => {});
+    // Cobertura móvil 4G (ICE/Kolbi): una sola tecnología representativa, en tile
+    // normal (sin proxy) porque aquí solo se muestra la imagen, no se leen sus píxeles.
+    wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:lte', { version: '1.3.0', opacity: 0.3, zIndex: 3, attribution: 'Cobertura móvil &copy; ICE (Kolbi)' }).addTo(m);
+  }
+
   L_.maps = [];
   window.addEventListener('beforeprint', () => L_.maps.forEach(([mp, f]) => { mp.invalidateSize(false); f(); }));
   L_.init = async r => {
@@ -116,6 +171,7 @@
     SNIT.vias().addTo(m); SNIT.curvas().addTo(m); SNIT.hidro().addTo(m);   // mapa limpio: sin la malla del catastro
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 16, pane: 'lbl' }).addTo(m);
     wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', sld_body: sldText('IGN_NG:hidronimos_25k') }).addTo(m);
+    cargarServicios(m, c);
     [100, 250, 500].forEach(rad => {
       L.circle(c, { radius: rad, color: '#55635D', weight: 1, dashArray: '4 6', fill: false, interactive: false, opacity: 0.7 }).addTo(m);
       L.marker([c[0] + rad / 111320, c[1]], { icon: L.divIcon({ className: 'lrad', html: rad + ' m', iconSize: [48, 14], iconAnchor: [24, 7] }), interactive: false }).addTo(m);

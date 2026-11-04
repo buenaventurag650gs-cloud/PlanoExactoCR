@@ -207,7 +207,14 @@
     juzgado: ic('<path d="M3 21h18M4 10h16M12 3l9 5H3z"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/>'),
     sol: ic('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
     luna: ic('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>'),
-    alerta: ic('<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>')
+    alerta: ic('<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>'),
+    // Mismos trazos que las categorías del panel de capas, para que la ficha y el expediente
+    // se vean coherentes con el mapa: rayo (electricidad), señal (telecomunicaciones),
+    // bus (transporte público) y torre (servicios e infraestructura en general).
+    elec: ic('<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>'),
+    tele: ic('<path d="M8.1 16.5c2.1-2.1 5.7-2.1 7.8 0"/><path d="M5 13.4c3.9-3.9 10.1-3.9 14 0"/><path d="M2 10.3C7.1 5.1 16.9 5.1 22 10.3"/><circle cx="12" cy="20" r="1"/>'),
+    bus: ic('<path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M7 18h10"/><rect x="4" y="4" width="16" height="14" rx="4"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>'),
+    servicios: ic('<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>')
   };
   // Ícono para cada fila de la ficha según su etiqueta
   PX.rowIcon = t => {
