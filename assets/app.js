@@ -483,6 +483,7 @@
   // lee los píxeles y pinta con la mejor tecnología disponible en cada punto.
   const COB_MOVIL_CAPAS = ['ice:tg', 'ice:lte', 'ice:ltea', 'ice:5g-omv'];
   const COB_MOVIL_RGB = [[200,85,61], [233,196,106], [124,196,142], [31,90,71]]; // tier 1–4
+  let _cobMovilWarn = 0; // timestamp del último toast de ICE caído
   L.GridLayer.CobMovil = L.GridLayer.extend({
     options: { tileSize: 256, opacity: 0.55, zIndex: 4, maxZoom: 21, attribution: 'Cobertura móvil &copy; ICE/Kolbi' },
     createTile(coords, done) {
@@ -499,7 +500,10 @@
       const urls = COB_MOVIL_CAPAS.map(l =>
         `/api/ice-wms?layer=${l}&bbox=${bbox}&width=${sz.x}&height=${sz.y}&srs=EPSG:3857`);
       Promise.all(urls.map(u =>
-        fetch(u).then(r => r.ok ? r.blob() : null).then(b => b ? createImageBitmap(b) : null).catch(() => null)
+        fetch(u).then(r => {
+          if (!r.ok) { if (Date.now() - _cobMovilWarn > 30000) { _cobMovilWarn = Date.now(); toast('El servidor del ICE no responde — la capa de cobertura móvil no está disponible en este momento'); } return null; }
+          return r.blob();
+        }).then(b => b ? createImageBitmap(b) : null).catch(() => null)
       )).then(imgs => {
         const ctx = tile.getContext('2d');
         const datas = imgs.map(img => {
