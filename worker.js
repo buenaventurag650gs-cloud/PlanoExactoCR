@@ -206,53 +206,19 @@ function miniMapaURL(ll) {
 }
 
 // ---------- Mini-plano del predio para el correo ----------
-// Igual que la lámina del expediente: base topográfica clara con el polígono del lote
-// dibujado encima (casing blanco + relleno + borde terracota). Se arma como UNA sola
-// imagen PNG (polígono "quemado" sobre la base) para que se vea en cualquier cliente de
-// correo —Gmail elimina SVG, position:absolute y data: URIs—, sin llave de API.
+// Plano técnico (no foto aérea): fondo claro con cuadrícula a escala real, el polígono del
+// lote dibujado (casing blanco + relleno + borde terracota), flecha norte y barra de escala.
+// Se dibuja entero acá y se entrega como UNA sola imagen PNG —sin fetch externo ni llave de
+// API— para que se vea idéntico en cualquier cliente de correo, Gmail incluido (que elimina
+// SVG, position:absolute y data: URIs).
 const MERC_R = 6378137;
 const aMerc = ([lon, lat]) => [MERC_R * lon * Math.PI / 180, MERC_R * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))];
-async function inflar(bytes) {
-  const ds = new DecompressionStream("deflate"), w = ds.writable.getWriter(); w.write(bytes); w.close();
-  const partes = [], rd = ds.readable.getReader();
-  for (; ;) { const { done, value } = await rd.read(); if (done) break; partes.push(value); }
-  let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
-}
+const secLat = (lat) => 1 / Math.cos(lat * Math.PI / 180);   // unidades mercator → metros ≈ × cos(lat)
 async function desinflar(bytes) {
   const cs = new CompressionStream("deflate"), w = cs.writable.getWriter(); w.write(bytes); w.close();
   const partes = [], rd = cs.readable.getReader();
   for (; ;) { const { done, value } = await rd.read(); if (done) break; partes.push(value); }
   let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
-}
-const paethPred = (a, b, c) => { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c; };
-async function decodificarPNG(buf) {
-  if (buf[0] !== 137 || buf[1] !== 80) throw new Error("no es PNG");
-  let p = 8, w = 0, h = 0, bitDepth = 0, colorType = 0; const idat = [];
-  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  while (p < buf.length) {
-    const len = dv.getUint32(p), type = String.fromCharCode(buf[p + 4], buf[p + 5], buf[p + 6], buf[p + 7]);
-    if (type === "IHDR") { w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); bitDepth = buf[p + 16]; colorType = buf[p + 17]; }
-    else if (type === "IDAT") idat.push(buf.subarray(p + 8, p + 8 + len));
-    else if (type === "IEND") break;
-    p += 12 + len;
-  }
-  if (bitDepth !== 8) throw new Error("bitDepth " + bitDepth);
-  const ch = colorType === 2 ? 3 : colorType === 6 ? 4 : colorType === 0 ? 1 : -1;
-  if (ch < 0) throw new Error("colorType " + colorType);
-  let comp = 0; idat.forEach((d) => comp += d.length); const cbuf = new Uint8Array(comp); let o = 0; idat.forEach((d) => { cbuf.set(d, o); o += d.length; });
-  const raw = await inflar(cbuf), stride = w * ch, rgb = new Uint8Array(w * h * 3);
-  const prev = new Uint8Array(stride), cur = new Uint8Array(stride); let sp = 0;
-  for (let y = 0; y < h; y++) {
-    const f = raw[sp++];
-    for (let i = 0; i < stride; i++) {
-      const x = raw[sp++], a = i >= ch ? cur[i - ch] : 0, b = prev[i], c = i >= ch ? prev[i - ch] : 0;
-      let v; if (f === 0) v = x; else if (f === 1) v = x + a; else if (f === 2) v = x + b; else if (f === 3) v = x + ((a + b) >> 1); else if (f === 4) v = x + paethPred(a, b, c); else v = x;
-      cur[i] = v & 0xff;
-    }
-    for (let xx = 0; xx < w; xx++) { const si = xx * ch, di = (y * w + xx) * 3; rgb[di] = cur[si]; rgb[di + 1] = ch >= 3 ? cur[si + 1] : cur[si]; rgb[di + 2] = ch >= 3 ? cur[si + 2] : cur[si]; }
-    prev.set(cur);
-  }
-  return { w, h, rgb };
 }
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_T[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
@@ -295,11 +261,20 @@ function trazarPoly(img, rings, rad, cr, cg, cb, a) {
     for (let s = 0; s <= pasos; s++) sello(img, p1[0] + dx * s / pasos, p1[1] + dy * s / pasos, rad, cr, cg, cb, a);
   }
 }
-// Devuelve el PNG (Uint8Array) del mini-plano del remate r, o null si no se puede.
-async function planoCorreoPNG(r, env) {
+// Lienzo de color sólido y primitivas de dibujo (líneas, rectángulos, texto).
+function lienzo(W, H, r, g, b) { const rgb = new Uint8Array(W * H * 3); for (let i = 0; i < W * H; i++) { rgb[i * 3] = r; rgb[i * 3 + 1] = g; rgb[i * 3 + 2] = b; } return { w: W, h: H, rgb }; }
+function pintarPx(img, x, y, cr, cg, cb, a) { if (x < 0 || y < 0 || x >= img.w || y >= img.h) return; mezclar(img.rgb, (y * img.w + x) * 3, cr, cg, cb, a); }
+function hLinea(img, x0, x1, y, cr, cg, cb, a) { y = Math.round(y); for (let x = Math.round(x0); x <= Math.round(x1); x++) pintarPx(img, x, y, cr, cg, cb, a); }
+function vLinea(img, x, y0, y1, cr, cg, cb, a) { x = Math.round(x); for (let y = Math.round(y0); y <= Math.round(y1); y++) pintarPx(img, x, y, cr, cg, cb, a); }
+function rectangulo(img, x0, y0, x1, y1, cr, cg, cb, a) { for (let y = Math.round(y0); y <= Math.round(y1); y++) for (let x = Math.round(x0); x <= Math.round(x1); x++) pintarPx(img, x, y, cr, cg, cb, a); }
+// Fuente de mapa de bits 3×5 (y 5×5 para la "m") para la escala y la "N".
+const FUENTE = { "0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"], "2": ["111", "001", "111", "100", "111"], "3": ["111", "001", "111", "001", "111"], "4": ["101", "101", "111", "001", "001"], "5": ["111", "100", "111", "001", "111"], "6": ["111", "100", "111", "101", "111"], "7": ["111", "001", "010", "010", "010"], "8": ["111", "101", "111", "101", "111"], "9": ["111", "101", "111", "001", "111"], "m": ["00000", "00000", "11110", "10101", "10101"], "k": ["100", "101", "110", "101", "101"], "N": ["1001", "1101", "1011", "1011", "1001"], " ": ["000", "000", "000", "000", "000"] };
+function textoPlano(img, s, x, y, sc, cr, cg, cb) { let cx = x; for (const ch of s) { const g = FUENTE[ch] || FUENTE[" "], gw = g[0].length; for (let r = 0; r < 5; r++) for (let c = 0; c < gw; c++) if (g[r][c] === "1") rectangulo(img, cx + c * sc, y + r * sc, cx + c * sc + sc - 1, y + r * sc + sc - 1, cr, cg, cb, 1); cx += (gw + 1) * sc; } }
+// Devuelve el PNG (Uint8Array) del mini-plano técnico del remate r, o null si no se puede.
+async function planoCorreoPNG(r) {
   try {
     if (!r || !r.poly || !r.poly.length) return null;
-    const W = 600, H = 360;
+    const W = 600, H = 360, latC = r.ll ? r.ll[1] : 9.9;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
     for (const pg of r.poly) for (const ring of pg) {
       const rm = ring.map(aMerc); ringsM.push(rm);
@@ -308,19 +283,45 @@ async function planoCorreoPNG(r, env) {
     if (!ringsM.length || !isFinite(x0)) return null;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     let hw = (x1 - x0) / 2 * 1.6, hh = (y1 - y0) / 2 * 1.6;   // margen alrededor del lote (zoom cerrado)
-    const may = Math.max(hw, hh, 1); let k = 1; if (may < 20) k = 20 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
+    const may = Math.max(hw, hh, 1); let k = 1; if (may < 18) k = 18 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
     const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
     const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
-    const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${H}&format=png24&f=image`;
-    const resp = await fetch(url, { cf: { cacheTtl: 86400, cacheEverything: true } });
-    if (!resp.ok) return null;
-    const img = await decodificarPNG(new Uint8Array(await resp.arrayBuffer()));
-    if (img.w !== W || img.h !== H) return null;
+    const img = lienzo(W, H, 244, 245, 242);
+
+    // Cuadrícula a escala real: paso "redondo" para ~6-9 líneas a lo ancho.
+    const spanMx = (bx1 - bx0) / secLat(latC);   // ancho en metros (aprox)
+    const escalas = [2, 5, 10, 20, 25, 50, 100, 200, 500, 1000];
+    let g = escalas[0]; for (const e of escalas) { g = e; if (spanMx / e <= 9) break; }
+    const gM = g * secLat(latC);
+    for (let mx = Math.ceil(bx0 / gM) * gM; mx <= bx1; mx += gM) vLinea(img, (mx - bx0) / (bx1 - bx0) * W, 0, H - 1, 214, 221, 216, 0.9);
+    for (let my = Math.ceil(by0 / gM) * gM; my <= by1; my += gM) hLinea(img, 0, W - 1, (by1 - my) / (by1 - by0) * H, 214, 221, 216, 0.9);
+
+    // Polígono del lote
     const toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * H];
     const ringsPx = ringsM.map((r) => r.map(toPx));
-    trazarPoly(img, ringsPx, 4.5, 255, 255, 255, 0.9);     // casing blanco
-    rellenarPoly(img, ringsPx, 232, 149, 111, 0.42);       // relleno terracota translúcido
+    trazarPoly(img, ringsPx, 4.5, 255, 255, 255, 0.95);    // casing blanco
+    rellenarPoly(img, ringsPx, 232, 149, 111, 0.45);       // relleno terracota translúcido
     trazarPoly(img, ringsPx, 2.4, 200, 85, 61, 1);         // borde terracota
+
+    // Marco fino
+    rectangulo(img, 0, 0, W - 1, 1, 180, 188, 183, 1); rectangulo(img, 0, H - 2, W - 1, H - 1, 180, 188, 183, 1);
+    rectangulo(img, 0, 0, 1, H - 1, 180, 188, 183, 1); rectangulo(img, W - 2, 0, W - 1, H - 1, 180, 188, 183, 1);
+
+    // Flecha norte (arriba-derecha): "N" + punta + astil
+    const nx = W - 26, ny = 16, D0 = 21, D1 = 48, D2 = 42;
+    textoPlano(img, "N", nx - 3, ny - 1, 3, D0, D1, D2);
+    const ay = ny + 20;
+    for (let yy = 0; yy <= 11; yy++) { const half = yy * 0.55; hLinea(img, nx - half, nx + half, ay + yy, D0, D1, D2, 1); }
+    rectangulo(img, nx - 1, ay + 11, nx + 1, ay + 22, D0, D1, D2, 1);
+
+    // Barra de escala (abajo-izquierda) = un paso de cuadrícula
+    const barPx = gM / (bx1 - bx0) * W, sx = 16, sy = H - 24;
+    rectangulo(img, sx, sy, sx + barPx, sy + 6, D0, D1, D2, 1);
+    rectangulo(img, sx, sy, sx + barPx / 2, sy + 6, 244, 245, 242, 1);
+    hLinea(img, sx, sx + barPx, sy, D0, D1, D2, 1); hLinea(img, sx, sx + barPx, sy + 6, D0, D1, D2, 1);
+    vLinea(img, sx, sy, sy + 6, D0, D1, D2, 1); vLinea(img, sx + barPx / 2, sy, sy + 6, D0, D1, D2, 1); vLinea(img, sx + barPx, sy, sy + 6, D0, D1, D2, 1);
+    textoPlano(img, g >= 1000 ? (g / 1000 + " km") : (g + " m"), sx, sy - 16, 3, D0, D1, D2);
+
     return await codificarPNG(img);
   } catch (e) { return null; }
 }
@@ -334,7 +335,7 @@ async function planoCorreo(request, env, u) {
   try {
     const r = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)));
     const R = await r.json(); rem = R.find((x) => String(x.id) === id);
-    if (rem) png = await planoCorreoPNG(rem, env);
+    if (rem) png = await planoCorreoPNG(rem);
   } catch (e) {}
   if (!png) { const sat = rem && rem.ll ? miniMapaURL(rem.ll) : null; return sat ? Response.redirect(sat, 302) : new Response("", { status: 404 }); }
   const resp = new Response(png, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400", "X-Robots-Tag": "noindex" } });
