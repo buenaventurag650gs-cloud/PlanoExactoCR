@@ -1472,6 +1472,7 @@
             <div class="btn-list mt-2"><button class="btn btn-sm" data-ren="${l.id}">Renombrar</button>${a.listas.length > 1 ? `<button class="btn btn-sm btn-ghost-danger" data-dell="${l.id}">Eliminar lista</button>` : ''}</div></details>`).join('')}</div>`, '<button class="btn btn-sm" data-newl>Nueva lista</button>')}
         ${tarjeta('Expedientes' + cuenta(a.expedientes.length), a.expedientes.length ? `<div class="list-group list-group-flush">${a.expedientes.map(x => `<a class="list-group-item list-group-item-action" href="expediente.html?k=${encodeURIComponent(x.k)}"><div class="fw-medium">${esc(x.n || nameOf(x.k))}</div><div class="text-secondary small">${x.via === 'pro' ? 'PRO' : x.via === 'esencial' ? 'Esencial' : x.via === 'compra' ? 'Expediente adicional' : 'Cuenta gratis'} · ${fdate(new Date(x.t))}</div></a>`).join('')}</div>` : vacio('Aún no has generado expedientes.'))}
         ${tarjeta('Búsquedas guardadas', a.busquedas.length ? `<div class="list-group list-group-flush">${a.busquedas.map((b, i) => `<div class="list-group-item d-flex align-items-center"><a href="#" class="text-reset flex-fill" data-bus="${i}">${esc(b.n)}<div class="text-secondary small">${fdate(new Date(b.t))}</div></a><a href="#" class="text-secondary small" data-delb="${i}">Eliminar</a></div>`).join('')}</div>` : vacio('Usa «Guardar búsqueda» sobre la lista de remates para volver a una búsqueda.'))}
+        ${(oc => oc.length ? tarjeta('Ocultos' + cuenta(oc.length), `<div class="list-group list-group-flush">${oc.map(k => { const it = PX.item(k); return `<div class="list-group-item d-flex align-items-center"><a href="#" class="text-reset flex-fill text-truncate" data-open="${k}">${esc(it ? it.nom : k)}</a><a href="#" class="text-secondary small ms-2 text-nowrap" data-unocultar="${k}">Volver a mostrar</a></div>`; }).join('')}</div>`, `<button class="btn btn-sm btn-ghost-danger" data-clearocultos>Mostrar todos</button>`) : '')(PX.ocultos())}
         ${PX.admin ? tarjeta('Administración', `<div class="list-group list-group-flush"><a class="list-group-item list-group-item-action" href="/admin"><div class="fw-medium">Usuarios, planes y pagos</div><div class="text-secondary small">Cuentas, pagos por SINPE y exportación.</div></a>
           <a class="list-group-item list-group-item-action" href="catastro.html"><div class="fw-medium">Ubicar remates en el catastro</div><div class="text-secondary small">Botón para consultar el SNIT desde Costa Rica.</div></a></div>`) : ''}
       </div></div><div class="offcanvas-backdrop fade show" data-close></div></div>`;
@@ -1487,7 +1488,7 @@
   }
   $('bCuenta').onclick = () => { renderCuenta(); pintarPagos(); };
   $('layer').addEventListener('click', async e => {
-    const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb]'); if (!d) return; e.preventDefault();
+    const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb],[data-unocultar],[data-clearocultos]'); if (!d) return; e.preventDefault();
     const a = PX.acct, ds = d.dataset;
     if (ds.open) { closeLayer(); const it = PX.item(ds.open); if (it && it.isPlano) setTab('pla'); openFicha(ds.open, true); return; }
     if (ds.unsig) PX.toggleSigo(ds.unsig);
@@ -1497,6 +1498,8 @@
     if (ds.newl !== undefined) { const n = await prompt_('Nombre de la lista', 'Para visitar'); if (n) a.listas.push({ id: 'l' + Date.now(), n, items: [] }); }
     if (ds.bus) { closeLayer(); setFilt(a.busquedas[+ds.bus].s); return; }
     if (ds.delb) a.busquedas.splice(+ds.delb, 1);
+    if (ds.unocultar) { PX.toggleOculto(ds.unocultar); toast('Volvió a aparecer en el mapa.'); }
+    if (ds.clearocultos !== undefined) { a.ocultos = []; toast('Todos los remates ocultos vuelven a aparecer.'); }
     PX.saveAcct(); renderCuenta(); pintarPagos(); renderList();
   });
   $('layer').addEventListener('input', e => {
