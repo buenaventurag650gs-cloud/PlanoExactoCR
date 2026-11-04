@@ -1147,6 +1147,13 @@
       ${r.rev ? `<div class="alert alert-warning"><div>${esc(r.rev)}</div></div>` : ''}
       ${fGrupo('Información base')}
       ${r.isPlano ? '' : `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div></div>`}
+      ${ESEsec('Número de finca y plano, servidumbres citadas y origen de la ubicación.', I.registro, 'Registro y ubicación', `<dl class="kv">
+        <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
+        <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
+        ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
+        <dt>Ubicación</dt><dd>${esc(ubic)}</dd>
+        ${r.pub ? `<dt>Publicado</dt><dd>${fdate(r.pub)}<small class="sub">Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')}</small></dd>` : ''}
+      </dl>`)}
       ${sec(I.terreno, 'Terreno', `<dl class="kv">
         <dt>Área</dt><dd>${r.area ? fnum(r.area) + ' m² en edicto' : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? fnum(r.areaCat) + ' m² en catastro' : ''}${!r.area && !r.areaCat ? '—' : ''}</dd>
         ${dm && ese ? `<dt>Dimensiones</dt><dd>≈ ${fnum(dm.corto, 1)} × ${fnum(dm.largo, 1)} m<small class="sub">relación 1:${fnum(dm.rel, 1)}</small></dd>` : ''}
@@ -1157,13 +1164,6 @@
       </dl>`)}
       ${sec(I.norma, 'Normativa', `<p class="mb-2"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="alert alert-warning py-2 mb-2"><div>${esc(t)}</div></div>`).join('')}`)}
       ${fGrupo(`${PX.ESE} <span class="ms-2">Con el plan Esencial</span>`)}
-      ${ESEsec('Número de finca y plano, servidumbres citadas y origen de la ubicación.', I.registro, 'Registro y ubicación', `<dl class="kv">
-        <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
-        <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
-        ${r.isPlano ? '' : `<dt>Servidumbres</dt><dd>${nserv ? `<span class="tag warn">${nserv === 1 ? 'Una citada' : nserv + ' citadas'}</span>` : 'Ninguna citada en el edicto'}</dd>`}
-        <dt>Ubicación</dt><dd>${esc(ubic)}</dd>
-        ${r.pub ? `<dt>Publicado</dt><dd>${fdate(r.pub)}<small class="sub">Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')}</small></dd>` : ''}
-      </dl>`)}
       ${ESEsec('Agua potable, electricidad, telecomunicaciones, salud, escuela y entorno.', I.entorno, 'Servicios y entorno', `<dl class="kv">
         <dt>Agua potable</dt><dd>${e.aguaS ? 'Cobertura de ' + esc(e.aguaS.join(', ')) : 'Sin cobertura registrada'}<small class="sub">AyA, ESPH, ASADAS y acueductos municipales</small></dd>
         <dt>Tendido eléctrico</dt><dd id="fposte">…</dd>
