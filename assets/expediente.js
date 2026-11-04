@@ -26,8 +26,25 @@
   if (r.isPlano && r.ent && r.ent.cob === undefined && r.ll) { r.ent.cob = await PX.cobertura(r.ll[0], r.ll[1]); PX.savePlano(r); }
   // Distancia al poste más cercano del tendido eléctrico: carga perezosa.
   // Si falla la descarga, la fila simplemente no se muestra.
-  let posteCerc = null;
-  if (r.ll) { try { posteCerc = await PX.posteMasCercano(r.ll[0], r.ll[1]); } catch (_) {} }
+  let posteCerc = null, cobMovil = null, inetFijo = null;
+  if (r.ll) {
+    const [lon, lat] = r.ll;
+    try { posteCerc = await PX.posteMasCercano(lon, lat); } catch (_) {}
+    // Cobertura móvil e internet fijo: consultas WMS paralelas al ICE
+    try {
+      const d = 0.0005, bbox = `${lon - d},${lat - d},${lon + d},${lat + d}`;
+      const CAPAS = ['ice:5g-omv', 'ice:ltea', 'ice:lte', 'ice:tg'];
+      const TECH = ['5G', 'LTE-A', 'LTE', '3G/2G'];
+      const imgs = await Promise.all([...CAPAS, 'ice:internet-shp'].map(l =>
+        fetch(`/api/ice-wms?layer=${l}&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`)
+          .then(r => r.ok ? r.blob().then(b => createImageBitmap(b)) : null).catch(() => null)));
+      const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
+      const ctx = cv.getContext('2d');
+      const chk = bmp => { if (!bmp) return false; ctx.clearRect(0, 0, 3, 3); ctx.drawImage(bmp, 0, 0); return ctx.getImageData(1, 1, 1, 1).data[3] > 10; };
+      for (let i = 0; i < CAPAS.length; i++) if (chk(imgs[i])) { cobMovil = TECH[i]; break; }
+      inetFijo = chk(imgs[4]);
+    } catch (_) {}
+  }
 
   const folio = `PX-${r.key.toUpperCase()}-${PX.now.getFullYear()}${String(PX.now.getMonth() + 1).padStart(2, '0')}${String(PX.now.getDate()).padStart(2, '0')}`;
   const titleCase = s => String(s || '').toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase());
@@ -78,7 +95,9 @@
       ${vc.total ? `<dt>Valor de referencia</dt><dd>${PX.duoI(vc.total, 'CRC')}<small class="sub">Terreno ${PX.duoI(vc.terreno, 'CRC')}${vd.ac ? ` + construcción estimada ${fnum(vd.ac)} m² ${vd.tip} (${PX.duoI(vc.vnr, 'CRC')})` : ''}</small></dd>` : ''}
       ${ip ? `<dt>Índice Puja/Hacienda</dt><dd><b>${Math.round(ip.v)}</b> · ${esc(ip.band[1])}<small class="sub">Base vigente ÷ valor según Hacienda × 100. Por etapa: ${ip.etapas.map((v, i) => ['1.º', '2.º', '3.º'][i] + ' ' + Math.round(v)).join(' · ')}${ip.aviso ? '. ' + esc(ip.aviso) : ''}</small>${PX.iphBar(ip.v, true)}</dd>` : ''}
       ${e.aguaS ? `<dt>Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}</dd>` : `<dt>Agua potable</dt><dd>Sin cobertura registrada (AyA)</dd>`}
-      ${posteCerc ? `<dt>Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura vertical del tendido eléctrico (ARESEP). La presencia del poste no garantiza una conexión disponible: confirme con el operador que le corresponde al distrito.</small></dd>` : ''}
+      ${posteCerc ? `<dt>Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura del tendido eléctrico (ARESEP)</small></dd>` : ''}
+      ${cobMovil ? `<dt>Cobertura móvil</dt><dd><b>${cobMovil}</b> (ICE/Kolbi)<small class="sub">Mejor tecnología celular disponible en el punto</small></dd>` : '<dt>Cobertura móvil</dt><dd>Sin cobertura registrada (ICE)</dd>'}
+      ${inetFijo === true ? `<dt>Internet fijo</dt><dd>Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small></dd>` : inetFijo === false ? `<dt>Internet fijo</dt><dd>Sin cobertura registrada</dd>` : ''}
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de ${PX.PECR_N}</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
         ${PX.pecrTable(pcr, r.usdm2, z && z.v ? z.v / PX.tc.venta : null, '#2A6B4D')}</div>` : ''}
@@ -90,7 +109,7 @@
     const potl = `<section class="blk"><h2>Potencialidades</h2><div class="rl pos">${pots.length ? pots.slice(0, 6).map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div></section>`;
     const chk = `<section class="blk"><h2>Antes de ofertar</h2><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul></section>`;
 
-    const fuentes = `<section class="blk"><h2>Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
+    const fuentes = `<section class="blk"><h2>Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · ICE: cobertura móvil e internet fijo · ARESEP: tendido eléctrico y transporte · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
     h += `<section class="page">${head('Ficha del lote')}<div class="cols">
         <div class="col">${tl}${reg}${grav}</div>
         <div class="col">${val}${ana}</div></div>${foot(2)}</section>`;

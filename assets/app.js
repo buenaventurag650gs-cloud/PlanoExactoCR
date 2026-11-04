@@ -519,6 +519,39 @@
       return tile;
     }
   });
+  // Consultar cobertura móvil ICE en un punto (devuelve '5G', 'LTE-A', 'LTE', '3G/2G' o null)
+  async function cobMovilAt(lon, lat) {
+    const CAPAS = ['ice:5g-omv', 'ice:ltea', 'ice:lte', 'ice:tg'];
+    const TECH = ['5G', 'LTE-A', 'LTE', '3G/2G'];
+    const d = 0.0005;
+    const bbox = `${lon - d},${lat - d},${lon + d},${lat + d}`;
+    for (let i = 0; i < CAPAS.length; i++) {
+      try {
+        const r = await fetch(`/api/ice-wms?layer=${CAPAS[i]}&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`);
+        if (!r.ok) continue;
+        const bmp = await createImageBitmap(await r.blob());
+        const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
+        const ctx = cv.getContext('2d');
+        ctx.drawImage(bmp, 0, 0);
+        if (ctx.getImageData(1, 1, 1, 1).data[3] > 10) return TECH[i];
+      } catch (_) {}
+    }
+    return null;
+  }
+  // Consultar internet fijo ICE en un punto (devuelve true/false)
+  async function inetFijoAt(lon, lat) {
+    const d = 0.0005;
+    const bbox = `${lon - d},${lat - d},${lon + d},${lat + d}`;
+    try {
+      const r = await fetch(`/api/ice-wms?layer=ice:internet-shp&bbox=${bbox}&width=3&height=3&srs=EPSG:4326`);
+      if (!r.ok) return null;
+      const bmp = await createImageBitmap(await r.blob());
+      const cv = document.createElement('canvas'); cv.width = 3; cv.height = 3;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+      return ctx.getImageData(1, 1, 1, 1).data[3] > 10;
+    } catch (_) { return null; }
+  }
   const SINIA = 'https://geodatos.sinia.go.cr/geoserver/';
   const HIDRO = '#3B8BD9', CURV = '#A0826D', PSA = '#6A994E', PROT = '#3B8BD9';
 
@@ -836,6 +869,8 @@
     if (on('zv')) { const f = hit(ZV, x, y); if (f) rows.push(['Zona de vida', f.properties.n]); }
     if (on('planes')) { const f = hit(PX.ctx.planes, x, y); if (f) rows.push(['Plan regulador', PX.prText(f.properties)]); }
     if (on('precios')) { const f = hit(CANT, x, y); if (f) { const m = medCant(f); rows.push(['Precio por m² en ' + f.properties.k, m ? `${PX.duoT(m.v, 'USD', '/m²')}, mediana de ${m.n} remates` : 'Menos de 3 remates con área']); } }
+    if (on('cobmovil')) jobs.push(['Cobertura móvil', cobMovilAt(x, y).then(t => t ? t + ' (ICE/Kolbi)' : 'Sin cobertura')]);
+    if (on('internetfijo')) jobs.push(['Internet fijo', inetFijoAt(x, y).then(v => v ? 'Disponible (ICE)' : 'Sin cobertura')]);
     if (!jobs.length && rows.length < 2 && (window.innerWidth > 900 || !w)) return; // sin capas temáticas activas el recuadro del mouse ya basta
     const paint = vals => idPop.setContent(`<div class="idrows">${rows.concat(jobs.map(([k], i) => [k, vals ? (vals[i] || 'Sin dato en este punto') : 'Consultando…'])).map(([k, v]) => `<div><span>${esc(k)}</span><div>${esc(v)}</div></div>`).join('')}</div>`);
     paint(null); idPop.setLatLng(e.latlng).openOn(map);
@@ -1111,8 +1146,11 @@
         <dt>Ubicación</dt><dd>${esc(ubic)}</dd>
         ${r.pub ? `<dt>Publicado</dt><dd>${fdate(r.pub)}<small class="sub">Boletín Judicial Nº ${(r.bols || [r.bol]).join(' y ')}</small></dd>` : ''}
       </dl>`)}
-      ${ESEsec('Agua potable, vía de acceso, salud, escuela, ríos y distancia a la costa.', I.entorno, 'Servicios y entorno', `<dl class="kv">
+      ${ESEsec('Agua potable, electricidad, telecomunicaciones, salud, escuela y entorno.', I.entorno, 'Servicios y entorno', `<dl class="kv">
         <dt>Agua potable</dt><dd>${e.aguaS ? 'Cobertura de ' + esc(e.aguaS.join(', ')) : 'Sin cobertura registrada'}<small class="sub">AyA, ESPH, ASADAS y acueductos municipales</small></dd>
+        <dt>Tendido eléctrico</dt><dd id="fposte">…</dd>
+        <dt>Cobertura móvil</dt><dd id="fcobmov">…</dd>
+        <dt>Internet fijo</dt><dd id="finet">…</dd>
         ${e.via ? `<dt>Vía más cercana</dt><dd>${e.via.d <= 10 ? esc(e.via.t) + ', al frente' : esc(e.via.t) + ' a ' + PX.dist(e.via.d)}</dd>` : ''}
         ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n)}<small class="sub">${PX.dist(e.salud.d)}</small></dd>` : ''}
         ${e.esc != null ? `<dt>Escuela</dt><dd>A ${PX.dist(e.esc)}</dd>` : ''}
@@ -1137,6 +1175,18 @@
     f.hidden = false;
     $('fx').onclick = closeFicha;
     if (r.isPlano && !r.cob && !e.cob && r.ll) PX.cobertura(r.ll[0], r.ll[1]).then(v => { r.cob = v; if (r.ent) r.ent.cob = v; PX.savePlano(r); const d = $('pcob'); if (d) d.textContent = v || 'Sin dato del MINAE'; });
+    // Datos de electricidad y telecomunicaciones (async)
+    if (r.ll && ese) {
+      const [lon, lat] = r.ll;
+      PX.posteMasCercano(lon, lat).then(p => { const d = $('fposte'); if (d) d.innerHTML = p ? `Poste a <b>${PX.dist(p.d)}</b><small class="sub">Infraestructura del tendido eléctrico (ARESEP)</small>` : 'Sin datos de postes cercanos'; }).catch(() => { const d = $('fposte'); if (d) d.textContent = 'No disponible'; });
+      cobMovilAt(lon, lat).then(t => { const d = $('fcobmov'); if (d) d.innerHTML = t ? `<b>${t}</b> (ICE/Kolbi)<small class="sub">Mejor tecnología disponible en el punto</small>` : 'Sin cobertura registrada'; }).catch(() => { const d = $('fcobmov'); if (d) d.textContent = 'No disponible'; });
+      inetFijoAt(lon, lat).then(v => { const d = $('finet'); if (d) d.innerHTML = v === true ? 'Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small>' : v === false ? 'Sin cobertura registrada' : 'No disponible'; }).catch(() => { const d = $('finet'); if (d) d.textContent = 'No disponible'; });
+    } else {
+      const fill = (id, txt) => { const d = $(id); if (d) d.textContent = txt; };
+      fill('fposte', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
+      fill('fcobmov', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
+      fill('finet', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
+    }
     selLayer.clearLayers();
     if (r.ll) {
       const col = r.isPlano ? css('--accent') : XC[r.st];
