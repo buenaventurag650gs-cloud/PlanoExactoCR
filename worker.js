@@ -384,16 +384,32 @@ async function planoCorreoPNG(r) {
 // Endpoint público para el <img> del correo: /api/plano-correo?id=<id>. Devuelve el PNG
 // del mini-plano (cacheado); si el remate no tiene polígono, redirige a la imagen satelital.
 async function planoCorreo(request, env, u) {
-  // Diagnóstico: /api/plano-correo?debug=1 reporta qué devuelve cada servicio de Esri.
+  // Diagnóstico: /api/plano-correo?debug=1 prueba el bbox REAL de las 3 propiedades del
+  // correo (y reporta formato PNG, tamaño y tiempo de decodificación) para ver por qué falla.
   if (u.searchParams.get("debug")) {
     const out = [];
-    for (const [name, svc, fmt] of [["base", "Canvas/World_Light_Gray_Base", "png24"], ["ref", "Canvas/World_Light_Gray_Reference", "png32"], ["topo", "World_Topo_Map", "png24"], ["imagery(control)", "World_Imagery", "png24"]]) {
-      const url = `https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/export?bbox=-9500000,1095000,-9498500,1095900&bboxSR=102100&imageSR=102100&size=600,360&format=${fmt}&transparent=true&f=image`;
-      const row = { name, fmt };
-      try { const resp = await fetch(url); row.status = resp.status; row.type = resp.headers.get("content-type"); const ab = await resp.arrayBuffer(); row.bytes = ab.byteLength; try { const img = await decodificarPNG(new Uint8Array(ab)); row.decoded = img.w + "x" + img.h; } catch (de) { row.decodeErr = String(de && de.message || de).slice(0, 140); } }
-      catch (e) { row.fetchErr = String(e && e.message || e).slice(0, 140); }
-      out.push(row);
-    }
+    try {
+      const props = await mejoresPropiedades(u, env, 3);
+      for (const r of props) {
+        const W = 600, H = 360; const row = { id: r.id, loc: r.cn };
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const pg of r.poly) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 1.9, hh = (y1 - y0) / 2 * 1.9;
+        const may = Math.max(hw, hh, 1); let k = 1; if (may < 16) k = 16 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
+        const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
+        const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
+        row.spanM = Math.round((bx1 - bx0) / secLat(r.ll ? r.ll[1] : 9.9));
+        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${H}&format=png24&f=image`;
+        try {
+          const resp = await fetch(url); row.status = resp.status; row.type = resp.headers.get("content-type");
+          const ab = await resp.arrayBuffer(), b = new Uint8Array(ab); row.bytes = ab.byteLength;
+          if (b[0] === 137) { const dv = new DataView(b.buffer, b.byteOffset); row.ihdr = { w: dv.getUint32(16), h: dv.getUint32(20), bitDepth: b[24], colorType: b[25], interlace: b[28] }; }
+          else row.head = String.fromCharCode(...b.slice(0, 40)).replace(/[^\x20-\x7e]/g, ".");
+          try { const t0 = Date.now(); const img = await decodificarPNG(b); row.decoded = img.w + "x" + img.h; row.decodeMs = Date.now() - t0; } catch (de) { row.decodeErr = String(de && de.message || de).slice(0, 160); }
+        } catch (e) { row.fetchErr = String(e && e.message || e).slice(0, 160); }
+        out.push(row);
+      }
+    } catch (e) { out.push({ error: String(e && e.message || e).slice(0, 200) }); }
     return new Response(JSON.stringify(out, null, 2), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
   }
   const id = String(u.searchParams.get("id") || "").slice(0, 16), v = String(u.searchParams.get("v") || "").slice(0, 4);
