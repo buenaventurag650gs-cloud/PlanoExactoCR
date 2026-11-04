@@ -976,7 +976,8 @@
   }
   // Ficha con Tabler: cabecera, precio, tarjetas por sección y datos en «datagrid»
   const fHead = (r, extra) => `<div class="fhead d-flex align-items-center gap-2 px-3 py-2 border-bottom">${PX.tipoIcon(r)}${r.isPlano ? '<span class="badge bg-secondary-lt">Predio consultado</span>' : PX.stageBadge(r.st) + PX.tipoTag(r)}<div class="ms-auto d-flex align-items-center gap-2"><button type="button" class="btn btn-sm" data-act="compartir" title="Compartir este remate" aria-label="Compartir"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M8.7 10.7l6.6 -3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg><span class="ms-1">Compartir</span></button>${extra || ''}<button type="button" class="btn-close" id="fx" aria-label="Cerrar ficha"></button></div></div>`;
-  const fPrecio = (lbl, grande, alt, linea) => `<div class="card card-sm mb-3 bg-body-tertiary"><div class="card-body"><div class="subheader">${lbl}</div><div class="h1 mb-0 mt-1">${grande}</div>${alt ? `<div class="fw-medium text-secondary">${alt}</div>` : ''}${linea ? `<div class="text-secondary small mt-1">${linea}</div>` : ''}</div></div>`;
+  const AREA_ICON = '<svg class="area-ico" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6.5h2m-2 3.5h1.5M6.5 2v2M10 2v1.5" opacity="0.5"/></svg>';
+  const fPrecio = (lbl, grande, alt, linea) => `<div class="card card-sm mb-3 bg-body-tertiary"><div class="card-body"><div class="subheader">${lbl}</div><div class="h1 mb-0 mt-1">${grande}${alt ? ` <span class="text-secondary fw-normal fs-3">| ${alt}</span>` : ''}</div>${linea ? `<div class="mt-1">${linea}</div>` : ''}</div></div>`;
   const fGrupo = t => `<div class="hr-text hr-text-start my-3">${t}</div>`;
   function aDatagrid(raiz) {   // convierte <dl class="kv"> en el componente datagrid de Tabler
     raiz.querySelectorAll('dl.kv').forEach(dl => {
@@ -995,8 +996,8 @@
     const ven = [[PX.ICON.gavel || '', 'Fechas y bases de los tres remates'], [PX.ICON.terreno || '', 'Área y topografía del lote'], [PX.ICON.norma || '', 'Estado del plan regulador'], [PX.ICON.list || '', 'Listas y seguimiento de remates'], [PX.ICON.alerta || '', `${PX.PRECIOS.semanal} expediente PDF completo gratis por semana`]];
     f.innerHTML = `<div class="tb fichatb" data-bs-theme="${tbTema()}">${fHead(r)}
     <div class="fbody">
-      <h2 class="mb-1">${esc(r.nom)}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
-      ${fPrecio(`Base vigente · ${PX.ETAPA[r.st] || ''} · ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), a ? fnum(a) + ' m²' : 'área s/d')}
+      <h2 class="mb-1">${esc(r.nom.replace(/ · /g, ' | '))}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
+      ${fPrecio(`Base vigente | ${PX.ETAPA[r.st] || ''} | ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), a ? AREA_ICON + '<b class="area-val">' + fnum(a) + ' m²</b>' : 'área s/d')}
       ${r.poly ? `<div class="formap mb-3">${formaSVG(r)}</div>` : ''}
       <div class="card bg-primary text-white"><div class="card-body">
         <h3 class="card-title text-white">Crea tu cuenta gratis para ver la ficha</h3>
@@ -1038,7 +1039,7 @@
       top = fPrecio('Área según catastro', `${fnum(a)} m²`, '', r.remate ? '<a href="#" data-act="rem">Está en remate: ver ficha</a>' : 'No aparece en los remates vigentes');
     } else {
       const m2 = r.bv && a ? PX.conv(r.bv, r.mon, PX.cur) / a : null;
-      top = fPrecio(`Base vigente · ${PX.ETAPA[r.st]} · ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), `${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', ' por m²') : ''}`);
+      top = fPrecio(`Base vigente | ${PX.ETAPA[r.st]} | ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), `${a ? AREA_ICON + '<b class="area-val">' + fnum(a) + ' m²</b>' : 'área s/d'}${r.usdm2 ? ' | ' + PX.duoI(r.usdm2, 'USD', ' por m²') : ''}`);
     }
     const tl = (r.fd || []).map((d, k) => `<div class="list-group-item${k === r.st ? ' active' : ''}${k < r.st ? ' text-secondary' : ''}"><div class="row align-items-center g-2"><div class="col-auto">${PX.stageBadge(k, true)}</div>
         <div class="col"><div class="fw-medium">${PX.ETAPA[k]}${k ? ` · ${PX.PCT[k] * 100} %` : ''}</div><div class="small text-secondary">${fdate(d, true)}</div></div><div class="col-auto text-end${k < r.st ? ' text-decoration-line-through' : ''}">${PX.duo(r.bases[k], r.mon)}</div></div></div>`).join('');
@@ -1057,7 +1058,7 @@
     const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
     f.innerHTML = `<div class="tb fichatb" data-bs-theme="${tbTema()}">${fHead(r, `<button class="btn btn-sm favbtn${fav ? ' btn-primary' : ''}" data-act="fav" aria-pressed="${fav}">${PX.HEART}<span class="ms-1">${fav ? 'En favoritos' : 'Favorito'}</span></button>`)}
     <div class="fbody">
-      <h2 class="mb-1">${esc(r.nom)}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
+      <h2 class="mb-1">${esc(r.nom.replace(/ · /g, ' | '))}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
       ${top}
       ${actionsHTML(r)}
       ${r.rev ? `<div class="alert alert-warning"><div>${esc(r.rev)}</div></div>` : ''}

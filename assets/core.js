@@ -74,7 +74,7 @@
   PX.otherT = (v, from) => { const o = PX.cur === 'CRC' ? 'USD' : 'CRC'; return PX.mt(PX.conv(v, from, o), o); };
   // Toda cifra va con su equivalente en la otra moneda
   PX.duo = (v, from, suf) => v == null ? '—' : `<span class="duo">${PX.money(v, from)}${suf || ''}<span class="eq">${PX.other(v, from)}${suf || ''}</span></span>`;
-  PX.duoI = (v, from, suf) => v == null ? '—' : `${PX.money(v, from)}${suf || ''} <span class="eqi">· ${PX.other(v, from)}${suf || ''}</span>`;
+  PX.duoI = (v, from, suf) => v == null ? '—' : `${PX.money(v, from)}${suf || ''} <span class="eqi">| ${PX.other(v, from)}${suf || ''}</span>`;
   PX.duoT = (v, from, suf) => v == null ? '—' : `${PX.moneyT(v, from)}${suf || ''} (${PX.otherT(v, from)}${suf || ''})`;
   PX.usdH = v => PX.mh(v, 'USD');
 
@@ -555,7 +555,7 @@
     };
     o.fincaTxt = (o.prov ? o.prov + '-' : '') + (o.finca || '—');
     o.lugar = [o.dn, o.cn, o.pn].filter(Boolean).join(', ');
-    o.nom = `Plano ${o.plano || o.fincaTxt}${o.dn ? ' · ' + o.dn : ''}`;
+    o.nom = `Plano ${o.plano || o.fincaTxt}${o.dn ? ' | ' + o.dn : ''}`;
     // ¿Está en remate?
     const hit = (PX.R || []).find(r => (code && r.planoCat === code) || (o.finca && r.prov === o.prov && String(r.finca) === o.finca && r.exact));
     if (hit) o.remate = hit.key;
