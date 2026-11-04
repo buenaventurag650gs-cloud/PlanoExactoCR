@@ -42,6 +42,51 @@
     if (bi < 0) return null;
     return { ll: p.ll[bi], d: Math.round(Math.sqrt(bd) * 111320) };
   };
+
+  // Transporte público — distancia a ruta de bus y estación de tren más cercanos.
+  // Usa el endpoint REST de ARESEP: layer 1 = estaciones de tren (puntos),
+  // layer 5 = rutas de bus (líneas). Se consulta on-demand al abrir ficha/expediente.
+  const ARESEP_TP_URL = 'https://mapas.aresep.go.cr/server/rest/services/I_Transporte_Externo_PII/I_Transporte_Externo_PII/MapServer';
+  function ptSegDist(px, py, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - a[0]) * dx + (py - a[1]) * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = a[0] + t * dx, cy = a[1] + t * dy;
+    const ex = (px - cx) * Math.cos(py * Math.PI / 180), ey = py - cy;
+    return Math.sqrt(ex * ex + ey * ey) * 111320;
+  }
+  PX.transporteCercano = async (lon, lat) => {
+    const pt = JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } });
+    const base = { geometryType: 'esriGeometryPoint', geometry: pt, spatialRel: 'esriSpatialRelIntersects', returnGeometry: 'true', outSR: '4326', f: 'json' };
+    const [trenR, busR] = await Promise.all([
+      fetch(`${ARESEP_TP_URL}/1/query?` + new URLSearchParams({ ...base, outFields: 'OBJECTID', distance: '15000', units: 'esriSRUnit_Meter' })).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${ARESEP_TP_URL}/5/query?` + new URLSearchParams({ ...base, outFields: 'OBJECTID,Concesionario,Ramal', distance: '5000', units: 'esriSRUnit_Meter' })).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+    const res = { tren: null, bus: null };
+    if (trenR && trenR.features && trenR.features.length) {
+      let best = Infinity;
+      for (const f of trenR.features) {
+        const g = f.geometry; if (!g) continue;
+        const dx = (g.x - lon) * Math.cos(lat * Math.PI / 180), dy = g.y - lat;
+        const d = Math.sqrt(dx * dx + dy * dy) * 111320;
+        if (d < best) best = d;
+      }
+      if (best < Infinity) res.tren = Math.round(best);
+    }
+    if (busR && busR.features && busR.features.length) {
+      let best = Infinity, bestName = '';
+      for (const f of busR.features) {
+        const paths = f.geometry && f.geometry.paths; if (!paths) continue;
+        const name = (f.attributes && (f.attributes.Ramal || f.attributes.Concesionario)) || '';
+        for (const path of paths) for (let i = 0; i < path.length - 1; i++) {
+          const d = ptSegDist(lon, lat, path[i], path[i + 1]);
+          if (d < best) { best = d; bestName = name; }
+        }
+      }
+      if (best < Infinity) res.bus = { d: Math.round(best), n: bestName };
+    }
+    return res;
+  };
   PX.fdate = (d, withTime) => d ? `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()}` + (withTime ? ` · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '') : '—';
   PX.fnum = (v, dec) => v == null || isNaN(v) ? '—' : v.toLocaleString('de-DE', { maximumFractionDigits: dec != null ? dec : v < 100 ? 2 : 0 });
   PX.days = d => d ? Math.ceil((d - PX.now) / 864e5) : null;

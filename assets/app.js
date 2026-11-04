@@ -552,6 +552,7 @@
       return ctx.getImageData(1, 1, 1, 1).data[3] > 10;
     } catch (_) { return null; }
   }
+
   const SINIA = 'https://geodatos.sinia.go.cr/geoserver/';
   const HIDRO = '#3B8BD9', CURV = '#A0826D', PSA = '#6A994E', PROT = '#3B8BD9';
 
@@ -1151,6 +1152,8 @@
         <dt>Tendido eléctrico</dt><dd id="fposte">…</dd>
         <dt>Cobertura móvil</dt><dd id="fcobmov">…</dd>
         <dt>Internet fijo</dt><dd id="finet">…</dd>
+        <dt>Parada de bus</dt><dd id="fbus">…</dd>
+        <dt>Estación de tren</dt><dd id="ftren">…</dd>
         ${e.via ? `<dt>Vía más cercana</dt><dd>${e.via.d <= 10 ? esc(e.via.t) + ', al frente' : esc(e.via.t) + ' a ' + PX.dist(e.via.d)}</dd>` : ''}
         ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n)}<small class="sub">${PX.dist(e.salud.d)}</small></dd>` : ''}
         ${e.esc != null ? `<dt>Escuela</dt><dd>A ${PX.dist(e.esc)}</dd>` : ''}
@@ -1181,11 +1184,22 @@
       PX.posteMasCercano(lon, lat).then(p => { const d = $('fposte'); if (d) d.innerHTML = p ? `Poste a <b>${PX.dist(p.d)}</b><small class="sub">Infraestructura del tendido eléctrico (ARESEP)</small>` : 'Sin datos de postes cercanos'; }).catch(() => { const d = $('fposte'); if (d) d.textContent = 'No disponible'; });
       cobMovilAt(lon, lat).then(t => { const d = $('fcobmov'); if (d) d.innerHTML = t ? `<b>${t}</b> (ICE/Kolbi)<small class="sub">Mejor tecnología disponible en el punto</small>` : 'Sin cobertura registrada'; }).catch(() => { const d = $('fcobmov'); if (d) d.textContent = 'No disponible'; });
       inetFijoAt(lon, lat).then(v => { const d = $('finet'); if (d) d.innerHTML = v === true ? 'Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small>' : v === false ? 'Sin cobertura registrada' : 'No disponible'; }).catch(() => { const d = $('finet'); if (d) d.textContent = 'No disponible'; });
+      PX.transporteCercano(lon, lat).then(tp => {
+        const db = $('fbus');
+        if (db) db.innerHTML = tp.bus ? `Ruta a <b>${PX.dist(tp.bus.d)}</b>${tp.bus.n ? `<small class="sub">${tp.bus.n}</small>` : '<small class="sub">Ramal concesionado (ARESEP)</small>'}` : 'Sin rutas a menos de 5 km';
+        const dt = $('ftren');
+        if (dt) dt.innerHTML = tp.tren != null ? `Estación a <b>${PX.dist(tp.tren)}</b><small class="sub">INCOFER (GAM)</small>` : 'Sin estaciones a menos de 15 km';
+      }).catch(() => {
+        const db = $('fbus'); if (db) db.textContent = 'No disponible';
+        const dt = $('ftren'); if (dt) dt.textContent = 'No disponible';
+      });
     } else {
       const fill = (id, txt) => { const d = $(id); if (d) d.textContent = txt; };
       fill('fposte', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
       fill('fcobmov', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
       fill('finet', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
+      fill('fbus', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
+      fill('ftren', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
     }
     selLayer.clearLayers();
     if (r.ll) {

@@ -26,7 +26,7 @@
   if (r.isPlano && r.ent && r.ent.cob === undefined && r.ll) { r.ent.cob = await PX.cobertura(r.ll[0], r.ll[1]); PX.savePlano(r); }
   // Distancia al poste más cercano del tendido eléctrico: carga perezosa.
   // Si falla la descarga, la fila simplemente no se muestra.
-  let posteCerc = null, cobMovil = null, inetFijo = null;
+  let posteCerc = null, cobMovil = null, inetFijo = null, transp = null;
   if (r.ll) {
     const [lon, lat] = r.ll;
     try { posteCerc = await PX.posteMasCercano(lon, lat); } catch (_) {}
@@ -44,6 +44,8 @@
       for (let i = 0; i < CAPAS.length; i++) if (chk(imgs[i])) { cobMovil = TECH[i]; break; }
       inetFijo = chk(imgs[4]);
     } catch (_) {}
+    // Transporte público: distancia a ruta de bus y estación de tren
+    try { transp = await PX.transporteCercano(lon, lat); } catch (_) {}
   }
 
   const folio = `PX-${r.key.toUpperCase()}-${PX.now.getFullYear()}${String(PX.now.getMonth() + 1).padStart(2, '0')}${String(PX.now.getDate()).padStart(2, '0')}`;
@@ -98,6 +100,8 @@
       ${posteCerc ? `<dt>Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura del tendido eléctrico (ARESEP)</small></dd>` : ''}
       ${cobMovil ? `<dt>Cobertura móvil</dt><dd><b>${cobMovil}</b> (ICE/Kolbi)<small class="sub">Mejor tecnología celular disponible en el punto</small></dd>` : '<dt>Cobertura móvil</dt><dd>Sin cobertura registrada (ICE)</dd>'}
       ${inetFijo === true ? `<dt>Internet fijo</dt><dd>Disponible (ICE)<small class="sub">Cobertura de internet fijo residencial</small></dd>` : inetFijo === false ? `<dt>Internet fijo</dt><dd>Sin cobertura registrada</dd>` : ''}
+      ${transp && transp.bus ? `<dt>Ruta de bus</dt><dd>A <b class="num">${PX.dist(transp.bus.d)}</b>${transp.bus.n ? `<small class="sub">${esc(transp.bus.n)}</small>` : '<small class="sub">Ramal concesionado (ARESEP)</small>'}</dd>` : transp ? '<dt>Ruta de bus</dt><dd>Sin rutas a menos de 5 km</dd>' : ''}
+      ${transp && transp.tren != null ? `<dt>Estación de tren</dt><dd>A <b class="num">${PX.dist(transp.tren)}</b><small class="sub">INCOFER (GAM)</small></dd>` : transp ? '<dt>Estación de tren</dt><dd>Sin estaciones a menos de 15 km</dd>' : ''}
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de ${PX.PECR_N}</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
         ${PX.pecrTable(pcr, r.usdm2, z && z.v ? z.v / PX.tc.venta : null, '#2A6B4D')}</div>` : ''}
