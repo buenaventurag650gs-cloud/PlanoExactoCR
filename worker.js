@@ -327,8 +327,8 @@ async function planoCorreoPNG(r) {
     }
     if (!ringsM.length || !isFinite(x0)) return null;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    let hw = (x1 - x0) / 2 * 1.6, hh = (y1 - y0) / 2 * 1.6;   // margen alrededor del lote (zoom cerrado)
-    const may = Math.max(hw, hh, 1); let k = 1; if (may < 18) k = 18 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
+    let hw = (x1 - x0) / 2 * 1.9, hh = (y1 - y0) / 2 * 1.9;   // margen alrededor del lote (contexto)
+    const may = Math.max(hw, hh, 1); let k = 1; if (may < 16) k = 16 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
     const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
     const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
 
@@ -338,15 +338,14 @@ async function planoCorreoPNG(r) {
     let g = escalas[0]; for (const e of escalas) { g = e; if (spanMx / e <= 9) break; }
     const gM = g * secLat(latC);
 
-    // Base del plano: mapa claro con vías (estilo expediente, compuesto desde Esri). Si no
-    // se puede traer, se cae a una cuadrícula técnica dibujada localmente.
+    // Base del plano: mapa topográfico (vías, ríos, curvas y nombres), como el de las fichas,
+    // compuesto desde Esri. Mantiene nitidez en zoom cerrado. Si no se puede traer, se cae a
+    // una cuadrícula técnica dibujada localmente.
     let img = null;
-    const base = await esriCapa("Canvas/World_Light_Gray_Base", bx0, by0, bx1, by1, W, H, "png24");
+    const base = await esriCapa("World_Topo_Map", bx0, by0, bx1, by1, W, H, "png24");
     if (base) {
       img = { w: W, h: H, rgb: new Uint8Array(W * H * 3) };
       for (let i = 0; i < W * H; i++) { img.rgb[i * 3] = base.data[i * 4]; img.rgb[i * 3 + 1] = base.data[i * 4 + 1]; img.rgb[i * 3 + 2] = base.data[i * 4 + 2]; }
-      const ref = await esriCapa("Canvas/World_Light_Gray_Reference", bx0, by0, bx1, by1, W, H, "png32");
-      if (ref) for (let i = 0; i < W * H; i++) { const a = ref.data[i * 4 + 3] / 255; if (a > 0.02) mezclar(img.rgb, i * 3, ref.data[i * 4], ref.data[i * 4 + 1], ref.data[i * 4 + 2], a); }
     } else {
       img = lienzo(W, H, 244, 245, 242);
       for (let mx = Math.ceil(bx0 / gM) * gM; mx <= bx1; mx += gM) vLinea(img, (mx - bx0) / (bx1 - bx0) * W, 0, H - 1, 214, 221, 216, 0.9);
@@ -425,7 +424,7 @@ function tarjetaPropiedadCorreo(r, env) {
   // Con polígono: mini-plano topográfico con el lote dibujado (una sola imagen, servida por
   // /api/plano-correo). Sin polígono: imagen satelital con un pin, como respaldo.
   const tienePoly = r.poly && r.poly.length;
-  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}&v=3` : miniMapaURL(r.ll);
+  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}&v=4` : miniMapaURL(r.ll);
   const imgBloque = !mapa ? "" : tienePoly ? `<img src="${mapa}" width="600" height="360" alt="Plano del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">`
     : `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
