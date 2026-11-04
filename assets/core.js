@@ -161,6 +161,44 @@
   };
   PX.medFor = r => PX.medC[r.prov + '|' + r.cn] ? Object.assign({ ref: 'cantón ' + r.cn }, PX.medC[r.prov + '|' + r.cn]) : PX.medP[r.prov] ? Object.assign({ ref: 'provincia de ' + PX.PROVS[r.prov - 1] }, PX.medP[r.prov]) : null;
 
+  // ---------- Contacto del despacho judicial ----------
+  // Teléfono y correo oficiales por despacho, tomados de la circular de la Comisión de
+  // la Jurisdicción Civil «Contactos de los despachos» (Poder Judicial, actualizada al
+  // 19/12/2025). Solo se listan los despachos que sí publican estos datos; para los
+  // demás (agrarios, penales, de familia, etc.) PX.juzContacto devuelve null y la
+  // interfaz ofrece el directorio general del Poder Judicial en su lugar.
+  const rmAcc = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  PX.JUZ_DIR = [
+    [/PRIMERO ESPECIALIZADO DE COBRO DEL \bI\b CIRCUITO.*SAN JOSE/, '2284-2402', 'juzg_cobro@poder-judicial.go.cr'],
+    [/SEGUNDO ESPECIALIZADO DE COBRO DEL \bI\b CIRCUITO.*SAN JOSE/, '2284-2420', 'juzg-cobro2@poder-judicial.go.cr'],
+    [/TERCERO ESPECIALIZADO DE COBRO DEL \bI\b CIRCUITO.*SAN JOSE/, '2284-2442', 'juzg-cobro3@poder-judicial.go.cr'],
+    [/COBRO DEL \bII\b CIRCUITO.*SAN JOSE.*SECCION PRIMERA/, '2247-9127', 'juzcobros-sec1@poder-judicial.go.cr'],
+    [/COBRO DEL \bII\b CIRCUITO.*SAN JOSE.*SECCION SEGUNDA/, '2247-9227', 'juzcobros-sec2@poder-judicial.go.cr'],
+    [/COBRO DEL \bII\b CIRCUITO.*SAN JOSE.*SECCION TERCERA/, '2247-9226', 'juzcobros-sec3@poder-judicial.go.cr'],
+    [/ESPECIALIZADO DE COBRO DE CARTAGO/, '2550-0398', 'jcobros-car@poder-judicial.go.cr'],
+    [/COBRO DEL \bI\b CIRCUITO.*ALAJUELA/, '2437-0540', 'alj-jcivilmenor@poder-judicial.go.cr'],
+    [/COBRO DEL \bII\b CIRCUITO.*ALAJUELA/, '2401-0386', 'jcobros-sca@poder-judicial.go.cr'],
+    [/COBRO DEL \bIII\b CIRCUITO.*ALAJUELA/, '2456-9016', 'jcobro-sra@poder-judicial.go.cr'],
+    [/COBRO DE GRECIA/, '2495-6662', 'j.cobros-grecia@poder-judicial.go.cr'],
+    [/COBRO DE CARTAGO/, '2550-0398', 'jcobros-car@poder-judicial.go.cr'],
+    [/COBRO DE HEREDIA/, '2277-0334', 'hda-jcobro@poder-judicial.go.cr'],
+    [/COBRO DE PUNTARENAS/, '2630-0354', 'pun-jcobrospunt@poder-judicial.go.cr'],
+    [/COBRO DEL \bI\b CIRCUITO.*GUANACASTE/, '2690-2110', 'lib-jcobros@poder-judicial.go.cr'],
+    [/COBRO DEL \bII\b CIRCUITO.*GUANACASTE/, '2681-4040', 'scr-juzcobros@poder-judicial.go.cr'],
+    [/COBRO DEL \bI\b CIRCUITO.*(ZONA ATLANTICA|LIMON)/, '2799-1380', 'lim-jmenc@poder-judicial.go.cr'],
+    [/COBRO DE POCOCI/, '2713-6094', 'poc-jcobros@poder-judicial.go.cr'],
+    [/COBRO DEL \bI\b CIRCUITO.*ZONA SUR/, '2785-0426', 'pze-jcobro@poder-judicial.go.cr'],
+    [/COBRO DE GOLFITO/, '2785-8146', 'jcobros-gol@poder-judicial.go.cr'],
+    [/TRIBUNAL.*COLEGIADO.*CIVIL DE CARTAGO/, '2550-0373', 'tcolegiinstcicartago@poder-judicial.go.cr'],
+    [/TRIBUNAL.*COLEGIADO.*CIVIL DE HEREDIA/, '2277-0380', 'hda-tribcolegiadociv@poder-judicial.go.cr'],
+  ];
+  PX.juzContacto = nombre => {
+    const n = rmAcc(nombre).replace(/[;.].*$/, ''); // corta sufijos sueltos (fechas, citas de expediente)
+    if (!n) return null;
+    for (const [re, tel, mail] of PX.JUZ_DIR) if (re.test(n)) return { tel, mail };
+    return null;
+  };
+
   // Quita las frases de "libre de …" para no confundirlas con cargas reales
   PX.limpiarGrav = t => PX.norm(t).replace(/libres? de (gravamenes|anotaciones|hipotecas)( hipotecarios)?((,| y| e) (gravamenes|anotaciones|hipotecas))*/g, ' ');
 

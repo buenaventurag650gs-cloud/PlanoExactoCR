@@ -76,10 +76,14 @@
     // Dos columnas con un propósito distinto cada una, para que no se sienta
     // como una sola chorrera de bloques: la izquierda son los datos técnicos
     // y legales del lote; la derecha, el análisis de valor y mercado.
+    const jc = r.isPlano ? null : PX.juzContacto(r.juz);
     const tl = r.isPlano ? '' : `<section class="blk"><h2>${I.gavel}Remate</h2>
       <table class="tb"><thead><tr><th>Etapa</th><th>Fecha</th><th class="n">Base</th></tr></thead><tbody>
       ${r.fd.map((d, k) => `<tr class="${k < r.st ? 'past' : ''}${k === r.st ? ' now' : ''}"><td>${PX.ETAPA[k]}${k ? ` <small>${PX.PCT[k] * 100} %</small>` : ''}</td><td>${fdate(d, true)}</td><td class="n">${PX.duo(r.bases[k], r.mon)}</td></tr>`).join('')}</tbody></table>
-      <dl class="kv sm"><dt>Expediente</dt><dd class="num">${esc(r.exp || '—')}</dd><dt>Despacho</dt><dd>${esc(r.juz || '—')}</dd><dt>Proceso</dt><dd>${esc(PX.cap(r.proc) || '—')}</dd><dt>Boletín Judicial</dt><dd>Nº ${(r.bols || [r.bol]).join(' y ')} de 2026</dd></dl></section>`;
+      <dl class="kv sm"><dt>Expediente</dt><dd class="num">${esc(r.exp || '—')}</dd><dt>Despacho</dt><dd>${esc(r.juz || '—')}<small class="sub">${jc
+        ? `<a href="tel:+506${jc.tel.replace(/\D/g, '')}">Llamar</a> · <a href="mailto:${jc.mail}">Escribir</a> · ${jc.tel}`
+        : `<a href="tel:+50622953000">Central del Poder Judicial</a> · <a href="mailto:institucionalidad@poder-judicial.go.cr">Escribir</a> <small class="note2">(sin contacto directo de este despacho; línea gratuita 800-800-3000)</small>`
+      }</small></dd><dt>Proceso</dt><dd>${esc(PX.cap(r.proc) || '—')}</dd><dt>Boletín Judicial</dt><dd>Nº ${(r.bols || [r.bol]).join(' y ')} de 2026</dd></dl></section>`;
     const diff = r.area && r.areaCat ? (r.areaCat - r.area) / r.area : null;
     const reg = `<section class="blk"><h2>${I.registro}Registro y catastro</h2><dl class="kv sm">
       <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.der && r.der !== '000' ? ' <span class="tag warn">derecho parcial</span>' : ''}</dd>
