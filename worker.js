@@ -427,9 +427,21 @@ async function planoCorreo(request, env, u) {
   try { await cache.put(clave, resp.clone()); } catch (e) {}
   return resp;
 }
+// Capa SVG con el polígono del lote, posicionada sobre la imagen satelital del correo.
+// Usa el MISMO recuadro (bbox) que miniMapaURL para que el polígono calce con la imagen.
+function svgPoligonoCorreo(r) {
+  if (!r || !r.ll || !r.poly || !r.poly.length) return "";
+  const [lon, lat] = r.ll, ALTO_M = 340;
+  const lonD = (ALTO_M / 2) * (600 / 300) / (111320 * Math.cos(lat * Math.PI / 180)), latD = (ALTO_M / 2) / 111320;
+  const lon0 = lon - lonD, lat1 = lat + latD;
+  const px = (v) => ((v - lon0) / (2 * lonD) * 600).toFixed(1), py = (v) => ((lat1 - v) / (2 * latD) * 300).toFixed(1);
+  let d = "";
+  for (const pg of r.poly) for (const ring of pg) { if (!ring.length) continue; d += "M" + ring.map(([x, y]) => px(x) + "," + py(y)).join("L") + "Z"; }
+  if (!d) return "";
+  return `<svg viewBox="0 0 600 300" preserveAspectRatio="none" width="600" height="300" style="position:absolute;top:0;left:0;width:100%;height:100%" aria-hidden="true"><path d="${d}" fill="#C8553D" fill-opacity="0.28" fill-rule="evenodd" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><path d="${d}" fill="none" fill-rule="evenodd" stroke="#C8553D" stroke-width="2.4" stroke-linejoin="round"/></svg>`;
+}
 // Tarjeta de una propiedad destacada dentro del correo: mini-mapa satelital con el
-// punto marcado, tipo + índice PECR, ubicación, área, base y fecha, con enlace directo
-// a su ficha en el mapa.
+// polígono del lote marcado, tipo + índice PECR, ubicación, área, base y fecha.
 function tarjetaPropiedadCorreo(r, env) {
   const dom = env.DOMINIO || "planoexactocr.com";
   const loc = [r.cn, r.pn].filter(Boolean).join(", ");
@@ -438,11 +450,13 @@ function tarjetaPropiedadCorreo(r, env) {
   const etapa = ETAPA[st] || "";
   const baseActual = r.base != null ? r.base * (PCT[st] || 1) : null;
   const enlace = `https://${dom}/mapa#r${r.id}`;
-  // Imagen satelital centrada en el lote, con un pin, a un zoom que deja ver el entorno.
+  // Imagen satelital centrada en el lote con el polígono dibujado encima (capa SVG) y un pin.
+  // La imagen es un <img> directo (sin procesamiento del worker); el polígono se posiciona
+  // con las mismas coordenadas de la imagen. Si el cliente no renderiza SVG, queda el pin.
   const mapa = miniMapaURL(r.ll);
   const imgBloque = mapa ? `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
-<div style="position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-20px 0 0 -8px;background:#C8553D;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 3px rgba(0,0,0,.45)"></div>
+${svgPoligonoCorreo(r)}<div style="position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-20px 0 0 -8px;background:#C8553D;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 3px rgba(0,0,0,.45)"></div>
 </div>` : "";
   return { enlace, loc, fecha,
     html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;margin:0 0 10px;background:#F7F9F8;overflow:hidden">
