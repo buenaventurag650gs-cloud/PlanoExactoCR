@@ -527,6 +527,52 @@
       return tile;
     }
   });
+  // Cobertura móvil por mediciones reales de usuarios (SUTEL/MedUX): a diferencia
+  // del WMS del ICE, acá la fuente ya viene en tiles vectoriales z/x/y — el mismo
+  // esquema que usa Leaflet para pedir los tiles del mapa — así que no hace falta
+  // recalcular un bbox, solo pedir el tile con las mismas coordenadas z/x/y.
+  const SUTEL_OPS_MAPA = ['kolbi', 'claro', 'liberty'];
+  const SUTEL_TILE_URL = 'https://medux-maps-tiles-int.caseonit.net/data/costa_rica_4_{op}_cr_2025_network/{z}/{x}/{y}.pbf';
+  const sutelColor = rsrp => rsrp >= -85 ? COB_MOVIL_RGB[3] : rsrp >= -100 ? COB_MOVIL_RGB[2] : rsrp >= -110 ? COB_MOVIL_RGB[1] : COB_MOVIL_RGB[0];
+  let _sutelLibsP = null;
+  const sutelLibsMapa = () => _sutelLibsP ||= Promise.all([
+    import('https://esm.sh/pbf@3.2.1'), import('https://esm.sh/@mapbox/vector-tile@1.3.1')
+  ]).then(([pbfM, vtM]) => ({ Pbf: pbfM.default, VectorTile: vtM.VectorTile }));
+  L.GridLayer.CobSutel = L.GridLayer.extend({
+    options: { tileSize: 256, opacity: 0.7, zIndex: 4, maxZoom: 21, attribution: 'Cobertura móvil (mediciones de usuarios) &copy; SUTEL/MedUX' },
+    createTile(coords, done) {
+      const tile = document.createElement('canvas');
+      const sz = this.getTileSize(); tile.width = sz.x; tile.height = sz.y;
+      (async () => {
+        try {
+          const { Pbf, VectorTile } = await sutelLibsMapa();
+          const ctx = tile.getContext('2d');
+          await Promise.all(SUTEL_OPS_MAPA.map(async op => {
+            const url = SUTEL_TILE_URL.replace('{op}', op).replace('{z}', coords.z).replace('{x}', coords.x).replace('{y}', coords.y);
+            const r = await fetch(url).catch(() => null);
+            if (!r || !r.ok) return;
+            const buf = await r.arrayBuffer();
+            const vt = new VectorTile(new Pbf(new Uint8Array(buf)));
+            for (const nombreCapa in vt.layers) {
+              const capa = vt.layers[nombreCapa];
+              for (let i = 0; i < capa.length; i++) {
+                const f = capa.feature(i);
+                if (f.type !== 1 || f.properties.rsrp == null) continue;
+                const c = sutelColor(f.properties.rsrp);
+                ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.55)`;
+                for (const ring of f.loadGeometry()) for (const p of ring) {
+                  const px = p.x / capa.extent * sz.x, py = p.y / capa.extent * sz.y;
+                  ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
+                }
+              }
+            }
+          }));
+        } catch (_) {}
+        done(null, tile);
+      })();
+      return tile;
+    }
+  });
   // Consultar cobertura móvil ICE en un punto (devuelve '5G', 'LTE-A', 'LTE', '3G/2G' o null)
   async function cobMovilAt(lon, lat) {
     const CAPAS = ['ice:5g-omv', 'ice:ltea', 'ice:lte', 'ice:tg'];
@@ -602,6 +648,7 @@
     { g: 'Transporte público', id: 'busRutas', n: 'Rutas de autobuses', note: 'ramales concesionados (ARESEP)', lg: [['ln', 'rgb(100,80,160)', 'Ramal de bus']], mk: () => ags(ARESEP_TP, { dyn: BUS_DYN, zIndex: 5, attribution: 'Rutas de autobuses &copy; ARESEP' }) },
     { id: 'tren', n: 'Línea y paradas del tren', note: 'INCOFER · GAM', lg: [['ln', 'rgb(168,73,0)', 'Línea del tren'], ['', 'rgb(168,73,0)', 'Parada']], mk: () => ags(ARESEP_TP, { dyn: TREN_DYN, zIndex: 5, attribution: 'Tren &copy; ARESEP / INCOFER' }) },
     { g: 'Telecomunicaciones', id: 'cobmovil', n: 'Cobertura móvil', note: 'mejor tecnología disponible · ICE/Kolbi', opacity: 0.55, lg: [['', '#C8553D', 'Solo 3G'], ['', '#E9C46A', '4G (LTE)'], ['', '#7CC48E', '4G+ (LTE Advanced)'], ['', '#1F5A47', '5G']], mk: () => new L.GridLayer.CobMovil() },
+    { id: 'cobsutel', n: 'Cobertura móvil por mediciones', note: 'Kolbi, Claro y Liberty · usuarios reales (SUTEL/MedUX)', opacity: 0.7, lg: [['', 'rgb(200,85,61)', 'Señal débil'], ['', 'rgb(233,196,106)', 'Señal regular'], ['', 'rgb(124,196,142)', 'Señal buena'], ['', 'rgb(31,90,71)', 'Señal excelente']], mk: () => new L.GridLayer.CobSutel() },
     { id: 'internetfijo', n: 'Internet residencial fijo', note: 'fibra/cable · ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:internet-shp', { zIndex: 4, opacity: 0.55, attribution: 'Cobertura de internet residencial &copy; ICE/Kolbi' }) },
     { id: 'wttx', n: 'WTTx · Internet LTE hogar', note: 'planes marzo 2021', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:planes-lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Planes LTE hogar &copy; ICE/Kolbi' }) },
     { g: 'Ambiente y restricciones', id: 'zv', n: 'Zonas de vida', hover: true, lg: ZVG.map(g => ['', g[2], g[1]]) },
