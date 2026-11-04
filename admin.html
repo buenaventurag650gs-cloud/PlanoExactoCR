@@ -47,6 +47,15 @@
         </table></div>
       </div>
 
+      <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title"><i class="ti ti-heart me-2"></i>Qué guardan y siguen los usuarios</h3><div class="card-actions text-secondary small" id="actTot"></div></div>
+        <div class="row g-0">
+          <div class="col-md-6 border-end"><div class="card-body"><div class="subheader mb-2">Remates más seguidos</div><div id="actSig" class="text-secondary small">Cargando…</div></div></div>
+          <div class="col-md-6"><div class="card-body"><div class="subheader mb-2">Remates más en favoritos</div><div id="actFav" class="text-secondary small">Cargando…</div></div></div>
+        </div>
+        <div class="card-body border-top" id="actBusqWrap" style="display:none"><div class="subheader mb-2">Búsquedas guardadas</div><div id="actBusq" class="d-flex flex-wrap gap-1"></div></div>
+      </div>
+
       <div class="card">
         <div class="card-header"><h3 class="card-title"><i class="ti ti-users me-2"></i>Usuarios</h3>
           <div class="card-actions d-flex gap-2"><div class="input-icon"><span class="input-icon-addon"><i class="ti ti-search"></i></span><input id="q" type="search" class="form-control" placeholder="Correo, nombre o cupón" aria-label="Buscar"></div>
@@ -227,7 +236,17 @@
     toast(r.ok ? (accion === 'aprobar' ? (j.hasta ? 'Plan activo hasta el ' + j.hasta : 'Expedientes acreditados') : 'Pago rechazado') : (j.error || 'No se pudo guardar'), r.ok ? 'success' : 'danger');
     cargarPagos(); cargar();
   });
-  cargarPagos(); cargar(); cargarCampanas();
+  async function cargarActividad() {
+    const r = await fetch('/api/admin/actividad', { cache: 'no-store' });
+    if (!r.ok) { $('actSig').textContent = 'No se pudo cargar.'; $('actFav').textContent = ''; return; }
+    const j = await r.json(), t = j.totales || {};
+    $('actTot').textContent = `${t.usuariosConGuardado || 0} usuarios guardan · ${t.favoritos || 0} en favoritos · ${t.seguidos || 0} seguidos · ${t.listas || 0} listas`;
+    const fila = x => `<div class="d-flex align-items-center justify-content-between py-1 border-bottom"><a href="/mapa#${esc(x.key)}" target="_blank" rel="noopener" class="text-reset text-truncate me-2">${esc(x.nom)}${x.pecr != null ? ` <span class="text-secondary">· PECR ${x.pecr}/10</span>` : ''}</a><span class="badge bg-primary-lt">${x.n}</span></div>`;
+    $('actSig').innerHTML = (j.topSeguidos || []).length ? j.topSeguidos.map(fila).join('') : 'Nadie sigue remates todavía.';
+    $('actFav').innerHTML = (j.topFavoritos || []).length ? j.topFavoritos.map(fila).join('') : 'Nadie ha guardado favoritos todavía.';
+    if ((j.topBusquedas || []).length) { $('actBusqWrap').style.display = ''; $('actBusq').innerHTML = j.topBusquedas.map(b => `<span class="badge bg-secondary-lt">${esc(b.t)} <span class="text-secondary">×${b.n}</span></span>`).join(''); }
+  }
+  cargarPagos(); cargar(); cargarCampanas(); cargarActividad();
 })();
 </script>
 </body></html>

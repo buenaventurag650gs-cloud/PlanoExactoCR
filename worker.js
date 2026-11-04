@@ -480,7 +480,9 @@ const CAMPANAS = {
   tour: {
     nombre: "Tour rápido + cupón de lanzamiento",
     construir: (us, props, env) => {
+      const dom = (env && env.DOMINIO) || "planoexactocr.com";
       const cp = us.cupon || "LANZAMIENTO30";
+      const pctRef = Math.round(CUPON_PCT_REF * 100);
       const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
       const asunto = nombre ? `${nombre}, así funciona PlanoExactoCR (y tu cupón sigue activo)` : "Así funciona PlanoExactoCR (y tu cupón sigue activo)";
       const parrafos = [
@@ -490,13 +492,22 @@ const CAMPANAS = {
         `Tu cupón de lanzamiento sigue activo: <b style="font-size:17px;letter-spacing:1px">${cp}</b>, 30&nbsp;% de descuento en la primera mensualidad de cualquier plan.`
       ];
       const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
-      const extra = tarjetas.length ? `<div style="margin:4px 0 20px">
+      const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
 <p style="font-size:13px;font-weight:bold;color:#15302A;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
 ${tarjetas.map((t) => t.html).join("")}</div>` : "";
-      const enlace = `https://${(env && env.DOMINIO) || "planoexactocr.com"}/mapa`;
+      // Promo de referidos (2x1 con un compa): el amigo entra con más descuento y vos ganás un mes gratis.
+      const refLink = `https://${dom}/mapa?ref=${encodeURIComponent(cp)}`;
+      const promoRef = `<div style="margin:4px 0 22px;border:2px dashed #1F5A47;border-radius:12px;background:#F2F7F4;padding:16px 18px">
+<p style="font-size:16px;font-weight:bold;color:#15302A;margin:0 0 6px">2&times;1: traé un compa y ganan los dos</p>
+<p style="font-size:13px;color:#4C5953;margin:0 0 12px">Compartí tu código. Tu amigo se registra con él y entra con <b>${pctRef}&nbsp;% de descuento</b> en su primer mes; cuando pague su primer plan, vos te ganás <b>un mes gratis</b> del tuyo.</p>
+<p style="margin:0 0 12px"><span style="display:inline-block;background:#fff;border:1px solid #CBD6D0;border-radius:8px;padding:9px 16px;font-size:17px;font-weight:bold;letter-spacing:1px;color:#15302A">${esc(cp)}</span></p>
+<a href="${refLink}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block">Compartir mi invitación</a></div>`;
+      const extra = bloqueProps + promoRef;
+      const enlace = `https://${dom}/mapa`;
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + propsTexto + "\n\nVer el mapa: " + enlace;
+      const refTexto = `\n\n2x1: traé un compa y ganan los dos. Compartí tu código ${cp}: tu amigo entra con ${pctRef} % de descuento en su primer mes y vos te ganás un mes gratis cuando pague. Enlace: ${refLink}`;
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + propsTexto + refTexto + "\n\nVer el mapa: " + enlace;
       return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace, env) };
     }
   }
@@ -795,6 +806,23 @@ async function admin(request, env, u) {
   if (ruta === "usuarios") {
     const r = await env.DB.prepare("SELECT id, correo, nombre, perfil, prov, plan, pro_hasta, cupon, fuente, pais, creado, ultimo, solicita_pro, nota, no_correos, referido_por, dias_regalo FROM usuarios ORDER BY id DESC").all();
     return json({ usuarios: r.results, hoy: hoy() }, 200, 0);
+  }
+  if (ruta === "actividad") {   // qué guardan y siguen los usuarios (agregado de la columna datos)
+    const r = await env.DB.prepare("SELECT datos FROM usuarios WHERE datos IS NOT NULL AND datos <> ''").all();
+    const sig = {}, fav = {}, busq = {};
+    let conGuardado = 0, totSig = 0, totFav = 0, totListas = 0, totBusq = 0;
+    for (const row of r.results) {
+      let d; try { d = JSON.parse(row.datos); } catch (_) { continue; }
+      let algo = false;
+      for (const k of (d.sigo || [])) if (typeof k === "string") { sig[k] = (sig[k] || 0) + 1; totSig++; algo = true; }
+      for (const l of (d.listas || [])) { totListas++; for (const it of (l.items || [])) { const k = it && it.k; if (typeof k === "string") { fav[k] = (fav[k] || 0) + 1; totFav++; algo = true; } } }
+      for (const q of (d.busquedas || [])) { const t = typeof q === "string" ? q : (q && (q.q || q.texto)); if (t) { busq[t] = (busq[t] || 0) + 1; totBusq++; } }
+      if (algo) conGuardado++;
+    }
+    const nombres = {};
+    try { const rr = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u))); const R = await rr.json(); for (const x of R) nombres["r" + x.id] = { nom: x.nom || [x.cn, x.pn].filter(Boolean).join(", "), lugar: [x.cn, x.pn].filter(Boolean).join(", "), id: x.id, pecr: x.pecr }; } catch (_) {}
+    const top = (obj, n) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, c]) => ({ key: k, n: c, nom: (nombres[k] && nombres[k].nom) || k, lugar: nombres[k] && nombres[k].lugar, id: nombres[k] && nombres[k].id, pecr: nombres[k] && nombres[k].pecr }));
+    return json({ totales: { usuariosConGuardado: conGuardado, seguidos: totSig, favoritos: totFav, listas: totListas, busquedas: totBusq }, topSeguidos: top(sig, 20), topFavoritos: top(fav, 20), topBusquedas: Object.entries(busq).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([t, c]) => ({ t, n: c })) }, 200, 0);
   }
   if (ruta === "campanas") {
     const out = [];
