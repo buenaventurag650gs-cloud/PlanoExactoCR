@@ -195,14 +195,24 @@ ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A4
 </div></div></div>`; };
 // Imagen satelital (Esri World Imagery) centrada en el punto del remate, con el
 // recuadro (bbox) calculado para el tamaño de salida que se pide — sin llave de API.
-function miniMapaURL(ll) {
+function miniMapaURL(ll, altoM) {
   if (!Array.isArray(ll) || ll.length < 2) return null;
   const [lon, lat] = ll;
-  const ANCHO = 600, ALTO = 300, ALTO_M = 340;   // metros de norte a sur que abarca la imagen
+  const ANCHO = 600, ALTO = 300, ALTO_M = altoM || 340;   // metros de norte a sur que abarca la imagen
   const latD = (ALTO_M / 2) / 111320;
   const lonD = (ALTO_M / 2) * (ANCHO / ALTO) / (111320 * Math.cos(lat * Math.PI / 180));
   const bbox = [lon - lonD, lat - latD, lon + lonD, lat + latD].join(",");
   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=102100&size=${ANCHO},${ALTO}&format=jpg&f=image`;
+}
+// Metros N-S que debe abarcar el mapa del correo para que el lote ocupe ~1/3 del encuadre
+// (zoom adaptativo: los lotes grandes y chicos se ven a un tamaño parecido, con contexto).
+function altoCorreo(r) {
+  if (!r || !r.poly || !r.ll) return 220;
+  let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+  for (const pg of r.poly) for (const ring of pg) for (const [x, y] of ring) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+  if (!isFinite(minx)) return 220;
+  const hM = (maxy - miny) * 111320, wM = (maxx - minx) * 111320 * Math.cos(r.ll[1] * Math.PI / 180);
+  return Math.max(70, Math.min(360, Math.max(hM, wM / 2) * 3));
 }
 
 // ---------- Mini-plano del predio para el correo ----------
@@ -429,9 +439,9 @@ async function planoCorreo(request, env, u) {
 }
 // Capa SVG con el polígono del lote, posicionada sobre la imagen satelital del correo.
 // Usa el MISMO recuadro (bbox) que miniMapaURL para que el polígono calce con la imagen.
-function svgPoligonoCorreo(r) {
+function svgPoligonoCorreo(r, altoM) {
   if (!r || !r.ll || !r.poly || !r.poly.length) return "";
-  const [lon, lat] = r.ll, ALTO_M = 340;
+  const [lon, lat] = r.ll, ALTO_M = altoM || 340;
   const lonD = (ALTO_M / 2) * (600 / 300) / (111320 * Math.cos(lat * Math.PI / 180)), latD = (ALTO_M / 2) / 111320;
   const lon0 = lon - lonD, lat1 = lat + latD;
   const px = (v) => ((v - lon0) / (2 * lonD) * 600).toFixed(1), py = (v) => ((lat1 - v) / (2 * latD) * 300).toFixed(1);
@@ -450,14 +460,14 @@ function tarjetaPropiedadCorreo(r, env) {
   const etapa = ETAPA[st] || "";
   const baseActual = r.base != null ? r.base * (PCT[st] || 1) : null;
   const enlace = `https://${dom}/mapa#r${r.id}`;
-  // Imagen satelital centrada en el lote con el polígono dibujado encima (capa SVG) y un pin.
-  // La imagen es un <img> directo (sin procesamiento del worker); el polígono se posiciona
-  // con las mismas coordenadas de la imagen. Si el cliente no renderiza SVG, queda el pin.
-  const mapa = miniMapaURL(r.ll);
+  // Imagen satelital centrada en el lote con el polígono dibujado encima (capa SVG), con un
+  // zoom adaptativo al tamaño del lote. La imagen es un <img> directo (sin procesamiento del
+  // worker) y el polígono usa el mismo recuadro, así calza exacto.
+  const altoM = altoCorreo(r);
+  const mapa = miniMapaURL(r.ll, altoM);
   const imgBloque = mapa ? `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
-${svgPoligonoCorreo(r)}<div style="position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-20px 0 0 -8px;background:#C8553D;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 3px rgba(0,0,0,.45)"></div>
-</div>` : "";
+${svgPoligonoCorreo(r, altoM)}</div>` : "";
   return { enlace, loc, fecha,
     html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;margin:0 0 10px;background:#F7F9F8;overflow:hidden">
 ${imgBloque}<div style="padding:12px 16px 14px">
