@@ -424,6 +424,33 @@
       outline: { color: [255, 255, 255, 210], width: 0.6 }
     } } }
   }];
+  // Rutas de autobuses (ARESEP): ramales de bus con operador
+  const BUS_DYN = [{
+    id: 0,
+    source: { type: 'mapLayer', mapLayerId: 5 },
+    drawingInfo: { renderer: { type: 'simple', symbol: {
+      type: 'esriSLS', style: 'esriSLSSolid',
+      color: [100, 80, 160, 190], width: 1.6
+    } } }
+  }];
+  // Línea y paradas del tren (ARESEP)
+  const TREN_DYN = [{
+    id: 0,
+    source: { type: 'mapLayer', mapLayerId: 0 },
+    drawingInfo: { renderer: { type: 'simple', symbol: {
+      type: 'esriSLS', style: 'esriSLSDash',
+      color: [168, 73, 0, 230], width: 2.4
+    } } }
+  }, {
+    id: 1,
+    source: { type: 'mapLayer', mapLayerId: 1 },
+    drawingInfo: { renderer: { type: 'simple', symbol: {
+      type: 'esriSMS', style: 'esriSMSSquare',
+      color: [168, 73, 0, 230], size: 6,
+      outline: { color: [255, 255, 255, 210], width: 1 }
+    } } }
+  }];
+  const ARESEP_TP = 'https://mapas.aresep.go.cr/server/rest/services/I_Transporte_Externo_PII/I_Transporte_Externo_PII/MapServer';
   const ICX = { 'Aeropuerto internacional': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Aeródromo': '<path d="M2 16l20-6-2-3-7 2-5-6H6l2 7-4 1-2-2H1l1 4z"/>', 'Puerto': '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3M8 10h8"/>' };
   // Mapas base con miniatura (tesela de Costa Rica central) y para qué sirve cada uno
   const T8 = { esri: s => `https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/9/241/136`, xyz: u => u.replace('{z}', 9).replace('{x}', 136).replace('{y}', 241).replace('{s}', 'a') };
@@ -529,6 +556,8 @@
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
     { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
+    { g: 'Transporte público', id: 'busRutas', n: 'Rutas de autobuses', note: 'ramales concesionados (ARESEP)', lg: [['ln', 'rgb(100,80,160)', 'Ramal de bus']], mk: () => ags(ARESEP_TP, { dyn: BUS_DYN, zIndex: 5, attribution: 'Rutas de autobuses &copy; ARESEP' }) },
+    { id: 'tren', n: 'Línea y paradas del tren', note: 'INCOFER · GAM', lg: [['ln', 'rgb(168,73,0)', 'Línea del tren'], ['', 'rgb(168,73,0)', 'Parada']], mk: () => ags(ARESEP_TP, { dyn: TREN_DYN, zIndex: 5, attribution: 'Tren &copy; ARESEP / INCOFER' }) },
     { g: 'Telecomunicaciones', id: 'cobmovil', n: 'Cobertura móvil', note: 'mejor tecnología disponible · ICE/Kolbi', opacity: 0.55, lg: [['', '#C8553D', 'Solo 3G'], ['', '#E9C46A', '4G (LTE)'], ['', '#7CC48E', '4G+ (LTE Advanced)'], ['', '#1F5A47', '5G']], mk: () => new L.GridLayer.CobMovil() },
     { id: 'internetfijo', n: 'Internet residencial fijo', note: 'fibra/cable · ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:internet-shp', { zIndex: 4, opacity: 0.55, attribution: 'Cobertura de internet residencial &copy; ICE/Kolbi' }) },
     { id: 'wttx', n: 'WTTx · Internet LTE hogar', note: 'planes marzo 2021', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:planes-lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Planes LTE hogar &copy; ICE/Kolbi' }) },
@@ -583,6 +612,7 @@
     'Abastecimiento de agua':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
     'Abastecimiento eléctrico': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
     'Servicios e infraestructura': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>',
+    'Transporte público':          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M7 18h10"/><rect x="4" y="4" width="16" height="14" rx="4"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/></svg>',
     'Telecomunicaciones':       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.1 16.5c2.1-2.1 5.7-2.1 7.8 0"/><path d="M5 13.4c3.9-3.9 10.1-3.9 14 0"/><path d="M2 10.3C7.1 5.1 16.9 5.1 22 10.3"/><circle cx="12" cy="20" r="1"/></svg>',
     'Ambiente y restricciones': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2c-2 0-6 3-6 9 0 4 2 7 6 7s6-3 6-7c0-6-4-9-6-9z"/><path d="M12 22V11"/><path d="M9 17c-3-1-5-4-5-7 0-4 2.5-6 5-6"/></svg>',
   };
