@@ -204,6 +204,143 @@ function miniMapaURL(ll) {
   const bbox = [lon - lonD, lat - latD, lon + lonD, lat + latD].join(",");
   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=102100&size=${ANCHO},${ALTO}&format=jpg&f=image`;
 }
+
+// ---------- Mini-plano del predio para el correo ----------
+// Igual que la lámina del expediente: base topográfica clara con el polígono del lote
+// dibujado encima (casing blanco + relleno + borde terracota). Se arma como UNA sola
+// imagen PNG (polígono "quemado" sobre la base) para que se vea en cualquier cliente de
+// correo —Gmail elimina SVG, position:absolute y data: URIs—, sin llave de API.
+const MERC_R = 6378137;
+const aMerc = ([lon, lat]) => [MERC_R * lon * Math.PI / 180, MERC_R * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))];
+async function inflar(bytes) {
+  const ds = new DecompressionStream("deflate"), w = ds.writable.getWriter(); w.write(bytes); w.close();
+  const partes = [], rd = ds.readable.getReader();
+  for (; ;) { const { done, value } = await rd.read(); if (done) break; partes.push(value); }
+  let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
+}
+async function desinflar(bytes) {
+  const cs = new CompressionStream("deflate"), w = cs.writable.getWriter(); w.write(bytes); w.close();
+  const partes = [], rd = cs.readable.getReader();
+  for (; ;) { const { done, value } = await rd.read(); if (done) break; partes.push(value); }
+  let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
+}
+const paethPred = (a, b, c) => { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c; };
+async function decodificarPNG(buf) {
+  if (buf[0] !== 137 || buf[1] !== 80) throw new Error("no es PNG");
+  let p = 8, w = 0, h = 0, bitDepth = 0, colorType = 0; const idat = [];
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  while (p < buf.length) {
+    const len = dv.getUint32(p), type = String.fromCharCode(buf[p + 4], buf[p + 5], buf[p + 6], buf[p + 7]);
+    if (type === "IHDR") { w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); bitDepth = buf[p + 16]; colorType = buf[p + 17]; }
+    else if (type === "IDAT") idat.push(buf.subarray(p + 8, p + 8 + len));
+    else if (type === "IEND") break;
+    p += 12 + len;
+  }
+  if (bitDepth !== 8) throw new Error("bitDepth " + bitDepth);
+  const ch = colorType === 2 ? 3 : colorType === 6 ? 4 : colorType === 0 ? 1 : -1;
+  if (ch < 0) throw new Error("colorType " + colorType);
+  let comp = 0; idat.forEach((d) => comp += d.length); const cbuf = new Uint8Array(comp); let o = 0; idat.forEach((d) => { cbuf.set(d, o); o += d.length; });
+  const raw = await inflar(cbuf), stride = w * ch, rgb = new Uint8Array(w * h * 3);
+  const prev = new Uint8Array(stride), cur = new Uint8Array(stride); let sp = 0;
+  for (let y = 0; y < h; y++) {
+    const f = raw[sp++];
+    for (let i = 0; i < stride; i++) {
+      const x = raw[sp++], a = i >= ch ? cur[i - ch] : 0, b = prev[i], c = i >= ch ? prev[i - ch] : 0;
+      let v; if (f === 0) v = x; else if (f === 1) v = x + a; else if (f === 2) v = x + b; else if (f === 3) v = x + ((a + b) >> 1); else if (f === 4) v = x + paethPred(a, b, c); else v = x;
+      cur[i] = v & 0xff;
+    }
+    for (let xx = 0; xx < w; xx++) { const si = xx * ch, di = (y * w + xx) * 3; rgb[di] = cur[si]; rgb[di + 1] = ch >= 3 ? cur[si + 1] : cur[si]; rgb[di + 2] = ch >= 3 ? cur[si + 2] : cur[si]; }
+    prev.set(cur);
+  }
+  return { w, h, rgb };
+}
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_T[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function pngChunk(type, data) {
+  const out = new Uint8Array(12 + data.length), dv = new DataView(out.buffer);
+  dv.setUint32(0, data.length); for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+  out.set(data, 8); dv.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length))); return out;
+}
+async function codificarPNG(img) {
+  const { w, h, rgb } = img, raw = new Uint8Array(h * (w * 3 + 1));
+  for (let y = 0; y < h; y++) { raw[y * (w * 3 + 1)] = 0; raw.set(rgb.subarray(y * w * 3, (y + 1) * w * 3), y * (w * 3 + 1) + 1); }
+  const idat = await desinflar(raw), ihdr = new Uint8Array(13), dv = new DataView(ihdr.buffer);
+  dv.setUint32(0, w); dv.setUint32(4, h); ihdr[8] = 8; ihdr[9] = 2;
+  const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const partes = [sig, pngChunk("IHDR", ihdr), pngChunk("IDAT", idat), pngChunk("IEND", new Uint8Array(0))];
+  let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
+}
+function mezclar(rgb, i, cr, cg, cb, a) { rgb[i] = (cr * a + rgb[i] * (1 - a)) | 0; rgb[i + 1] = (cg * a + rgb[i + 1] * (1 - a)) | 0; rgb[i + 2] = (cb * a + rgb[i + 2] * (1 - a)) | 0; }
+function rellenarPoly(img, rings, cr, cg, cb, a) {
+  const { w, h, rgb } = img; let ymin = h, ymax = 0;
+  for (const r of rings) for (const pt of r) { if (pt[1] < ymin) ymin = pt[1]; if (pt[1] > ymax) ymax = pt[1]; }
+  ymin = Math.max(0, Math.floor(ymin)); ymax = Math.min(h - 1, Math.ceil(ymax));
+  for (let y = ymin; y <= ymax; y++) {
+    const yc = y + 0.5, xs = [];
+    for (const r of rings) for (let i = 0, n = r.length; i < n; i++) {
+      const p1 = r[i], p2 = r[(i + 1) % n];
+      if ((p1[1] <= yc && p2[1] > yc) || (p2[1] <= yc && p1[1] > yc)) xs.push(p1[0] + (yc - p1[1]) / (p2[1] - p1[1]) * (p2[0] - p1[0]));
+    }
+    xs.sort((p, q) => p - q);
+    for (let k = 0; k + 1 < xs.length; k += 2) { const xa = Math.max(0, Math.round(xs[k])), xb = Math.min(w - 1, Math.round(xs[k + 1])); for (let x = xa; x <= xb; x++) mezclar(rgb, (y * w + x) * 3, cr, cg, cb, a); }
+  }
+}
+function sello(img, cx, cy, rad, cr, cg, cb, a) {
+  const { w, h, rgb } = img, x0 = Math.max(0, Math.floor(cx - rad)), x1 = Math.min(w - 1, Math.ceil(cx + rad)), y0 = Math.max(0, Math.floor(cy - rad)), y1 = Math.min(h - 1, Math.ceil(cy + rad)), r2 = rad * rad;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const dx = x + 0.5 - cx, dy = y + 0.5 - cy; if (dx * dx + dy * dy <= r2) mezclar(rgb, (y * w + x) * 3, cr, cg, cb, a); }
+}
+function trazarPoly(img, rings, rad, cr, cg, cb, a) {
+  for (const r of rings) for (let i = 0, n = r.length; i < n; i++) {
+    const p1 = r[i], p2 = r[(i + 1) % n], dx = p2[0] - p1[0], dy = p2[1] - p1[1], len = Math.hypot(dx, dy), pasos = Math.max(1, Math.ceil(len / (rad * 0.6)));
+    for (let s = 0; s <= pasos; s++) sello(img, p1[0] + dx * s / pasos, p1[1] + dy * s / pasos, rad, cr, cg, cb, a);
+  }
+}
+// Devuelve el PNG (Uint8Array) del mini-plano del remate r, o null si no se puede.
+async function planoCorreoPNG(r, env) {
+  try {
+    if (!r || !r.poly || !r.poly.length) return null;
+    const W = 600, H = 360;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
+    for (const pg of r.poly) for (const ring of pg) {
+      const rm = ring.map(aMerc); ringsM.push(rm);
+      for (const m of rm) { if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
+    }
+    if (!ringsM.length || !isFinite(x0)) return null;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    let hw = (x1 - x0) / 2 * 1.6, hh = (y1 - y0) / 2 * 1.6;   // margen alrededor del lote (zoom cerrado)
+    const may = Math.max(hw, hh, 1); let k = 1; if (may < 20) k = 20 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
+    const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
+    const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
+    const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${H}&format=png24&f=image`;
+    const resp = await fetch(url, { cf: { cacheTtl: 86400, cacheEverything: true } });
+    if (!resp.ok) return null;
+    const img = await decodificarPNG(new Uint8Array(await resp.arrayBuffer()));
+    if (img.w !== W || img.h !== H) return null;
+    const toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * H];
+    const ringsPx = ringsM.map((r) => r.map(toPx));
+    trazarPoly(img, ringsPx, 4.5, 255, 255, 255, 0.9);     // casing blanco
+    rellenarPoly(img, ringsPx, 232, 149, 111, 0.42);       // relleno terracota translúcido
+    trazarPoly(img, ringsPx, 2.4, 200, 85, 61, 1);         // borde terracota
+    return await codificarPNG(img);
+  } catch (e) { return null; }
+}
+// Endpoint público para el <img> del correo: /api/plano-correo?id=<id>. Devuelve el PNG
+// del mini-plano (cacheado); si el remate no tiene polígono, redirige a la imagen satelital.
+async function planoCorreo(request, env, u) {
+  const id = String(u.searchParams.get("id") || "").slice(0, 16);
+  const cache = caches.default, clave = new Request("https://" + u.host + "/api/plano-correo?id=" + encodeURIComponent(id));
+  const hit = await cache.match(clave).catch(() => null); if (hit) return hit;
+  let png = null, rem = null;
+  try {
+    const r = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)));
+    const R = await r.json(); rem = R.find((x) => String(x.id) === id);
+    if (rem) png = await planoCorreoPNG(rem, env);
+  } catch (e) {}
+  if (!png) { const sat = rem && rem.ll ? miniMapaURL(rem.ll) : null; return sat ? Response.redirect(sat, 302) : new Response("", { status: 404 }); }
+  const resp = new Response(png, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400", "X-Robots-Tag": "noindex" } });
+  try { await cache.put(clave, resp.clone()); } catch (e) {}
+  return resp;
+}
 // Tarjeta de una propiedad destacada dentro del correo: mini-mapa satelital con el
 // punto marcado, tipo + índice PECR, ubicación, área, base y fecha, con enlace directo
 // a su ficha en el mapa.
@@ -215,11 +352,15 @@ function tarjetaPropiedadCorreo(r, env) {
   const etapa = ETAPA[st] || "";
   const baseActual = r.base != null ? r.base * (PCT[st] || 1) : null;
   const enlace = `https://${dom}/mapa#r${r.id}`;
-  const mapa = miniMapaURL(r.ll);
-  const imgBloque = mapa ? `<div style="position:relative;line-height:0">
+  // Con polígono: mini-plano topográfico con el lote dibujado (una sola imagen, servida por
+  // /api/plano-correo). Sin polígono: imagen satelital con un pin, como respaldo.
+  const tienePoly = r.poly && r.poly.length;
+  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}` : miniMapaURL(r.ll);
+  const imgBloque = !mapa ? "" : tienePoly ? `<img src="${mapa}" width="600" height="360" alt="Plano del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">`
+    : `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
 <div style="position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-20px 0 0 -8px;background:#C8553D;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 3px rgba(0,0,0,.45)"></div>
-</div>` : "";
+</div>`;
   return { enlace, loc, fecha,
     html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;margin:0 0 10px;background:#F7F9F8;overflow:hidden">
 ${imgBloque}<div style="padding:12px 16px 14px">
@@ -265,16 +406,33 @@ async function destinatariosCampana(env, id) {
 // Elige las n propiedades con mejor índice PECR entre las que tienen fecha de remate
 // futura y ubicación exacta (por plano o finca, no solo el centro del distrito), para
 // mostrarlas como gancho en las campañas de correo.
+// Clasifica un remate para variar las recomendaciones: costero (cerca del mar), urbano
+// (zona homogénea tipo U) o rural (el resto).
+function categoriaRemate(r) {
+  const e = r.ent || {};
+  if (e.costa != null && e.costa <= 3000) return "costero";
+  const k = (e.zh && e.zh.k) || "";
+  if (k.charAt(0) === "U") return "urbano";
+  return "rural";
+}
 async function mejoresPropiedades(u, env, n) {
   try {
     const r = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)));
     const R = await r.json();
     const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);   // hora de Costa Rica
     // st = índice de la próxima fecha vigente (puede ser el 2.º o 3.er remate, no siempre f[0])
-    return R.map((x) => Object.assign({}, x, { st: (x.f || []).findIndex((f) => f >= ahora) }))
-      .filter((x) => (x.loc === "plano" || x.loc === "finca") && x.pecr != null && x.st >= 0)
-      .sort((a, b) => b.pecr - a.pecr || (a.f[a.st] < b.f[b.st] ? -1 : 1))
-      .slice(0, n);
+    const cand = R.map((x) => Object.assign({}, x, { st: (x.f || []).findIndex((f) => f >= ahora) }))
+      .filter((x) => (x.loc === "plano" || x.loc === "finca") && x.pecr != null && x.st >= 0 && x.poly && x.poly.length)
+      .sort((a, b) => b.pecr - a.pecr || (a.f[a.st] < b.f[b.st] ? -1 : 1));
+    // Una de cada categoría (costera, urbana, rural) para que el correo muestre variedad;
+    // si alguna falta, se completa con las de mejor índice que queden.
+    const elegidas = [], usados = new Set();
+    for (const cat of ["costero", "urbano", "rural"]) {
+      const m = cand.find((x) => !usados.has(x.id) && categoriaRemate(x) === cat);
+      if (m) { elegidas.push(m); usados.add(m.id); }
+    }
+    for (const x of cand) { if (elegidas.length >= n) break; if (!usados.has(x.id)) { elegidas.push(x); usados.add(x.id); } }
+    return elegidas.slice(0, n);
   } catch (e) { return []; }
 }
 
@@ -928,6 +1086,7 @@ export default {
       return Response.redirect(`https://${env.DOMINIO}${p}${u.search}`, 301);
 
     if (p === "/api/ice-wms") return proxyIceWms(u);
+    if (p === "/api/plano-correo") return planoCorreo(request, env, u);
     if (p.startsWith("/api/catastro/")) {
       const h = cors(request);
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: h });
