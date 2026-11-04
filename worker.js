@@ -52,7 +52,8 @@ function initDB(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER NOT NULL, correo TEXT, concepto TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
       monto INTEGER NOT NULL, descuento INTEGER DEFAULT 0, ref TEXT, telefono TEXT, estado TEXT NOT NULL DEFAULT 'pendiente', nota TEXT, creado TEXT, resuelto TEXT, img TEXT)`)
   ]).then(async (r) => {   // columnas agregadas después de la primera versión (fallan sin daño si ya existen)
-    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT", "no_correos INTEGER NOT NULL DEFAULT 0"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
+    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT", "no_correos INTEGER NOT NULL DEFAULT 0",
+      "referido_por TEXT", "dias_regalo INTEGER NOT NULL DEFAULT 0", "referido_premiado INTEGER NOT NULL DEFAULT 0"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS enlaces (t TEXT PRIMARY KEY, correo TEXT NOT NULL, vence INTEGER NOT NULL, datos TEXT)").run();
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS campanas (campana TEXT NOT NULL, correo TEXT NOT NULL, enviado TEXT NOT NULL, PRIMARY KEY (campana, correo))").run();
     return r;
@@ -111,14 +112,16 @@ const CATALOGO = {
   "pro-anual": { plan: "pro", meses: 12, monto: 112900, mensual: 11290, txt: "Plan PRO · 1 año" },
   "expedientes": { unidad: 5000, txt: "Expedientes adicionales" }
 };
-const CUPON_PCT = 0.3;
+const CUPON_PCT = 0.3, CUPON_PCT_REF = 0.4;   // quien llega referido por un amigo recibe un poco más en su primer mes
 function cotizar(us, concepto, cantidad) {
   const c = CATALOGO[concepto]; if (!c) return null;
   if (c.unidad) { const n = Math.max(1, Math.min(20, Math.round(Number(cantidad) || 1))); return { concepto, cantidad: n, monto: c.unidad * n, descuento: 0, txt: `${c.txt} · ${n}` }; }
-  const descuento = us && us.cupon && !us.cupon_usado ? Math.round(c.mensual * CUPON_PCT) : 0;
+  const pct = us && us.referido_por ? CUPON_PCT_REF : CUPON_PCT;
+  const descuento = us && us.cupon && !us.cupon_usado ? Math.round(c.mensual * pct) : 0;
   return { concepto, cantidad: 1, monto: c.monto - descuento, descuento, txt: c.txt };
 }
 const sumarMeses = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
+const sumarDias = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 async function cupon(correo) {   // determinista: el mismo correo recibe siempre el mismo cupón
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode("pecr-cupon:" + correo)));
@@ -283,12 +286,20 @@ async function cuentaPorCorreo(env, request, correo, extra) {
   const ahora = new Date().toISOString(), cp = await cupon(correo), e = extra || {};
   let fuente = String(e.fuente || "").slice(0, 120);
   if (!fuente && env.REGISTROS) { const prev = await env.REGISTROS.getWithMetadata("r:" + correo).catch(() => null); if (prev && prev.metadata) fuente = prev.metadata.fuente || "registro previo"; }
-  us = await env.DB.prepare(`INSERT INTO usuarios (correo, nombre, perfil, prov, hash, sal, cupon, fuente, pais, creado, ultimo, google_sub, origen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`)
-    .bind(correo, String(e.nombre || "").slice(0, 80), PERFILES.has(e.perfil) ? e.perfil : "otro", String(e.prov || "").slice(0, 20), "-", azar(16), cp, fuente, (request.cf && request.cf.country) || "", ahora, ahora, e.sub || null, e.origen || "correo").first();
+  // ?ref=<cupón de un amigo>: si el código existe y no es el propio, queda registrado para el 40 % del primer mes
+  let referidoPor = null;
+  const refCode = String(e.ref || "").trim().toUpperCase().slice(0, 20);
+  if (refCode && refCode !== cp) {
+    const r = await env.DB.prepare("SELECT cupon FROM usuarios WHERE cupon = ? AND correo <> ?").bind(refCode, correo).first();
+    if (r) referidoPor = r.cupon;
+  }
+  const pct = referidoPor ? Math.round(CUPON_PCT_REF * 100) : Math.round(CUPON_PCT * 100);
+  us = await env.DB.prepare(`INSERT INTO usuarios (correo, nombre, perfil, prov, hash, sal, cupon, fuente, pais, creado, ultimo, google_sub, origen, referido_por) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`)
+    .bind(correo, String(e.nombre || "").slice(0, 80), PERFILES.has(e.perfil) ? e.perfil : "otro", String(e.prov || "").slice(0, 20), "-", azar(16), cp, fuente, (request.cf && request.cf.country) || "", ahora, ahora, e.sub || null, e.origen || "correo", referidoPor).first();
   await avisar(env, "Nueva cuenta: " + correo, ["Se creó una cuenta en PlanoExactoCR.", "", "Correo: " + correo, "Nombre: " + (us.nombre || "—"), "Entró con: " + (e.origen === "google" ? "Google" : "enlace por correo"),
-    "Llegó por: " + (fuente || "directo"), "País: " + (us.pais || "—"), "Cupón: " + cp, "", "Panel: https://" + (env.DOMINIO || "planoexactocr.com") + "/admin"]);
-  await enviarCorreo(env, correo, "Bienvenido a PlanoExactoCR: tu cupón " + cp, `Tu cuenta en PlanoExactoCR está lista.\n\nTu cupón de lanzamiento: ${cp} (30 % de descuento en la primera mensualidad de cualquier plan).\n\nEntra al mapa: https://${env.DOMINIO || "planoexactocr.com"}/mapa`,
-    correoHTML("Tu cuenta está lista", ["Ya puedes ver la información base de cada remate, guardar listas y generar un expediente PDF completo por semana.", `Tu cupón de lanzamiento es <b style="font-size:18px;letter-spacing:1px">${cp}</b>: 30 % de descuento en la primera mensualidad de cualquier plan.`], "Ir al mapa", `https://${env.DOMINIO || "planoexactocr.com"}/mapa`));
+    "Llegó por: " + (fuente || "directo"), "País: " + (us.pais || "—"), "Cupón: " + cp, referidoPor ? "Referido por: " + referidoPor : "", "", "Panel: https://" + (env.DOMINIO || "planoexactocr.com") + "/admin"].filter(Boolean));
+  await enviarCorreo(env, correo, "Bienvenido a PlanoExactoCR: tu cupón " + cp, `Tu cuenta en PlanoExactoCR está lista.\n\nTu cupón de lanzamiento: ${cp} (${pct} % de descuento en la primera mensualidad de cualquier plan).\n\nEntra al mapa: https://${env.DOMINIO || "planoexactocr.com"}/mapa`,
+    correoHTML("Tu cuenta está lista", ["Ya puedes ver la información base de cada remate, guardar listas y generar un expediente PDF completo por semana.", `Tu cupón de lanzamiento es <b style="font-size:18px;letter-spacing:1px">${cp}</b>: ${pct} % de descuento en la primera mensualidad de cualquier plan.`], "Ir al mapa", `https://${env.DOMINIO || "planoexactocr.com"}/mapa`));
   return { us, nuevo: true };
 }
 const volverA = (v) => (typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : "/mapa");
@@ -299,9 +310,9 @@ async function ingresoExterno(request, env, u) {
   const fallo = (t) => pagina("No se pudo entrar", `<div class="card">${LOGO}<h1>No se pudo entrar</h1><p>${t}</p><p><a href="/mapa?entrar=1">Intentar de nuevo</a></p></div>`, 400);
   if (p === "/auth/google") {
     if (!metodosIngreso(env).google) return fallo("El ingreso con Google todavía no está configurado.");
-    const st = azar(18), vuelta = volverA(u.searchParams.get("v")), utm = (u.searchParams.get("f") || "").slice(0, 120);
+    const st = azar(18), vuelta = volverA(u.searchParams.get("v")), utm = (u.searchParams.get("f") || "").slice(0, 120), ref = (u.searchParams.get("ref") || "").slice(0, 20);
     const q = new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, redirect_uri: base + "/auth/google/vuelta", response_type: "code", scope: "openid email profile", state: st, prompt: "select_account" });
-    return redirigir("https://accounts.google.com/o/oauth2/v2/auth?" + q, [galleta("pecr_g", encodeURIComponent(JSON.stringify({ st, vuelta, utm })), 600)]);
+    return redirigir("https://accounts.google.com/o/oauth2/v2/auth?" + q, [galleta("pecr_g", encodeURIComponent(JSON.stringify({ st, vuelta, utm, ref })), 600)]);
   }
   if (p === "/auth/google/vuelta") {
     let g = {}; try { g = JSON.parse(decodeURIComponent(leerCookie(request, "pecr_g") || "")); } catch (_) {}
@@ -315,7 +326,7 @@ async function ingresoExterno(request, env, u) {
     // El token llega directo de Google por HTTPS (flujo de código del servidor): basta validar destinatario, emisor y vigencia
     if (id.aud !== env.GOOGLE_CLIENT_ID || !/accounts\.google\.com$/.test(id.iss || "") || (id.exp || 0) * 1000 < Date.now() || !id.email || id.email_verified === false) return fallo("No pudimos verificar tu cuenta de Google.");
     const correo = String(id.email).toLowerCase();
-    let { us, nuevo } = await cuentaPorCorreo(env, request, correo, { nombre: id.name, sub: id.sub, origen: "google", fuente: g.utm });
+    let { us, nuevo } = await cuentaPorCorreo(env, request, correo, { nombre: id.name, sub: id.sub, origen: "google", fuente: g.utm, ref: g.ref });
     await env.DB.prepare("UPDATE usuarios SET ultimo = ?, google_sub = COALESCE(google_sub, ?), nombre = CASE WHEN nombre IS NULL OR nombre = '' THEN ? ELSE nombre END WHERE id = ?").bind(new Date().toISOString(), id.sub, String(id.name || "").slice(0, 80), us.id).run();
     return redirigir(nuevo ? "/mapa?bienvenida=1" : g.vuelta || "/mapa", [await crearSesion(env, us), galleta("pecr_g", "", 0)]);
   }
@@ -341,9 +352,13 @@ async function cuenta(request, env, u, pw) {
 
   if (ruta === "yo") {
     const us = await usuarioActual(request, env);
-    let datos = null;
+    let datos = null, user = null;
     if (us && us.datos) try { datos = JSON.parse(us.datos); } catch (_) {}
-    return json({ user: us ? publico(us) : null, datos, admin: await esAdmin(request, pw), ingreso: metodosIngreso(env) }, 200, 0);
+    if (us) {
+      const rf = await env.DB.prepare("SELECT COUNT(*) AS n FROM usuarios WHERE referido_por = ?").bind(us.cupon).first();
+      user = Object.assign(publico(us), { referidos: (rf && rf.n) || 0, diasRegalo: us.dias_regalo || 0 });
+    }
+    return json({ user, datos, admin: await esAdmin(request, pw), ingreso: metodosIngreso(env) }, 200, 0);
   }
   if (ruta === "pagos" && request.method === "GET") {
     const us = await usuarioActual(request, env);
@@ -399,7 +414,7 @@ async function cuenta(request, env, u, pw) {
     if (n && n.n >= 4) return json({ error: "Ya te enviamos varios enlaces. Revisa tu correo (y la carpeta de spam) o espera unos minutos." }, 429, 0);
     await env.DB.prepare("INSERT INTO intentos (correo, ts) VALUES (?, ?)").bind("enlace:" + correo, Date.now()).run();
     const utm = b.utm || {}, t = azar(24), base = "https://" + (env.DOMINIO || u.host);
-    const datos = { vuelta: volverA(b.vuelta), fuente: [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.ref].filter(Boolean).join("/").slice(0, 120) };
+    const datos = { vuelta: volverA(b.vuelta), fuente: [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.ref].filter(Boolean).join("/").slice(0, 120), ref: String(utm.ref || "").slice(0, 20) };
     await env.DB.prepare("INSERT INTO enlaces (t, correo, vence, datos) VALUES (?, ?, ?, ?)").bind(t, correo, Date.now() + 20 * 60 * 1000, JSON.stringify(datos)).run();
     const enlace = base + "/auth/correo?t=" + t;
     const ok = await enviarCorreo(env, correo, "Tu enlace para entrar a PlanoExactoCR", `Para entrar a PlanoExactoCR abre este enlace (vale 20 minutos):\n${enlace}\n\nSi no lo pediste, ignora este correo.`,
@@ -513,7 +528,7 @@ async function admin(request, env, u) {
     return new Response(Uint8Array.from(atob(datos), (c) => c.charCodeAt(0)), { headers: { "content-type": tipo, "cache-control": "no-store" } });
   }
   if (ruta === "usuarios") {
-    const r = await env.DB.prepare("SELECT id, correo, nombre, perfil, prov, plan, pro_hasta, cupon, fuente, pais, creado, ultimo, solicita_pro, nota, no_correos FROM usuarios ORDER BY id DESC").all();
+    const r = await env.DB.prepare("SELECT id, correo, nombre, perfil, prov, plan, pro_hasta, cupon, fuente, pais, creado, ultimo, solicita_pro, nota, no_correos, referido_por, dias_regalo FROM usuarios ORDER BY id DESC").all();
     return json({ usuarios: r.results, hoy: hoy() }, 200, 0);
   }
   if (ruta === "campanas") {
@@ -586,7 +601,14 @@ async function admin(request, env, u) {
     if (c && c.plan) {
       const vigente = planVigente(us) === c.plan && us.pro_hasta && us.pro_hasta >= hoy() ? us.pro_hasta : hoy();   // renovación: se suma al final
       hasta = sumarMeses(vigente, c.meses);
-      st.push(env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, solicita_pro = NULL, cupon_usado = CASE WHEN ? > 0 THEN ? ELSE cupon_usado END WHERE id = ?").bind(c.plan, hasta, pg.descuento, ahora, us.id));
+      const regalo = us.dias_regalo || 0;   // días ganados por referir amigos: se consumen solos en la próxima activación o renovación
+      if (regalo > 0) hasta = sumarDias(hasta, regalo);
+      st.push(env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, solicita_pro = NULL, cupon_usado = CASE WHEN ? > 0 THEN ? ELSE cupon_usado END, dias_regalo = dias_regalo - ? WHERE id = ?").bind(c.plan, hasta, pg.descuento, ahora, regalo, us.id));
+      // Primer plan de pago de alguien que llegó referido: se le abonan 30 días de regalo a quien lo invitó
+      if (us.referido_por && !us.referido_premiado) {
+        st.push(env.DB.prepare("UPDATE usuarios SET dias_regalo = dias_regalo + 30 WHERE cupon = ?").bind(us.referido_por));
+        st.push(env.DB.prepare("UPDATE usuarios SET referido_premiado = 1 WHERE id = ?").bind(us.id));
+      }
     } else st.push(env.DB.prepare("UPDATE usuarios SET creditos = creditos + ? WHERE id = ?").bind(pg.cantidad || 1, us.id));
     await env.DB.batch(st);
     return json({ ok: true, hasta }, 200, 0);

@@ -344,13 +344,15 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   }).catch(() => {});
   const q = new URLSearchParams(location.search), utm = {};
   ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
+  // Si llegaron con el enlace de un amigo (?ref=), que no se pierda al pasar al mapa directo
+  if (utm.ref) { ['entrar', 'ctaMapa'].forEach(id => { const a = document.getElementById(id); if (a) a.href = a.getAttribute('href') + (a.getAttribute('href').includes('?') ? '&' : '?') + 'ref=' + encodeURIComponent(utm.ref); }); }
   // Si ya hay sesión, los botones llevan directo al mapa
   fetch('/api/cuenta/yo', { cache: 'no-store' }).then(r => r.json()).then(j => {
     const I = j.ingreso || {};
     if (!j.user && (I.google || I.correo)) {   // ingreso sin contraseña
       document.getElementById('f').hidden = true; document.getElementById('ingreso').hidden = false;
       const g = document.getElementById('gBtn'), f = Object.values(utm).join('/');
-      if (I.google) { g.hidden = false; g.href = '/auth/google?v=/mapa' + (f ? '&f=' + encodeURIComponent(f) : ''); }
+      if (I.google) { g.hidden = false; g.href = '/auth/google?v=/mapa' + (f ? '&f=' + encodeURIComponent(f) : '') + (utm.ref ? '&ref=' + encodeURIComponent(utm.ref) : ''); }
       if (I.correo) document.getElementById('mlF').hidden = false;
       document.getElementById('gSep').hidden = !(I.google && I.correo);
     }

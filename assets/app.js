@@ -1290,6 +1290,15 @@
     try { await navigator.clipboard.writeText(url); toast('Enlace copiado: ya puedes pegarlo donde quieras'); }
     catch (e) { window.prompt('Copia este enlace:', url); }
   }
+  // Enlace de referido: tu amigo entra con un descuento mayor en su primer mes y vos ganás días de regalo cuando se suscribe
+  async function compartirRef(cp) {
+    const base = 'https://' + (location.hostname.endsWith('planoexactocr.com') ? 'planoexactocr.com' : location.host);
+    const url = `${base}/mapa?ref=${encodeURIComponent(cp)}`;
+    const title = 'PlanoExactoCR', text = `Te comparto mi código en PlanoExactoCR: ${PX.PRECIOS.cuponRef} % de descuento en tu primer mes.`;
+    if (navigator.share) { try { await navigator.share({ title, text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(url); toast('Enlace copiado: ya puedes pegarlo donde quieras'); }
+    catch (e) { window.prompt('Copia este enlace:', url); }
+  }
   function closeFicha() { $('ficha').hidden = true; open = null; if (tab === 'top') renderHub(); selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.querySelector('#layer > *')) closeLayer(); else if (open) closeFicha(); } });
   $('ficha').addEventListener('click', e => {
@@ -1346,6 +1355,12 @@
   const alerta = (id, tipo = 'danger') => `<div class="alert alert-${tipo}" id="${id}" role="alert" hidden></div>`;
   const mostrar = (id, t) => { const e = $(id); if (!e) return; e.textContent = t || ''; e.hidden = !t; };
   const cuponCard = (cp, usado) => `<div class="card card-sm bg-primary-lt mb-3"><div class="card-body"><div class="subheader">Tu cupón de lanzamiento</div><div class="h2 mb-1 font-monospace">${esc(cp)}</div><div class="text-secondary small">${usado ? 'Ya lo usaste en tu primer pago. ¡Gracias!' : `${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar.`}</div></div></div>`;
+  const referirCard = (cp, referidos, diasRegalo) => `<div class="card card-sm bg-green-lt mb-3"><div class="card-body">
+    <div class="subheader">Invitá a un amigo</div><div class="h2 mb-1 font-monospace">${esc(cp)}</div>
+    <div class="text-secondary small mb-2">Compartí tu código: tu amigo entra con ${PX.PRECIOS.cuponRef} % de descuento en su primer mes. Cuando pague su primer plan, vos ganás 30 días de regalo en el tuyo.</div>
+    ${diasRegalo ? `<div class="mb-2"><span class="badge bg-secondary-lt">${diasRegalo} día${diasRegalo === 1 ? '' : 's'} de regalo pendientes</span><div class="text-secondary small mt-1">Se suman solos en tu próxima activación o renovación.</div></div>` : ''}
+    ${referidos ? `<div class="text-secondary small mb-2">Ya invitaste a ${referidos} persona${referidos === 1 ? '' : 's'}.</div>` : ''}
+    <button class="btn btn-sm" data-copiar-ref="${esc(cp)}">Copiar enlace para compartir</button></div></div>`;
 
   function goExpediente(r) {
     if (r.isPlano) PX.savePlano(r);
@@ -1431,11 +1446,11 @@
   const GLOGO = '<svg viewBox="0 0 48 48" width="18" height="18" class="me-2" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
   const utmQ = () => { const q = new URLSearchParams(location.search), u = {}; ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) u[k] = q.get(k).slice(0, 60); }); return u; };
   function openIngreso(porque) {
-    const I = PX.ingreso, vuelta = location.pathname + location.hash, f = Object.values(utmQ()).join('/');
+    const I = PX.ingreso, vuelta = location.pathname + location.hash, utm = utmQ(), f = Object.values(utm).join('/');
     ventana({ titulo: 'Entra a PlanoExactoCR', tam: 'sm', marca: true,
       cuerpo: `${porque ? `<div class="alert alert-info"><div>${esc(porque)}</div></div>` : ''}
         <p class="text-secondary">Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón de lanzamiento. Sin contraseñas.</p>
-        ${I.google ? `<a class="btn w-100" href="/auth/google?v=${encodeURIComponent(vuelta)}${f ? '&f=' + encodeURIComponent(f) : ''}">${GLOGO}Continuar con Google</a>` : ''}
+        ${I.google ? `<a class="btn w-100" href="/auth/google?v=${encodeURIComponent(vuelta)}${f ? '&f=' + encodeURIComponent(f) : ''}${utm.ref ? '&ref=' + encodeURIComponent(utm.ref) : ''}">${GLOGO}Continuar con Google</a>` : ''}
         ${I.google && I.correo ? '<div class="hr-text">o con tu correo</div>' : ''}
         ${I.correo ? `<form id="mlF" novalidate><div class="mb-3"><label class="form-label" for="mlCorreo">Correo electrónico</label><input class="form-control" id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></div>
           ${alerta('mlErr')}<button class="btn btn-primary w-100" type="submit" id="mlBtn">Enviarme un enlace para entrar</button></form>` : ''}
@@ -1609,7 +1624,8 @@
         ${yo ? `<div class="card mb-3"><div class="card-body"><div class="d-flex align-items-center"><span class="avatar avatar-md me-3 bg-primary-lt">${esc((yo.nombre || yo.correo).slice(0, 1).toUpperCase())}</span>
             <div class="flex-fill"><div class="fw-medium">${esc(yo.nombre || yo.correo)}</div>${yo.nombre ? `<div class="text-secondary small">${esc(yo.correo)}</div>` : ''}</div>
             <a class="btn btn-sm" href="/__salir">Cerrar sesión</a></div></div></div>
-          ${yo.cupon ? cuponCard(yo.cupon, yo.cuponUsado) : ''}`
+          ${yo.cupon ? cuponCard(yo.cupon, yo.cuponUsado) : ''}
+          ${yo.cupon ? referirCard(yo.cupon, yo.referidos || 0, yo.diasRegalo || 0) : ''}`
         : `<div class="alert alert-info"><div>Sesión de administración: con «Ver como» revisas el sitio como usuario gratis, Esencial o PRO. <a href="/admin">Panel</a> · <a href="/__salir">Salir</a></div></div>`}
         ${tarjeta('Plan', `<div class="card-body">
           <div class="d-flex align-items-center mb-2"><div class="flex-fill"><div class="fw-medium">${n >= 2 ? (pro ? PX.PRO : PX.ESE) : 'Cuenta gratis'}</div>
@@ -1646,9 +1662,10 @@
   }
   $('bCuenta').onclick = () => { renderCuenta(); pintarPagos(); };
   $('layer').addEventListener('click', async e => {
-    const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb],[data-unocultar],[data-clearocultos]'); if (!d) return; e.preventDefault();
+    const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb],[data-unocultar],[data-clearocultos],[data-copiar-ref]'); if (!d) return; e.preventDefault();
     const a = PX.acct, ds = d.dataset;
     if (ds.open) { closeLayer(); const it = PX.item(ds.open); if (it && it.isPlano) setTab('pla'); openFicha(ds.open, true); return; }
+    if (ds.copiarRef) { await compartirRef(ds.copiarRef); return; }
     if (ds.unsig) PX.toggleSigo(ds.unsig);
     if (ds.rmi) { const [l, k] = ds.rmi.split('|'); const L_ = a.listas.find(x => x.id === l); L_.items = L_.items.filter(i => i.k !== k); }
     if (ds.ren) { const L_ = a.listas.find(x => x.id === ds.ren); const n = await prompt_('Nuevo nombre de la lista', L_.n); if (n) L_.n = n; }
@@ -1834,6 +1851,7 @@
   if (bienv === '1' && PX.yo) ventana({ titulo: '¡Bienvenido a PlanoExactoCR!', marca: true, estado: 'success',
     cuerpo: `<p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
       ${PX.yo.cupon ? cuponCard(PX.yo.cupon, PX.yo.cuponUsado) : ''}
+      ${PX.yo.cupon ? referirCard(PX.yo.cupon, PX.yo.referidos || 0, PX.yo.diasRegalo || 0) : ''}
       <form id="bvF"><div class="row g-2"><div class="col-sm-6"><label class="form-label" for="bvPerf">Te interesa como <span class="form-label-description">Opcional</span></label><select class="form-select" id="bvPerf">${PERF.map(([v, t]) => `<option value="${v}"${PX.yo.perfil === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
         <div class="col-sm-6"><label class="form-label" for="bvProv">Provincia de interés</label><select class="form-select" id="bvProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option${PX.yo.prov === p ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div></form>`,
     pie: '<button class="btn me-auto" type="button" data-about="guia">Cómo usar</button><button class="btn btn-primary" type="submit" form="bvF">Ir al mapa</button>' });

@@ -123,7 +123,8 @@
     const q = $('q').value.trim().toLowerCase(), f = $('fp').value;
     const L = U.filter(u => (!q || [u.correo, u.nombre, u.cupon].join(' ').toLowerCase().includes(q)) && (!f || (f === 'pide' ? u.solicita_pro && !esPro(u) : f === 'pro' ? esPro(u) : !esPro(u))));
     $('tb').innerHTML = L.length ? L.map(u => `<tr data-id="${u.id}">
-      <td><div class="fw-medium">${esc(u.correo)}</div><div class="text-secondary small">${esc(u.nombre || '—')} · <code>${esc(u.cupon || '')}</code></div></td>
+      <td><div class="fw-medium">${esc(u.correo)}</div><div class="text-secondary small">${esc(u.nombre || '—')} · <code>${esc(u.cupon || '')}</code></div>
+        ${u.referido_por ? `<div class="text-secondary small">Referido por <code>${esc(u.referido_por)}</code></div>` : ''}${u.dias_regalo ? `<span class="badge bg-green-lt mt-1">${u.dias_regalo} día${u.dias_regalo === 1 ? '' : 's'} de regalo</span>` : ''}</td>
       <td>${esc(u.perfil)}<div class="text-secondary small">${esc(u.prov || 'Todo el país')}</div></td>
       <td>${esc(u.fuente || 'directo')}<div class="text-secondary small">${esc(u.pais || '')}</div></td>
       <td>${fd(u.creado)}<div class="text-secondary small">última vez ${fd(u.ultimo)}</div></td>
