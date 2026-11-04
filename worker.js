@@ -204,15 +204,17 @@ function miniMapaURL(ll, altoM) {
   const bbox = [lon - lonD, lat - latD, lon + lonD, lat + latD].join(",");
   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=102100&size=${ANCHO},${ALTO}&format=jpg&f=image`;
 }
-// Metros N-S que debe abarcar el mapa del correo para que el lote ocupe ~1/3 del encuadre
-// (zoom adaptativo: los lotes grandes y chicos se ven a un tamaño parecido, con contexto).
+// Metros N-S que debe abarcar el mapa del correo. Zoom adaptativo (el lote ocupa ~1/3 del
+// encuadre), pero con un MÍNIMO de 150 m: por debajo de eso, el satélite de Esri pediría un
+// zoom (~z19+) que no existe en todo el país y la imagen sale rota. 150 m ≈ z18, que Esri sí
+// tiene siempre; el polígono SVG marca el lote con precisión aunque se vea chico.
 function altoCorreo(r) {
   if (!r || !r.poly || !r.ll) return 220;
   let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
   for (const pg of r.poly) for (const ring of pg) for (const [x, y] of ring) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
   if (!isFinite(minx)) return 220;
   const hM = (maxy - miny) * 111320, wM = (maxx - minx) * 111320 * Math.cos(r.ll[1] * Math.PI / 180);
-  return Math.max(70, Math.min(360, Math.max(hM, wM / 2) * 3));
+  return Math.max(150, Math.min(380, Math.max(hM, wM / 2) * 3));
 }
 
 // ---------- Mini-plano del predio para el correo ----------
