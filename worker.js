@@ -172,14 +172,38 @@ ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A4
 // Mensajes para disparar a mano desde /admin a quienes ya tienen cuenta y todavía
 // no pagan un plan. Cada envío queda en "campanas" para no repetirle el mismo
 // correo a la misma persona si se vuelve a pulsar el botón.
-const correoHTMLCampana = (titulo, parrafos, extra, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#15302A">
-<p style="font-size:18px;font-weight:bold;margin:0 0 4px">PlanoExactoCR</p><p style="color:#4C5953;margin:0 0 20px;font-size:13px">Remates judiciales de Costa Rica en un mapa</p>
-<h1 style="font-size:20px;margin:0 0 12px">${titulo}</h1>${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${t}</p>`).join("")}
+const correoHTMLCampana = (titulo, parrafos, extra, boton, enlace, env) => { const dom = (env && env.DOMINIO) || "planoexactocr.com"; return `<div style="background:#EEF2F0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #E3E7E5">
+<div style="background:#1F5A47;height:6px;line-height:6px;font-size:0">&nbsp;</div>
+<div style="padding:26px 28px 6px">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr>
+<td style="vertical-align:middle;padding-right:10px"><img src="https://${dom}/assets/img/correo-logo.png" width="40" height="27" alt="PlanoExactoCR" style="display:block"></td>
+<td style="vertical-align:middle">
+<div style="font-size:18px;font-weight:bold;color:#15302A;line-height:1.3">PlanoExactoCR</div>
+<div style="color:#4C5953;font-size:12px">Remates judiciales de Costa Rica en un mapa</div>
+</td></tr></table>
+<h1 style="font-size:20px;margin:0 0 12px;color:#15302A">${titulo}</h1>
+${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px;color:#15302A">${t}</p>`).join("")}
 ${extra || ""}
 ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p>` : ""}
-<p style="font-size:12px;color:#4C5953;margin-top:24px">Te escribimos porque tenés una cuenta en PlanoExactoCR. Si preferís no recibir estos correos, respondé este mensaje y te quitamos de la lista.</p></div>`;
-// Tarjeta de una propiedad destacada dentro del correo: tipo + índice PECR, ubicación,
-// área, base y fecha del remate, con enlace directo a su ficha en el mapa.
+</div>
+<div style="background:#F7F9F8;padding:14px 28px;border-top:1px solid #E3E7E5">
+<p style="font-size:12px;color:#4C5953;margin:0">Te escribimos porque tenés una cuenta en PlanoExactoCR. Si preferís no recibir estos correos, respondé este mensaje y te quitamos de la lista.</p>
+</div></div></div>`; };
+// Imagen satelital (Esri World Imagery) centrada en el punto del remate, con el
+// recuadro (bbox) calculado para el tamaño de salida que se pide — sin llave de API.
+function miniMapaURL(ll) {
+  if (!Array.isArray(ll) || ll.length < 2) return null;
+  const [lon, lat] = ll;
+  const ANCHO = 600, ALTO = 300, ALTO_M = 340;   // metros de norte a sur que abarca la imagen
+  const latD = (ALTO_M / 2) / 111320;
+  const lonD = (ALTO_M / 2) * (ANCHO / ALTO) / (111320 * Math.cos(lat * Math.PI / 180));
+  const bbox = [lon - lonD, lat - latD, lon + lonD, lat + latD].join(",");
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=102100&size=${ANCHO},${ALTO}&format=jpg&f=image`;
+}
+// Tarjeta de una propiedad destacada dentro del correo: mini-mapa satelital con el
+// punto marcado, tipo + índice PECR, ubicación, área, base y fecha, con enlace directo
+// a su ficha en el mapa.
 function tarjetaPropiedadCorreo(r, env) {
   const dom = env.DOMINIO || "planoexactocr.com";
   const loc = [r.cn, r.pn].filter(Boolean).join(", ");
@@ -188,12 +212,18 @@ function tarjetaPropiedadCorreo(r, env) {
   const etapa = ETAPA[st] || "";
   const baseActual = r.base != null ? r.base * (PCT[st] || 1) : null;
   const enlace = `https://${dom}/mapa#r${r.id}`;
+  const mapa = miniMapaURL(r.ll);
+  const imgBloque = mapa ? `<div style="position:relative;line-height:0">
+<img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
+<div style="position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-20px 0 0 -8px;background:#C8553D;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 1px 3px rgba(0,0,0,.45)"></div>
+</div>` : "";
   return { enlace, loc, fecha,
-    html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;padding:14px 16px;margin:0 0 10px;background:#F7F9F8">
+    html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;margin:0 0 10px;background:#F7F9F8;overflow:hidden">
+${imgBloque}<div style="padding:12px 16px 14px">
 <div style="font-size:11px;color:#1F5A47;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;margin:0 0 5px">${esc(tipoTxt(r.tipo))} &middot; Índice PECR ${r.pecr}/10</div>
 <div style="font-size:15px;font-weight:bold;color:#15302A;margin:0 0 3px">${esc(loc || "Costa Rica")}</div>
 <div style="font-size:13px;color:#4C5953;margin:0 0 8px">${r.area ? miles(r.area) + " m² &middot; " : ""}${dinero(baseActual, r.mon)}${fecha ? " &middot; " + etapa + " el " + fecha : ""}</div>
-<span style="font-size:13px;color:#1F5A47;font-weight:bold">Ver en el mapa →</span></a>` };
+<span style="font-size:13px;color:#1F5A47;font-weight:bold">Ver en el mapa →</span></div></a>` };
 }
 const CAMPANAS = {
   tour: {
@@ -216,7 +246,7 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
       const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + propsTexto + "\n\nVer el mapa: " + enlace;
-      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace) };
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace, env) };
     }
   }
 };
