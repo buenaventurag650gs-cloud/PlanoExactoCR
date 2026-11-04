@@ -220,6 +220,51 @@ async function desinflar(bytes) {
   for (; ;) { const { done, value } = await rd.read(); if (done) break; partes.push(value); }
   let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
 }
+async function inflar(bytes) {
+  const ds = new DecompressionStream("deflate"), w = ds.writable.getWriter(); w.write(bytes); w.close();
+  const partes = [], rd = ds.readable.getReader();
+  for (; ;) { const { done, value } = await rd.read(); if (done) break; partes.push(value); }
+  let n = 0; partes.forEach((p) => n += p.length); const out = new Uint8Array(n); let o = 0; partes.forEach((p) => { out.set(p, o); o += p.length; }); return out;
+}
+const paethPred = (a, b, c) => { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c; };
+// Decodifica un PNG (colorType 2/6/3, 8 bits) a RGBA. Para la base topográfica del correo.
+async function decodificarPNG(buf) {
+  if (buf[0] !== 137 || buf[1] !== 80) throw new Error("no es PNG");
+  let p = 8, w = 0, h = 0, bd = 0, ct = 0, plte = null, trns = null; const idat = [];
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  while (p < buf.length) {
+    const len = dv.getUint32(p), t = String.fromCharCode(buf[p + 4], buf[p + 5], buf[p + 6], buf[p + 7]);
+    if (t === "IHDR") { w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); bd = buf[p + 16]; ct = buf[p + 17]; }
+    else if (t === "PLTE") plte = buf.subarray(p + 8, p + 8 + len);
+    else if (t === "tRNS") trns = buf.subarray(p + 8, p + 8 + len);
+    else if (t === "IDAT") idat.push(buf.subarray(p + 8, p + 8 + len));
+    else if (t === "IEND") break;
+    p += 12 + len;
+  }
+  if (bd !== 8) throw new Error("bd " + bd);
+  const ch = ct === 2 ? 3 : ct === 6 ? 4 : ct === 0 ? 1 : ct === 3 ? 1 : -1;
+  if (ch < 0) throw new Error("ct " + ct);
+  let comp = 0; idat.forEach((d) => comp += d.length); const cb = new Uint8Array(comp); let o = 0; idat.forEach((d) => { cb.set(d, o); o += d.length; });
+  const raw = await inflar(cb), stride = w * ch, out = new Uint8Array(w * h * 4);
+  const prev = new Uint8Array(stride), cur = new Uint8Array(stride); let sp = 0;
+  for (let y = 0; y < h; y++) {
+    const f = raw[sp++];
+    for (let i = 0; i < stride; i++) { const x = raw[sp++], a = i >= ch ? cur[i - ch] : 0, b = prev[i], c = i >= ch ? prev[i - ch] : 0; let v; if (f === 0) v = x; else if (f === 1) v = x + a; else if (f === 2) v = x + b; else if (f === 3) v = x + ((a + b) >> 1); else if (f === 4) v = x + paethPred(a, b, c); else v = x; cur[i] = v & 0xff; }
+    for (let xx = 0; xx < w; xx++) { const di = (y * w + xx) * 4; if (ct === 3) { const idx = cur[xx]; out[di] = plte ? plte[idx * 3] : 0; out[di + 1] = plte ? plte[idx * 3 + 1] : 0; out[di + 2] = plte ? plte[idx * 3 + 2] : 0; out[di + 3] = trns && idx < trns.length ? trns[idx] : 255; } else { const si = xx * ch; out[di] = cur[si]; out[di + 1] = ch >= 3 ? cur[si + 1] : cur[si]; out[di + 2] = ch >= 3 ? cur[si + 2] : cur[si]; out[di + 3] = ch === 4 ? cur[si + 3] : 255; } }
+    prev.set(cur);
+  }
+  return { w, h, data: out };
+}
+// Trae una capa de Esri (base o referencia) como RGBA del tamaño pedido, o null si falla.
+async function esriCapa(servicio, bx0, by0, bx1, by1, W, H, fmt) {
+  try {
+    const url = `https://server.arcgisonline.com/ArcGIS/rest/services/${servicio}/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${H}&format=${fmt}&transparent=true&f=image`;
+    const resp = await fetch(url, { cf: { cacheTtl: 86400, cacheEverything: true } });
+    if (!resp.ok) return null;
+    const img = await decodificarPNG(new Uint8Array(await resp.arrayBuffer()));
+    return (img.w === W && img.h === H) ? img : null;
+  } catch (e) { return null; }
+}
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_T[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
 function pngChunk(type, data) {
@@ -286,15 +331,27 @@ async function planoCorreoPNG(r) {
     const may = Math.max(hw, hh, 1); let k = 1; if (may < 18) k = 18 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
     const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
     const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
-    const img = lienzo(W, H, 244, 245, 242);
 
-    // Cuadrícula a escala real: paso "redondo" para ~6-9 líneas a lo ancho.
+    // Paso de escala "redondo" (para la barra de escala y la cuadrícula de respaldo).
     const spanMx = (bx1 - bx0) / secLat(latC);   // ancho en metros (aprox)
     const escalas = [2, 5, 10, 20, 25, 50, 100, 200, 500, 1000];
     let g = escalas[0]; for (const e of escalas) { g = e; if (spanMx / e <= 9) break; }
     const gM = g * secLat(latC);
-    for (let mx = Math.ceil(bx0 / gM) * gM; mx <= bx1; mx += gM) vLinea(img, (mx - bx0) / (bx1 - bx0) * W, 0, H - 1, 214, 221, 216, 0.9);
-    for (let my = Math.ceil(by0 / gM) * gM; my <= by1; my += gM) hLinea(img, 0, W - 1, (by1 - my) / (by1 - by0) * H, 214, 221, 216, 0.9);
+
+    // Base del plano: mapa claro con vías (estilo expediente, compuesto desde Esri). Si no
+    // se puede traer, se cae a una cuadrícula técnica dibujada localmente.
+    let img = null;
+    const base = await esriCapa("Canvas/World_Light_Gray_Base", bx0, by0, bx1, by1, W, H, "png24");
+    if (base) {
+      img = { w: W, h: H, rgb: new Uint8Array(W * H * 3) };
+      for (let i = 0; i < W * H; i++) { img.rgb[i * 3] = base.data[i * 4]; img.rgb[i * 3 + 1] = base.data[i * 4 + 1]; img.rgb[i * 3 + 2] = base.data[i * 4 + 2]; }
+      const ref = await esriCapa("Canvas/World_Light_Gray_Reference", bx0, by0, bx1, by1, W, H, "png32");
+      if (ref) for (let i = 0; i < W * H; i++) { const a = ref.data[i * 4 + 3] / 255; if (a > 0.02) mezclar(img.rgb, i * 3, ref.data[i * 4], ref.data[i * 4 + 1], ref.data[i * 4 + 2], a); }
+    } else {
+      img = lienzo(W, H, 244, 245, 242);
+      for (let mx = Math.ceil(bx0 / gM) * gM; mx <= bx1; mx += gM) vLinea(img, (mx - bx0) / (bx1 - bx0) * W, 0, H - 1, 214, 221, 216, 0.9);
+      for (let my = Math.ceil(by0 / gM) * gM; my <= by1; my += gM) hLinea(img, 0, W - 1, (by1 - my) / (by1 - by0) * H, 214, 221, 216, 0.9);
+    }
 
     // Polígono del lote
     const toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * H];
