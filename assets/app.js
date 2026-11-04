@@ -13,15 +13,11 @@
   PX.prepare(R);
   PX.ctx.dist = DIST;
   const live = R.filter(r => r.st >= 0);
-  // capas secundarias: no bloquean el arranque
-  const extra = Promise.all([
-    PX.get('data/planes_reguladores.geojson').catch(() => null), PX.get('data/salud.json').catch(() => []),
-    PX.get('data/cantones.geojson').catch(() => null), PX.get('data/zonasvida.geojson').catch(() => null), PX.get('data/infra.geojson').catch(() => null),
-    PX.get('data/asadas.json').catch(() => null), PX.get('data/aprovechamientos.json').catch(() => null),
-    PX.get('data/cobertura_concesiones.geojson').catch(() => null), PX.get('data/electricidad.geojson').catch(() => null),
-    PX.get('data/postes_cov.geojson').catch(() => null),
-    PX.get('data/postes_cov_100m.geojson').catch(() => null)
-  ]).then(([p, s, c, z, inf, asadasData, apData, cobDA, elec, postesCov, postesCov100]) => { Object.assign(PX.ctx, { planes: p, salud: s, asadas: asadasData, aprovech: apData, cobDA: cobDA, elec: elec, postesCov: postesCov, postesCov100: postesCov100, ready: true }); CANT = c; ZV = z; INFRA = inf; prepZV(); drawVectors(); });
+  // Solo los límites cantonales (capa encendida por defecto) se cargan al arranque. El
+  // resto de las capas opcionales —incluidos los pesados postes_cov (1,3 MB + 4,1 MB)— se
+  // cargan de forma perezosa con ensureCtx() cuando el usuario enciende su capa, para no
+  // bloquear la carga de la página con ~8 MB de datos que casi nunca se usan.
+  const extra = PX.get('data/cantones.geojson').catch(() => null).then((c) => { CANT = c; PX.ctx.ready = true; prepZV(); drawVectors(); });
 
   const toast = t => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); };
   const lockMsg = (t) => { openPlanes(t); };
@@ -664,11 +660,25 @@
   const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup(), elec: L.layerGroup(), postesCov: L.layerGroup(), postesCov100: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
+  // Carga perezosa de los datos de cada capa opcional: se piden solo al encender la capa.
+  const CTX_FILES = { planes: 'data/planes_reguladores.geojson', salud: 'data/salud.json', zv: 'data/zonasvida.geojson', infra: 'data/infra.geojson', asadas: 'data/asadas.json', aprovech: 'data/aprovechamientos.json', cobDA: 'data/cobertura_concesiones.geojson', elec: 'data/electricidad.geojson', postesCov: 'data/postes_cov.geojson', postesCov100: 'data/postes_cov_100m.geojson' };
+  const ctxP = {};
+  function ensureCtx(id) {
+    if (!CTX_FILES[id]) return;
+    const have = id === 'zv' ? ZV != null : id === 'infra' ? INFRA != null : PX.ctx[id] != null;
+    if (have || ctxP[id]) return;
+    ctxP[id] = PX.get(CTX_FILES[id]).then((d) => {
+      if (id === 'zv') { ZV = d; prepZV(); }
+      else if (id === 'infra') { INFRA = d; }
+      else { PX.ctx[id] = d; if (id === 'planes' && d && d.features) d.features.forEach((f) => f.bb = f.bb || bbox(f.geometry)); }
+      drawVectors();
+    }).catch(() => {});
+  }
   function syncLayers() {
     for (const k in base) { if (k === baseId) base[k].addTo(map); else base[k].remove(); }
     map.getContainer().classList.toggle('on-sat', baseId === 'sat');
     if (lyrState.zmt && allowed(LY.find(l => l.id === 'zmt')) && !ZMT) loadZMT();
-    for (const l of LY) { const on = lyrState[l.id] && allowed(l) && (!l.minZ || map.getZoom() >= l.minZ); if (on && !map.hasLayer(l.layer)) l.layer.addTo(map); if (!on && map.hasLayer(l.layer)) l.layer.remove(); }
+    for (const l of LY) { const on = lyrState[l.id] && allowed(l) && (!l.minZ || map.getZoom() >= l.minZ); if (on) ensureCtx(l.id); if (on && !map.hasLayer(l.layer)) l.layer.addTo(map); if (!on && map.hasLayer(l.layer)) l.layer.remove(); }
     PX.store.set('px-layers', lyrState); PX.store.set('px-base2', baseId); paintBaseSw();
   }
   // Selector rápido de mapa base sobre el mapa (miniaturas)
@@ -765,7 +775,7 @@
   });
 
   // Vectores locales
-  function prepZV() { if (!ZV) return; for (const f of ZV.features) { const g = zvGroup(f.properties.n); f.properties.col = g[2]; f.bb = bbox(f.geometry); } if (CANT) CANT.features.forEach(f => f.bb = bbox(f.geometry)); if (DIST) DIST.features.forEach(f => f.bb = f.bb || bbox(f.geometry)); if (PX.ctx.planes) PX.ctx.planes.features.forEach(f => f.bb = bbox(f.geometry)); }
+  function prepZV() { if (ZV) for (const f of ZV.features) { const g = zvGroup(f.properties.n); f.properties.col = g[2]; f.bb = f.bb || bbox(f.geometry); } if (CANT) CANT.features.forEach(f => f.bb = f.bb || bbox(f.geometry)); if (DIST) DIST.features.forEach(f => f.bb = f.bb || bbox(f.geometry)); if (PX.ctx.planes) PX.ctx.planes.features.forEach(f => f.bb = f.bb || bbox(f.geometry)); }
   // Mediana de $/m² de remates vigentes por cantón (código de cantón: provincia = primer dígito)
   const medCant = f => PX.medC[Math.floor(f.properties.c / 100) + '|' + f.properties.k];
   function priceClasses() {
