@@ -98,8 +98,8 @@ def main():
                     help='resolución del raster en metros (default 50)')
     ap.add_argument('--tol-m', type=float, default=100.0,
                     help='tolerancia de simplificación (default 100)')
-    ap.add_argument('--min-area-km2', type=float, default=0.25,
-                    help='descartar polígonos chicos (default 0.25)')
+    ap.add_argument('--min-area-km2', type=float, default=0.08,
+                    help='descartar polígonos chicos (default 0.08)')
     ap.add_argument('--suavizar-m', type=float, default=0.0,
                     help='sigma del gaussian blur en metros antes de vectorizar '
                          '(0 lo desactiva). Con 40–60 m produce curvas tipo burbuja '
