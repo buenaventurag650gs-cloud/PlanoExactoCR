@@ -497,6 +497,12 @@ async function admin(request, env, u) {
     }
     return json({ campanas: out }, 200, 0);
   }
+  if (ruta === "campana-destinatarios") {   // lista de elegibles (correo, nombre) para marcar con cajitas en /admin
+    const id = u.searchParams.get("campana");
+    if (!CAMPANAS[id]) return json({ error: "Campaña desconocida" }, 400, 0);
+    const dest = await destinatariosCampana(env, id);
+    return json({ destinatarios: dest.map((d) => ({ correo: d.correo, nombre: d.nombre })) }, 200, 0);
+  }
   if (ruta === "campana") {   // probar o disparar una campaña de correo (no requiere b.id)
     if (request.method !== "POST") return json({ error: "Método no permitido" }, 405, 0);
     const b = await leerJSON(request);
@@ -512,7 +518,12 @@ async function admin(request, env, u) {
     }
     if (b.accion === "enviar") {
       const props = await mejoresPropiedades(u, env, 3);
-      const dest = (await destinatariosCampana(env, b.campana)).slice(0, 300);
+      let dest = await destinatariosCampana(env, b.campana);
+      if (Array.isArray(b.correos)) {   // el admin marcó destinatarios específicos con las cajitas
+        const marcados = new Set(b.correos.map((x) => String(x).trim().toLowerCase()));
+        dest = dest.filter((d) => marcados.has(String(d.correo).trim().toLowerCase()));
+      }
+      dest = dest.slice(0, 300);
       let enviados = 0, fallidos = 0, ultimoError = "";
       for (const us of dest) {
         const msg = c.construir(us, props, env);

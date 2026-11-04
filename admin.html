@@ -71,6 +71,19 @@
   </div></div>
 </div>
 <div class="modal-backdrop fade show" id="dlgBack" style="display:none"></div>
+
+<!-- Elegir con cajitas a quién se le manda una campaña -->
+<div class="modal modal-blur" id="dlgDest" tabindex="-1" role="dialog" aria-modal="true" style="display:none">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:520px"><div class="modal-content">
+    <div class="modal-header"><h3 class="modal-title" id="dlgDestTitle">Elegir destinatarios</h3></div>
+    <div class="modal-body">
+      <label class="form-check mb-2 pb-2 border-bottom"><input class="form-check-input" type="checkbox" id="dlgDestTodos" checked><span class="form-check-label fw-medium">Marcar todos</span></label>
+      <div style="max-height:320px;overflow:auto" id="dlgDestLista"></div>
+    </div>
+    <div class="modal-footer"><div class="w-100"><div class="row"><div class="col"><button class="btn w-100" data-dd="no">Cancelar</button></div><div class="col"><button class="btn btn-danger w-100" data-dd="si">Enviar a los marcados</button></div></div></div></div>
+  </div></div>
+</div>
+<div class="modal-backdrop fade show" id="dlgDestBack" style="display:none"></div>
 <div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="alert alert-important mb-0" id="aviso" style="display:none"></div></div>
 
 <script>
@@ -139,8 +152,30 @@
       <td><div class="fw-medium">${esc(c.nombre)}</div><div class="text-secondary small">${esc(c.asunto)}</div></td>
       <td>${c.faltan} persona${c.faltan === 1 ? '' : 's'} sin recibirlo</td>
       <td>${c.enviados}</td>
-      <td><div class="btn-list flex-nowrap"><button class="btn btn-sm" data-c="prueba">Probar a mi correo</button><button class="btn btn-sm btn-danger" data-c="enviar" ${c.faltan ? '' : 'disabled'}>Enviar a los elegibles</button></div></td></tr>`).join('')
+      <td><div class="btn-list flex-nowrap"><button class="btn btn-sm" data-c="prueba">Probar a mi correo</button><button class="btn btn-sm btn-danger" data-c="enviar" ${c.faltan ? '' : 'disabled'}>Elegir y enviar</button></div></td></tr>`).join('')
       : '<tr><td colspan="4" class="text-secondary">No hay mensajes preparados todavía.</td></tr>';
+  }
+  // Abre el modal con cajitas, una por destinatario elegible; resuelve con la lista
+  // de correos marcados, o null si se cancela.
+  async function elegirDestinatarios(id, nombre) {
+    const r = await fetch('/api/admin/campana-destinatarios?campana=' + encodeURIComponent(id), { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    const L = j.destinatarios || [];
+    if (!L.length) { toast('No hay destinatarios elegibles.', 'warning'); return null; }
+    $('dlgDestTitle').textContent = 'Elegir destinatarios · ' + nombre;
+    $('dlgDestLista').innerHTML = L.map(d => `<label class="form-check mb-1"><input class="form-check-input" type="checkbox" value="${esc(d.correo)}" checked><span class="form-check-label">${esc(d.correo)}${d.nombre ? ' · ' + esc(d.nombre) : ''}</span></label>`).join('');
+    $('dlgDestTodos').checked = true;
+    return new Promise(res => {
+      const d = $('dlgDest'), cajitas = () => [...$('dlgDestLista').querySelectorAll('input[type=checkbox]')];
+      d.style.display = 'block'; d.classList.add('show'); $('dlgDestBack').style.display = 'block';
+      const fin = v => { d.style.display = 'none'; d.classList.remove('show'); $('dlgDestBack').style.display = 'none'; d.onclick = null; $('dlgDestTodos').onclick = null; res(v); };
+      $('dlgDestTodos').onclick = () => cajitas().forEach(c => c.checked = $('dlgDestTodos').checked);
+      d.onclick = e => {
+        const b = e.target.closest('[data-dd]');
+        if (b) fin(b.dataset.dd === 'si' ? cajitas().filter(c => c.checked).map(c => c.value) : null);
+        else if (e.target === d) fin(null);
+      };
+    });
   }
   $('tc').addEventListener('click', async e => {
     const b = e.target.closest('button[data-c]'); if (!b) return;
@@ -152,9 +187,10 @@
       toast(r.ok ? 'Prueba enviada a ' + correo : (j.error || 'No se pudo enviar la prueba'), r.ok ? 'success' : 'danger');
       return;
     }
-    const faltan = tr.children[1].textContent;
-    if (!(await confirmar('¿Enviar este correo?', `Se manda «${nombre}» a ${faltan}. No se repite a quien ya lo recibió, pero esto no se puede deshacer.`, { peligro: true, ok: 'Enviar ahora' }))) return;
-    const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'enviar' }) });
+    const correos = await elegirDestinatarios(id, nombre);
+    if (!correos || !correos.length) return;
+    if (!(await confirmar('¿Enviar este correo?', `Se manda «${nombre}» a ${correos.length} persona${correos.length === 1 ? '' : 's'} marcada${correos.length === 1 ? '' : 's'}. No se repite a quien ya lo recibió, pero esto no se puede deshacer.`, { peligro: true, ok: 'Enviar ahora' }))) return;
+    const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'enviar', correos }) });
     const j = await r.json().catch(() => ({}));
     toast(r.ok ? `Enviado a ${j.enviados} de ${j.total}${j.fallidos ? ' (' + j.fallidos + ' fallaron: ' + j.error + ')' : ''}` : (j.error || 'No se pudo enviar'), r.ok && !j.fallidos ? 'success' : 'warning');
     cargarCampanas();
