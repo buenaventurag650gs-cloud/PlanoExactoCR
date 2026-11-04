@@ -385,8 +385,20 @@ async function planoCorreoPNG(r) {
 // Endpoint público para el <img> del correo: /api/plano-correo?id=<id>. Devuelve el PNG
 // del mini-plano (cacheado); si el remate no tiene polígono, redirige a la imagen satelital.
 async function planoCorreo(request, env, u) {
-  const id = String(u.searchParams.get("id") || "").slice(0, 16);
-  const cache = caches.default, clave = new Request("https://" + u.host + "/api/plano-correo?id=" + encodeURIComponent(id));
+  // Diagnóstico: /api/plano-correo?debug=1 reporta qué devuelve cada servicio de Esri.
+  if (u.searchParams.get("debug")) {
+    const out = [];
+    for (const [name, svc, fmt] of [["base", "Canvas/World_Light_Gray_Base", "png24"], ["ref", "Canvas/World_Light_Gray_Reference", "png32"], ["topo", "World_Topo_Map", "png24"], ["imagery(control)", "World_Imagery", "png24"]]) {
+      const url = `https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/export?bbox=-9500000,1095000,-9498500,1095900&bboxSR=102100&imageSR=102100&size=600,360&format=${fmt}&transparent=true&f=image`;
+      const row = { name, fmt };
+      try { const resp = await fetch(url); row.status = resp.status; row.type = resp.headers.get("content-type"); const ab = await resp.arrayBuffer(); row.bytes = ab.byteLength; try { const img = await decodificarPNG(new Uint8Array(ab)); row.decoded = img.w + "x" + img.h; } catch (de) { row.decodeErr = String(de && de.message || de).slice(0, 140); } }
+      catch (e) { row.fetchErr = String(e && e.message || e).slice(0, 140); }
+      out.push(row);
+    }
+    return new Response(JSON.stringify(out, null, 2), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  }
+  const id = String(u.searchParams.get("id") || "").slice(0, 16), v = String(u.searchParams.get("v") || "").slice(0, 4);
+  const cache = caches.default, clave = new Request("https://" + u.host + "/api/plano-correo?id=" + encodeURIComponent(id) + "&v=" + encodeURIComponent(v));
   const hit = await cache.match(clave).catch(() => null); if (hit) return hit;
   let png = null, rem = null;
   try {
@@ -394,7 +406,7 @@ async function planoCorreo(request, env, u) {
     const R = await r.json(); rem = R.find((x) => String(x.id) === id);
     if (rem) png = await planoCorreoPNG(rem);
   } catch (e) {}
-  if (!png) { const sat = rem && rem.ll ? miniMapaURL(rem.ll) : null; return sat ? Response.redirect(sat, 302) : new Response("", { status: 404 }); }
+  if (!png) return new Response("", { status: 404 });
   const resp = new Response(png, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400", "X-Robots-Tag": "noindex" } });
   try { await cache.put(clave, resp.clone()); } catch (e) {}
   return resp;
@@ -413,7 +425,7 @@ function tarjetaPropiedadCorreo(r, env) {
   // Con polígono: mini-plano topográfico con el lote dibujado (una sola imagen, servida por
   // /api/plano-correo). Sin polígono: imagen satelital con un pin, como respaldo.
   const tienePoly = r.poly && r.poly.length;
-  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}` : miniMapaURL(r.ll);
+  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}&v=3` : miniMapaURL(r.ll);
   const imgBloque = !mapa ? "" : tienePoly ? `<img src="${mapa}" width="600" height="360" alt="Plano del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">`
     : `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
