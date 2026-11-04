@@ -148,10 +148,19 @@ const NOMPLAN = { free: "Gratis", basico: "Esencial", pro: "PRO" };
 // ---------- Correo a usuarios (Resend) ----------
 // Requiere la variable secreta RESEND_API_KEY y el dominio verificado en Resend. CORREO_DE: remitente (opcional).
 async function enviarCorreo(env, para, asunto, texto, html) {
-  if (!env.RESEND_API_KEY) return false;
-  const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: env.CORREO_DE || `PlanoExactoCR <hola@${env.DOMINIO || "planoexactocr.com"}>`, to: para, subject: asunto, text: texto, html, reply_to: `hola@${env.DOMINIO || "planoexactocr.com"}` }) }).catch(() => null);
-  return !!(r && r.ok);
+  return (await enviarCorreoDbg(env, para, asunto, texto, html)).ok;
+}
+// Igual que enviarCorreo, pero devuelve el motivo del fallo (se usa en /admin,
+// donde conviene ver si falló por falta de API key, por Resend o por red).
+async function enviarCorreoDbg(env, para, asunto, texto, html) {
+  if (!env.RESEND_API_KEY) return { ok: false, error: "Falta configurar RESEND_API_KEY" };
+  try {
+    const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: env.CORREO_DE || `PlanoExactoCR <hola@${env.DOMINIO || "planoexactocr.com"}>`, to: para, subject: asunto, text: texto, html, reply_to: `hola@${env.DOMINIO || "planoexactocr.com"}` }) });
+    if (r.ok) return { ok: true };
+    const t = await r.text().catch(() => "");
+    return { ok: false, error: `Resend respondió ${r.status}: ${t.slice(0, 200)}` };
+  } catch (e) { return { ok: false, error: "Error de red: " + String((e && e.message) || e) }; }
 }
 const correoHTML = (titulo, parrafos, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#15302A">
 <p style="font-size:18px;font-weight:bold;margin:0 0 4px">PlanoExactoCR</p><p style="color:#4C5953;margin:0 0 20px;font-size:13px">Remates judiciales de Costa Rica en un mapa</p>
@@ -456,19 +465,19 @@ async function admin(request, env, u) {
       const correo = String(b.correo || "").trim().toLowerCase();
       if (!CORREO_OK.test(correo)) return json({ error: "Correo de prueba inválido" }, 400, 0);
       const msg = c.construir({ cupon: "EJEMPLO30" });
-      const ok = await enviarCorreo(env, correo, "[Prueba] " + msg.asunto, msg.texto, msg.html);
-      return json({ ok }, ok ? 200 : 502, 0);
+      const res = await enviarCorreoDbg(env, correo, "[Prueba] " + msg.asunto, msg.texto, msg.html);
+      return json(res, res.ok ? 200 : 502, 0);
     }
     if (b.accion === "enviar") {
       const dest = (await destinatariosCampana(env, b.campana)).slice(0, 300);
-      let enviados = 0, fallidos = 0;
+      let enviados = 0, fallidos = 0, ultimoError = "";
       for (const us of dest) {
         const msg = c.construir(us);
-        const ok = await enviarCorreo(env, us.correo, msg.asunto, msg.texto, msg.html);
-        if (ok) { await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run(); enviados++; }
-        else fallidos++;
+        const res = await enviarCorreoDbg(env, us.correo, msg.asunto, msg.texto, msg.html);
+        if (res.ok) { await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run(); enviados++; }
+        else { fallidos++; ultimoError = res.error || ""; }
       }
-      return json({ ok: true, enviados, fallidos, total: dest.length }, 200, 0);
+      return json({ ok: true, enviados, fallidos, total: dest.length, error: fallidos ? ultimoError : undefined }, 200, 0);
     }
     return json({ error: "Acción desconocida" }, 400, 0);
   }

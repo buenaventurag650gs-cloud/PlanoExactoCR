@@ -146,17 +146,17 @@
     const b = e.target.closest('button[data-c]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, nombre = tr.querySelector('.fw-medium').textContent;
     if (b.dataset.c === 'prueba') {
-      const correo = await confirmar('Enviar prueba', `¿A qué correo mandamos una prueba de «${nombre}»?`, { nota: '', ok: 'Enviar prueba' });
-      if (!correo) return;
+      const correo = 'buenaventurag650gs@gmail.com';
       const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'prueba', correo }) });
-      toast(r.ok ? 'Prueba enviada a ' + correo : 'No se pudo enviar la prueba', r.ok ? 'success' : 'danger');
+      const j = await r.json().catch(() => ({}));
+      toast(r.ok ? 'Prueba enviada a ' + correo : (j.error || 'No se pudo enviar la prueba'), r.ok ? 'success' : 'danger');
       return;
     }
     const faltan = tr.children[1].textContent;
     if (!(await confirmar('¿Enviar este correo?', `Se manda «${nombre}» a ${faltan}. No se repite a quien ya lo recibió, pero esto no se puede deshacer.`, { peligro: true, ok: 'Enviar ahora' }))) return;
     const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'enviar' }) });
     const j = await r.json().catch(() => ({}));
-    toast(r.ok ? `Enviado a ${j.enviados} de ${j.total}${j.fallidos ? ' (' + j.fallidos + ' fallaron)' : ''}` : (j.error || 'No se pudo enviar'), r.ok && !j.fallidos ? 'success' : 'warning');
+    toast(r.ok ? `Enviado a ${j.enviados} de ${j.total}${j.fallidos ? ' (' + j.fallidos + ' fallaron: ' + j.error + ')' : ''}` : (j.error || 'No se pudo enviar'), r.ok && !j.fallidos ? 'success' : 'warning');
     cargarCampanas();
   });
 
