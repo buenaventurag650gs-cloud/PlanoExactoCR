@@ -39,6 +39,14 @@
         </table></div>
       </div>
 
+      <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title"><i class="ti ti-mail-forward me-2"></i>Correos a los suscritos</h3></div>
+        <div class="table-responsive"><table class="table table-vcenter card-table">
+          <thead><tr><th>Mensaje</th><th>Elegibles</th><th>Ya enviado</th><th class="w-1"></th></tr></thead>
+          <tbody id="tc"><tr><td colspan="4" class="text-secondary">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+
       <div class="card">
         <div class="card-header"><h3 class="card-title"><i class="ti ti-users me-2"></i>Usuarios</h3>
           <div class="card-actions d-flex gap-2"><div class="input-icon"><span class="input-icon-addon"><i class="ti ti-search"></i></span><input id="q" type="search" class="form-control" placeholder="Correo, nombre o cupón" aria-label="Buscar"></div>
@@ -109,7 +117,8 @@
       <td><select class="form-select form-select-sm" data-f="plan">${['free', 'basico', 'pro'].map(k => `<option value="${k}"${(u.plan || 'free') === k ? ' selected' : ''}>${NOM[k]}</option>`).join('')}</select>
         ${pide(u) && !esPro(u) ? `<span class="badge bg-yellow-lt mt-1">Pidió ${NOM[pide(u).p] || 'PRO'} · ${fd(pide(u).f)}</span>` : ''}${u.plan !== 'free' && u.plan && !esPro(u) ? '<span class="badge bg-red-lt mt-1">vencido</span>' : ''}</td>
       <td><input type="date" class="form-control form-control-sm" data-f="pro_hasta" value="${esc(u.pro_hasta || '')}"></td>
-      <td><input type="text" class="form-control form-control-sm" data-f="nota" value="${esc(u.nota || '')}" placeholder="p. ej. pagó por SINPE"></td>
+      <td><input type="text" class="form-control form-control-sm" data-f="nota" value="${esc(u.nota || '')}" placeholder="p. ej. pagó por SINPE">
+        <label class="form-check mt-1 mb-0"><input class="form-check-input" type="checkbox" data-f="no_correos" ${u.no_correos ? 'checked' : ''}><span class="form-check-label small text-secondary">No enviarle correos</span></label></td>
       <td><div class="btn-list flex-nowrap"><button class="btn btn-primary btn-sm" data-a="guardar">Guardar</button><a class="btn btn-sm btn-icon" href="mailto:${esc(u.correo)}" title="Escribir"><i class="ti ti-mail"></i></a></div></td></tr>`).join('')
       : `<tr><td colspan="8" class="text-secondary">${U.length ? 'Ningún usuario coincide.' : 'Todavía no hay cuentas. Se crean desde la página de inicio o desde el mapa.'}</td></tr>`;
   }
@@ -117,9 +126,40 @@
   $('tb').addEventListener('click', async e => {
     const b = e.target.closest('button[data-a]'); if (!b) return;
     const tr = b.closest('tr'), id = +tr.dataset.id, v = k => tr.querySelector(`[data-f="${k}"]`).value;
-    const r = await fetch('/api/admin/usuario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, plan: v('plan'), pro_hasta: v('pro_hasta'), nota: v('nota') }) });
+    const no_correos = tr.querySelector('[data-f="no_correos"]').checked;
+    const r = await fetch('/api/admin/usuario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, plan: v('plan'), pro_hasta: v('pro_hasta'), nota: v('nota'), no_correos }) });
     toast(r.ok ? 'Guardado' : 'No se pudo guardar', r.ok ? 'success' : 'danger'); if (r.ok) cargar();
   });
+  // ---------- correos a los suscritos ----------
+  async function cargarCampanas() {
+    const r = await fetch('/api/admin/campanas', { cache: 'no-store' });
+    if (!r.ok) { $('tc').innerHTML = '<tr><td colspan="4" class="text-secondary">No se pudo cargar.</td></tr>'; return; }
+    const L = (await r.json()).campanas;
+    $('tc').innerHTML = L.length ? L.map(c => `<tr data-id="${esc(c.id)}">
+      <td><div class="fw-medium">${esc(c.nombre)}</div><div class="text-secondary small">${esc(c.asunto)}</div></td>
+      <td>${c.faltan} persona${c.faltan === 1 ? '' : 's'} sin recibirlo</td>
+      <td>${c.enviados}</td>
+      <td><div class="btn-list flex-nowrap"><button class="btn btn-sm" data-c="prueba">Probar a mi correo</button><button class="btn btn-sm btn-danger" data-c="enviar" ${c.faltan ? '' : 'disabled'}>Enviar a los elegibles</button></div></td></tr>`).join('')
+      : '<tr><td colspan="4" class="text-secondary">No hay mensajes preparados todavía.</td></tr>';
+  }
+  $('tc').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-c]'); if (!b) return;
+    const tr = b.closest('tr'), id = tr.dataset.id, nombre = tr.querySelector('.fw-medium').textContent;
+    if (b.dataset.c === 'prueba') {
+      const correo = await confirmar('Enviar prueba', `¿A qué correo mandamos una prueba de «${nombre}»?`, { nota: '', ok: 'Enviar prueba' });
+      if (!correo) return;
+      const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'prueba', correo }) });
+      toast(r.ok ? 'Prueba enviada a ' + correo : 'No se pudo enviar la prueba', r.ok ? 'success' : 'danger');
+      return;
+    }
+    const faltan = tr.children[1].textContent;
+    if (!(await confirmar('¿Enviar este correo?', `Se manda «${nombre}» a ${faltan}. No se repite a quien ya lo recibió, pero esto no se puede deshacer.`, { peligro: true, ok: 'Enviar ahora' }))) return;
+    const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'enviar' }) });
+    const j = await r.json().catch(() => ({}));
+    toast(r.ok ? `Enviado a ${j.enviados} de ${j.total}${j.fallidos ? ' (' + j.fallidos + ' fallaron)' : ''}` : (j.error || 'No se pudo enviar'), r.ok && !j.fallidos ? 'success' : 'warning');
+    cargarCampanas();
+  });
+
   // ---------- pagos ----------
   const CONC = { 'esencial-mes': 'Esencial · 1 mes', 'esencial-anual': 'Esencial · 1 año', 'pro-mes': 'PRO · 1 mes', 'pro-anual': 'PRO · 1 año', expedientes: 'Expedientes' };
   const EST = { pendiente: ['En revisión', 'yellow'], aprobado: ['Aprobado', 'green'], rechazado: ['Rechazado', 'red'] };
@@ -150,7 +190,7 @@
     toast(r.ok ? (accion === 'aprobar' ? (j.hasta ? 'Plan activo hasta el ' + j.hasta : 'Expedientes acreditados') : 'Pago rechazado') : (j.error || 'No se pudo guardar'), r.ok ? 'success' : 'danger');
     cargarPagos(); cargar();
   });
-  cargarPagos(); cargar();
+  cargarPagos(); cargar(); cargarCampanas();
 })();
 </script>
 </body></html>

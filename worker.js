@@ -52,8 +52,9 @@ function initDB(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER NOT NULL, correo TEXT, concepto TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
       monto INTEGER NOT NULL, descuento INTEGER DEFAULT 0, ref TEXT, telefono TEXT, estado TEXT NOT NULL DEFAULT 'pendiente', nota TEXT, creado TEXT, resuelto TEXT, img TEXT)`)
   ]).then(async (r) => {   // columnas agregadas después de la primera versión (fallan sin daño si ya existen)
-    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
+    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT", "no_correos INTEGER NOT NULL DEFAULT 0"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS enlaces (t TEXT PRIMARY KEY, correo TEXT NOT NULL, vence INTEGER NOT NULL, datos TEXT)").run();
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS campanas (campana TEXT NOT NULL, correo TEXT NOT NULL, enviado TEXT NOT NULL, PRIMARY KEY (campana, correo))").run();
     return r;
   }).catch((e) => { listo = null; throw e; });
   return listo;
@@ -157,6 +158,42 @@ const correoHTML = (titulo, parrafos, boton, enlace) => `<div style="font-family
 <h1 style="font-size:20px;margin:0 0 12px">${titulo}</h1>${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${t}</p>`).join("")}
 ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p><p style="font-size:12px;color:#4C5953">Si el botón no funciona, copia este enlace: ${enlace}</p>` : ""}
 <p style="font-size:12px;color:#4C5953;margin-top:24px">Si no solicitaste este correo, ignóralo.</p></div>`;
+
+// ---------- Campañas de correo a usuarios existentes ----------
+// Mensajes para disparar a mano desde /admin a quienes ya tienen cuenta y todavía
+// no pagan un plan. Cada envío queda en "campanas" para no repetirle el mismo
+// correo a la misma persona si se vuelve a pulsar el botón.
+const correoHTMLCampana = (titulo, parrafos, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#15302A">
+<p style="font-size:18px;font-weight:bold;margin:0 0 4px">PlanoExactoCR</p><p style="color:#4C5953;margin:0 0 20px;font-size:13px">Remates judiciales de Costa Rica en un mapa</p>
+<h1 style="font-size:20px;margin:0 0 12px">${titulo}</h1>${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${t}</p>`).join("")}
+${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p>` : ""}
+<p style="font-size:12px;color:#4C5953;margin-top:24px">Te escribimos porque tenés una cuenta en PlanoExactoCR. Si preferís no recibir estos correos, respondé este mensaje y te quitamos de la lista.</p></div>`;
+const CAMPANAS = {
+  tour: {
+    nombre: "Tour rápido + cupón de lanzamiento",
+    construir: (us) => {
+      const cp = us.cupon || "LANZAMIENTO30";
+      const asunto = "Así funciona PlanoExactoCR (y tu cupón sigue activo)";
+      const parrafos = [
+        "PlanoExactoCR junta en un solo mapa todos los remates judiciales vigentes en Costa Rica: ubicación exacta por plano o finca, zona homogénea de Hacienda, agua potable, electricidad, cobertura móvil, vías, ríos y distancia a la costa.",
+        "Con tu cuenta gratis ya ves lo básico de cada remate. Con un plan de pago generás el expediente completo en PDF: gravámenes explicados, potencial constructivo, valor de referencia y los riesgos del lote, listo para imprimir o mandarle a quien decida con vos.",
+        `Tu cupón de lanzamiento sigue activo: <b style="font-size:17px;letter-spacing:1px">${cp}</b>, 30&nbsp;% de descuento en la primera mensualidad de cualquier plan.`
+      ];
+      const enlace = "https://planoexactocr.com/mapa";
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + "\n\nVer el mapa: " + enlace;
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, "Ver mapa de remates", enlace) };
+    }
+  }
+};
+async function destinatariosCampana(env, id) {
+  await initDB(env);
+  const r = await env.DB.prepare(`SELECT id, correo, nombre, cupon, plan, pro_hasta FROM usuarios
+    WHERE correo IS NOT NULL AND correo <> '' AND no_correos = 0
+      AND (plan = 'free' OR plan IS NULL OR (plan <> 'free' AND (pro_hasta IS NULL OR pro_hasta < ?)))
+      AND correo NOT IN (SELECT correo FROM campanas WHERE campana = ?)
+    ORDER BY id`).bind(hoy(), id).all();
+  return r.results;
+}
 
 // ---------- Ingreso sin contraseña: Google y enlace por correo ----------
 const metodosIngreso = (env) => ({ google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), correo: !!env.RESEND_API_KEY });
@@ -396,16 +433,52 @@ async function admin(request, env, u) {
     return new Response(Uint8Array.from(atob(datos), (c) => c.charCodeAt(0)), { headers: { "content-type": tipo, "cache-control": "no-store" } });
   }
   if (ruta === "usuarios") {
-    const r = await env.DB.prepare("SELECT id, correo, nombre, perfil, prov, plan, pro_hasta, cupon, fuente, pais, creado, ultimo, solicita_pro, nota FROM usuarios ORDER BY id DESC").all();
+    const r = await env.DB.prepare("SELECT id, correo, nombre, perfil, prov, plan, pro_hasta, cupon, fuente, pais, creado, ultimo, solicita_pro, nota, no_correos FROM usuarios ORDER BY id DESC").all();
     return json({ usuarios: r.results, hoy: hoy() }, 200, 0);
+  }
+  if (ruta === "campanas") {
+    const out = [];
+    for (const id in CAMPANAS) {
+      const c = CAMPANAS[id];
+      const prev = c.construir({ cupon: "EJEMPLO30" });
+      const enviados = await env.DB.prepare("SELECT COUNT(*) AS n FROM campanas WHERE campana = ?").bind(id).first();
+      const faltan = await destinatariosCampana(env, id);
+      out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length });
+    }
+    return json({ campanas: out }, 200, 0);
+  }
+  if (ruta === "campana") {   // probar o disparar una campaña de correo (no requiere b.id)
+    if (request.method !== "POST") return json({ error: "Método no permitido" }, 405, 0);
+    const b = await leerJSON(request);
+    const c = b && CAMPANAS[b.campana];
+    if (!c) return json({ error: "Campaña desconocida" }, 400, 0);
+    if (b.accion === "prueba") {
+      const correo = String(b.correo || "").trim().toLowerCase();
+      if (!CORREO_OK.test(correo)) return json({ error: "Correo de prueba inválido" }, 400, 0);
+      const msg = c.construir({ cupon: "EJEMPLO30" });
+      const ok = await enviarCorreo(env, correo, "[Prueba] " + msg.asunto, msg.texto, msg.html);
+      return json({ ok }, ok ? 200 : 502, 0);
+    }
+    if (b.accion === "enviar") {
+      const dest = (await destinatariosCampana(env, b.campana)).slice(0, 300);
+      let enviados = 0, fallidos = 0;
+      for (const us of dest) {
+        const msg = c.construir(us);
+        const ok = await enviarCorreo(env, us.correo, msg.asunto, msg.texto, msg.html);
+        if (ok) { await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run(); enviados++; }
+        else fallidos++;
+      }
+      return json({ ok: true, enviados, fallidos, total: dest.length }, 200, 0);
+    }
+    return json({ error: "Acción desconocida" }, 400, 0);
   }
   if (request.method !== "POST") return json({ error: "Método no permitido" }, 405, 0);
   const b = await leerJSON(request);
   if (!b || !b.id) return json({ error: "Solicitud inválida" }, 400, 0);
   if (ruta === "usuario") {
     const plan = PLANES.has(b.plan) ? b.plan : "free", hasta = /^\d{4}-\d{2}-\d{2}$/.test(b.pro_hasta || "") ? b.pro_hasta : null;
-    await env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, nota = ?, solicita_pro = CASE WHEN ? <> 'free' THEN NULL ELSE solicita_pro END WHERE id = ?")
-      .bind(plan, plan !== "free" ? hasta : null, String(b.nota || "").slice(0, 300), plan, b.id).run();
+    await env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ?, nota = ?, no_correos = ?, solicita_pro = CASE WHEN ? <> 'free' THEN NULL ELSE solicita_pro END WHERE id = ?")
+      .bind(plan, plan !== "free" ? hasta : null, String(b.nota || "").slice(0, 300), b.no_correos ? 1 : 0, plan, b.id).run();
     return json({ ok: true }, 200, 0);
   }
   if (ruta === "pago") {   // aprobar o rechazar un pago reportado
