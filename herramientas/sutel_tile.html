@@ -7,15 +7,33 @@
 <title>PlanoExactoCR · decodificar tile de SUTEL/MedUX</title>
 <style>
 body { font: 14px/1.5 system-ui, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; color: #15302A; }
+h2 { margin-top: 36px; border-top: 1px solid #ddd; padding-top: 24px; }
 input { width: 100%; padding: 8px; font: 13px monospace; box-sizing: border-box; margin-bottom: 8px; }
+.row { display: flex; gap: 8px; }
+.row input { width: auto; flex: 1; }
 button { padding: 8px 14px; font-weight: 600; cursor: pointer; }
 pre { background: #F2F1EC; padding: 12px; border-radius: 8px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 .err { color: #B42318; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+td, th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
 </style>
 </head>
 <body>
-<h1>Decodificar un tile vectorial (.pbf) de SUTEL/MedUX</h1>
-<p>Pegá la URL completa del tile (la que viste en la pestaña Red del navegador) y hacé clic en «Decodificar». Esto corre en tu navegador, no en el servidor.</p>
+<h1>Decodificar tiles de SUTEL/MedUX</h1>
+
+<h2>1. Probar por coordenada (todos los operadores)</h2>
+<p>Metés la latitud/longitud de una propiedad y el zoom a probar; calculo el tile correspondiente para cada operador, lo descargo y te muestro los puntos de medición más cercanos a ese punto.</p>
+<div class="row">
+  <input id="lat" value="9.9281" placeholder="latitud">
+  <input id="lon" value="-84.0907" placeholder="longitud">
+  <input id="z" value="15" placeholder="zoom">
+</div>
+<button id="goCoord">Probar coordenada</button>
+<p id="estadoCoord"></p>
+<pre id="outCoord"></pre>
+
+<h2>2. Decodificar una URL de tile pegada a mano</h2>
+<p>Pegá la URL completa del tile (la que viste en la pestaña Red del navegador) y hacé clic en «Decodificar».</p>
 <input id="url" value="https://medux-maps-tiles-int.caseonit.net/data/costa_rica_4_kolbi_cr_2025_network/8/67/121.pbf">
 <button id="go">Decodificar</button>
 <p id="estado"></p>
@@ -24,6 +42,79 @@ pre { background: #F2F1EC; padding: 12px; border-radius: 8px; overflow: auto; wh
 <script type="module">
 import Pbf from 'https://esm.sh/pbf@3.2.1';
 import { VectorTile } from 'https://esm.sh/@mapbox/vector-tile@1.3.1';
+
+const OPERADORES = ['kolbi', 'claro', 'movistar', 'tigo', 'liberty'];
+const BASE = 'https://medux-maps-tiles-int.caseonit.net/data/costa_rica_4_{op}_cr_2025_network/{z}/{x}/{y}.pbf';
+
+function lonLatATile(lon, lat, z) {
+  const n = Math.pow(2, z);
+  const x = Math.floor((lon + 180) / 360 * n);
+  const latRad = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  return { x, y };
+}
+function tileAlonLat(xt, yt, z) {
+  const n = Math.pow(2, z);
+  const lon = xt / n * 360 - 180;
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * yt / n))) * 180 / Math.PI;
+  return [lon, lat];
+}
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000, toR = d => d * Math.PI / 180;
+  const dLat = toR(lat2 - lat1), dLon = toR(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+async function probarTile(op, z, xt, yt) {
+  const url = BASE.replace('{op}', op).replace('{z}', z).replace('{x}', xt).replace('{y}', yt);
+  const r = await fetch(url);
+  if (!r.ok) return { url, http: r.status, ok: false };
+  const buf = await r.arrayBuffer();
+  const pbf = new Pbf(new Uint8Array(buf));
+  const tile = new VectorTile(pbf);
+  return { url, http: r.status, ok: true, tile, bytes: buf.byteLength };
+}
+
+document.getElementById('goCoord').onclick = async () => {
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  const z = parseInt(document.getElementById('z').value, 10);
+  const estado = document.getElementById('estadoCoord'), out = document.getElementById('outCoord');
+  estado.textContent = 'Consultando ' + OPERADORES.length + ' operadores en zoom ' + z + '…';
+  estado.className = ''; out.textContent = '';
+  const { x: xt, y: yt } = lonLatATile(lon, lat, z);
+  const resumen = {};
+  for (const op of OPERADORES) {
+    try {
+      const res = await probarTile(op, z, xt, yt);
+      if (!res.ok) { resumen[op] = { http: res.http, url: res.url }; continue; }
+      const capasInfo = {};
+      for (const nombreCapa in res.tile.layers) {
+        const capa = res.tile.layers[nombreCapa];
+        const extent = capa.extent;
+        const pts = [];
+        for (let i = 0; i < capa.length; i++) {
+          const f = capa.feature(i);
+          if (f.type !== 1) continue;
+          const geom = f.loadGeometry();
+          for (const ring of geom) for (const p of ring) {
+            const gx = xt + p.x / extent, gy = yt + p.y / extent;
+            const [plon, plat] = tileAlonLat(gx, gy, z);
+            pts.push({ dist_m: Math.round(haversine(lat, lon, plat, plon)), lat: plat, lon: plon, props: f.properties });
+          }
+        }
+        pts.sort((a, b) => a.dist_m - b.dist_m);
+        capasInfo[nombreCapa] = { total_features: capa.length, mas_cercanos: pts.slice(0, 5) };
+      }
+      resumen[op] = { http: res.http, bytes: res.bytes, url: res.url, tile: `${z}/${xt}/${yt}`, capas: capasInfo };
+    } catch (e) {
+      resumen[op] = { error: String(e) };
+    }
+  }
+  estado.textContent = 'Listo.';
+  out.textContent = JSON.stringify(resumen, null, 2);
+};
 
 document.getElementById('go').onclick = async () => {
   const url = document.getElementById('url').value.trim();
