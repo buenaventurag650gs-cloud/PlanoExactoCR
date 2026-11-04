@@ -327,8 +327,8 @@ async function planoCorreoPNG(r) {
     }
     if (!ringsM.length || !isFinite(x0)) return null;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    let hw = (x1 - x0) / 2 * 1.9, hh = (y1 - y0) / 2 * 1.9;   // margen alrededor del lote (contexto)
-    const may = Math.max(hw, hh, 1); let k = 1; if (may < 16) k = 16 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
+    let hw = (x1 - x0) / 2 * 2.3, hh = (y1 - y0) / 2 * 2.3;   // margen amplio alrededor del lote (contexto)
+    const may = Math.max(hw, hh, 1); let k = 1; if (may < 28) k = 28 / may; else if (may > 600) k = 600 / may; hw *= k; hh *= k;
     const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
     const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
 
@@ -338,13 +338,12 @@ async function planoCorreoPNG(r) {
     let g = escalas[0]; for (const e of escalas) { g = e; if (spanMx / e <= 9) break; }
     const gM = g * secLat(latC);
 
-    // Base del plano: mapa topográfico (vías, ríos, curvas y nombres), como el de las fichas,
-    // compuesto desde Esri. Mantiene nitidez en zoom cerrado. Si no se puede traer, se cae a
-    // una cuadrícula técnica dibujada localmente.
-    let img = null;
-    const base = await esriCapa("World_Topo_Map", bx0, by0, bx1, by1, W, H, "png24");
+    // Base del plano: imagen satelital (World_Imagery) con el polígono encima, como el
+    // recuadro "Detalle del predio" de las fichas. Si no se puede traer, cuadrícula local.
+    let img = null, sat = false;
+    const base = await esriCapa("World_Imagery", bx0, by0, bx1, by1, W, H, "png24");
     if (base) {
-      img = { w: W, h: H, rgb: new Uint8Array(W * H * 3) };
+      sat = true; img = { w: W, h: H, rgb: new Uint8Array(W * H * 3) };
       for (let i = 0; i < W * H; i++) { img.rgb[i * 3] = base.data[i * 4]; img.rgb[i * 3 + 1] = base.data[i * 4 + 1]; img.rgb[i * 3 + 2] = base.data[i * 4 + 2]; }
     } else {
       img = lienzo(W, H, 244, 245, 242);
@@ -356,27 +355,29 @@ async function planoCorreoPNG(r) {
     const toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * H];
     const ringsPx = ringsM.map((r) => r.map(toPx));
     trazarPoly(img, ringsPx, 4.5, 255, 255, 255, 0.95);    // casing blanco
-    rellenarPoly(img, ringsPx, 232, 149, 111, 0.45);       // relleno terracota translúcido
-    trazarPoly(img, ringsPx, 2.4, 200, 85, 61, 1);         // borde terracota
+    rellenarPoly(img, ringsPx, 232, 149, 111, sat ? 0.3 : 0.45);   // relleno terracota translúcido
+    trazarPoly(img, ringsPx, 2.6, 200, 85, 61, 1);         // borde terracota
 
-    // Marco fino
-    rectangulo(img, 0, 0, W - 1, 1, 180, 188, 183, 1); rectangulo(img, 0, H - 2, W - 1, H - 1, 180, 188, 183, 1);
-    rectangulo(img, 0, 0, 1, H - 1, 180, 188, 183, 1); rectangulo(img, W - 2, 0, W - 1, H - 1, 180, 188, 183, 1);
+    // Color de los elementos (norte/escala): blanco sobre satélite, verde oscuro sobre la cuadrícula.
+    const U0 = sat ? 255 : 21, U1 = sat ? 255 : 48, U2 = sat ? 255 : 42;
+    const fondo = (x0b, y0b, x1b, y1b) => { if (sat) rectangulo(img, x0b, y0b, x1b, y1b, 15, 25, 20, 0.42); };
 
     // Flecha norte (arriba-derecha): "N" + punta + astil
-    const nx = W - 26, ny = 16, D0 = 21, D1 = 48, D2 = 42;
-    textoPlano(img, "N", nx - 3, ny - 1, 3, D0, D1, D2);
+    const nx = W - 26, ny = 16;
+    fondo(nx - 14, ny - 4, nx + 14, ny + 44);
+    textoPlano(img, "N", nx - 3, ny - 1, 3, U0, U1, U2);
     const ay = ny + 20;
-    for (let yy = 0; yy <= 11; yy++) { const half = yy * 0.55; hLinea(img, nx - half, nx + half, ay + yy, D0, D1, D2, 1); }
-    rectangulo(img, nx - 1, ay + 11, nx + 1, ay + 22, D0, D1, D2, 1);
+    for (let yy = 0; yy <= 11; yy++) { const half = yy * 0.55; hLinea(img, nx - half, nx + half, ay + yy, U0, U1, U2, 1); }
+    rectangulo(img, nx - 1, ay + 11, nx + 1, ay + 22, U0, U1, U2, 1);
 
     // Barra de escala (abajo-izquierda) = un paso de cuadrícula
     const barPx = gM / (bx1 - bx0) * W, sx = 16, sy = H - 24;
-    rectangulo(img, sx, sy, sx + barPx, sy + 6, D0, D1, D2, 1);
-    rectangulo(img, sx, sy, sx + barPx / 2, sy + 6, 244, 245, 242, 1);
-    hLinea(img, sx, sx + barPx, sy, D0, D1, D2, 1); hLinea(img, sx, sx + barPx, sy + 6, D0, D1, D2, 1);
-    vLinea(img, sx, sy, sy + 6, D0, D1, D2, 1); vLinea(img, sx + barPx / 2, sy, sy + 6, D0, D1, D2, 1); vLinea(img, sx + barPx, sy, sy + 6, D0, D1, D2, 1);
-    textoPlano(img, g >= 1000 ? (g / 1000 + " km") : (g + " m"), sx, sy - 16, 3, D0, D1, D2);
+    fondo(sx - 6, sy - 22, sx + Math.max(barPx, 40) + 6, sy + 12);
+    rectangulo(img, sx, sy, sx + barPx, sy + 6, U0, U1, U2, 1);
+    rectangulo(img, sx, sy, sx + barPx / 2, sy + 6, sat ? 15 : 244, sat ? 25 : 245, sat ? 20 : 242, sat ? 0.5 : 1);
+    hLinea(img, sx, sx + barPx, sy, U0, U1, U2, 1); hLinea(img, sx, sx + barPx, sy + 6, U0, U1, U2, 1);
+    vLinea(img, sx, sy, sy + 6, U0, U1, U2, 1); vLinea(img, sx + barPx / 2, sy, sy + 6, U0, U1, U2, 1); vLinea(img, sx + barPx, sy, sy + 6, U0, U1, U2, 1);
+    textoPlano(img, g >= 1000 ? (g / 1000 + " km") : (g + " m"), sx, sy - 16, 3, U0, U1, U2);
 
     return await codificarPNG(img);
   } catch (e) { return null; }
@@ -399,7 +400,7 @@ async function planoCorreo(request, env, u) {
         const ar = W / H; if (hw / hh < ar) hw = hh * ar; else hh = hw / ar;
         const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
         row.spanM = Math.round((bx1 - bx0) / secLat(r.ll ? r.ll[1] : 9.9));
-        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${H}&format=png24&f=image`;
+        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${H}&format=png24&f=image`;
         try {
           const resp = await fetch(url); row.status = resp.status; row.type = resp.headers.get("content-type");
           const ab = await resp.arrayBuffer(), b = new Uint8Array(ab); row.bytes = ab.byteLength;
@@ -440,7 +441,7 @@ function tarjetaPropiedadCorreo(r, env) {
   // Con polígono: mini-plano topográfico con el lote dibujado (una sola imagen, servida por
   // /api/plano-correo). Sin polígono: imagen satelital con un pin, como respaldo.
   const tienePoly = r.poly && r.poly.length;
-  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}&v=4` : miniMapaURL(r.ll);
+  const mapa = tienePoly ? `https://${dom}/api/plano-correo?id=${encodeURIComponent(r.id)}&v=5` : miniMapaURL(r.ll);
   const imgBloque = !mapa ? "" : tienePoly ? `<img src="${mapa}" width="600" height="360" alt="Plano del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">`
     : `<div style="position:relative;line-height:0">
 <img src="${mapa}" width="600" height="300" alt="Ubicación del lote" style="display:block;width:100%;height:auto;border-radius:9px 9px 0 0">
