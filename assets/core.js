@@ -87,6 +87,69 @@
     }
     return res;
   };
+
+  // Cobertura móvil por operador — mediciones reales de usuarios (crowdsourced),
+  // vía los tiles vectoriales que alimentan el visor de banda ancha de SUTEL
+  // (datos de MedUX). No depende de una sola fuente (el WMS del ICE solo cubre
+  // Kolbi): acá vemos Kolbi, Claro y Liberty con el mismo método. Se consulta
+  // on-demand al abrir el expediente, igual que transporte y postes.
+  const SUTEL_OPS = PX.SUTEL_OPS = { kolbi: 'Kolbi (ICE)', claro: 'Claro', liberty: 'Liberty' };
+  const SUTEL_URL = 'https://medux-maps-tiles-int.caseonit.net/data/costa_rica_4_{op}_cr_2025_network/{z}/{x}/{y}.pbf';
+  const SUTEL_Z = 15, SUTEL_RADIO_M = 400;
+  let sutelLibsP = null;
+  function sutelLibs() {
+    return sutelLibsP ||= Promise.all([
+      import('https://esm.sh/pbf@3.2.1'),
+      import('https://esm.sh/@mapbox/vector-tile@1.3.1')
+    ]).then(([pbfM, vtM]) => ({ Pbf: pbfM.default, VectorTile: vtM.VectorTile }));
+  }
+  function sutelTile(lon, lat, z) {
+    const n = Math.pow(2, z);
+    const x = Math.floor((lon + 180) / 360 * n);
+    const latRad = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x, y };
+  }
+  function sutelLonLat(xt, yt, z) {
+    const n = Math.pow(2, z);
+    const lon = xt / n * 360 - 180;
+    const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * yt / n))) * 180 / Math.PI;
+    return [lon, lat];
+  }
+  PX.rsrpLabel = rsrp => rsrp >= -85 ? 'excelente' : rsrp >= -100 ? 'buena' : rsrp >= -110 ? 'regular' : 'débil';
+  PX.coberturaSUTEL = async (lon, lat) => {
+    const { Pbf, VectorTile } = await sutelLibs();
+    const { x: xt, y: yt } = sutelTile(lon, lat, SUTEL_Z);
+    const cosLat = Math.cos(lat * Math.PI / 180);
+    const res = {};
+    await Promise.all(Object.keys(SUTEL_OPS).map(async op => {
+      try {
+        const url = SUTEL_URL.replace('{op}', op).replace('{z}', SUTEL_Z).replace('{x}', xt).replace('{y}', yt);
+        const r = await fetch(url);
+        if (!r.ok) return;
+        const buf = await r.arrayBuffer();
+        const tile = new VectorTile(new Pbf(new Uint8Array(buf)));
+        let best = -Infinity, n = 0;
+        for (const nombreCapa in tile.layers) {
+          const capa = tile.layers[nombreCapa];
+          for (let i = 0; i < capa.length; i++) {
+            const f = capa.feature(i);
+            if (f.type !== 1 || f.properties.rsrp == null) continue;
+            for (const ring of f.loadGeometry()) for (const p of ring) {
+              const gx = xt + p.x / capa.extent, gy = yt + p.y / capa.extent;
+              const [plon, plat] = sutelLonLat(gx, gy, SUTEL_Z);
+              const dx = (plon - lon) * cosLat, dy = plat - lat;
+              if (Math.sqrt(dx * dx + dy * dy) * 111320 > SUTEL_RADIO_M) continue;
+              n++;
+              if (f.properties.rsrp > best) best = f.properties.rsrp;
+            }
+          }
+        }
+        if (n) res[op] = { rsrp: Math.round(best), n };
+      } catch (_) {}
+    }));
+    return res;
+  };
   PX.fdate = (d, withTime) => d ? `${DIA[d.getDay()]} ${d.getDate()} ${MES[d.getMonth()]} ${d.getFullYear()}` + (withTime ? ` · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '') : '—';
   PX.fnum = (v, dec) => v == null || isNaN(v) ? '—' : v.toLocaleString('de-DE', { maximumFractionDigits: dec != null ? dec : v < 100 ? 2 : 0 });
   PX.days = d => d ? Math.ceil((d - PX.now) / 864e5) : null;
