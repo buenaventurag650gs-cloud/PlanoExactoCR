@@ -191,7 +191,7 @@
     const b = e.target.closest('button[data-c]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, nombre = tr.querySelector('.fw-medium').textContent;
     if (b.dataset.c === 'prueba') {
-      const correo = 'buenaventurag650gs@gmail.com';
+      const correo = 'planoexactocr@gmail.com';
       const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'prueba', correo }) });
       const j = await r.json().catch(() => ({}));
       toast(r.ok ? 'Prueba enviada a ' + correo : (j.error || 'No se pudo enviar la prueba'), r.ok ? 'success' : 'danger');
