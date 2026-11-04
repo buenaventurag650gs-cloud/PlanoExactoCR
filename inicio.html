@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>PlanoExactoCR · Remates judiciales en el mapa</title>
-<meta name="description" content="Los remates judiciales de propiedades de Costa Rica, ubicados en el mapa y cruzados con catastro, plan regulador, valor de Hacienda, agua y entorno.">
+<meta name="description" content="Remates judiciales de Costa Rica en el mapa: catastro, plan regulador, valor de Hacienda, agua, electricidad, cobertura celular y entorno de cada propiedad.">
 <meta property="og:title" content="PlanoExactoCR · Remates judiciales en el mapa">
-<meta property="og:description" content="Cada día hábil leemos el Boletín Judicial, ubicamos cada propiedad en el catastro y reunimos lo que conviene saber antes de ofertar.">
+<meta property="og:description" content="Cada día hábil leemos el Boletín Judicial, ubicamos cada propiedad en el catastro y juntamos lo que conviene saber del terreno antes de ofertar.">
 <meta property="og:image" content="https://planoexactocr.com/assets/img/vista-app.webp">
 <meta property="og:url" content="https://planoexactocr.com/"><meta property="og:type" content="website"><meta property="og:site_name" content="PlanoExactoCR"><meta property="og:locale" content="es_CR">
 <meta name="twitter:card" content="summary_large_image">
@@ -162,10 +162,9 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
       <h1>Los remates judiciales de Costa Rica, <em>sin tanto misterio</em>.</h1>
       <p class="lead">Cada día hábil leemos el Boletín Judicial, buscamos cada propiedad en el catastro y juntamos lo que querés saber antes de ofrecer: dónde queda, qué tiene cerca, qué se puede construir y qué deuda arrastra. No reemplaza a tu abogado ni a un avalúo. Te ayuda a llegar bien a esa conversación.</p>
       <ul class="datos" id="datos" aria-live="polite">
-        <li><b data-k="remates">835</b><span>remates vigentes hoy</span></li>
+        <li><b data-k="remates">839</b><span>remates vigentes hoy</span></li>
         <li><b data-k="nuevos7">76</b><span>nuevos esta semana</span></li>
-        <li><b data-k="ubicados">716</b><span>con el predio ubicado</span></li>
-        <li><b data-k="boletin">N.º 206</b><span>último Boletín Judicial</span></li>
+        <li><b data-k="boletin">N.º 208</b><span id="fechaBol">último Boletín Judicial</span></li>
       </ul>
       <div class="cta"><a class="btn pri" href="#registro" id="ctaCrear">Probá gratis</a><a class="btn" href="/mapa" id="ctaMapa">Mirá el mapa primero</a></div>
     </div>
@@ -183,12 +182,12 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
     <h2>Qué juntamos de cada remate</h2>
     <p class="sub">La información suele estar repartida en más de diez sitios públicos. La traemos a un solo lugar y la explicamos como si estuvieras hablando con alguien que ya la leyó.</p>
     <div class="rasgos">
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><b>Dónde queda, exactamente</b><span>El predio dibujado en el mapa, con su área y su forma. Si el catastro no lo tiene, lo decimos de frente — es un dato importante antes de ofertar.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/></svg></span><b>Cuándo y a cuánto arranca</b><span>Primer, segundo y tercer remate, en colones y dólares, con los días contados hasta la próxima fecha.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>Cuánto es, de verdad</b><span>En qué porcentaje del valor de Hacienda arranca la puja. Útil para saber si el precio inicial es un negocio o solo un número.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><b>Qué podés hacer en el lote</b><span>Qué normativa del plan regulador aplica y una estimación de cuánto se podría construir, para no comprar un terreno que no sirve para lo que querés.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><b>Cómo es vivir cerca</b><span>Cobertura de agua potable, salud, escuela, ríos y distancia a la costa. Lo básico para saber si el entorno sirve.</span></div>
-      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></span><b>Qué te podría complicar</b><span>Hipotecas, servidumbres y gravámenes explicados en lenguaje llano, riesgos del proceso y un informe PDF de cuatro páginas para llevarte.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><b>El predio exacto en el mapa</b><span>Con su forma según el catastro, el plan regulador que le aplica y la normativa de construcción. Si el catastro no lo tiene, lo decimos de frente.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M11 7l6 6M12.5 5.5l-6 6M9 15l-5 5"/></svg></span><b>Fechas, bases y valor real</b><span>Primer, segundo y tercer remate en colones y dólares, los días que faltan, y en qué porcentaje del valor de Hacienda arranca la puja.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg></span><b>Agua, luz, señal, transporte</b><span>Cobertura de agua potable, distancia al poste eléctrico más cercano, tecnología celular disponible (3G a 5G), internet fijo y parada de bus.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><b>Qué hay alrededor</b><span>Distancia a la costa, ríos, salud, escuela, zonas de vida. Lo que necesitás para saber si el entorno funciona para lo que querés hacer.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><b>Qué podés construir</b><span>La normativa del plan regulador, el potencial constructivo estimado y la prefactibilidad financiera. Para no comprar un lote que no sirve.</span></div>
+      <div class="rasgo"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></span><b>Riesgos y cargas</b><span>Hipotecas, servidumbres y gravámenes en lenguaje llano, alertas del proceso y un expediente PDF de cuatro páginas para llevarte.</span></div>
     </div>
   </section>
 
@@ -198,8 +197,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         <h2>¿Dudas sobre un remate? Conversemos.</h2>
         <p class="sub">Si querés que miremos un lote específico contigo, si una ficha te suena rara, o si simplemente no sabés por dónde empezar: escribinos. Lo leemos nosotros y respondemos.</p>
         <ul>
-          <li>No hay vendedores detrás, no te vamos a llamar «para seguir conversando».</li>
-          <li>Si lo que necesitás es un abogado o un avaluador, también te decimos — tenemos gente de confianza.</li>
+          <li>Si lo que necesitás es un abogado o un avaluador, te orientamos — tenemos gente de confianza.</li>
           <li>Respondemos en el día, de lunes a viernes.</li>
         </ul>
       </div>
@@ -230,13 +228,13 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 
   <section id="planes">
     <h2>Planes</h2>
-    <p class="sub">Empezá gratis. Suscribite solo cuando lo que te damos ya te esté ahorrando tiempo o cuidando una decisión importante.</p>
+    <p class="sub">Tres niveles según lo que necesitás saber del terreno.</p>
     <div class="planes">
       <div class="plan dest"><h3>Cuenta gratis</h3><div class="precio sm">Solo con tu correo</div>
         <ul><li>Fechas y bases de cada remate, área y estado del plan regulador</li><li>Predio exacto en el mapa, con su forma según el catastro</li><li>Guardás listas y seguís lotes</li><li><b>1 expediente PDF completo por semana</b></li></ul>
         <a class="btn pri" href="#registro">Probá gratis</a></div>
       <div class="plan"><h3><span class="ese">Esencial</span> Para decidir con calma</h3><div class="precio">₡5.190 <small>al mes</small></div><div class="alt">o ₡51.900 al año (dos meses de regalo)</div>
-        <ul><li>Todo lo de la cuenta gratis</li><li>Número de finca y plano, servidumbres y gravámenes citados en el edicto</li><li>Agua potable, vía, salud, escuela, ríos y costa</li><li><b>5 expedientes por semana</b></li></ul></div>
+        <ul><li>Todo lo de la cuenta gratis</li><li>Número de finca y plano, servidumbres y gravámenes citados en el edicto</li><li>Agua, electricidad, señal celular, internet, transporte y entorno</li><li><b>5 expedientes por semana</b></li></ul></div>
       <div class="plan"><h3><span class="pro">PRO</span> Para quien compra en serio</h3><div class="precio">₡11.290 <small>al mes</small></div><div class="alt">o ₡112.900 al año (dos meses de regalo)</div>
         <ul><li>Todo lo del plan Esencial</li><li>Valor de Hacienda, índice Puja/Hacienda y escala PECR</li><li>Todas las capas, mapa de precios y Top 10 por provincia</li><li>Potencial constructivo, prefactibilidad, riesgos y alertas de cambio</li><li><b>Expedientes sin tope</b></li></ul></div>
     </div>
@@ -255,7 +253,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         <tr><td>Fechas, base y área de cada remate</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
         <tr><td>Predio dibujado según el catastro</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
         <tr><td>Número de finca y plano, servidumbres y gravámenes</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
-        <tr><td>Agua potable, vía, salud, escuela, ríos y costa</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+        <tr><td>Agua, electricidad, cobertura celular, internet y transporte</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
         <tr><td>Valor de Hacienda, índice Puja/Hacienda, escala PECR e Índice PlanoExacto</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
 
         <tr class="grp"><td colspan="4">Herramientas</td></tr>
@@ -349,6 +347,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   }
   fetch('/data/resumen.json', { cache: 'no-store' }).then(r => r.json()).then(d => {
     document.querySelectorAll('#datos [data-k]').forEach(b => { const k = b.dataset.k; if (d[k] != null) b.textContent = k === 'boletin' ? 'N.º ' + d[k] : fmt(d[k]); });
+    if (d.fecha) { const fb = document.getElementById('fechaBol'); if (fb) { const [y, m, dd] = d.fecha.split('-'); fb.textContent = `Boletín del ${+dd}/${+m}/${y}`; } }
   }).catch(() => {});
   const q = new URLSearchParams(location.search), utm = {};
   ['utm_source', 'utm_medium', 'utm_campaign', 'ref'].forEach(k => { if (q.get(k)) utm[k] = q.get(k).slice(0, 60); });
