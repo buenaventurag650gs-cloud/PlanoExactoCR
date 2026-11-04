@@ -172,25 +172,51 @@ ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A4
 // Mensajes para disparar a mano desde /admin a quienes ya tienen cuenta y todavía
 // no pagan un plan. Cada envío queda en "campanas" para no repetirle el mismo
 // correo a la misma persona si se vuelve a pulsar el botón.
-const correoHTMLCampana = (titulo, parrafos, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#15302A">
+const correoHTMLCampana = (titulo, parrafos, extra, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#15302A">
 <p style="font-size:18px;font-weight:bold;margin:0 0 4px">PlanoExactoCR</p><p style="color:#4C5953;margin:0 0 20px;font-size:13px">Remates judiciales de Costa Rica en un mapa</p>
 <h1 style="font-size:20px;margin:0 0 12px">${titulo}</h1>${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${t}</p>`).join("")}
+${extra || ""}
 ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p>` : ""}
 <p style="font-size:12px;color:#4C5953;margin-top:24px">Te escribimos porque tenés una cuenta en PlanoExactoCR. Si preferís no recibir estos correos, respondé este mensaje y te quitamos de la lista.</p></div>`;
+// Tarjeta de una propiedad destacada dentro del correo: tipo + índice PECR, ubicación,
+// área, base y fecha del remate, con enlace directo a su ficha en el mapa.
+function tarjetaPropiedadCorreo(r, env) {
+  const dom = env.DOMINIO || "planoexactocr.com";
+  const loc = [r.cn, r.pn].filter(Boolean).join(", ");
+  const st = r.st || 0;
+  const fecha = (r.f && r.f[st]) ? fechaTxt(r.f[st]) : "";
+  const etapa = ETAPA[st] || "";
+  const baseActual = r.base != null ? r.base * (PCT[st] || 1) : null;
+  const enlace = `https://${dom}/mapa#r${r.id}`;
+  return { enlace, loc, fecha,
+    html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;padding:14px 16px;margin:0 0 10px;background:#F7F9F8">
+<div style="font-size:11px;color:#1F5A47;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;margin:0 0 5px">${esc(tipoTxt(r.tipo))} &middot; Índice PECR ${r.pecr}/10</div>
+<div style="font-size:15px;font-weight:bold;color:#15302A;margin:0 0 3px">${esc(loc || "Costa Rica")}</div>
+<div style="font-size:13px;color:#4C5953;margin:0 0 8px">${r.area ? miles(r.area) + " m² &middot; " : ""}${dinero(baseActual, r.mon)}${fecha ? " &middot; " + etapa + " el " + fecha : ""}</div>
+<span style="font-size:13px;color:#1F5A47;font-weight:bold">Ver en el mapa →</span></a>` };
+}
 const CAMPANAS = {
   tour: {
     nombre: "Tour rápido + cupón de lanzamiento",
-    construir: (us) => {
+    construir: (us, props, env) => {
       const cp = us.cupon || "LANZAMIENTO30";
-      const asunto = "Así funciona PlanoExactoCR (y tu cupón sigue activo)";
+      const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
+      const asunto = nombre ? `${nombre}, así funciona PlanoExactoCR (y tu cupón sigue activo)` : "Así funciona PlanoExactoCR (y tu cupón sigue activo)";
       const parrafos = [
+        nombre ? `Hola ${nombre},` : "Hola,",
         "PlanoExactoCR junta en un solo mapa todos los remates judiciales vigentes en Costa Rica: ubicación exacta por plano o finca, zona homogénea de Hacienda, agua potable, electricidad, cobertura móvil, vías, ríos y distancia a la costa.",
         "Con tu cuenta gratis ya ves lo básico de cada remate. Con un plan de pago generás el expediente completo en PDF: gravámenes explicados, potencial constructivo, valor de referencia y los riesgos del lote, listo para imprimir o mandarle a quien decida con vos.",
         `Tu cupón de lanzamiento sigue activo: <b style="font-size:17px;letter-spacing:1px">${cp}</b>, 30&nbsp;% de descuento en la primera mensualidad de cualquier plan.`
       ];
-      const enlace = "https://planoexactocr.com/mapa";
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + "\n\nVer el mapa: " + enlace;
-      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, "Ver mapa de remates", enlace) };
+      const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
+      const extra = tarjetas.length ? `<div style="margin:4px 0 20px">
+<p style="font-size:13px;font-weight:bold;color:#15302A;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
+${tarjetas.map((t) => t.html).join("")}</div>` : "";
+      const enlace = `https://${(env && env.DOMINIO) || "planoexactocr.com"}/mapa`;
+      const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
+        tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + propsTexto + "\n\nVer el mapa: " + enlace;
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace) };
     }
   }
 };
@@ -202,6 +228,21 @@ async function destinatariosCampana(env, id) {
       AND correo NOT IN (SELECT correo FROM campanas WHERE campana = ?)
     ORDER BY id`).bind(hoy(), id).all();
   return r.results;
+}
+// Elige las n propiedades con mejor índice PECR entre las que tienen fecha de remate
+// futura y ubicación exacta (por plano o finca, no solo el centro del distrito), para
+// mostrarlas como gancho en las campañas de correo.
+async function mejoresPropiedades(u, env, n) {
+  try {
+    const r = await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)));
+    const R = await r.json();
+    const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);   // hora de Costa Rica
+    // st = índice de la próxima fecha vigente (puede ser el 2.º o 3.er remate, no siempre f[0])
+    return R.map((x) => Object.assign({}, x, { st: (x.f || []).findIndex((f) => f >= ahora) }))
+      .filter((x) => (x.loc === "plano" || x.loc === "finca") && x.pecr != null && x.st >= 0)
+      .sort((a, b) => b.pecr - a.pecr || (a.f[a.st] < b.f[b.st] ? -1 : 1))
+      .slice(0, n);
+  } catch (e) { return []; }
 }
 
 // ---------- Ingreso sin contraseña: Google y enlace por correo ----------
@@ -449,7 +490,7 @@ async function admin(request, env, u) {
     const out = [];
     for (const id in CAMPANAS) {
       const c = CAMPANAS[id];
-      const prev = c.construir({ cupon: "EJEMPLO30" });
+      const prev = c.construir({ cupon: "EJEMPLO30" }, [], env);
       const enviados = await env.DB.prepare("SELECT COUNT(*) AS n FROM campanas WHERE campana = ?").bind(id).first();
       const faltan = await destinatariosCampana(env, id);
       out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length });
@@ -464,15 +505,17 @@ async function admin(request, env, u) {
     if (b.accion === "prueba") {
       const correo = String(b.correo || "").trim().toLowerCase();
       if (!CORREO_OK.test(correo)) return json({ error: "Correo de prueba inválido" }, 400, 0);
-      const msg = c.construir({ cupon: "EJEMPLO30" });
+      const props = await mejoresPropiedades(u, env, 3);
+      const msg = c.construir({ cupon: "EJEMPLO30" }, props, env);
       const res = await enviarCorreoDbg(env, correo, "[Prueba] " + msg.asunto, msg.texto, msg.html);
       return json(res, res.ok ? 200 : 502, 0);
     }
     if (b.accion === "enviar") {
+      const props = await mejoresPropiedades(u, env, 3);
       const dest = (await destinatariosCampana(env, b.campana)).slice(0, 300);
       let enviados = 0, fallidos = 0, ultimoError = "";
       for (const us of dest) {
-        const msg = c.construir(us);
+        const msg = c.construir(us, props, env);
         const res = await enviarCorreoDbg(env, us.correo, msg.asunto, msg.texto, msg.html);
         if (res.ok) { await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run(); enviados++; }
         else { fallidos++; ultimoError = res.error || ""; }
