@@ -1144,7 +1144,6 @@
         <div class="text-white-50 small mb-2">Con tu cuenta gratis:</div>
         <ul class="list-unstyled mb-3">${ven.map(([i, t]) => `<li class="d-flex align-items-center gap-2 mb-1"><span class="ri ri-claro" aria-hidden="true">${i}</span>${t}</li>`).join('')}</ul>
         <div class="btn-list"><button class="btn btn-light" data-auth="crear">Crear cuenta gratis</button><button class="btn btn-outline-light" data-auth="entrar">Ya tengo cuenta</button></div>
-        <div class="text-white-50 small mt-2">Al registrarte recibes un cupón de 30 % de descuento en la primera mensualidad de cualquier plan.</div>
       </div></div>
     </div></div>`;
     f.hidden = false; $('fx').onclick = closeFicha;
@@ -1397,18 +1396,21 @@
     if (!PX.yo) return toast('Para pagar, entra con una cuenta de usuario (no con la sesión de administración).');
     tipo = tipo === 'expedientes' ? 'expedientes' : tipo === 'basico' ? 'basico' : 'pro';
     if (tipo !== 'expedientes' && PX.nivel() > (tipo === 'pro' ? 3 : 2)) return toast('Ya tienes un plan superior activo');
-    let periodo = 'mes', cant = 1, form = { ref: '', tel: '' };
+    let periodo = 'mes', cant = 1, codigo = '', form = { ref: '', tel: '' };
     const concepto = () => tipo === 'expedientes' ? 'expedientes' : (tipo === 'basico' ? 'esencial' : 'pro') + '-' + periodo;
     async function pintar() {
-      const q = await (await fetch('/api/cuenta/cotizar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant }) })).json().catch(() => ({}));
+      const q = await (await fetch('/api/cuenta/cotizar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant, codigo }) })).json().catch(() => ({}));
       const listo = q.sinpe && q.monto;
       const renov = tipo !== 'expedientes' && PX.plan() === tipo && PX.yo.proHasta;
       ventana({ marca: true,
         titulo: tipo === 'expedientes' ? 'Expedientes adicionales' : `${tipo === 'pro' ? PX.PRO : PX.ESE} <span class="ms-2">${renov ? 'Renovar plan' : 'Activar plan'}</span>`,
         cuerpo: `${tipo === 'expedientes' ? `<div class="mb-3"><label class="form-label" for="pgCant">Cantidad</label><select class="form-select" id="pgCant">${[1, 2, 3, 5, 10].map(k => `<option value="${k}"${k === cant ? ' selected' : ''}>${k} expediente${k > 1 ? 's' : ''} · ${PX.mt(k * PX.PRECIOS.expediente, 'CRC')}</option>`).join('')}</select></div>`
             : `<div class="btn-group w-100 mb-3" role="group"><button type="button" class="btn${periodo === 'mes' ? ' btn-primary' : ''}" data-per="mes">Mensual</button><button type="button" class="btn${periodo === 'anual' ? ' btn-primary' : ''}" data-per="anual">Anual · 2 meses gratis</button></div>`}
+          ${tipo !== 'expedientes' ? `<div class="mb-3"><label class="form-label" for="pgCod">¿Tenés un código de descuento?</label>
+            <div class="input-group"><input class="form-control" id="pgCod" autocomplete="off" placeholder="Escribí tu código" value="${esc(codigo)}"><button class="btn" type="button" id="pgCodBtn">Aplicar</button></div>
+            ${codigo && !q.descuento ? '<div class="text-danger small mt-1">Ese código no es válido, no es el tuyo o ya lo usaste.</div>' : ''}</div>` : ''}
           <div class="card card-sm mb-3"><div class="card-body"><div class="subheader">Total a pagar</div><div class="h1 mb-0">${PX.mt(q.monto, 'CRC')}</div>
-            ${q.descuento ? `<div class="text-success small">Incluye tu cupón ${esc(PX.yo.cupon)}: −${PX.mt(q.descuento, 'CRC')}</div>` : ''}${renov ? `<div class="text-secondary small">Se suma a tu plan actual, vigente hasta el ${fdate(new Date(PX.yo.proHasta + 'T12:00'))}.</div>` : ''}</div></div>
+            ${q.descuento ? `<div class="text-success small">Cupón ${esc(codigo || PX.yo.cupon)} aplicado: −${PX.mt(q.descuento, 'CRC')}</div>` : ''}${renov ? `<div class="text-secondary small">Se suma a tu plan actual, vigente hasta el ${fdate(new Date(PX.yo.proHasta + 'T12:00'))}.</div>` : ''}</div></div>
           ${listo ? `<ul class="steps steps-vertical steps-green mb-3">
               <li class="step-item"><div class="fw-medium">Haz un SINPE Móvil</div><div class="text-secondary">por <b>${PX.mt(q.monto, 'CRC')}</b> al <b class="font-monospace">${esc(q.sinpe)}</b>${q.titular ? ` (a nombre de ${esc(q.titular)})` : ''}</div></li>
               <li class="step-item"><div class="fw-medium">Escribe la referencia</div><div class="text-secondary">En la descripción del SINPE: <code>${esc(q.referencia)}</code></div></li>
@@ -1424,6 +1426,8 @@
         pie: listo ? '<button class="btn me-auto" data-close>Cancelar</button><button class="btn btn-primary" type="submit" form="pgF" id="pgBtn">Enviar comprobante</button>' : '<button class="btn" data-close>Cerrar</button>' });
       document.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { periodo = b.dataset.per; guardar(); pintar(); });
       const c = $('pgCant'); if (c) c.onchange = () => { cant = +c.value; guardar(); pintar(); };
+      const cb = $('pgCodBtn'); if (cb) cb.onclick = () => { guardar(); pintar(); };
+      const ci = $('pgCod'); if (ci) ci.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); guardar(); pintar(); } };
       const f = $('pgF'); if (!f) return;
       f.onsubmit = async ev => {
         ev.preventDefault();
@@ -1432,7 +1436,7 @@
         btn.disabled = true; btn.textContent = 'Enviando…';
         try {
           const file = $('pgImg').files[0], img = file ? await comprimir(file) : null;
-          const r = await fetch('/api/cuenta/pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant, ref, telefono: $('pgTel').value.trim(), img }) });
+          const r = await fetch('/api/cuenta/pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ concepto: concepto(), cantidad: cant, ref, telefono: $('pgTel').value.trim(), codigo, img }) });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(j.error || 'No se pudo enviar. Intenta de nuevo.');
           ventana({ titulo: '¡Recibimos tu comprobante!', tam: 'sm', estado: 'success',
@@ -1441,7 +1445,7 @@
         } catch (x) { mostrar('pgErr', x.message); btn.disabled = false; btn.textContent = 'Enviar comprobante'; }
       };
     }
-    const guardar = () => { const a = $('pgRef'), b = $('pgTel'); if (a) form.ref = a.value; if (b) form.tel = b.value; };
+    const guardar = () => { const a = $('pgRef'), b = $('pgTel'), c = $('pgCod'); if (a) form.ref = a.value; if (b) form.tel = b.value; if (c) codigo = c.value.trim(); };
     pintar();
   }
   document.addEventListener('click', e => {
@@ -1584,7 +1588,7 @@
           n === 3 ? '<button class="btn w-100" data-pagar="pro">Renovar PRO</button>' : '<button class="btn btn-primary w-100" data-pagar="pro">Activar PRO</button>')}
       </div>
       ${compTabla}
-      <div class="text-secondary small mt-3">${n < 3 ? `Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. ` : ''}Precios en colones con IVA incluido. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Tu cupón de lanzamiento descuenta ${PX.PRECIOS.cupon} % de la primera mensualidad. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos.</div>` });
+      <div class="text-secondary small mt-3">${n < 3 ? `Expediente adicional, fuera de lo que incluye tu plan: <b>${PX.mt(PX.PRECIOS.expediente, 'CRC')}</b> cada uno. ` : ''}Precios en colones con IVA incluido. Pago por SINPE Móvil: reportas el comprobante y activamos el plan en horas hábiles. Los expedientes y análisis no son certificados de uso de suelo, certificaciones registrales ni avalúos.</div>` });
   }
   $('bPlanes').onclick = () => openPlanes();
   // ---------- Cómo usar la herramienta (guía de funciones gratis y PRO) ----------
@@ -1634,7 +1638,6 @@
         ${yo ? `<div class="card mb-3"><div class="card-body"><div class="d-flex align-items-center"><span class="avatar avatar-md me-3 bg-primary-lt">${esc((yo.nombre || yo.correo).slice(0, 1).toUpperCase())}</span>
             <div class="flex-fill"><div class="fw-medium">${esc(yo.nombre || yo.correo)}</div>${yo.nombre ? `<div class="text-secondary small">${esc(yo.correo)}</div>` : ''}</div>
             <a class="btn btn-sm" href="/__salir">Cerrar sesión</a></div></div></div>
-          ${yo.cupon ? cuponCard(yo.cupon, yo.cuponUsado) : ''}
           ${yo.cupon ? referirCard(yo.cupon, yo.referidos || 0, yo.diasRegalo || 0) : ''}`
         : `<div class="alert alert-info"><div>Sesión de administración: con «Ver como» revisas el sitio como usuario gratis, Esencial o PRO. <a href="/admin">Panel</a> · <a href="/__salir">Salir</a></div></div>`}
         ${tarjeta('Plan', `<div class="card-body">
@@ -1860,7 +1863,6 @@
   if (qs.has('bienvenida')) { bienv = '1'; try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if (bienv === '1' && PX.yo) ventana({ titulo: '¡Bienvenido a PlanoExactoCR!', marca: true, estado: 'success',
     cuerpo: `<p>Tu cuenta está lista. Ya puedes ver la información base de cada remate, guardar listas, seguir remates y generar ${PX.PRECIOS.semanal} expediente PDF completo por semana.</p>
-      ${PX.yo.cupon ? cuponCard(PX.yo.cupon, PX.yo.cuponUsado) : ''}
       ${PX.yo.cupon ? referirCard(PX.yo.cupon, PX.yo.referidos || 0, PX.yo.diasRegalo || 0) : ''}
       <form id="bvF"><div class="row g-2"><div class="col-sm-6"><label class="form-label" for="bvPerf">Te interesa como <span class="form-label-description">Opcional</span></label><select class="form-select" id="bvPerf">${PERF.map(([v, t]) => `<option value="${v}"${PX.yo.perfil === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
         <div class="col-sm-6"><label class="form-label" for="bvProv">Provincia de interés</label><select class="form-select" id="bvProv"><option value="">Todo el país</option>${PX.PROVS.map(p => `<option${PX.yo.prov === p ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div></form>`,

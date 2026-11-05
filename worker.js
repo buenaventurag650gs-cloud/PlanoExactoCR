@@ -112,12 +112,14 @@ const CATALOGO = {
   "pro-anual": { plan: "pro", meses: 12, monto: 112900, mensual: 11290, txt: "Plan PRO · 1 año" },
   "expedientes": { unidad: 5000, txt: "Expedientes adicionales" }
 };
-const CUPON_PCT = 0.3, CUPON_PCT_REF = 0.4;   // quien llega referido por un amigo recibe un poco más en su primer mes
-function cotizar(us, concepto, cantidad) {
+const CUPON_PCT = 0.5;   // cupón especial del correo: 50 % en la primera mensualidad, solo al escribir el código correcto al pagar
+// El descuento NO se aplica solo: requiere que el usuario escriba su código (su propio cupón) al pagar.
+// Así el sitio muestra precio completo y el 50 % queda exclusivo de quien recibe el correo.
+function cotizar(us, concepto, cantidad, codigo) {
   const c = CATALOGO[concepto]; if (!c) return null;
   if (c.unidad) { const n = Math.max(1, Math.min(20, Math.round(Number(cantidad) || 1))); return { concepto, cantidad: n, monto: c.unidad * n, descuento: 0, txt: `${c.txt} · ${n}` }; }
-  const pct = us && us.referido_por ? CUPON_PCT_REF : CUPON_PCT;
-  const descuento = us && us.cupon && !us.cupon_usado ? Math.round(c.mensual * pct) : 0;
+  const valido = !!(codigo && us && us.cupon && !us.cupon_usado && String(codigo).trim().toUpperCase() === String(us.cupon).toUpperCase());
+  const descuento = valido ? Math.round(c.mensual * CUPON_PCT) : 0;
   return { concepto, cantidad: 1, monto: c.monto - descuento, descuento, txt: c.txt };
 }
 const sumarMeses = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
@@ -483,33 +485,38 @@ const CAMPANAS = {
     nombre: "Tour rápido + cupón de lanzamiento",
     construir: (us, props, env) => {
       const dom = (env && env.DOMINIO) || "planoexactocr.com";
-      const cp = us.cupon || "LANZAMIENTO30";
-      const pctRef = Math.round(CUPON_PCT_REF * 100);
+      const cp = us.cupon || "EJEMPLO50";
+      const pct = Math.round(CUPON_PCT * 100);
       const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
-      const asunto = nombre ? `${nombre}, así funciona PlanoExactoCR (y tu cupón sigue activo)` : "Así funciona PlanoExactoCR (y tu cupón sigue activo)";
+      const asunto = nombre ? `${nombre}, tu cupón de ${pct} % en PlanoExactoCR` : `Tu cupón de ${pct} % en PlanoExactoCR`;
       const parrafos = [
         nombre ? `Hola ${nombre},` : "Hola,",
         "PlanoExactoCR junta en un solo mapa todos los remates judiciales vigentes en Costa Rica: ubicación exacta por plano o finca, zona homogénea de Hacienda, agua potable, electricidad, cobertura móvil, vías, ríos y distancia a la costa.",
-        "Con tu cuenta gratis ya ves lo básico de cada remate. Con un plan de pago generás el expediente completo en PDF: gravámenes explicados, potencial constructivo, valor de referencia y los riesgos del lote, listo para imprimir o mandarle a quien decida con vos.",
-        `Tu cupón de lanzamiento sigue activo: <b style="font-size:17px;letter-spacing:1px">${cp}</b>, 30&nbsp;% de descuento en la primera mensualidad de cualquier plan.`
+        "Con tu cuenta gratis ya ves lo básico de cada remate. Con un plan de pago generás el expediente completo en PDF: gravámenes explicados, potencial constructivo, valor de referencia y los riesgos del lote, listo para imprimir o mandarle a quien decida con vos."
       ];
+      // Cupón especial del correo: 50 % con el código, escribiéndolo al pagar.
+      const cupon = `<div style="margin:4px 0 22px;border:2px solid #C8553D;border-radius:12px;background:#FBF1EE;padding:18px 20px;text-align:center">
+<p style="font-size:12px;font-weight:bold;color:#C8553D;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">Cupón especial &middot; solo por correo</p>
+<p style="font-size:24px;font-weight:bold;color:#15302A;margin:0 0 4px">${pct}&nbsp;% de descuento</p>
+<p style="font-size:13px;color:#4C5953;margin:0 0 14px">en la primera mensualidad de cualquier plan. Escribí este código al pagar:</p>
+<span style="display:inline-block;background:#fff;border:2px dashed #C8553D;border-radius:8px;padding:10px 24px;font-size:21px;font-weight:bold;letter-spacing:2px;color:#15302A">${esc(cp)}</span></div>`;
       const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
       const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
 <p style="font-size:13px;font-weight:bold;color:#15302A;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
 ${tarjetas.map((t) => t.html).join("")}</div>` : "";
-      // Promo de referidos (2x1 con un compa): el amigo entra con más descuento y vos ganás un mes gratis.
+      // Promo de referidos (2x1 con un compa): el amigo entra con 50 % y vos ganás un mes gratis.
       const refLink = `https://${dom}/mapa?ref=${encodeURIComponent(cp)}`;
       const promoRef = `<div style="margin:4px 0 22px;border:2px dashed #1F5A47;border-radius:12px;background:#F2F7F4;padding:16px 18px">
 <p style="font-size:16px;font-weight:bold;color:#15302A;margin:0 0 6px">2&times;1: traé un compa y ganan los dos</p>
-<p style="font-size:13px;color:#4C5953;margin:0 0 12px">Compartí tu código. Tu amigo se registra con él y entra con <b>${pctRef}&nbsp;% de descuento</b> en su primer mes; cuando pague su primer plan, vos te ganás <b>un mes gratis</b> del tuyo.</p>
-<p style="margin:0 0 12px"><span style="display:inline-block;background:#fff;border:1px solid #CBD6D0;border-radius:8px;padding:9px 16px;font-size:17px;font-weight:bold;letter-spacing:1px;color:#15302A">${esc(cp)}</span></p>
+<p style="font-size:13px;color:#4C5953;margin:0 0 12px">Invitá a un amigo con tu enlace. Él entra con <b>${pct}&nbsp;% de descuento</b> en su primer mes y, cuando pague su primer plan, vos te ganás <b>un mes gratis</b> del tuyo.</p>
 <a href="${refLink}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block">Compartir mi invitación</a></div>`;
-      const extra = bloqueProps + promoRef;
+      const extra = cupon + bloqueProps + promoRef;
       const enlace = `https://${dom}/mapa`;
+      const cuponTexto = `\n\nCupón especial (solo por correo): ${pct} % de descuento en la primera mensualidad de cualquier plan. Escribí el código ${cp} al pagar.`;
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
-      const refTexto = `\n\n2x1: traé un compa y ganan los dos. Compartí tu código ${cp}: tu amigo entra con ${pctRef} % de descuento en su primer mes y vos te ganás un mes gratis cuando pague. Enlace: ${refLink}`;
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + propsTexto + refTexto + "\n\nVer el mapa: " + enlace;
+      const refTexto = `\n\n2x1: traé un compa y ganan los dos. Invitá a un amigo con tu enlace: él entra con ${pct} % de descuento y vos te ganás un mes gratis cuando pague. ${refLink}`;
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + cuponTexto + propsTexto + refTexto + "\n\nVer el mapa: " + enlace;
       return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace, env) };
     }
   }
@@ -571,13 +578,13 @@ async function cuentaPorCorreo(env, request, correo, extra) {
     const r = await env.DB.prepare("SELECT cupon FROM usuarios WHERE cupon = ? AND correo <> ?").bind(refCode, correo).first();
     if (r) referidoPor = r.cupon;
   }
-  const pct = referidoPor ? Math.round(CUPON_PCT_REF * 100) : Math.round(CUPON_PCT * 100);
+  const pct = Math.round(CUPON_PCT * 100);
   us = await env.DB.prepare(`INSERT INTO usuarios (correo, nombre, perfil, prov, hash, sal, cupon, fuente, pais, creado, ultimo, google_sub, origen, referido_por) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`)
     .bind(correo, String(e.nombre || "").slice(0, 80), PERFILES.has(e.perfil) ? e.perfil : "otro", String(e.prov || "").slice(0, 20), "-", azar(16), cp, fuente, (request.cf && request.cf.country) || "", ahora, ahora, e.sub || null, e.origen || "correo", referidoPor).first();
   await avisar(env, "Nueva cuenta: " + correo, ["Se creó una cuenta en PlanoExactoCR.", "", "Correo: " + correo, "Nombre: " + (us.nombre || "—"), "Entró con: " + (e.origen === "google" ? "Google" : "enlace por correo"),
     "Llegó por: " + (fuente || "directo"), "País: " + (us.pais || "—"), "Cupón: " + cp, referidoPor ? "Referido por: " + referidoPor : "", "", "Panel: https://" + (env.DOMINIO || "planoexactocr.com") + "/admin"].filter(Boolean));
-  await enviarCorreo(env, correo, "Bienvenido a PlanoExactoCR: tu cupón " + cp, `Tu cuenta en PlanoExactoCR está lista.\n\nTu cupón de lanzamiento: ${cp} (${pct} % de descuento en la primera mensualidad de cualquier plan).\n\nEntra al mapa: https://${env.DOMINIO || "planoexactocr.com"}/mapa`,
-    correoHTML("Tu cuenta está lista", ["Ya puedes ver la información base de cada remate, guardar listas y generar un expediente PDF completo por semana.", `Tu cupón de lanzamiento es <b style="font-size:18px;letter-spacing:1px">${cp}</b>: ${pct} % de descuento en la primera mensualidad de cualquier plan.`], "Ir al mapa", `https://${env.DOMINIO || "planoexactocr.com"}/mapa`));
+  await enviarCorreo(env, correo, "Bienvenido a PlanoExactoCR: tu cupón " + cp, `Tu cuenta en PlanoExactoCR está lista.\n\nTu cupón especial: ${cp} — ${pct} % de descuento en la primera mensualidad de cualquier plan. Escribí el código al pagar para que se aplique.\n\nEntra al mapa: https://${env.DOMINIO || "planoexactocr.com"}/mapa`,
+    correoHTML("Tu cuenta está lista", ["Ya puedes ver la información base de cada remate, guardar listas y generar un expediente PDF completo por semana.", `Tu cupón especial es <b style="font-size:18px;letter-spacing:1px">${cp}</b>: ${pct}&nbsp;% de descuento en la primera mensualidad de cualquier plan. Escribí el código al pagar para aplicarlo.`], "Ir al mapa", `https://${env.DOMINIO || "planoexactocr.com"}/mapa`));
   return { us, nuevo: true };
 }
 const volverA = (v) => (typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : "/mapa");
@@ -748,9 +755,9 @@ async function cuenta(request, env, u, pw) {
     const nu = await env.DB.prepare("UPDATE usuarios SET hash = ?, sal = ?, ver = ver + 1 WHERE id = ? RETURNING *").bind(h.hash, h.sal, us.id).first();
     return json({ ok: true }, 200, 0, { "Set-Cookie": await crearSesion(env, nu) });
   }
-  if (ruta === "cotizar") return json(Object.assign({ sinpe: env.SINPE_NUMERO || "", titular: env.SINPE_NOMBRE || "", referencia: us.cupon || us.correo }, cotizar(us, b.concepto, b.cantidad) || { error: "Concepto inválido" }), 200, 0);
+  if (ruta === "cotizar") return json(Object.assign({ sinpe: env.SINPE_NUMERO || "", titular: env.SINPE_NOMBRE || "", referencia: us.cupon || us.correo }, cotizar(us, b.concepto, b.cantidad, b.codigo) || { error: "Concepto inválido" }), 200, 0);
   if (ruta === "pagar") {
-    const q = cotizar(us, b.concepto, b.cantidad);
+    const q = cotizar(us, b.concepto, b.cantidad, b.codigo);
     if (!q) return json({ error: "Elige un plan o una cantidad de expedientes." }, 400, 0);
     const ref = String(b.ref || "").replace(/[^\w-]/g, "").slice(0, 40);
     if (ref.length < 4) return json({ error: "Escribe el número de comprobante del SINPE Móvil." }, 400, 0);
@@ -830,7 +837,7 @@ async function admin(request, env, u) {
     const out = [];
     for (const id in CAMPANAS) {
       const c = CAMPANAS[id];
-      const prev = c.construir({ cupon: "EJEMPLO30" }, [], env);
+      const prev = c.construir({ cupon: "EJEMPLO50" }, [], env);
       const enviados = await env.DB.prepare("SELECT COUNT(*) AS n FROM campanas WHERE campana = ?").bind(id).first();
       const faltan = await destinatariosCampana(env, id);
       out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length });
@@ -852,7 +859,7 @@ async function admin(request, env, u) {
       const correo = String(b.correo || "").trim().toLowerCase();
       if (!CORREO_OK.test(correo)) return json({ error: "Correo de prueba inválido" }, 400, 0);
       const props = await mejoresPropiedades(u, env, 3);
-      const msg = c.construir({ cupon: "EJEMPLO30" }, props, env);
+      const msg = c.construir({ cupon: "EJEMPLO50" }, props, env);
       const res = await enviarCorreoDbg(env, correo, "[Prueba] " + msg.asunto, msg.texto, msg.html);
       return json(res, res.ok ? 200 : 502, 0);
     }
