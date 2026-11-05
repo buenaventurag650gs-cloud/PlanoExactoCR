@@ -103,8 +103,8 @@ const planVigente = (u) => (u.plan !== "free" && PLANES.has(u.plan) && (!u.pro_h
 const publico = (u) => ({ correo: u.correo, nombre: u.nombre || "", perfil: u.perfil, prov: u.prov || "", plan: planVigente(u), proHasta: u.pro_hasta, cupon: u.cupon, solicitaPro: u.solicita_pro, creado: u.creado, creditos: u.creditos || 0, cuponUsado: !!u.cupon_usado });
 
 // ---------- Pagos por SINPE Móvil: el usuario reporta el pago con su comprobante y el administrador lo aprueba ----------
-// Precios en colones (deben coincidir con PX.PRECIOS en assets/core.js). El cupón de lanzamiento descuenta un 30 % de
-// una mensualidad en el primer pago de un plan.
+// Precios en colones (deben coincidir con PX.PRECIOS en assets/core.js). El cupón especial del
+// correo descuenta un 50 % de una mensualidad en el primer pago de un plan, solo con el código.
 const CATALOGO = {
   "esencial-mes": { plan: "basico", meses: 1, monto: 5190, mensual: 5190, txt: "Plan Esencial · 1 mes" },
   "esencial-anual": { plan: "basico", meses: 12, monto: 51900, mensual: 5190, txt: "Plan Esencial · 1 año" },
@@ -482,7 +482,7 @@ ${imgBloque}<div style="padding:12px 16px 14px">
 }
 const CAMPANAS = {
   tour: {
-    nombre: "Tour rápido + cupón de lanzamiento",
+    nombre: "Tour rápido + cupón de 50 %",
     construir: (us, props, env) => {
       const dom = (env && env.DOMINIO) || "planoexactocr.com";
       const cp = us.cupon || "EJEMPLO50";

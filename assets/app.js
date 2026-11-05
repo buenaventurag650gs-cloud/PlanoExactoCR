@@ -1363,7 +1363,6 @@
   }
   const alerta = (id, tipo = 'danger') => `<div class="alert alert-${tipo}" id="${id}" role="alert" hidden></div>`;
   const mostrar = (id, t) => { const e = $(id); if (!e) return; e.textContent = t || ''; e.hidden = !t; };
-  const cuponCard = (cp, usado) => `<div class="card card-sm bg-primary-lt mb-3"><div class="card-body"><div class="subheader">Tu cupón de lanzamiento</div><div class="h2 mb-1 font-monospace">${esc(cp)}</div><div class="text-secondary small">${usado ? 'Ya lo usaste en tu primer pago. ¡Gracias!' : `${PX.PRECIOS.cupon} % de descuento en la primera mensualidad de cualquier plan; se aplica solo al pagar.`}</div></div></div>`;
   const referirCard = (cp, referidos, diasRegalo) => `<div class="card card-sm bg-green-lt mb-3"><div class="card-body">
     <div class="subheader">Invitá a un amigo</div><div class="h2 mb-1 font-monospace">${esc(cp)}</div>
     <div class="text-secondary small mb-2">Compartí tu código: tu amigo entra con ${PX.PRECIOS.cuponRef} % de descuento en su primer mes. Cuando pague su primer plan, vos ganás 30 días de regalo en el tuyo.</div>
@@ -1463,7 +1462,7 @@
     const I = PX.ingreso, vuelta = location.pathname + location.hash, utm = utmQ(), f = Object.values(utm).join('/');
     ventana({ titulo: 'Entra a PlanoExactoCR', tam: 'sm', marca: true,
       cuerpo: `${porque ? `<div class="alert alert-info"><div>${esc(porque)}</div></div>` : ''}
-        <p class="text-secondary">Si es tu primera vez, se crea tu cuenta gratis y recibes tu cupón de lanzamiento. Sin contraseñas.</p>
+        <p class="text-secondary">Si es tu primera vez, se crea tu cuenta gratis. Sin contraseñas.</p>
         ${I.google ? `<a class="btn w-100" href="/auth/google?v=${encodeURIComponent(vuelta)}${f ? '&f=' + encodeURIComponent(f) : ''}${utm.ref ? '&ref=' + encodeURIComponent(utm.ref) : ''}">${GLOGO}Continuar con Google</a>` : ''}
         ${I.google && I.correo ? '<div class="hr-text">o con tu correo</div>' : ''}
         ${I.correo ? `<form id="mlF" novalidate><div class="mb-3"><label class="form-label" for="mlCorreo">Correo electrónico</label><input class="form-control" id="mlCorreo" type="email" autocomplete="email" required placeholder="nombre@correo.com"></div>
