@@ -550,9 +550,19 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const parrafos = [
         nombre ? `Hola ${nombre},` : "Hola,",
         "Te regalamos una semana del plan Esencial de PlanoExactoCR, ya activa en tu cuenta: sin tarjeta, sin código que escribir.",
-        "Con Esencial ves el valor de Hacienda y el índice Puja/Hacienda de cada remate, la escala PECR completa, atributos del lote, apoyo legal en sitio, y podés ordenar la lista, filtrar recientes y usar la vista de calendario."
+        "Con Esencial, de más vas a tener:"
       ];
-      const aviso = `<div style="margin:4px 0 22px;border:2px solid #159B75;border-radius:12px;background:#F2F7F4;padding:18px 20px;text-align:center">
+      const BENEFICIOS = [
+        "Valor de Hacienda e índice Puja/Hacienda de cada remate",
+        "Escala PECR completa",
+        "Atributos del lote",
+        "Apoyo legal en sitio",
+        "Ordenar la lista, filtrar recientes y usar la vista de calendario"
+      ];
+      const beneficios = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;width:100%">
+${BENEFICIOS.map((b) => `<tr><td style="width:26px;vertical-align:top;padding:3px 10px 3px 0"><span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:#159B75;color:#fff;font-size:11px;font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif">&#10003;</span></td><td style="font-size:13.5px;color:#073B32;padding:3px 0;line-height:1.4">${esc(b)}</td></tr>`).join("")}
+</table>`;
+      const aviso = `<div style="margin:4px 0 18px;border:2px solid #159B75;border-radius:12px;background:#F2F7F4;padding:18px 20px;text-align:center">
 <p style="font-size:12px;font-weight:bold;color:#159B75;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">Regalo &middot; ya está activo</p>
 <p style="font-size:22px;font-weight:bold;color:#073B32;margin:0 0 4px">1 semana de Esencial</p>
 <p style="font-size:13px;color:#4C5953;margin:0">Válida hasta el ${esc(hastaFmt)} en la cuenta ${esc(correo)}. Si te sirve, podés seguir con el plan cuando se acabe.</p></div>`;
@@ -560,12 +570,13 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
 <p style="font-size:13px;font-weight:bold;color:#073B32;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
 ${tarjetas.map((t) => t.html).join("")}</div>` : "";
-      const extra = aviso + bloqueProps;
+      const extra = aviso + beneficios + bloqueProps;
       const enlace = `https://${dom}/mapa`;
       const avisoTexto = `\n\nYa activamos una semana del plan Esencial en tu cuenta (${correo}), válida hasta el ${hastaFmt}. No hace falta código ni tarjeta.`;
+      const beneficiosTexto = "\n\n" + BENEFICIOS.map((b) => `- ${b}`).join("\n");
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + beneficiosTexto + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
       return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mis remates", enlace, env) };
     }
   }
