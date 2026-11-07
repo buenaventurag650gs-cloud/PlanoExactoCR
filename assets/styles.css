@@ -47,6 +47,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.gold { background: var(--goldbg); color: var(--gold); border-color: transparent; font-weight: 600; }
 .btn.sm { padding: 5px 9px; font-size: 12px; }
 .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.btn-copy { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; margin-left: 6px; vertical-align: middle; }
+.btn-copy:hover { background: var(--accent-soft); }
 .tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 1px 6px; border-radius: 4px; background: var(--chip); color: var(--muted); }
 .tag.ok { background: var(--accent-soft); color: var(--accent); }
 .tag.warn { background: var(--warnbg); color: var(--warn); }
