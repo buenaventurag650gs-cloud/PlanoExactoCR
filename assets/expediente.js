@@ -74,7 +74,7 @@
   const titleCase = s => String(s || '').toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase());
 
   // Encabezado y pie comunes a cada hoja
-  const head = (t) => `<header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="40" height="28"></span><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span></div>
+  const head = (t) => `<header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="40" height="28"></span><span class="wmcol"><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span><span class="lsub">${esc(PX.CONTACTO.web)} · @${esc(PX.CONTACTO.ig)}</span></span></div>
       <div class="pt"><b>${esc(r.nom)}</b><span>${t}</span></div><div class="pm"><b class="num">${folio}</b><span>${fdate(new Date())}</span></div></header>`;
   const foot = n => `<footer class="pf">Compendio de información pública y análisis orientativo: no es certificado de uso de suelo, certificación registral o catastral, avalúo ni estudio de título. Verifique en el expediente judicial, el Registro Nacional y la municipalidad.<span class="num">${n}</span></footer>`;
 

@@ -35,6 +35,10 @@
     $('attrHint').hidden = PX.isPro();
     // Filtros PRO por IPH y por USD/m²: inputs se deshabilitan y se marca el hint
     const rhHint = $('rangoHint'); if (rhHint) rhHint.hidden = PX.isPro();
+    // Ordenar la lista: función Esencial+. Sin esa cuenta, queda fija en «Próxima fecha».
+    const ordSel = $('order'), ordHint = $('orderHint');
+    if (ordSel) { ordSel.disabled = !PX.isEsencial(); if (!PX.isEsencial()) ordSel.value = 'fecha'; }
+    if (ordHint) ordHint.hidden = PX.isEsencial();
     for (const id of ['m2Min', 'm2Max', 'iphMin', 'iphMax']) {
       const el = $(id); if (el) { el.disabled = !PX.isPro(); if (!PX.isPro()) el.value = ''; }
     }
@@ -306,7 +310,8 @@
     const cm = e.target.closest('[data-cm]'); if (cm) { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + +cm.dataset.cm, 1); renderCal(); }
   });
   function setView(v) { view = v; $('vwList').setAttribute('aria-pressed', v === 'list'); $('vwCal').setAttribute('aria-pressed', v === 'cal'); $('cal').hidden = v !== 'cal'; if (v === 'cal' && !calDay) { const nx = shown.filter(r => r.next).sort((a, b) => a.next - b.next)[0]; calDay = nx ? dayKey(nx.next) : null; if (nx) calMonth = new Date(nx.next.getFullYear(), nx.next.getMonth(), 1); } limit = 100; renderList(); }
-  $('vwList').onclick = () => setView('list'); $('vwCal').onclick = () => setView('cal');
+  $('vwList').onclick = () => setView('list');
+  $('vwCal').onclick = () => { if (!PX.isEsencial()) { openPlanes('La vista de calendario es una función del plan Esencial.'); return; } setView('cal'); };
   $('list').addEventListener('click', e => {
     if (e.target.id === 'more') { limit += 100; renderList(); return; }
     const fv = e.target.closest('[data-fav]'); if (fv) { e.stopPropagation(); favToggle(fv.dataset.fav); return; }
@@ -1016,16 +1021,18 @@
   // Bloque de la escala PECR en la ficha: nivel, escala de colores y dónde cae la base frente al rango del nivel
   const PECR_COL = ['#E0CFA3', '#CFC48D', '#B8BA7C', '#9DAE70', '#80A068', '#619060', '#477F57', '#316C4E', '#1F5843', '#123F31'];
   function pecrHTML(r, pc) {
-    const z = (r.ent || {}).zh, zu = z && z.v ? z.v / PX.tc.venta : null, bu = r.usdm2;
+    // El valor de Hacienda ya se muestra arriba, en «Valor y mercado» (zona homogénea), así que
+    // aquí la escala PECR no lo repite: solo ubica la base vigente dentro de la escala.
+    const bu = r.usdm2;
     const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de $1 a $1 000 por m²
     const pos = bu == null ? '' : bu < pc[2] ? 'por debajo del rango' : bu >= pc[3] ? 'por encima del rango' : 'dentro del rango';
     return `<div class="pecrb emph">
       <div class="iphh"><span class="iphn${pc[0] <= 4 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/${PX.PECR_N}</small></span><div><b><span class="pico">${PX.PECR_ICON[pc[0] - 1]}</span>Nivel ${pc[0]} de ${PX.PECR_N}</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
       <div class="pscale">${PX.PECR.map((x, i) => `<span class="${x[0] === pc[0] ? 'me' : ''}" style="--c:${PECR_COL[i]}" title="Nivel ${x[0]}: ${esc(x[1])} (${PX.pecrRango(x)})">${PX.PECR_ICON[i]}<i>${x[0]}</i></span>`).join('')}</div>
       <div class="lv"><span>Rural aislado</span><span>Centralidad urbana</span></div>
-      <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
+      <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}</div>
         <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">$${v}</span>`).join('')}</div></div>
-      ${PX.pecrTable(pc, bu, zu, PECR_COL[pc[0] - 1])}</div>`;
+      ${PX.pecrTable(pc, bu, null, PECR_COL[pc[0] - 1])}</div>`;
   }
 
   // Bloque del Índice Puja/Hacienda en la ficha
@@ -1288,6 +1295,7 @@
         ${e.cob || r.isPlano ? `<dt>Uso del suelo</dt><dd id="pcob">${esc(e.cob || r.cob || '…')}</dd>` : ''}
         ${e.zv ? `<dt>Zona de vida</dt><dd>${esc(e.zv)}</dd>` : ''}
       </dl>`)}
+      ${r.isPlano ? '' : ESEsec('Qué tan apto es el lote: topografía, acceso y uso del entorno.', PX.ICON.Lote, 'Atributos del lote', `<div class="d-flex flex-wrap gap-1">${(ese ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="badge bg-secondary-lt">${esc(t)}</span>`).join('') || '<span class="badge bg-secondary-lt">Sin atributos destacados</span>'}</div>`)}
       ${sec(I.norma, 'Normativa', `<p class="mb-2"><b>${esc(nv.titulo)}.</b> ${esc(nv.vigente ? 'Confirme zona, usos, cobertura y altura con el certificado de uso de suelo.' : 'Lote mínimo 90 a 120 m², frente mínimo 6 m, fondo hasta 7 veces el frente.')}</p>${nv.alertas.slice(0, 2).map(t => `<div class="alert alert-warning py-2 mb-2"><div>${esc(t)}</div></div>`).join('')}`)}
       ${fGrupo(`${PX.ESE} <span class="ms-2">Con el plan Esencial</span>`)}
       ${ESEsec('Agua potable, electricidad, telecomunicaciones, salud, escuela y entorno.', I.entorno, 'Servicios y entorno', `<dl class="kv">
@@ -1303,16 +1311,15 @@
         ${e.agua !== undefined ? `<dt>Ríos</dt><dd>${e.agua == null ? 'Ninguno a menos de 400 m' : 'Cauce a ' + PX.dist(e.agua)}</dd>` : ''}
         ${e.costa != null && e.costa < 2000 ? `<dt>Costa</dt><dd>A ${PX.dist(e.costa)}${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}</dd>` : ''}
       </dl>`)}
+      ${r.isPlano ? '' : ESEsec('Abogados disponibles para acompañarte al remate y revisar el expediente.', '⚖️', 'Apoyo legal en sitio', `<div id="fapoyo">Buscando apoyo legal…</div>`)}
       ${fGrupo(`${PX.PRO} <span class="ms-2">Con el plan PRO</span>`)}
       ${PROsec('Valor de Hacienda de la zona y en qué porcentaje de ese valor arranca la puja.', I.moneda, PX.iph(r) ? 'Índice Puja/Hacienda' : 'Valor y mercado', `<dl class="kv">
         ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
       </dl>${iphHTML(r)}`)}
       ${pecrH ? PROsec('Nivel del predio en la escala de valor PECR, de 1 a 10.', I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
-      ${r.isPlano ? '' : PROsec('Abogados disponibles para acompañarte al remate y revisar el expediente.', '⚖️', 'Apoyo legal en sitio', `<div id="fapoyo">Buscando apoyo legal…</div>`)}
       ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
         ${full ? '' : `<div class="d-flex align-items-center gap-2 mt-2 small">${PX.PRO}<span class="text-secondary">Desglose en el expediente o en PRO</span><a href="#" class="ms-auto" data-planes>Ver planes</a></div>`}`)}
-      ${r.isPlano ? '' : sec(PX.ICON.Lote, 'Atributos del lote', `<div class="d-flex flex-wrap gap-1${pro ? '' : ' blur'}">${(pro ? attrs : ['Terreno plano', 'Frente a vía', 'Zona urbana']).map(t => `<span class="badge bg-secondary-lt">${esc(t)}</span>`).join('') || '<span class="badge bg-secondary-lt">Sin atributos destacados</span>'}</div>`, PX.PRO)}
       ${proBox(r)}
       ${fGrupo('Expediente')}
       ${expBox(r)}
@@ -1345,8 +1352,8 @@
       fill('fbus', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
       fill('ftren', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
     }
-    // Apoyo legal (PRO, async)
-    if (!r.isPlano && r.juz && full) {
+    // Apoyo legal (Esencial+, async)
+    if (!r.isPlano && r.juz && ese) {
       fetch('/api/apoyo-legal?juz=' + encodeURIComponent(r.juz)).then(r => r.json()).then(data => {
         const d = $('fapoyo');
         if (!d) return;
@@ -1356,7 +1363,7 @@
           <div class="table-responsive"><table class="table table-vcenter table-sm card-table"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Especialidad</th></tr></thead><tbody>${data.map(a => `<tr><td>${esc(a.nombre)}</td><td>${a.telefono ? `<a href="tel:${esc(a.telefono)}">${esc(a.telefono)}</a>` : '—'}</td><td>${a.correo ? `<a href="mailto:${esc(a.correo)}">${esc(a.correo)}</a>` : '—'}</td><td>${esc(a.especialidad || '—')}</td></tr>`).join('')}</tbody></table></div>`;
       }).catch(() => { const d = $('fapoyo'); if (d) d.textContent = 'No disponible'; });
     } else if (!r.isPlano) {
-      const d = $('fapoyo'); if (d) d.textContent = r.juz ? 'Disponible con plan PRO' : 'Sin juzgado asignado';
+      const d = $('fapoyo'); if (d) d.textContent = r.juz ? 'Disponible con plan Esencial' : 'Sin juzgado asignado';
     }
     selLayer.clearLayers();
     if (r.ll) {
@@ -1791,6 +1798,8 @@
           ${compFila('Predio dibujado según el catastro', true, true, true)}
           ${compFila('Número de finca y plano, servidumbres y gravámenes', false, true, true)}
           ${compFila('Agua potable, vía, salud, escuela, ríos y costa', false, true, true)}
+          ${compFila('Atributos del lote (topografía, acceso, uso)', false, true, true)}
+          ${compFila('Apoyo legal en sitio', false, true, true)}
           ${compFila('Valor de Hacienda, índice Puja/Hacienda, escala PECR e Índice PlanoExacto', false, false, true)}
           ${compGrp('Herramientas')}
           ${compFila('Riesgos del proceso y alertas de cambios', false, true, true)}
@@ -1800,6 +1809,7 @@
           ${compFila('Filtrar por atributos del lote', false, false, true)}
           ${compGrp('Organizar tu búsqueda')}
           ${compFila('Favoritos, seguimiento y listas', true, true, true)}
+          ${compFila('Ordenar la lista y vista de calendario', false, true, true)}
           ${compFila('Búsquedas guardadas', true, true, true)}
           ${compFila('Comparar remates a la vez', '2', '2', '4')}
           ${compGrp('Expedientes')}
@@ -1813,7 +1823,7 @@
           ['Fechas y bases de cada remate, área y estado del plan regulador', 'Predio exacto en el mapa, con su forma según el catastro', 'Listas y seguimiento', `<b>${PX.PRECIOS.semanal} expediente por semana</b>`],
           !PX.conCuenta() ? '<button class="btn btn-primary w-100" data-auth="crear">Crear cuenta gratis</button>' : '')}
         ${plan(n === 2, `${PX.ESE}`, `${PX.mt(PX.PRECIOS.esencial, 'CRC')} <span class="fs-4 fw-normal text-secondary">/ mes</span>`, `o ${PX.mt(PX.PRECIOS.esencialAnual, 'CRC')} al año`,
-          ['Todo lo de la cuenta gratis', 'Número de finca y plano, servidumbres y gravámenes citados', 'Agua potable, vía, salud, escuela, ríos y costa', 'Búsquedas guardadas y comparar 2 lotes', `<b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b>`],
+          ['Todo lo de la cuenta gratis', 'Número de finca y plano, servidumbres y gravámenes citados', 'Agua potable, vía, salud, escuela, ríos y costa', 'Atributos del lote y apoyo legal en sitio', 'Búsquedas guardadas y comparar 2 lotes', `<b>${PX.PRECIOS.semanalEsencial} expedientes por semana</b>`],
           n === 2 ? '<button class="btn w-100" data-pagar="basico">Renovar Esencial</button>' : n < 2 ? '<button class="btn w-100" data-pagar="basico">Activar Esencial</button>' : '')}
         ${plan(n === 3, `${PX.PRO} <span class="text-body">Acceso total</span>`, `${PX.mt(PX.PRECIOS.pro, 'CRC')} <span class="fs-4 fw-normal text-secondary">/ mes</span>`, `o ${PX.mt(PX.PRECIOS.anual, 'CRC')} al año (2 meses gratis)`,
           ['Todo lo de Esencial', 'Valor de Hacienda, índice Puja/Hacienda y escala PECR', 'Todas las capas, mapa de precios y Top 10 por provincia', 'Comparar 4 lotes, potencial constructivo, prefactibilidad, riesgos y alertas', '<b>Expedientes sin límite</b>'],

@@ -1340,7 +1340,7 @@ async function manejarPeticion(request, env) {
       if (!dentro) return json({ error: "Entra con tu cuenta." }, 401, 0);
       await initDB(env);
       const usr = await usuarioActual(request, env);
-      if (!usr || !["pro", "admin"].includes(planVigente(usr))) return json({ error: "Disponible con el plan PRO." }, 403, 0);
+      if (!usr || !["basico", "pro", "admin"].includes(planVigente(usr))) return json({ error: "Disponible con el plan Esencial." }, 403, 0);
       const juz = u.searchParams.get("juz") || "";
       if (!juz) return json({ error: "Falta el parámetro juz." }, 400, 0);
       const rows = (await env.DB.prepare("SELECT nombre, telefono, correo, juzgados, zona, especialidad, notas FROM apoyo_legal WHERE activo = 1").all()).results || [];

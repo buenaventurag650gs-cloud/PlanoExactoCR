@@ -49,7 +49,7 @@
       ? [['Área según catastro', `<span class="num">${fnum(a)}</span> m²`], ['En remate', r.remate ? 'Sí' : 'No'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || '—')]]
       : [['Base vigente · ' + PX.ETAPA[r.st], PX.duo(r.bv, r.mon), 'w'], ['Fecha del remate', PX.fdate(r.next, true)], ['Área', a ? `<span class="num">${fnum(a)}</span> m²` : '—'], ['Precio por m²', r.usdm2 ? PX.duo(r.usdm2, 'USD') : '—'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : '—'))]];
     return `<section class="lamina page" aria-label="Lámina del lote">
-      <header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="40" height="28"></span><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span></div>
+      <header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="40" height="28"></span><span class="wmcol"><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span><span class="lsub">${esc(PX.CONTACTO.web)} · @${esc(PX.CONTACTO.ig)}</span></span></div>
         <div class="pt"><span class="colkick">Resumen orientativo</span><b>${esc(r.nom)}</b><span>${esc(r.lugar || '')}</span></div><div class="pm"><b class="num">${meta.folio}</b><span>${PX.fdate(new Date())}</span></div></header>
       <div class="lbody">
         <div class="lmapcol">
