@@ -1262,6 +1262,7 @@
         ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : '<dt>Zona homogénea</dt><dd>Sin dato</dd>'}
       </dl>${iphHTML(r)}`)}
       ${pecrH ? PROsec('Nivel del predio en la escala de valor PECR, de 1 a 10.', I.valor, 'Escala de valor PECR <small class="h3sub">(PlanoExactoCR)</small>', pecrH) : ''}
+      ${r.isPlano ? '' : PROsec('Abogados disponibles para acompañarte al remate y revisar el expediente.', '⚖️', 'Apoyo legal en sitio', `<div id="fapoyo">Buscando apoyo legal…</div>`)}
       ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
         ${full ? '' : `<div class="d-flex align-items-center gap-2 mt-2 small">${PX.PRO}<span class="text-secondary">Desglose en el expediente o en PRO</span><a href="#" class="ms-auto" data-planes>Ver planes</a></div>`}`)}
@@ -1297,6 +1298,19 @@
       fill('finet', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
       fill('fbus', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
       fill('ftren', r.ll ? 'Disponible con plan Esencial' : 'Sin ubicación');
+    }
+    // Apoyo legal (PRO, async)
+    if (!r.isPlano && r.juz && full) {
+      fetch('/api/apoyo-legal?juz=' + encodeURIComponent(r.juz)).then(r => r.json()).then(data => {
+        const d = $('fapoyo');
+        if (!d) return;
+        if (data.error) { d.textContent = data.error; return; }
+        if (!data.length) { d.innerHTML = '<span class="text-secondary">No hay apoyos legales registrados para este juzgado todavía.</span>'; return; }
+        d.innerHTML = `<p class="mb-2 text-secondary small">${data.length} apoyo${data.length > 1 ? 's' : ''} legal${data.length > 1 ? 'es' : ''} disponible${data.length > 1 ? 's' : ''} para este juzgado</p>
+          <div class="table-responsive"><table class="table table-vcenter table-sm card-table"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Especialidad</th></tr></thead><tbody>${data.map(a => `<tr><td>${esc(a.nombre)}</td><td>${a.telefono ? `<a href="tel:${esc(a.telefono)}">${esc(a.telefono)}</a>` : '—'}</td><td>${a.correo ? `<a href="mailto:${esc(a.correo)}">${esc(a.correo)}</a>` : '—'}</td><td>${esc(a.especialidad || '—')}</td></tr>`).join('')}</tbody></table></div>`;
+      }).catch(() => { const d = $('fapoyo'); if (d) d.textContent = 'No disponible'; });
+    } else if (!r.isPlano) {
+      const d = $('fapoyo'); if (d) d.textContent = r.juz ? 'Disponible con plan PRO' : 'Sin juzgado asignado';
     }
     selLayer.clearLayers();
     if (r.ll) {

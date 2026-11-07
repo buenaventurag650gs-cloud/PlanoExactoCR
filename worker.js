@@ -56,6 +56,10 @@ function initDB(env) {
       "referido_por TEXT", "dias_regalo INTEGER NOT NULL DEFAULT 0", "referido_premiado INTEGER NOT NULL DEFAULT 0"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS enlaces (t TEXT PRIMARY KEY, correo TEXT NOT NULL, vence INTEGER NOT NULL, datos TEXT)").run();
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS campanas (campana TEXT NOT NULL, correo TEXT NOT NULL, enviado TEXT NOT NULL, PRIMARY KEY (campana, correo))").run();
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS apoyo_legal (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, telefono TEXT, correo TEXT,
+      juzgados TEXT NOT NULL DEFAULT '[]', zona TEXT, especialidad TEXT,
+      activo INTEGER NOT NULL DEFAULT 1, notas TEXT, creado TEXT)`).run();
     return r;
   }).catch((e) => { listo = null; throw e; });
   return listo;
@@ -1274,6 +1278,16 @@ export default {
     if ((p === "/expediente" || p === "/expediente.html") && !dentro) return Response.redirect(new URL("/mapa?entrar=1", u).toString(), 302);
     if (!dentro && SOLO_CUENTA_DATOS.has(p)) return json({ error: "Entra con tu cuenta para ver esta información." }, 401, 0);
     if (!dentro && p in SOLO_CUENTA_JS) return new Response(`/* PlanoExactoCR: contenido para cuentas */\n${SOLO_CUENTA_JS[p]}\n`, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "private, no-store", "vary": "Cookie", "X-Robots-Tag": "noindex" } });
+    if (p === "/api/apoyo-legal") {
+      if (!dentro) return json({ error: "Entra con tu cuenta." }, 401, 0);
+      const usr = await usuarioActual(request, env);
+      if (!usr || !["pro", "admin"].includes(planVigente(usr))) return json({ error: "Disponible con el plan PRO." }, 403, 0);
+      const juz = u.searchParams.get("juz") || "";
+      if (!juz) return json({ error: "Falta el parámetro juz." }, 400, 0);
+      const rows = (await env.DB.prepare("SELECT nombre, telefono, correo, juzgados, zona, especialidad, notas FROM apoyo_legal WHERE activo = 1").all()).results || [];
+      const filtrados = rows.filter(r => { try { return JSON.parse(r.juzgados || "[]").some(j => juz.includes(j) || j.includes(juz)); } catch { return false; } });
+      return json(filtrados.length ? filtrados : rows, 200, 300);
+    }
     if ((p === "/api/plano" || p === "/api/finca") && !dentro) return json({ error: "Entra con tu cuenta para buscar planos y fincas." }, 401, 0);
 
     let res;

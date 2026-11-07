@@ -58,6 +58,16 @@
     })();
     // Transporte público: distancia a ruta de bus y estación de tren
     PX.transporteCercano(lon, lat).then(t => { if (t) { transp = t; render(); } }).catch(() => {});
+    // Apoyo legal en sitio
+    if (r.juz) {
+      fetch('/api/apoyo-legal?juz=' + encodeURIComponent(r.juz)).then(r => r.json()).then(data => {
+        const d = document.getElementById('exp-apoyo');
+        if (!d) return;
+        if (data.error || !data.length) { d.innerHTML = '<p class="note2">No hay apoyos legales registrados para este juzgado todavía.</p>'; return; }
+        d.innerHTML = `<p class="note2 mb-1">${data.length} apoyo${data.length > 1 ? 's' : ''} legal${data.length > 1 ? 'es' : ''} disponible${data.length > 1 ? 's' : ''} cerca del juzgado</p>
+          <table class="kv-table"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Especialidad</th></tr></thead><tbody>${data.map(a => `<tr><td>${esc(a.nombre)}</td><td>${a.telefono || '—'}</td><td>${a.correo || '—'}</td><td>${esc(a.especialidad || '—')}</td></tr>`).join('')}</tbody></table>`;
+      }).catch(() => { const d = document.getElementById('exp-apoyo'); if (d) d.textContent = 'No disponible'; });
+    }
   }
 
   const folio = `PX-${r.key.toUpperCase()}-${PX.now.getFullYear()}${String(PX.now.getMonth() + 1).padStart(2, '0')}${String(PX.now.getDate()).padStart(2, '0')}`;
@@ -149,13 +159,14 @@
       <dt>Art. 163 · Aprobación</dt><dd>Cumplidos los requisitos, el tribunal aprueba el remate, cancela los gravámenes posteriores al que se ejecuta y ordena entregar el bien al rematante — ahí se vuelve dueño de verdad.</dd>
       </dl><p class="note2">Resumen en lenguaje llano del Código Procesal Civil (Ley 9342); no sustituye el texto legal ni asesoría de un abogado.</p></section>`;
 
+    const apoyoLegal = `<section class="blk"><h2>⚖️ Apoyo legal en sitio</h2><div id="exp-apoyo">Cargando apoyo legal…</div></section>`;
     const fuentes = `<section class="blk"><h2>${I.book}Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · ICE: cobertura móvil e internet fijo · ARESEP: tendido eléctrico y transporte · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
     h += `<section class="page">${head('Detalles técnicos y de mercado')}<div class="cols">
         <div class="col"><p class="colkick">Detalles técnicos y legales</p>${tl}${reg}${serv}${grav}</div>
         <div class="col"><p class="colkick">Análisis de mercado</p>${val}${ana}</div></div>${foot(2)}</section>`;
     h += `<section class="page">${head('Normativa, potencial y riesgos')}<div class="cols">
         <div class="col"><p class="colkick">Normativa y potencial</p>${norm}${potc}${chk}${procLegal}</div>
-        <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
+        <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${apoyoLegal}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
     if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
