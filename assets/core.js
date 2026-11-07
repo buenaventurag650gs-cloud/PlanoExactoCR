@@ -217,6 +217,15 @@
       r.tg = r.tg || [];
       r.fincaTxt = (r.prov ? r.prov + '-' : '') + (r.finca || '') + (r.filial ? '-F' : '') + (r.der ? '-' + r.der : '');
       r.nom = r.nom || r.tipo;
+      // Título: «Tipo | área m² | distrito», para ver de un vistazo qué es, qué tan grande
+      // es y dónde está, sin tener que abrir el lote. El dato original viene como «Tipo · distrito»;
+      // aquí se le inserta el área en medio.
+      {
+        const m = /^(.*?)\s*·\s*(.*)$/.exec(r.nom);
+        const tipoN = m ? m[1] : r.nom, lugarN = m ? m[2] : (r.dn || r.cn || r.pn || '');
+        const areaN = PX.prof(r);
+        r.nom = [tipoN, areaN ? PX.fnum(areaN) + ' m²' : null, lugarN].filter(Boolean).join(' | ');
+      }
       r.lugar = [r.dn, r.cn, r.pn].filter(Boolean).join(', ');
       r.search = PX.norm([r.nom, r.bar, r.plano, r.planoCat, r.fincaTxt, String(r.finca), r.exp, r.dn, r.cn, r.pn, r.nat, r.juz].join(' '));
       r.searchDigits = [r.plano, r.fincaTxt, r.exp, r.planoCat].join(' ').replace(/\D/g, '');

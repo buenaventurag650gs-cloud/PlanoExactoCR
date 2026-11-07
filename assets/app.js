@@ -249,11 +249,11 @@
     if (r.pub && PX.now - r.pub < 7 * 864e5) tags.push(`<span class="tag ok">Nuevo</span>`);
     if (PX.sigo(r.key)) tags.push(`<span class="tag gold">Siguiendo</span>`);
     if (r.iphV != null && PX.isPro()) { const b = PX.iphBand(r.iphV); tags.push(`<span class="tag iphtag" style="--c:${b[2]}" title="Índice Puja/Hacienda: ${esc(b[1])}">IPH ${Math.round(r.iphV)}</span>`); }
-    const a = PX.prof(r), dd = PX.days(r.next);
+    const dd = PX.days(r.next);
     return `<button class="item${dd != null && dd <= 1 ? ' tomorrow' : ''}" role="listitem" data-k="${r.key}"${open === r.key ? ' aria-current="true"' : ''}>
       ${PX.tipoIcon(r)}
       <span class="mid"><div class="t1">${esc(r.nom)}</div>
-        <div class="t2">${esc([r.cn, r.pn].filter(Boolean).join(', ') || 'Ubicación por definir')} · ${a ? fnum(a) + ' m²' : 'área s/d'}</div>
+        <div class="t2">${esc([r.cn, r.pn].filter(Boolean).join(', ') || 'Ubicación por definir')}</div>
         <div class="tags">${tags.join('')}</div></span>
       <span class="rt"><div class="price">${PX.duo(r.bv, r.mon)}</div>
         <span>${PX.stageBadge(r.st, true)} ${PX.whenTag(r.next)}</span>
