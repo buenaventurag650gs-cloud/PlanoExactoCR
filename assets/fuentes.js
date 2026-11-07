@@ -1,7 +1,7 @@
 /* PlanoExactoCR — tipografía en un solo lugar.
    Para cambiar la fuente de todo el sitio: cambiar PREDETERMINADA. Para probar otra sin publicar: agregar ?fuente=<id>
    a cualquier dirección (se recuerda en este navegador; ?fuente=predeterminada vuelve a la oficial).
-   Cada juego define: títulos (display) y texto (body); las cifras usan el texto con números tabulares. El logotipo usa siempre Montserrat. */
+   Cada juego define: títulos (display) y texto (body); las cifras usan el texto con números tabulares. El logotipo usa siempre Jost. */
 (function () {
   var PREDETERMINADA = 'actual';
   var JUEGOS = {
@@ -24,7 +24,7 @@
   } catch (e) {}
   var j = JUEGOS[id], h = document.head;
   var l = document.createElement('link'); l.rel = 'stylesheet';
-  l.href = 'https://fonts.googleapis.com/css2?family=' + j.fam + '&family=Montserrat:wght@300;500;700&display=swap';
+  l.href = 'https://fonts.googleapis.com/css2?family=' + j.fam + '&family=Jost:wght@300;500;700&display=swap';
   h.appendChild(l);
   var s = document.createElement('style');
   // Cifras: la misma fuente del texto con números tabulares (alineados), sin cero con punto

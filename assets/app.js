@@ -326,7 +326,7 @@
   const map = L.map('map', { preferCanvas: true, zoomControl: true, minZoom: 7, maxZoom: 21, zoomSnap: 0.5 }).fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
   map.setMaxBounds([[7.5, -87.5], [11.6, -82]]);
   const vistaInicial = () => map.fitBounds([[8.03, -85.95], [11.22, -82.55]], { paddingTopLeft: [10, 10], paddingBottomRight: [10, 10] });
-  map.attributionControl.setPrefix('<a class="attrb" href="/" title="Ir al inicio">' + PX.marca('', 18, 12) + '<b>PlanoExacto</b>CR</a>');
+  map.attributionControl.setPrefix('<a class="attrb" href="/" title="Ir al inicio">' + PX.marca('', 18) + '<b>PlanoExacto</b>CR</a>');
   map.zoomControl.setPosition('topright');
   PX.map = map;
   // Indicador del nivel de zoom entre + y −
@@ -685,11 +685,11 @@
     { id: 'postesCov100', n: 'Cobertura del tendido eléctrico (100 m)', note: 'derivada de ~484 000 postes · ~4 000 km²', lg: [['', 'rgb(180,100,40)', 'Dentro de 100 m de un poste']] },
     { id: 'postes', n: 'Postes del tendido eléctrico', note: 'poste a poste (ARESEP) · desde zoom 14', z: 14, minZ: 14, lg: [['', 'rgb(218,139,55)', 'Poste individual']], mk: () => ags('https://mapas.aresep.go.cr/server/rest/services/I_Energia_Externo/Infraestructura_vertical_energia_electrica/MapServer', { dyn: POSTE_DYN, minZoom: 14, zIndex: 5, attribution: 'Postes del tendido eléctrico &copy; ARESEP' }) },
     { g: 'Servicios e infraestructura', id: 'vias', n: 'Vías públicas', z: 13, lg: [['', '#C9CED1', 'Derecho de vía (Registro)']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { crs: L.CRS.EPSG4326, minZoom: 13, zIndex: 7, className: 'tl-vias', attribution: 'Vías públicas &copy; Registro Inmobiliario' }) },
-    { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#15302A', 'Aeropuerto, aeródromo o puerto (IGN)']] },
+    { id: 'infra', n: 'Puertos y aeropuertos', lg: [['', '#073B32', 'Aeropuerto, aeródromo o puerto (IGN)']] },
     { id: 'salud', n: 'Centros de salud CCSS', lg: [['', 'var(--accent)', 'Hospital, clínica o EBAIS']] },
     { g: 'Transporte público', id: 'busRutas', n: 'Rutas de autobuses', note: 'ramales concesionados (ARESEP)', lg: [['ln', 'rgb(100,80,160)', 'Ramal de bus']], mk: () => ags(ARESEP_TP, { dyn: BUS_DYN, zIndex: 5, attribution: 'Rutas de autobuses &copy; ARESEP' }) },
     { id: 'tren', n: 'Línea y paradas del tren', note: 'INCOFER · GAM', lg: [['ln', 'rgb(168,73,0)', 'Línea del tren'], ['', 'rgb(168,73,0)', 'Parada']], mk: () => ags(ARESEP_TP, { dyn: TREN_DYN, zIndex: 5, attribution: 'Tren &copy; ARESEP / INCOFER' }) },
-    { g: 'Telecomunicaciones', id: 'cobmovil', n: 'Cobertura móvil', note: 'mejor tecnología disponible · ICE/Kolbi', opacity: 0.55, lg: [['', '#C8553D', 'Solo 3G'], ['', '#E9C46A', '4G (LTE)'], ['', '#7CC48E', '4G+ (LTE Advanced)'], ['', '#1F5A47', '5G']], mk: () => new L.GridLayer.CobMovil() },
+    { g: 'Telecomunicaciones', id: 'cobmovil', n: 'Cobertura móvil', note: 'mejor tecnología disponible · ICE/Kolbi', opacity: 0.55, lg: [['', '#C8553D', 'Solo 3G'], ['', '#E9C46A', '4G (LTE)'], ['', '#7CC48E', '4G+ (LTE Advanced)'], ['', '#159B75', '5G']], mk: () => new L.GridLayer.CobMovil() },
     { id: 'cobsutel', n: 'Cobertura móvil por mediciones', note: 'Kolbi, Claro y Liberty · usuarios reales (SUTEL/MedUX)', opacity: 0.7, lg: [['', 'rgb(200,85,61)', 'Señal débil'], ['', 'rgb(233,196,106)', 'Señal regular'], ['', 'rgb(124,196,142)', 'Señal buena'], ['', 'rgb(31,90,71)', 'Señal excelente']], mk: () => new L.GridLayer.CobSutel() },
     { id: 'internetfijo', n: 'Internet residencial fijo', note: 'fibra/cable · ICE/Kolbi', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:internet-shp', { zIndex: 4, opacity: 0.55, attribution: 'Cobertura de internet residencial &copy; ICE/Kolbi' }) },
     { id: 'wttx', n: 'WTTx · Internet LTE hogar', note: 'planes marzo 2021', opacity: 0.55, lg: [], mk: () => wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:planes-lte', { zIndex: 4, opacity: 0.55, tiled: true, attribution: 'Planes LTE hogar &copy; ICE/Kolbi' }) },
@@ -1065,7 +1065,7 @@
   const RADIO = 54;         // distancia en píxeles para agrupar
   const COARSE = matchMedia('(pointer: coarse)').matches;   // teléfono/tableta: puntos un poco más grandes
   const xIcon = (st, big, fav, exacto) => {
-    const c = XC[st] || '#15302A', d = (big === 2 ? 26 : big ? 20 : 15) + (COARSE ? 3 : 0);
+    const c = XC[st] || '#073B32', d = (big === 2 ? 26 : big ? 20 : 15) + (COARSE ? 3 : 0);
     const txt = big === 2 ? `<b>${st + 1}</b>` : '';
     return L.divIcon({ className: 'pt', iconSize: [d, d], iconAnchor: [d / 2, d / 2],
       html: `<span class="pd${exacto ? '' : ' aprox'}" style="--c:${c};width:${d}px;height:${d}px">${txt}${fav ? '<i class="pf"></i>' : ''}</span>` });
@@ -1599,7 +1599,7 @@
     $('layer').innerHTML = `<div class="tb" data-bs-theme="${tbTema()}"><div class="modal modal-blur show d-block" tabindex="-1" role="dialog" aria-modal="true" data-fondo>
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable${tam ? ' modal-' + tam : ''}"><div class="modal-content">
         ${estado ? `<div class="modal-status bg-${estado}"></div>` : ''}
-        <div class="modal-header">${marca ? `<span class="me-2 d-inline-flex">${PX.marca('tbmarca', 40, 27)}</span>` : ''}<h5 class="modal-title">${titulo}</h5><button type="button" class="btn-close" data-close aria-label="Cerrar"></button></div>
+        <div class="modal-header">${marca ? `<span class="me-2 d-inline-flex">${PX.marca('tbmarca', 40)}</span>` : ''}<h5 class="modal-title">${titulo}</h5><button type="button" class="btn-close" data-close aria-label="Cerrar"></button></div>
         <div class="modal-body">${cuerpo}</div>${pie ? `<div class="modal-footer">${pie}</div>` : ''}
       </div></div></div><div class="modal-backdrop fade show"></div></div>`;
     const f = $('layer').querySelector('.modal-body input:not([type=file]), .modal-body select, .modal-footer .btn-primary, .btn-close'); if (f) f.focus();

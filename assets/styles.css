@@ -1,11 +1,11 @@
 /* PlanoExactoCR — estilos comunes (mapa y expediente) */
 :root {
   /* Paleta tomada del logo: papel, verde profundo del texto, verde medio de CR, terracota del lote */
-  --bg: #F1EEE7; --panel: #FCFBF8; --ink: #15302A; --muted: #4C5953; --faint: #737E78; --line: #DCD8CE;
-  --sea: #DCE5E2; --land: #F6F5F0; --dline: #C9C6BB; --accent: #1F5A47; --accent-ink: #FFFFFF; --accent-soft: #DFEDE6;
+  --bg: #F1EEE7; --panel: #FCFBF8; --ink: #073B32; --muted: #4C5953; --faint: #737E78; --line: #DCD8CE;
+  --sea: #DCE5E2; --land: #F6F5F0; --dline: #C9C6BB; --accent: #159B75; --accent-ink: #FFFFFF; --accent-soft: #DFEDE6;
   --s1: #2B5C8A; --s2: #B7791F; --s3: #B42318; --warn: #8A4B00; --warnbg: #FCF1DE; --chip: #ECE9E1;
   --gold: #8A6A00; --goldbg: #FBF3DA; --soon: #A2462A; --soonbg: #FBF1EC; --good: #2E7D4F; --bad: #B42318;
-  --brand: #15302A; --brand-green: #539279; --brand-terra: #D9906E; --mark-bg: transparent;
+  --brand: #073B32; --brand-green: #159B75; --brand-terra: #D9906E; --mark-bg: transparent;
   --shadow: 0 10px 30px rgba(20, 35, 30, .14);
   --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
@@ -14,17 +14,17 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #070A09; --panel: #0C1110; --ink: #E5ECE8; --muted: #A7B4AE; --faint: #849089; --line: #1E2724;
-  --sea: #0B1315; --land: #111816; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #10251F;
+  --sea: #0B1315; --land: #111816; --dline: #34423D; --accent: #3DC79C; --accent-ink: #08201D; --accent-soft: #10251F;
   --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #151C1A;
   --gold: #F0CF62; --goldbg: #2B2611; --soon: #F0A285; --soonbg: #221A17; --good: #6CC694; --bad: #F2735F;
-  --brand: #E5ECE8; --brand-green: #7CC3A4; --mark-bg: transparent;
+  --brand: #E5ECE8; --brand-green: #3DC79C; --mark-bg: transparent;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #070A09; --panel: #0C1110; --ink: #E5ECE8; --muted: #A7B4AE; --faint: #849089; --line: #1E2724;
-  --sea: #0B1315; --land: #111816; --dline: #34423D; --accent: #5FB8AE; --accent-ink: #08201D; --accent-soft: #10251F;
+  --sea: #0B1315; --land: #111816; --dline: #34423D; --accent: #3DC79C; --accent-ink: #08201D; --accent-soft: #10251F;
   --s1: #74A8DA; --s2: #E3AB4E; --s3: #F2735F; --warn: #F0B866; --warnbg: #2C2414; --chip: #151C1A;
   --gold: #F0CF62; --goldbg: #2B2611; --soon: #F0A285; --soonbg: #221A17; --good: #6CC694; --bad: #F2735F;
-  --brand: #E5ECE8; --brand-green: #7CC3A4; --mark-bg: transparent;
+  --brand: #E5ECE8; --brand-green: #3DC79C; --mark-bg: transparent;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark; }
 
 * { box-sizing: border-box; }
@@ -142,10 +142,10 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 @media (max-width: 760px) { .pgrid { grid-template-columns: 1fr; } .pf { grid-template-columns: 1fr 130px; } }
 
 /* ---------- Identidad (logo) ---------- */
-.wm { margin: 0; font: 300 19px/1 "Montserrat", var(--f-body); letter-spacing: .1em; color: var(--brand); white-space: nowrap; }
+.wm { margin: 0; font: 300 19px/1 "Jost", var(--f-body); letter-spacing: .1em; color: var(--brand); white-space: nowrap; }
 .wm .w2 { font-weight: 700; }
 .wm .w3 { color: var(--brand-green); }
-.tagl { font: 500 9.5px/1 "Montserrat", var(--f-body); letter-spacing: .28em; text-transform: uppercase; color: var(--muted); }
+.tagl { font: 500 9.5px/1 "Jost", var(--f-body); letter-spacing: .28em; text-transform: uppercase; color: var(--muted); }
 .mark { display: inline-grid; place-items: center; border-radius: 9px; background: var(--mark-bg); padding: 2px 3px; flex: none; }
 .mark img { display: block; width: 52px; height: auto; }
 .dlgmark { width: 52px; height: auto; border-radius: 8px; background: var(--mark-bg); padding: 2px; }
@@ -395,9 +395,9 @@ dl.kv dd { font-size: 14px; line-height: 1.4; }
 .wm { font-size: 23px; letter-spacing: .09em; }
 .tagl { font-size: 11px; margin-top: 3px; }
 header.top { position: relative; padding-top: 12px; }
-header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #15302A 0 46%, #539279 46% 82%, #D9906E 82%); }
+header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #073B32 0 60%, #159B75 60%); }
 .brand { padding-right: 16px; margin-right: 2px; border-right: 1px solid var(--line); }
-.attrb { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--ink); font: 300 11px/1 "Montserrat", var(--f-body); letter-spacing: .06em; }
+.attrb { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--ink); font: 300 11px/1 "Jost", var(--f-body); letter-spacing: .06em; }
 .attrb b { font-weight: 700; }
 .attrb img { width: 18px; height: auto; }
 @media (max-width: 900px) { .brand { border-right: 0; padding-right: 0; } .mark img { width: 54px; } .wm { font-size: 20px; } }
@@ -499,9 +499,9 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 :root[data-theme="dark"] .attrb img.lg-claro { display: none !important; } :root[data-theme="dark"] .attrb img.lg-oscuro { display: inline-block !important; }
 .dlgmark { background: none !important; padding: 0 !important; }
 /* Distintivo del plan Esencial (como el de PRO) */
-.ese { display: inline-flex; align-items: center; gap: 3px; font: 700 11px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px 3px 5px; border-radius: 5px; background: linear-gradient(135deg, #539279, #1F5A47); color: #FFFDF5; vertical-align: 1px; white-space: nowrap; }
+.ese { display: inline-flex; align-items: center; gap: 3px; font: 700 11px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px 3px 5px; border-radius: 5px; background: linear-gradient(135deg, #159B75, #159B75); color: #FFFDF5; vertical-align: 1px; white-space: nowrap; }
 .ese::before { content: "◆"; font-size: 9.5px; }
-.badge.ese { background: color-mix(in srgb, #539279 18%, transparent); color: var(--accent); }
+.badge.ese { background: color-mix(in srgb, #159B75 18%, transparent); color: var(--accent); }
 .badge.ese::before { content: "◆ "; font-size: 9px; }
 /* ---------- Marcadores del mapa ---------- */
 .pt { background: none !important; border: 0 !important; }
@@ -511,7 +511,7 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .pd .pf { position: absolute; top: -4px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: #C8553D; border: 1.5px solid #fff; }
 .leaflet-marker-icon:hover .pd { transform: scale(1.18); }
 .gr { display: grid; place-items: center; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.3); cursor: pointer; transition: transform .12s; }
-.gr::before { content: ""; grid-area: 1 / 1; width: calc(100% - 9px); height: calc(100% - 9px); border-radius: 50%; background: #15302A; }
+.gr::before { content: ""; grid-area: 1 / 1; width: calc(100% - 9px); height: calc(100% - 9px); border-radius: 50%; background: #073B32; }
 .gr b { grid-area: 1 / 1; position: relative; color: #fff; font: 700 13.5px/1 var(--f-body); font-variant-numeric: tabular-nums; }
 .leaflet-marker-icon:hover .gr { transform: scale(1.08); }
 .gr.mini { width: 22px; height: 22px; } .gr.mini::before { width: 15px; height: 15px; } .gr.mini b { font-size: 8.5px; }
@@ -549,7 +549,7 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .sep-o::before, .sep-o::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
 /* ---------- Tabler (Bootstrap) en ventanas: solo color de marca y tipografía del sitio ---------- */
-.tb, .tb[data-bs-theme=light], .tb[data-bs-theme=dark] { --tblr-primary: #1F5A47; --tblr-primary-rgb: 31, 90, 71; --tblr-primary-fg: #fff; --tblr-font-sans-serif: var(--f-body); --tblr-body-font-family: var(--f-body); }
+.tb, .tb[data-bs-theme=light], .tb[data-bs-theme=dark] { --tblr-primary: #159B75; --tblr-primary-rgb: 31, 90, 71; --tblr-primary-fg: #fff; --tblr-font-sans-serif: var(--f-body); --tblr-body-font-family: var(--f-body); }
 .tb[data-bs-theme=dark] { --tblr-primary: #3E9A7C; --tblr-primary-rgb: 62, 154, 124;
   /* Modo oscuro: superficies casi negras del sitio en vez del gris azulado de Tabler */
   --tblr-body-bg: var(--bg); --tblr-body-bg-rgb: 7, 10, 9; --tblr-bg-surface: var(--panel); --tblr-bg-surface-secondary: var(--chip); --tblr-bg-surface-tertiary: var(--chip); --tblr-bg-forms: var(--bg);

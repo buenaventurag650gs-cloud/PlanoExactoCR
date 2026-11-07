@@ -286,8 +286,11 @@
   // Quita las frases de "libre de …" para no confundirlas con cargas reales
   PX.limpiarGrav = t => PX.norm(t).replace(/libres? de (gravamenes|anotaciones|hipotecas)( hipotecarios)?((,| y| e) (gravamenes|anotaciones|hipotecas))*/g, ' ');
 
-  // Logo: versión clara y versión para fondo oscuro; CSS muestra la que corresponde al tema
-  PX.marca = (cls, w, h) => `<img src="assets/img/logo-mark.webp" alt="" width="${w || 56}" height="${h || 38}" class="${cls || ''} lg-claro"><img src="assets/img/logo-mark-oscuro.webp" alt="" width="${w || 56}" height="${h || 38}" class="${cls || ''} lg-oscuro">`;
+  // Logo: versión clara y versión para fondo oscuro; CSS muestra la que corresponde al tema.
+  // La altura se calcula a partir del ancho con la proporción real del isotipo (322.39 × 256),
+  // para que no se deforme sin importar qué ancho pida cada llamada.
+  PX.marca = (cls, w) => { const W = w || 56, H = Math.round(W / 1.2593);
+    return `<img src="assets/img/logo-mark.svg" alt="" width="${W}" height="${H}" class="${cls || ''} lg-claro"><img src="assets/img/logo-mark-oscuro.svg" alt="" width="${W}" height="${H}" class="${cls || ''} lg-oscuro">`; };
   // ---------- Íconos (trazo simple, color por CSS) ----------
   const ic = (d, vb) => `<svg viewBox="${vb || '0 0 24 24'}" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   PX.ICON = {

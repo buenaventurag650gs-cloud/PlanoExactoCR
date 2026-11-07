@@ -183,10 +183,10 @@ async function enviarCorreoDbg(env, para, asunto, texto, html) {
     return { ok: false, error: `Resend respondió ${r.status}: ${t.slice(0, 200)}` };
   } catch (e) { return { ok: false, error: "Error de red: " + String((e && e.message) || e) }; }
 }
-const correoHTML = (titulo, parrafos, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#15302A">
+const correoHTML = (titulo, parrafos, boton, enlace) => `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#073B32">
 <p style="font-size:18px;font-weight:bold;margin:0 0 4px">PlanoExactoCR</p><p style="color:#4C5953;margin:0 0 20px;font-size:13px">Remates judiciales de Costa Rica en un mapa</p>
 <h1 style="font-size:20px;margin:0 0 12px">${titulo}</h1>${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${t}</p>`).join("")}
-${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p><p style="font-size:12px;color:#4C5953">Si el botón no funciona, copia este enlace: ${enlace}</p>` : ""}
+${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#159B75;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p><p style="font-size:12px;color:#4C5953">Si el botón no funciona, copia este enlace: ${enlace}</p>` : ""}
 <p style="font-size:12px;color:#4C5953;margin-top:24px">Si no solicitaste este correo, ignóralo.</p></div>`;
 
 // ---------- Campañas de correo a usuarios existentes ----------
@@ -195,18 +195,18 @@ ${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A4
 // correo a la misma persona si se vuelve a pulsar el botón.
 const correoHTMLCampana = (titulo, parrafos, extra, boton, enlace, env) => { const dom = (env && env.DOMINIO) || "planoexactocr.com"; return `<div style="background:#EEF2F0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #E3E7E5">
-<div style="background:#1F5A47;height:6px;line-height:6px;font-size:0">&nbsp;</div>
+<div style="background:#159B75;height:6px;line-height:6px;font-size:0">&nbsp;</div>
 <div style="padding:26px 28px 6px">
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr>
-<td style="vertical-align:middle;padding-right:10px"><img src="https://${dom}/assets/img/correo-logo.png" width="40" height="27" alt="PlanoExactoCR" style="display:block"></td>
+<td style="vertical-align:middle;padding-right:10px"><img src="https://${dom}/assets/img/correo-logo.png" width="40" height="32" alt="PlanoExactoCR" style="display:block"></td>
 <td style="vertical-align:middle">
-<div style="font-size:18px;font-weight:bold;color:#15302A;line-height:1.3">PlanoExactoCR</div>
+<div style="font-size:18px;font-weight:bold;color:#073B32;line-height:1.3">PlanoExactoCR</div>
 <div style="color:#4C5953;font-size:12px">Remates judiciales de Costa Rica en un mapa</div>
 </td></tr></table>
-<h1 style="font-size:20px;margin:0 0 12px;color:#15302A">${titulo}</h1>
-${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px;color:#15302A">${t}</p>`).join("")}
+<h1 style="font-size:20px;margin:0 0 12px;color:#073B32">${titulo}</h1>
+${parrafos.map((t) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px;color:#073B32">${t}</p>`).join("")}
 ${extra || ""}
-${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p>` : ""}
+${boton ? `<p style="margin:20px 0"><a href="${enlace}" style="background:#159B75;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;display:inline-block">${boton}</a></p>` : ""}
 </div>
 <div style="background:#F7F9F8;padding:14px 28px;border-top:1px solid #E3E7E5">
 <p style="font-size:12px;color:#4C5953;margin:0">Te escribimos porque tenés una cuenta en PlanoExactoCR. Si preferís no recibir estos correos, respondé este mensaje y te quitamos de la lista.</p>
@@ -491,10 +491,10 @@ ${svgPoligonoCorreo(r, altoM)}</div>` : "";
   return { enlace, loc, fecha,
     html: `<a href="${enlace}" style="display:block;text-decoration:none;color:inherit;border:1px solid #E3E7E5;border-radius:10px;margin:0 0 10px;background:#F7F9F8;overflow:hidden">
 ${imgBloque}<div style="padding:12px 16px 14px">
-<div style="font-size:11px;color:#1F5A47;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;margin:0 0 5px">${esc(tipoTxt(r.tipo))} &middot; Índice PECR ${r.pecr}/10</div>
-<div style="font-size:15px;font-weight:bold;color:#15302A;margin:0 0 3px">${esc(loc || "Costa Rica")}</div>
+<div style="font-size:11px;color:#159B75;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;margin:0 0 5px">${esc(tipoTxt(r.tipo))} &middot; Índice PECR ${r.pecr}/10</div>
+<div style="font-size:15px;font-weight:bold;color:#073B32;margin:0 0 3px">${esc(loc || "Costa Rica")}</div>
 <div style="font-size:13px;color:#4C5953;margin:0 0 8px">${r.area ? miles(r.area) + " m² &middot; " : ""}${dinero(baseActual, r.mon)}${fecha ? " &middot; " + etapa + " el " + fecha : ""}</div>
-<span style="font-size:13px;color:#1F5A47;font-weight:bold">Ver en el mapa →</span></div></a>` };
+<span style="font-size:13px;color:#159B75;font-weight:bold">Ver en el mapa →</span></div></a>` };
 }
 const CAMPANAS = {
   tour: {
@@ -513,19 +513,19 @@ const CAMPANAS = {
       // Cupón especial del correo: 50 % con el código, escribiéndolo al pagar.
       const cupon = `<div style="margin:4px 0 22px;border:2px solid #C8553D;border-radius:12px;background:#FBF1EE;padding:18px 20px;text-align:center">
 <p style="font-size:12px;font-weight:bold;color:#C8553D;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">Cupón especial &middot; solo por correo</p>
-<p style="font-size:24px;font-weight:bold;color:#15302A;margin:0 0 4px">${pct}&nbsp;% de descuento</p>
+<p style="font-size:24px;font-weight:bold;color:#073B32;margin:0 0 4px">${pct}&nbsp;% de descuento</p>
 <p style="font-size:13px;color:#4C5953;margin:0 0 14px">en la primera mensualidad de cualquier plan. Escribí este código al pagar:</p>
-<span style="display:inline-block;background:#fff;border:2px dashed #C8553D;border-radius:8px;padding:10px 24px;font-size:21px;font-weight:bold;letter-spacing:2px;color:#15302A">${esc(cp)}</span></div>`;
+<span style="display:inline-block;background:#fff;border:2px dashed #C8553D;border-radius:8px;padding:10px 24px;font-size:21px;font-weight:bold;letter-spacing:2px;color:#073B32">${esc(cp)}</span></div>`;
       const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
       const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
-<p style="font-size:13px;font-weight:bold;color:#15302A;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
+<p style="font-size:13px;font-weight:bold;color:#073B32;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
 ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       // Promo de referidos (2x1 con un compa): el amigo entra con 50 % y vos ganás un mes gratis.
       const refLink = `https://${dom}/mapa?ref=${encodeURIComponent(cp)}`;
-      const promoRef = `<div style="margin:4px 0 22px;border:2px dashed #1F5A47;border-radius:12px;background:#F2F7F4;padding:16px 18px">
-<p style="font-size:16px;font-weight:bold;color:#15302A;margin:0 0 6px">2&times;1: traé un compa y ganan los dos</p>
+      const promoRef = `<div style="margin:4px 0 22px;border:2px dashed #159B75;border-radius:12px;background:#F2F7F4;padding:16px 18px">
+<p style="font-size:16px;font-weight:bold;color:#073B32;margin:0 0 6px">2&times;1: traé un compa y ganan los dos</p>
 <p style="font-size:13px;color:#4C5953;margin:0 0 12px">Invitá a un amigo con tu enlace. Él entra con <b>${pct}&nbsp;% de descuento</b> en su primer mes y, cuando pague su primer plan, vos te ganás <b>un mes gratis</b> del tuyo.</p>
-<a href="${refLink}" style="background:#1F5A47;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block">Compartir mi invitación</a></div>`;
+<a href="${refLink}" style="background:#159B75;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block">Compartir mi invitación</a></div>`;
       const extra = cupon + bloqueProps + promoRef;
       const enlace = `https://${dom}/mapa`;
       const cuponTexto = `\n\nCupón especial (solo por correo): ${pct} % de descuento en la primera mensualidad de cualquier plan. Escribí el código ${cp} al pagar.`;
@@ -1005,11 +1005,11 @@ async function exportarRegistros(env) {
 }
 
 // ---------- Páginas generadas aquí ----------
-const ESTILO = `:root{--bg:#F1EEE7;--panel:#FCFBF8;--ink:#15302A;--muted:#4C5953;--line:#DCD8CE;--accent:#1F5A47;--bad:#B42318}
-@media (prefers-color-scheme:dark){:root{--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#5FB8AE;--bad:#F2735F}}
+const ESTILO = `:root{--bg:#F1EEE7;--panel:#FCFBF8;--ink:#073B32;--muted:#4C5953;--line:#DCD8CE;--accent:#159B75;--bad:#B42318}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#3DC79C;--bad:#F2735F}}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
 .card{width:min(380px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 26px;display:grid;gap:16px;box-shadow:0 10px 30px rgba(20,35,30,.12);position:relative;overflow:hidden}
-.card:before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg,#15302A 0 46%,#539279 46% 82%,#D9906E 82%)}
+.card:before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg, #073B32 0 60%, #159B75 60%)}
 picture{justify-self:center}.logo{display:block;width:230px;max-width:100%;height:auto}
 h1{margin:0;font-size:17px;text-align:center}p{margin:0;color:var(--muted);text-align:center;font-size:13.5px}
 label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
@@ -1018,9 +1018,9 @@ input:focus{outline:2px solid var(--accent);outline-offset:1px}
 button{padding:11px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:600 15px/1 inherit;font-family:inherit;cursor:pointer}
 a{color:var(--accent)}.err{color:var(--bad);font-size:13px;text-align:center}`;
 const pagina = (titulo, cuerpo, status = 200) => new Response(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PlanoExactoCR · ${titulo}</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/img/favicon.png"><style>${ESTILO}</style></head><body>${cuerpo}</body></html>`,
+<title>PlanoExactoCR · ${titulo}</title><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg"><link rel="icon" href="/assets/img/favicon.png"><style>${ESTILO}</style></head><body>${cuerpo}</body></html>`,
   { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "X-Robots-Tag": "noindex, nofollow" } });
-const LOGO = '<a href="/" style="justify-self:center"><picture><source srcset="/assets/img/logo-oscuro.webp" media="(prefers-color-scheme: dark)"><img class="logo" src="/assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463"></picture></a>';
+const LOGO = '<a href="/" style="justify-self:center"><picture><source srcset="/assets/img/logo-oscuro.svg" media="(prefers-color-scheme: dark)"><img class="logo" src="/assets/img/logo.svg" alt="PlanoExactoCR · Ubica, comprende, decide" width="793" height="367"></picture></a>';
 function paginaAdmin(error, sig) {
   return pagina("Administración", `<form class="card" method="post" action="/__acceso">${LOGO}
 <h1>Administración</h1><p>Ingresa la contraseña del sitio.</p>${error ? '<div class="err" role="alert">La contraseña no es correcta. Intenta de nuevo.</div>' : ""}
@@ -1174,17 +1174,17 @@ function pagSEO(u, titulo, desc, cuerpo, ld) {
   return new Response(`<!doctype html><html lang="es-CR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titulo)}</title><meta name="description" content="${esc(desc)}"><link rel="canonical" href="${canon}">
 <meta property="og:type" content="website"><meta property="og:site_name" content="PlanoExactoCR"><meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${canon}"><meta property="og:image" content="https://${u.host}/assets/img/vista-app.webp"><meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/assets/img/favicon.png"><script>try{const t=localStorage.getItem('px-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script><script src="/assets/fuentes.js"></script>
+<link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg"><link rel="icon" href="/assets/img/favicon.png"><script>try{const t=localStorage.getItem('px-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script><script src="/assets/fuentes.js"></script>
 ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>` : ""}
 <style>
-:root{--bg:#F1EEE7;--panel:#FCFBF8;--ink:#15302A;--muted:#4C5953;--line:#DCD8CE;--accent:#1F5A47;--accent-ink:#fff;--soft:#DFEDE6;--terra:#C8553D}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#5FB8AE;--accent-ink:#08201D;--soft:#16302C;--terra:#F08C74}}
-:root[data-theme="dark"]{--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#5FB8AE;--accent-ink:#08201D;--soft:#16302C;--terra:#F08C74}
+:root{--bg:#F1EEE7;--panel:#FCFBF8;--ink:#073B32;--muted:#4C5953;--line:#DCD8CE;--accent:#159B75;--accent-ink:#fff;--soft:#DFEDE6;--terra:#C8553D}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#3DC79C;--accent-ink:#08201D;--soft:#16302C;--terra:#F08C74}}
+:root[data-theme="dark"]{--bg:#0F1513;--panel:#151C1A;--ink:#E5ECE8;--muted:#A7B4AE;--line:#28332F;--accent:#3DC79C;--accent-ink:#08201D;--soft:#16302C;--terra:#F08C74}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--f-body)}a{color:var(--accent)}
-.franja{height:4px;background:linear-gradient(90deg,#15302A 0 46%,#539279 46% 82%,#D9906E 82%)}
+.franja{height:4px;background:linear-gradient(90deg, #073B32 0 60%, #159B75 60%)}
 .wrap{max-width:960px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left,0px))}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}
-.marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font:300 19px/1 Montserrat,var(--f-body);letter-spacing:.09em}.marca b{font-weight:700}.marca i{font-style:normal;color:#539279}.marca img{width:50px;height:auto}
+.marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font:300 19px/1 Jost,var(--f-body);letter-spacing:.09em}.marca b{font-weight:700}.marca i{font-style:normal;color:#159B75}.marca img{width:50px;height:auto}
 .lg-oscuro{display:none}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-claro{display:none}:root:not([data-theme="light"]) .lg-oscuro{display:block}}:root[data-theme="dark"] .lg-claro{display:none}:root[data-theme="dark"] .lg-oscuro{display:block}
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:600;text-decoration:none}.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 nav.migas{font-size:13.5px;color:var(--muted);margin:8px 0 4px}nav.migas a{color:var(--muted)}
@@ -1197,7 +1197,7 @@ ul.lista{list-style:none;padding:0;margin:0;display:grid;gap:8px}ul.lista a{disp
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
 footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 </style></head><body><div class="franja"></div><div class="wrap">
-<header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.webp" alt="" width="50" height="34"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.webp" alt="" width="50" height="34"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
+<header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
 ${cuerpo}
 <footer>PlanoExactoCR reúne información pública del Boletín Judicial, el Registro Inmobiliario y otras fuentes oficiales con fines orientativos. No es asesoría legal ni un avalúo: verifica siempre en el expediente judicial y el Registro Nacional. · <a href="/privacidad">Privacidad</a></footer>
 </div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });

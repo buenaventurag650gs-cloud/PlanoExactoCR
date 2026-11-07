@@ -6,8 +6,8 @@
 <meta name="robots" content="noindex">
 <title>Combinar cobertura móvil 3G–5G · PlanoExactoCR</title>
 <style>
-  :root { --bg:#F1EEE7; --panel:#FCFBF8; --ink:#15302A; --muted:#4C5953; --line:#DCD8CE; --accent:#1F5A47; --accent-ink:#FFF; --terra:#C8553D; color-scheme: light; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#070A09; --panel:#0C1110; --ink:#E5ECE8; --muted:#A7B4AE; --line:#1E2724; --accent:#5FB8AE; --accent-ink:#08201D; --terra:#F08C74; color-scheme: dark; } }
+  :root { --bg:#F1EEE7; --panel:#FCFBF8; --ink:#073B32; --muted:#4C5953; --line:#DCD8CE; --accent:#159B75; --accent-ink:#FFF; --terra:#C8553D; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#070A09; --panel:#0C1110; --ink:#E5ECE8; --muted:#A7B4AE; --line:#1E2724; --accent:#3DC79C; --accent-ink:#08201D; --terra:#F08C74; color-scheme: dark; } }
   html,body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system, "Helvetica Neue", Arial, sans-serif; }
   .wrap { max-width: 720px; margin: 0 auto; padding: 32px 18px; }
   h1 { font: 700 24px/1.2 var(--ink); margin: 0 0 6px; }
@@ -49,7 +49,7 @@
       <span><i style="background:#C8553D"></i>Solo 3G</span>
       <span><i style="background:#E9C46A"></i>4G (LTE)</span>
       <span><i style="background:#7CC48E"></i>4G+ (LTE Advanced)</span>
-      <span><i style="background:#1F5A47"></i>5G</span>
+      <span><i style="background:#159B75"></i>5G</span>
     </div>
   </div>
 </div>
@@ -81,7 +81,7 @@
     ['4G+ (LTE Advanced)', 'ice:ltea'],
     ['5G', 'ice:5g-omv'],
   ];
-  const COLOR = ['', '#C8553D', '#E9C46A', '#7CC48E', '#1F5A47']; // índice 1..4
+  const COLOR = ['', '#C8553D', '#E9C46A', '#7CC48E', '#159B75']; // índice 1..4
 
   function urlGetMap(layer) {
     const q = new URLSearchParams({ layer, bbox: BBOX.join(','), width: W, height: H });

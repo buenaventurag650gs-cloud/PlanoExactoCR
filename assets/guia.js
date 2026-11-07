@@ -128,7 +128,7 @@
   }
   function about() {
     const us = `<div class="about">
-      <img class="lg-claro" src="assets/img/logo.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463" style="width:220px;height:auto"><img class="lg-oscuro" src="assets/img/logo-oscuro.webp" alt="PlanoExactoCR · Ubica, comprende, decide" width="900" height="463" style="width:220px;height:auto">
+      <img class="lg-claro" src="assets/img/logo.svg" alt="PlanoExactoCR · Ubica, comprende, decide" width="793" height="367" style="width:220px;height:auto"><img class="lg-oscuro" src="assets/img/logo-oscuro.svg" alt="PlanoExactoCR · Ubica, comprende, decide" width="793" height="367" style="width:220px;height:auto">
       <p><b>PlanoExactoCR</b> ubica en un mapa los remates judiciales de propiedades de Costa Rica y los cruza con información pública que normalmente hay que buscar en muchos sitios distintos: catastro, planes reguladores, zonas homogéneas de Hacienda, agua potable, ríos, relieve, cobertura del suelo, salud, escuelas y normativa.</p>
       <h3>Quiénes somos</h3>
       <p>Somos un equipo pequeño en Costa Rica: arquitectura, derecho y datos. Hicimos PlanoExactoCR para que cualquier persona pueda <b>ubicar</b> un lote con precisión, <b>comprender</b> su contexto territorial y legal, y <b>decidir</b> con mejor información antes de participar en un remate.</p>

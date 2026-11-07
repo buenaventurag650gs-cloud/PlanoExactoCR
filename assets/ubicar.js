@@ -8,7 +8,7 @@
   if (!clave) { clave = prompt('Contraseña de PlanoExactoCR (se guarda en este navegador):'); if (!clave) return; }
   const auth = { Authorization: 'Basic ' + btoa('admin:' + clave) };
   const caja = document.createElement('div');
-  caja.style.cssText = 'position:fixed;z-index:99999;right:16px;bottom:16px;width:320px;padding:16px 18px;border-radius:14px;background:#15302A;color:#EEF3F0;font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)';
+  caja.style.cssText = 'position:fixed;z-index:99999;right:16px;bottom:16px;width:320px;padding:16px 18px;border-radius:14px;background:#073B32;color:#EEF3F0;font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)';
   const msg = t => { caja.innerHTML = '<b style="display:block;margin-bottom:4px">PlanoExactoCR · catastro</b>' + t; };
   document.body.appendChild(caja); msg('Pidiendo la lista de remates sin ubicar…');
   let P;

@@ -49,12 +49,12 @@
       ? [['Área según catastro', `<span class="num">${fnum(a)}</span> m²`], ['En remate', r.remate ? 'Sí' : 'No'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || '—')]]
       : [['Base vigente · ' + PX.ETAPA[r.st], PX.duo(r.bv, r.mon), 'w'], ['Fecha del remate', PX.fdate(r.next, true)], ['Área', a ? `<span class="num">${fnum(a)}</span> m²` : '—'], ['Precio por m²', r.usdm2 ? PX.duo(r.usdm2, 'USD') : '—'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : '—'))]];
     return `<section class="lamina page" aria-label="Lámina del lote">
-      <header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.webp" alt="" width="40" height="28"></span><span class="wmcol"><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span><span class="lsub">${esc(PX.CONTACTO.web)} · @${esc(PX.CONTACTO.ig)}</span></span></div>
+      <header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.svg" alt="" width="40" height="32"></span><span class="wmcol"><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span><span class="lsub">${esc(PX.CONTACTO.web)} · @${esc(PX.CONTACTO.ig)}</span></span></div>
         <div class="pt"><span class="colkick">Resumen orientativo</span><b>${esc(r.nom)}</b><span>${esc(r.lugar || '')}</span></div><div class="pm"><b class="num">${meta.folio}</b><span>${PX.fdate(new Date())}</span></div></header>
       <div class="lbody">
         <div class="lmapcol">
           <div class="lmapwrap"><div id="lmap" class="lmap"></div>
-            <div class="nflecha" aria-hidden="true"><svg viewBox="0 0 24 34" width="18" height="26"><path d="M12 2 L20 24 L12 19 L4 24 Z" fill="#15302A"/><text x="12" y="33" text-anchor="middle" font-size="9" font-weight="700" fill="#15302A">N</text></svg></div>
+            <div class="nflecha" aria-hidden="true"><svg viewBox="0 0 24 34" width="18" height="26"><path d="M12 2 L20 24 L12 19 L4 24 Z" fill="#073B32"/><text x="12" y="33" text-anchor="middle" font-size="9" font-weight="700" fill="#073B32">N</text></svg></div>
             <div class="inset det"><div id="ldet" class="lmap"></div><span class="ilab">Detalle del predio${a ? ` · <span class="num">${fnum(a)}</span> m²` : ''}</span></div>
             <div class="inset loc"><div id="lloc" class="lmap"></div><span class="ilab">${esc(r.cn || '')}, ${esc(r.pn || '')}</span></div>
             <div class="lleg lt">
@@ -202,7 +202,7 @@
       const lo = L.map('lloc', Object.assign({}, opt, { dragging: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false }));
       const lfit = () => lo.fitBounds([[8.03, -85.95], [11.22, -82.55]]); lfit();
       L.geoJSON(cant, { style: f => { const mine = r.cn && f.properties.k === r.cn && Math.floor(f.properties.c / 100) === r.prov; return { color: '#B9B4A7', weight: 0.4, fillColor: mine ? TERRA_D : '#ECE8DE', fillOpacity: 1 }; }, interactive: false }).addTo(lo);
-      L.circleMarker(c, { radius: 3.5, color: '#fff', weight: 1.2, fillColor: '#15302A', fillOpacity: 1 }).addTo(lo);
+      L.circleMarker(c, { radius: 3.5, color: '#fff', weight: 1.2, fillColor: '#073B32', fillOpacity: 1 }).addTo(lo);
       L_.maps.push([lo, lfit]);
     } catch (err) {}
   };
