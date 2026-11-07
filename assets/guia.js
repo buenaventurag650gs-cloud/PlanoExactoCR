@@ -58,6 +58,7 @@
           <div><b>Registro y ubicación</b> ${E_}<span>Número de finca y plano, servidumbres citadas y qué tan exacta es la ubicación.</span></div>
           <div><b>Servicios y entorno</b> ${E_}<span>Agua potable, calle, salud, escuela, ríos y costa.</span></div>
           <div><b>Valor y mercado</b> ${P_}<span>Valor según Hacienda, <b>Índice Puja/Hacienda</b>, <b>escala PECR</b>, <b>Índice PlanoExacto</b> y atributos del lote.</span></div>
+          <div><b>Apoyo legal en sitio</b> ${P_}<span>Abogados disponibles cerca del juzgado que lleva el remate, con teléfono, correo y especialidad.</span></div>
         </div>
         ${tip('<b>Favorito</b> marca la propiedad, <b>Seguir</b> te avisa de cambios, <b>Comparar</b> la pone junto a otras y <b>Compartir</b> copia el enlace.')}`)}
 
@@ -75,13 +76,14 @@
         </div>
         <div class="gtable">
           <div><b>Alertas</b> ${E_}<span>Avisos por correo o WhatsApp cuando un remate que sigues cambia de fecha o etapa, o cuando sale uno nuevo que cumple una búsqueda guardada. El envío se activa en la siguiente fase.</span></div>
+          <div><b>Apoyo legal en sitio</b> ${P_}<span>Lista de abogados disponibles cerca del juzgado del remate, con contacto directo. Aparece en la ficha y en el expediente.</span></div>
           <div><b>Mapa de precios</b> ${P_}<span>Pinta cada cantón según la mediana del precio por m² de sus remates.</span></div>
           <div><b>Top 10 del mes</b> ${P_}<span>Los remates mejor calificados de cada provincia.</span></div>
           <div><b>Comparar</b><span>Con la cuenta gratis comparas 2 propiedades; con ${P_}, hasta 4, y decides cuánto pesa cada criterio.</span></div>
         </div>`)}
 
       ${sec('exp', 'El expediente en PDF', 'Un informe de cuatro hojas sobre una propiedad, para imprimir, guardar o llevarle a tu abogado.',
-        `<div class="gflow g4">${[['Mapa', 'El lote, su entorno y la vista satelital.'], ['Ficha', 'Fechas, registro, valor y análisis.'], ['Normativa y riesgos', 'Qué se puede hacer y qué hay que revisar.'], ['Edicto', 'El texto oficial del remate.']].map(([t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
+        `<div class="gflow g4">${[['Mapa', 'El lote, su entorno y la vista satelital.'], ['Ficha', 'Fechas, registro, valor y análisis.'], ['Normativa y riesgos', 'Qué se puede hacer, qué revisar y apoyo legal en sitio.'], ['Edicto', 'El texto oficial del remate.']].map(([t, d], i) => `<div class="gstep"><span class="gn">${i + 1}</span><b>${t}</b><small>${d}</small></div>`).join('')}</div>
         <p class="gmini">Se genera con el botón <b>Generar expediente</b> de la ficha. La cuenta gratis incluye ${PX.PRECIOS.semanal} por semana; Esencial, ${cupo}; ${P_}, sin límite. Fuera de eso, cada expediente adicional cuesta ${PX.mt(PX.PRECIOS.expediente, 'CRC')}.</p>`)}
 
       ${sec('met', 'Índices y metodología', 'Tres números resumen lo que más preguntas responde antes de ofertar: ¿la base es barata o cara?, ¿la zona tiene valor?, ¿cómo se compara este remate con los demás? Ninguno reemplaza el avalúo ni la revisión legal del expediente.',
@@ -118,6 +120,7 @@
           <div><b>Índice PlanoExacto</b><span>Nota de 0 a 100 que resume situación legal, precio, servicios y restricciones.</span></div>
           <div><b>IPH</b><span>Índice Puja/Hacienda: el porcentaje del valor de Hacienda en que arranca la puja. Un 50 es la mitad.</span></div>
           <div><b>Ubicación aproximada</b><span>Cuando el plano o la finca no aparecen en el catastro, el punto va al centro del distrito o poblado. La ficha lo indica.</span></div>
+          <div><b>Apoyo legal en sitio</b><span>Abogados independientes, verificados por PlanoExactoCR, que trabajan cerca del juzgado y pueden acompañarte al remate o revisar el expediente.</span></div>
           <div><b>ZMT</b><span>Zona marítimo terrestre: franja de 200 m medida desde la pleamar ordinaria. Los primeros 50 m son zona pública.</span></div>
         </div>
         <p class="muted">Todo lo que ves aquí es orientativo. Antes de ofertar, revisa el expediente judicial y consulta con un abogado. Más detalle en <button class="linkbtn" data-about="terms">Términos y descargo</button>.</p>`)}
