@@ -145,9 +145,9 @@
     tipoOn.clear(); (s.tipos || (s.tipo ? [s.tipo] : [])).forEach(t => tipoOn.add(t)); paintTipos();
     CHK.forEach(k => $(k).checked = !!(s.chk ? s.chk[k] : (k === 'fSemana' ? s.wk : k === 'fNoServ' ? s.ns : k === 'fPR' ? s.pr : k === 'fAgua' ? s.ag : false)));
     onlyFav = !!s.fav; $('favOnly').setAttribute('aria-pressed', onlyFav);
-    onlyNew = !!s.nw; $('newOnly').setAttribute('aria-pressed', onlyNew);
+    onlyNew = PX.isEsencial() && !!s.nw; $('newOnly').setAttribute('aria-pressed', onlyNew);
     onlyTop = false; $('topOnly').setAttribute('aria-pressed', false);
-    attrOn.clear(); if (PX.isPro()) (s.attrs || []).forEach(a => attrOn.add(a)); $('order').value = s.order || 'fecha';
+    attrOn.clear(); if (PX.isPro()) (s.attrs || []).forEach(a => attrOn.add(a)); $('order').value = PX.isEsencial() ? (s.order || 'fecha') : 'fecha';
     paintAttrs(); setTab('rem'); apply(); if (s.prov || s.canton || s.q) fitShown();
   }
 
@@ -270,7 +270,10 @@
   }
   let onlyFav = false, onlyNew = false, onlyTop = false, verOcultos = false;
   $('favOnly').onclick = () => { onlyFav = !onlyFav; $('favOnly').setAttribute('aria-pressed', onlyFav); apply(); };
-  $('newOnly').onclick = () => { onlyNew = !onlyNew; $('newOnly').setAttribute('aria-pressed', onlyNew); apply(); };
+  $('newOnly').onclick = () => {
+    if (!PX.isEsencial()) { openPlanes('Filtrar los remates recientes es una función del plan Esencial.'); return; }
+    onlyNew = !onlyNew; $('newOnly').setAttribute('aria-pressed', onlyNew); apply();
+  };
   $('topOnly').onclick = () => {
     if (!PX.isPro()) { openPlanes(); return; }   // «Top 10 por provincia» es una función del plan PRO
     onlyTop = !onlyTop; $('topOnly').setAttribute('aria-pressed', onlyTop); apply();
@@ -1809,7 +1812,7 @@
           ${compFila('Filtrar por atributos del lote', false, false, true)}
           ${compGrp('Organizar tu búsqueda')}
           ${compFila('Favoritos, seguimiento y listas', true, true, true)}
-          ${compFila('Ordenar la lista y vista de calendario', false, true, true)}
+          ${compFila('Ordenar la lista, filtrar recientes y vista de calendario', false, true, true)}
           ${compFila('Búsquedas guardadas', true, true, true)}
           ${compFila('Comparar remates a la vez', '2', '2', '4')}
           ${compGrp('Expedientes')}
@@ -1937,7 +1940,15 @@
     const [l, k] = n.split('|'); const it = PX.acct.listas.find(x => x.id === l).items.find(i => i.k === k);
     it.nota = e.target.value; PX.store.set('px-acct', PX.acct);
   });
-  document.addEventListener('px-acct', () => { paintPlan(); renderList(); paintAttrs(); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (!PX.isPro()) { attrOn.clear(); if (onlyTop) { onlyTop = false; $('topOnly').setAttribute('aria-pressed', false); apply(); } } if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop(); $('cmpN').textContent = cmp.length; });
+  document.addEventListener('px-acct', () => {
+    paintPlan(); renderList(); paintAttrs(); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel();
+    if (!PX.isPro()) { attrOn.clear(); if (onlyTop) { onlyTop = false; $('topOnly').setAttribute('aria-pressed', false); apply(); } }
+    if (!PX.isEsencial()) {
+      if (onlyNew) { onlyNew = false; $('newOnly').setAttribute('aria-pressed', false); apply(); }
+      if (view === 'cal') setView('list');
+    }
+    if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop(); $('cmpN').textContent = cmp.length;
+  });
 
   // ---------- buscar plano ----------
   let plaMode = 'plano';
