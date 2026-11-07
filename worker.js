@@ -39,29 +39,41 @@ async function esAdmin(request, pw) {
   try { const d = new TextDecoder().decode(b64uDec(h.slice(6).trim())); return igual(d.slice(d.indexOf(":") + 1), pw); } catch (_) { return false; }
 }
 
+// Si una promesa no se resuelve en `ms`, la rechaza igual: evita que una llamada atascada
+// (por ejemplo a D1) deje una petición esperando para siempre en vez de fallar rápido.
+const conLimite = (p, ms, msj) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msj)), ms))]);
+
 // ---------- Base de datos (D1) ----------
 let listo = null, SECRETO = null;
 function initDB(env) {
-  if (!listo) listo = env.DB.batch([
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, correo TEXT UNIQUE NOT NULL, nombre TEXT, perfil TEXT, prov TEXT,
-      hash TEXT NOT NULL, sal TEXT NOT NULL, ver INTEGER NOT NULL DEFAULT 1, plan TEXT NOT NULL DEFAULT 'free', pro_hasta TEXT, cupon TEXT, fuente TEXT, pais TEXT,
-      creado TEXT, ultimo TEXT, solicita_pro TEXT, nota TEXT, datos TEXT)`),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS config (k TEXT PRIMARY KEY, v TEXT)"),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS tokens (t TEXT PRIMARY KEY, uid INTEGER NOT NULL, vence INTEGER NOT NULL)"),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS intentos (correo TEXT NOT NULL, ts INTEGER NOT NULL)"),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER NOT NULL, correo TEXT, concepto TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
-      monto INTEGER NOT NULL, descuento INTEGER DEFAULT 0, ref TEXT, telefono TEXT, estado TEXT NOT NULL DEFAULT 'pendiente', nota TEXT, creado TEXT, resuelto TEXT, img TEXT)`)
-  ]).then(async (r) => {   // columnas agregadas después de la primera versión (fallan sin daño si ya existen)
-    for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT", "no_correos INTEGER NOT NULL DEFAULT 0",
-      "referido_por TEXT", "dias_regalo INTEGER NOT NULL DEFAULT 0", "referido_premiado INTEGER NOT NULL DEFAULT 0"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS enlaces (t TEXT PRIMARY KEY, correo TEXT NOT NULL, vence INTEGER NOT NULL, datos TEXT)").run();
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS campanas (campana TEXT NOT NULL, correo TEXT NOT NULL, enviado TEXT NOT NULL, PRIMARY KEY (campana, correo))").run();
-    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS apoyo_legal (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, telefono TEXT, correo TEXT,
-      juzgados TEXT NOT NULL DEFAULT '[]', zona TEXT, especialidad TEXT,
-      activo INTEGER NOT NULL DEFAULT 1, notas TEXT, creado TEXT)`).run();
-    return r;
-  }).catch((e) => { listo = null; throw e; });
+  if (!listo) {
+    const p = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, correo TEXT UNIQUE NOT NULL, nombre TEXT, perfil TEXT, prov TEXT,
+        hash TEXT NOT NULL, sal TEXT NOT NULL, ver INTEGER NOT NULL DEFAULT 1, plan TEXT NOT NULL DEFAULT 'free', pro_hasta TEXT, cupon TEXT, fuente TEXT, pais TEXT,
+        creado TEXT, ultimo TEXT, solicita_pro TEXT, nota TEXT, datos TEXT)`),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS config (k TEXT PRIMARY KEY, v TEXT)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS tokens (t TEXT PRIMARY KEY, uid INTEGER NOT NULL, vence INTEGER NOT NULL)"),
+      env.DB.prepare("CREATE TABLE IF NOT EXISTS intentos (correo TEXT NOT NULL, ts INTEGER NOT NULL)"),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, uid INTEGER NOT NULL, correo TEXT, concepto TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
+        monto INTEGER NOT NULL, descuento INTEGER DEFAULT 0, ref TEXT, telefono TEXT, estado TEXT NOT NULL DEFAULT 'pendiente', nota TEXT, creado TEXT, resuelto TEXT, img TEXT)`)
+    ]).then(async (r) => {
+      // Migraciones secundarias: cada una se aísla con su propio catch, para que si UNA falla
+      // (columna o tabla nueva con algún problema) no arrastre a las demás ni deje `listo` sin
+      // resolver — eso bloquearía /api/cuenta/yo, y con él, el mapa entero, para todo el mundo.
+      for (const c of ["creditos INTEGER NOT NULL DEFAULT 0", "cupon_usado TEXT", "google_sub TEXT", "origen TEXT", "no_correos INTEGER NOT NULL DEFAULT 0",
+        "referido_por TEXT", "dias_regalo INTEGER NOT NULL DEFAULT 0", "referido_premiado INTEGER NOT NULL DEFAULT 0"]) await env.DB.prepare("ALTER TABLE usuarios ADD COLUMN " + c).run().catch(() => {});
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS enlaces (t TEXT PRIMARY KEY, correo TEXT NOT NULL, vence INTEGER NOT NULL, datos TEXT)").run().catch(() => {});
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS campanas (campana TEXT NOT NULL, correo TEXT NOT NULL, enviado TEXT NOT NULL, PRIMARY KEY (campana, correo))").run().catch(() => {});
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS apoyo_legal (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, telefono TEXT, correo TEXT,
+        juzgados TEXT NOT NULL DEFAULT '[]', zona TEXT, especialidad TEXT,
+        activo INTEGER NOT NULL DEFAULT 1, notas TEXT, creado TEXT)`).run().catch(() => {});
+      return r;
+    });
+    // Tiempo límite de 8 s: si D1 no responde, la petición falla rápido y con un error claro
+    // en vez de dejar al navegador esperando sin fin (y a `listo` listo para reintentarlo).
+    listo = conLimite(p, 8000, "La base de datos no respondió a tiempo.").catch((e) => { listo = null; throw e; });
+  }
   return listo;
 }
 async function secreto(env) {
@@ -1256,8 +1268,20 @@ const SOLO_ADMIN = new Set(["/assets/ubicar.js", "/admin", "/admin.html", "/cata
 const INDEXABLES = new Set(["/", "/mapa", "/privacidad", "/robots.txt", "/sitemap.xml"]);
 const esIndexable = (p) => INDEXABLES.has(p) || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/");
 
+// Red de seguridad: cualquier excepción no prevista en el manejo de la petición responde rápido
+// con un error claro, en vez de dejar al navegador esperando. Antes, una falla sin capturar en
+// cualquier punto de la ruta (por ejemplo una migración de la base de datos) podía dejar colgada
+// la petición de la que depende todo lo demás (/api/cuenta/yo bloquea la carga del mapa entero).
 export default {
   async fetch(request, env) {
+    try {
+      return await manejarPeticion(request, env);
+    } catch (e) {
+      return json({ error: "Error del servidor. Intenta de nuevo en un momento." }, 500, 0);
+    }
+  }
+};
+async function manejarPeticion(request, env) {
     const pw = env.SITE_PASSWORD;
     if (!pw) return txt("Sitio en configuración.", 503);
     const u = new URL(request.url);
@@ -1314,6 +1338,7 @@ export default {
     if (!dentro && p in SOLO_CUENTA_JS) return new Response(`/* PlanoExactoCR: contenido para cuentas */\n${SOLO_CUENTA_JS[p]}\n`, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "private, no-store", "vary": "Cookie", "X-Robots-Tag": "noindex" } });
     if (p === "/api/apoyo-legal") {
       if (!dentro) return json({ error: "Entra con tu cuenta." }, 401, 0);
+      await initDB(env);
       const usr = await usuarioActual(request, env);
       if (!usr || !["pro", "admin"].includes(planVigente(usr))) return json({ error: "Disponible con el plan PRO." }, 403, 0);
       const juz = u.searchParams.get("juz") || "";
@@ -1349,5 +1374,4 @@ export default {
     if (SOLO_CUENTA_DATOS.has(p) || p in SOLO_CUENTA_JS) { out.headers.set("Cache-Control", "private, max-age=0, must-revalidate"); out.headers.set("Vary", "Cookie"); }
     if (p === "/" || p === "/mapa" || p.endsWith(".html")) out.headers.set("Cache-Control", "no-cache");
     return out;
-  }
-};
+}
