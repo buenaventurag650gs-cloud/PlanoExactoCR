@@ -886,6 +886,40 @@ async function admin(request, env, u) {
     }
     return json({ error: "Acción desconocida" }, 400, 0);
   }
+  // ---------- apoyo legal (CRUD) ----------
+  if (ruta === "apoyo-legal") {
+    if (request.method === "POST") {
+      const b = await leerJSON(request);
+      if (!b || !b.accion) return json({ error: "Solicitud inválida" }, 400, 0);
+      if (b.accion === "crear") {
+        if (!b.nombre || !b.nombre.trim()) return json({ error: "El nombre es obligatorio" }, 400, 0);
+        const juz = JSON.stringify(Array.isArray(b.juzgados) ? b.juzgados : []);
+        await env.DB.prepare("INSERT INTO apoyo_legal (nombre, telefono, correo, juzgados, zona, especialidad, notas, activo, creado) VALUES (?,?,?,?,?,?,?,1,?)").bind(b.nombre.trim(), b.telefono || null, b.correo || null, juz, b.zona || null, b.especialidad || null, b.notas || null, new Date().toISOString()).run();
+        return json({ ok: true }, 200, 0);
+      }
+      if (b.accion === "editar") {
+        if (!b.id) return json({ error: "Falta id" }, 400, 0);
+        const juz = JSON.stringify(Array.isArray(b.juzgados) ? b.juzgados : []);
+        await env.DB.prepare("UPDATE apoyo_legal SET nombre=?, telefono=?, correo=?, juzgados=?, zona=?, especialidad=?, notas=? WHERE id=?").bind(b.nombre || '', b.telefono || null, b.correo || null, juz, b.zona || null, b.especialidad || null, b.notas || null, b.id).run();
+        return json({ ok: true }, 200, 0);
+      }
+      if (b.accion === "toggle") {
+        if (!b.id) return json({ error: "Falta id" }, 400, 0);
+        await env.DB.prepare("UPDATE apoyo_legal SET activo = CASE WHEN activo = 1 THEN 0 ELSE 1 END WHERE id = ?").bind(b.id).run();
+        return json({ ok: true }, 200, 0);
+      }
+      if (b.accion === "eliminar") {
+        if (!b.id) return json({ error: "Falta id" }, 400, 0);
+        await env.DB.prepare("DELETE FROM apoyo_legal WHERE id = ?").bind(b.id).run();
+        return json({ ok: true }, 200, 0);
+      }
+      return json({ error: "Acción desconocida" }, 400, 0);
+    }
+    // GET: listar todos
+    const r = await env.DB.prepare("SELECT id, nombre, telefono, correo, juzgados, zona, especialidad, activo, notas, creado FROM apoyo_legal ORDER BY activo DESC, id DESC").all();
+    return json({ abogados: r.results }, 200, 0);
+  }
+
   if (request.method !== "POST") return json({ error: "Método no permitido" }, 405, 0);
   const b = await leerJSON(request);
   if (!b || !b.id) return json({ error: "Solicitud inválida" }, 400, 0);

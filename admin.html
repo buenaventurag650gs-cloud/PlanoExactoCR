@@ -56,6 +56,15 @@
         <div class="card-body border-top" id="actBusqWrap" style="display:none"><div class="subheader mb-2">Búsquedas guardadas</div><div id="actBusq" class="d-flex flex-wrap gap-1"></div></div>
       </div>
 
+      <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title"><i class="ti ti-scale me-2"></i>Apoyo legal en sitio</h3>
+          <div class="card-actions"><button class="btn btn-primary btn-sm" id="btnAgrAbog"><i class="ti ti-plus me-1"></i>Agregar abogado</button></div></div>
+        <div class="table-responsive"><table class="table table-vcenter card-table">
+          <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Juzgados</th><th>Zona</th><th>Especialidad</th><th>Estado</th><th class="w-1"></th></tr></thead>
+          <tbody id="tabog"><tr><td colspan="8" class="text-secondary">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+
       <div class="card">
         <div class="card-header"><h3 class="card-title"><i class="ti ti-users me-2"></i>Usuarios</h3>
           <div class="card-actions d-flex gap-2"><div class="input-icon"><span class="input-icon-addon"><i class="ti ti-search"></i></span><input id="q" type="search" class="form-control" placeholder="Correo, nombre o cupón" aria-label="Buscar"></div>
@@ -93,6 +102,26 @@
   </div></div>
 </div>
 <div class="modal-backdrop fade show" id="dlgDestBack" style="display:none"></div>
+<!-- Modal agregar/editar abogado -->
+<div class="modal modal-blur" id="dlgAbog" tabindex="-1" role="dialog" aria-modal="true" style="display:none">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:560px"><div class="modal-content">
+    <div class="modal-header"><h3 class="modal-title" id="dlgAbogTitle">Agregar abogado</h3></div>
+    <div class="modal-body">
+      <input type="hidden" id="abogId">
+      <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control" id="abogNombre" required></div>
+      <div class="row mb-3"><div class="col-6"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="abogTel" placeholder="8888-8888"></div>
+        <div class="col-6"><label class="form-label">Correo</label><input type="email" class="form-control" id="abogCorreo"></div></div>
+      <div class="mb-3"><label class="form-label">Juzgados donde opera</label>
+        <div style="max-height:180px;overflow:auto;border:1px solid var(--tblr-border-color);border-radius:4px;padding:8px" id="abogJuzList"></div></div>
+      <div class="row mb-3"><div class="col-6"><label class="form-label">Zona / cantón</label><input type="text" class="form-control" id="abogZona" placeholder="p. ej. Heredia centro"></div>
+        <div class="col-6"><label class="form-label">Especialidad</label><input type="text" class="form-control" id="abogEsp" placeholder="p. ej. Remates judiciales"></div></div>
+      <div class="mb-3"><label class="form-label">Notas internas</label><textarea class="form-control" id="abogNotas" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer"><div class="w-100"><div class="row"><div class="col"><button class="btn w-100" data-ab="cancelar">Cancelar</button></div><div class="col"><button class="btn btn-primary w-100" data-ab="guardar">Guardar</button></div></div></div></div>
+  </div></div>
+</div>
+<div class="modal-backdrop fade show" id="dlgAbogBack" style="display:none"></div>
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="alert alert-important mb-0" id="aviso" style="display:none"></div></div>
 
 <script>
@@ -246,7 +275,100 @@
     $('actFav').innerHTML = (j.topFavoritos || []).length ? j.topFavoritos.map(fila).join('') : 'Nadie ha guardado favoritos todavía.';
     if ((j.topBusquedas || []).length) { $('actBusqWrap').style.display = ''; $('actBusq').innerHTML = j.topBusquedas.map(b => `<span class="badge bg-secondary-lt">${esc(b.t)} <span class="text-secondary">×${b.n}</span></span>`).join(''); }
   }
-  cargarPagos(); cargar(); cargarCampanas(); cargarActividad();
+  // ---------- apoyo legal ----------
+  const JUZGADOS = [
+    'JUZGADO DE COBRO DE HEREDIA',
+    'JUZGADO DE COBRO DE GOLFITO',
+    'JUZGADO TERCERO ESPECIALIZADO DE COBRO DEL I CIRCUITO JUDICIAL DE SAN JOSÉ',
+    'JUZGADO DE COBRO DEL I CIRCUITO JUDICIAL DE GUANACASTE',
+    'JUZGADO DE COBRO DEL II CIRCUITO JUDICIAL DE ALAJUELA',
+    'JUZGADO DE COBRO DEL II CIRCUITO JUDICIAL DE GUANACASTE (SANTA CRUZ)',
+    'JUZGADO ESPECIALIZADO DE COBRO DE CARTAGO',
+    'JUZGADO DE COBRO DE PUNTARENAS',
+    'JUZGADO DE COBRO DEL I CIRCUITO JUDICIAL DE LA ZONA SUR',
+    'JUZGADO SEGUNDO ESPECIALIZADO DE COBRO DEL I CIRCUITO JUDICIAL DE SAN JOSÉ',
+    'JUZGADO DE COBRO DEL I CIRCUITO JUDICIAL DE ALAJUELA',
+    'JUZGADO DE COBRO DE POCOCÍ',
+    'JUZGADO ESPECIALIZADO DE COBRO DEL II CIRCUITO JUDICIAL DE SAN JOSÉ (SECCIÓN SEGUNDA)',
+    'JUZGADO ESPECIALIZADO DE COBRO DEL II CIRCUITO JUDICIAL DE SAN JOSÉ (SECCIÓN TERCERA)',
+    'JUZGADO DE COBRO DEL I CIRCUITO JUDICIAL DE LIMÓN',
+    'JUZGADO DE COBRO DEL III CIRCUITO JUDICIAL DE ALAJUELA (SAN RAMÓN)',
+    'JUZGADO DE COBRO DE GRECIA',
+    'JUZGADO ESPECIALIZADO DE COBRO DEL II CIRCUITO JUDICIAL DE SAN JOSÉ (SECCIÓN PRIMERA)',
+    'JUZGADO PRIMERO ESPECIALIZADO DE COBRO DEL I CIRCUITO JUDICIAL DE SAN JOSÉ'
+  ];
+  const juzCorto = j => j.replace(/^JUZGADO (DE COBRO |ESPECIALIZADO DE COBRO |TERCERO ESPECIALIZADO DE COBRO |SEGUNDO ESPECIALIZADO DE COBRO |PRIMERO ESPECIALIZADO DE COBRO )/i, '').replace(/^DEL? /i, '');
+  let ABOGADOS = [];
+  function renderJuzCheckboxes(sel) {
+    const s = new Set(sel || []);
+    $('abogJuzList').innerHTML = JUZGADOS.map(j => `<label class="form-check mb-1"><input class="form-check-input" type="checkbox" value="${esc(j)}" ${s.has(j) ? 'checked' : ''}><span class="form-check-label small">${esc(juzCorto(j))}</span></label>`).join('');
+  }
+  function getSelJuz() { return [...$('abogJuzList').querySelectorAll('input:checked')].map(c => c.value); }
+  async function cargarAbogados() {
+    const r = await fetch('/api/admin/apoyo-legal', { cache: 'no-store' });
+    if (!r.ok) { $('tabog').innerHTML = '<tr><td colspan="8" class="text-secondary">No se pudo cargar.</td></tr>'; return; }
+    ABOGADOS = (await r.json()).abogados || [];
+    $('tabog').innerHTML = ABOGADOS.length ? ABOGADOS.map(a => {
+      let jz = []; try { jz = JSON.parse(a.juzgados || '[]'); } catch (_) {}
+      return `<tr data-id="${a.id}">
+        <td class="fw-medium">${esc(a.nombre)}</td>
+        <td>${esc(a.telefono || '—')}</td>
+        <td>${esc(a.correo || '—')}</td>
+        <td><div class="small">${jz.length ? jz.map(j => `<span class="badge bg-secondary-lt me-1 mb-1">${esc(juzCorto(j))}</span>`).join('') : '—'}</div></td>
+        <td>${esc(a.zona || '—')}</td>
+        <td>${esc(a.especialidad || '—')}</td>
+        <td><span class="badge bg-${a.activo ? 'green' : 'red'}-lt">${a.activo ? 'Activo' : 'Inactivo'}</span></td>
+        <td><div class="btn-list flex-nowrap">
+          <button class="btn btn-sm" data-ab-a="editar" title="Editar"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-sm ${a.activo ? 'btn-outline-warning' : 'btn-outline-success'}" data-ab-a="toggle" title="${a.activo ? 'Desactivar' : 'Activar'}"><i class="ti ti-${a.activo ? 'eye-off' : 'eye'}"></i></button>
+          <button class="btn btn-sm btn-outline-danger" data-ab-a="eliminar" title="Eliminar"><i class="ti ti-trash"></i></button>
+        </div></td></tr>`;
+    }).join('') : '<tr><td colspan="8" class="text-secondary">No hay abogados registrados. Usa el botón de arriba para agregar.</td></tr>';
+  }
+  function abrirModalAbog(a) {
+    $('dlgAbogTitle').textContent = a ? 'Editar abogado' : 'Agregar abogado';
+    $('abogId').value = a ? a.id : '';
+    $('abogNombre').value = a ? a.nombre : '';
+    $('abogTel').value = a ? (a.telefono || '') : '';
+    $('abogCorreo').value = a ? (a.correo || '') : '';
+    $('abogZona').value = a ? (a.zona || '') : '';
+    $('abogEsp').value = a ? (a.especialidad || '') : '';
+    $('abogNotas').value = a ? (a.notas || '') : '';
+    let jz = []; try { jz = JSON.parse((a && a.juzgados) || '[]'); } catch (_) {}
+    renderJuzCheckboxes(jz);
+    const d = $('dlgAbog'); d.style.display = 'block'; d.classList.add('show'); $('dlgAbogBack').style.display = 'block';
+    const cerrar = () => { d.style.display = 'none'; d.classList.remove('show'); $('dlgAbogBack').style.display = 'none'; d.onclick = null; };
+    d.onclick = e => {
+      const b = e.target.closest('[data-ab]');
+      if (!b) { if (e.target === d) cerrar(); return; }
+      if (b.dataset.ab === 'cancelar') { cerrar(); return; }
+      if (b.dataset.ab === 'guardar') {
+        const nombre = $('abogNombre').value.trim();
+        if (!nombre) { toast('El nombre es obligatorio', 'danger'); return; }
+        const body = { accion: $('abogId').value ? 'editar' : 'crear', id: +$('abogId').value || undefined, nombre, telefono: $('abogTel').value.trim(), correo: $('abogCorreo').value.trim(), juzgados: getSelJuz(), zona: $('abogZona').value.trim(), especialidad: $('abogEsp').value.trim(), notas: $('abogNotas').value.trim() };
+        fetch('/api/admin/apoyo-legal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(r => { toast(r.ok ? 'Guardado' : 'No se pudo guardar', r.ok ? 'success' : 'danger'); if (r.ok) { cerrar(); cargarAbogados(); } });
+      }
+    };
+  }
+  $('btnAgrAbog').onclick = () => abrirModalAbog(null);
+  $('tabog').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-ab-a]'); if (!b) return;
+    const id = +b.closest('tr').dataset.id, a = ABOGADOS.find(x => x.id === id);
+    if (b.dataset.abA === 'editar') { abrirModalAbog(a); return; }
+    if (b.dataset.abA === 'toggle') {
+      const r = await fetch('/api/admin/apoyo-legal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'toggle', id }) });
+      toast(r.ok ? (a.activo ? 'Desactivado' : 'Activado') : 'Error', r.ok ? 'success' : 'danger'); if (r.ok) cargarAbogados();
+      return;
+    }
+    if (b.dataset.abA === 'eliminar') {
+      if (!(await confirmar('¿Eliminar abogado?', `Se eliminará a «${a.nombre}» de forma permanente.`, { peligro: true, ok: 'Eliminar' }))) return;
+      const r = await fetch('/api/admin/apoyo-legal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'eliminar', id }) });
+      toast(r.ok ? 'Eliminado' : 'Error', r.ok ? 'success' : 'danger'); if (r.ok) cargarAbogados();
+    }
+  });
+
+  cargarPagos(); cargar(); cargarCampanas(); cargarActividad(); cargarAbogados();
 })();
 </script>
 </body></html>
