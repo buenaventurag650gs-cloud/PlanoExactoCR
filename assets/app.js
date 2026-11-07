@@ -627,6 +627,7 @@
     { id: 'catastro', n: 'Predios del catastro', z: 15, free: true, on: true, lg: [['ln', '#8A948F', 'Lindero de predio']], mk: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { minZoom: 15, zIndex: 8, className: 'tl-cat', attribution: 'Catastro &copy; Registro Inmobiliario (SNIT)' }) },
     { id: 'rios_n', n: 'Nombres de ríos', z: 13, free: true, on: true, mk: () => wms('https://geos.snitcr.go.cr/be/IGN_NG/wms', 'IGN_NG:hidronimos_25k', { pane: 'lbl', minZoom: 13, zIndex: 6, sld_body: sld('IGN_NG:hidronimos_25k', `<Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule>`), attribution: 'Hidrónimos &copy; IGN' }) },
     { id: 'planes', n: 'Estado del plan regulador', free: true, hover: true, lg: PRC.map(p => ['', p[2], p[1]]) },
+    { id: 'juzgados', n: 'Juzgados de cobro', note: 'circuito judicial de cada remate', free: true, lg: [] },
     { g: 'Valor y mercado', id: 'zh', n: 'Zonas homogéneas de Hacienda', note: 'valor del terreno', z: 13, hover: true, lg: [['', '#E9C46A', 'Zona homogénea: valor del terreno en ₡ y $ por m²']], mk: () => ags('https://sig.hacienda.go.cr/server/rest/services/Zonas_Homogeneas_ONT/MapServer', { dyn: ZH_DYN, minZoom: 13, zIndex: 4, attribution: 'Zonas homogéneas &copy; Ministerio de Hacienda (ONT)' }) },
     { id: 'precios', n: 'Precio por m² de remates', note: 'mediana por cantón', hover: true, lg: [] },
     { g: 'Abastecimiento de agua', id: 'agua', n: 'Cobertura de agua potable', hover: true, lg: AG_COL.map(([n, c]) => ['', `rgb(${c})`, n === 'Municipal' ? 'Acueducto municipal' : n]), mk: () => ags('https://gis.aya.go.cr/server/rest/services/Web/Coberturas_AyA_ASADAS_Muni/MapServer', { dyn: AG_DYN, zIndex: 4, opacity: 0.9, attribution: 'Coberturas de agua &copy; AyA' }) },
@@ -657,7 +658,7 @@
   ];
   const lyrState = Object.assign(Object.fromEntries(LY.map(l => [l.id, !!l.on])), PX.store.get('px-layers', {}));
   let baseId = PX.store.get('px-base2', dark() ? 'oscuro' : 'claro'); if (!base[baseId]) baseId = 'claro';
-  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup(), elec: L.layerGroup(), postesCov: L.layerGroup(), postesCov100: L.layerGroup() };
+  const vec = { infra: L.layerGroup(), zmt: L.layerGroup(), precios: L.layerGroup(), cantones: L.layerGroup(), distritos: L.layerGroup(), planes: L.layerGroup(), juzgados: L.layerGroup(), zv: L.layerGroup(), salud: L.layerGroup(), asadas: L.layerGroup(), aprovech: L.layerGroup(), cobDA: L.layerGroup(), elec: L.layerGroup(), postesCov: L.layerGroup(), postesCov100: L.layerGroup() };
   for (const l of LY) l.layer = l.mk ? l.mk() : vec[l.id];
   const allowed = l => l.free || PX.isPro();
   // Carga perezosa de los datos de cada capa opcional: se piden solo al encender la capa.
@@ -796,6 +797,29 @@
     vec.distritos.addLayer(L.geoJSON(DIST, Object.assign({ style: { color: css('--dline'), weight: 0.7, opacity: 0.9, dashArray: '2 3', fill: false }, attribution: 'Límites &copy; IGN (SNIT)' }, o)));
     if (CANT) vec.cantones.addLayer(L.geoJSON(CANT, Object.assign({ style: { color: css('--muted'), weight: 1.3, opacity: 0.7, fill: false } }, o)));
     if (PX.ctx.planes) vec.planes.addLayer(L.geoJSON(PX.ctx.planes, Object.assign({ style: f => { const c = prClass(f.properties.cat)[2]; return { color: c, weight: 1, opacity: 0.8, fillColor: c, fillOpacity: 0.2 }; }, attribution: 'Planes reguladores &copy; INVU' }, o)));
+    // Juzgados de cobro: circuito judicial de cada remate, coloreado por juzgado
+    if (R) {
+      const JUZ_PAL = ['#E07A5F','#3D405B','#81B29A','#F2CC8F','#577590','#E9C46A','#2A9D8F','#264653','#F4A261','#E76F51','#6A994E','#BC6C25','#9D8DC9','#C8553D','#457B9D','#A8DADC','#8D5B4C','#D4A276','#606C38'];
+      const juzMap = {}, juzList = [];
+      for (const r of R) {
+        if (!r.juz || !r.ll) continue;
+        const m = r.juz.match(/(?:PRIMERO|SEGUNDO|TERCERO)/i);
+        const j = r.juz.replace(/JUZGADO (DE COBRO |ESPECIALIZADO DE COBRO |TERCERO ESPECIALIZADO DE COBRO |SEGUNDO ESPECIALIZADO DE COBRO |PRIMERO ESPECIALIZADO DE COBRO |CONCURSAL;?.*$|AGRARIO |PENAL .*$|DE TRABAJO DE |TRIBUNAL COLEGIADO DE PRIMERA INSTANCIA CIVIL DE )?(DEL? )?/i, '').replace(/ 13 de octubre.*$/i, '').replace(/CIRCUITO JUDICIAL DE (LA )?/gi, '').replace(/\bI+\b /g, s => s.trim() + '-').trim() + (m ? ' ' + m[0][0] + m[0].slice(1).toLowerCase() : '');
+        if (!juzMap[r.juz]) { juzMap[r.juz] = { short: j, idx: juzList.length, lats: [], lngs: [], count: 0 }; juzList.push(r.juz); }
+        const g = juzMap[r.juz]; g.count++; g.lats.push(r.ll[1]); g.lngs.push(r.ll[0]);
+        const col = JUZ_PAL[g.idx % JUZ_PAL.length];
+        vec.juzgados.addLayer(L.circleMarker([r.ll[1], r.ll[0]], { renderer: ctxR, pane: 'ctx', radius: 5, color: '#fff', weight: 0.8, fillColor: col, fillOpacity: 0.75, interactive: false }));
+      }
+      // Centroid labels
+      for (const [name, g] of Object.entries(juzMap)) {
+        const lat = g.lats.reduce((a,b)=>a+b,0)/g.lats.length;
+        const lng = g.lngs.reduce((a,b)=>a+b,0)/g.lngs.length;
+        const col = JUZ_PAL[g.idx % JUZ_PAL.length];
+        const lbl = L.marker([lat, lng], { pane: 'lbl', icon: L.divIcon({ className: 'juz-lbl', html: `<span style="--jc:${col}">${esc(g.short)} <small>(${g.count})</small></span>`, iconSize: [160, 20], iconAnchor: [80, 10] }), interactive: false });
+        vec.juzgados.addLayer(lbl);
+      }
+      LY.find(l => l.id === 'juzgados').lg = juzList.slice(0, 12).map((n, i) => ['', JUZ_PAL[i], juzMap[n].short]);
+    }
     if (CANT) {
       const PC = priceClasses();
       LY.find(l => l.id === 'precios').lg = PC.leg;
