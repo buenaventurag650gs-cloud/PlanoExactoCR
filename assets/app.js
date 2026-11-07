@@ -1126,7 +1126,8 @@
     const b = (k, t, extra = '') => `<button class="btn btn-sm" data-protool="${k}">${t}${extra}<span class="ms-2">${PX.pro.tag(k)}</span></button>`;
     return `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.valor}</span><h3 class="card-title">Herramientas</h3></div><div class="card-body">
       <p class="text-secondary">${pro ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Potencial aproximado: <b>${fnum(pot.total, 0)} m²</b> construibles.` : rsk ? `Riesgos detectados: <b>${alto} altos</b> y <b>${med} medios</b>. Con PRO, además, potencial constructivo y prefactibilidad.` : 'Riesgos del proceso y alertas vienen en Esencial; potencial constructivo y prefactibilidad, en PRO.'}</p>
-      <div class="btn-list">${b('riesgos', 'Riesgos', rsk ? ` <span class="badge bg-${alto ? 'red' : 'secondary'}-lt ms-1">${alto + med}</span>` : '')}${b('alertas', 'Alertas')}${b('potencial', 'Potencial constructivo')}${b('prefa', 'Prefactibilidad')}</div></div></div>`;
+      <div class="btn-list">${b('riesgos', 'Riesgos', rsk ? ` <span class="badge bg-${alto ? 'red' : 'secondary'}-lt ms-1">${alto + med}</span>` : '')}${b('alertas', 'Alertas')}${b('potencial', 'Potencial constructivo')}${b('prefa', 'Prefactibilidad')}</div>
+      ${r.ll ? `<div class="mt-2"><button class="btn btn-sm w-100" data-act="plano" title="Subí el plano catastral en PDF y ubicalo sobre la ortofoto para comparar linderos"><span class="bic">${PX.ICON.plano}</span>Superponer plano catastral (PDF)<span class="ms-2">${PX.PRO}</span></button></div>` : ''}</div></div>`;
   }
   const openPro = (r, t) => PX.pro.open(r, t, $('layer'), { changed: () => { renderList(); if (open) openFicha(open, false); } });
   function listMenu(r) {
@@ -1416,6 +1417,7 @@
     if (act === 'sigo') { const on = PX.toggleSigo(r.key); if (on) { PX.acct.snap = PX.acct.snap || {}; PX.acct.snap[r.key] = { st: r.st, bv: r.bv }; PX.saveAcct(); } toast(on ? 'Lo verás en Mi cuenta → Seguimiento' : 'Dejaste de seguir este remate'); openFicha(open, false); renderList(); return; }
     if (act === 'lista') { $('lmenu').hidden = !$('lmenu').hidden; return; }
     if (act === 'ics') { if (PX.isPro()) descargarICS(r); else openPlanes(); return; }
+    if (act === 'plano') { if (PX.isPro()) abrirPlanoPDF(r); else openPlanes(); return; }
     if (act === 'rem') { openFicha(r.remate, true); return; }
     if (act === 'ocultar') {
       const on = PX.toggleOculto(r.key);
@@ -1440,6 +1442,118 @@
     if (r.isPlano) PX.savePlano(r);
     PX.saveAcct(); toast(`Lista «${n}» creada`); openFicha(open, false); $('lmenu').hidden = false;
   });
+
+  // ---------- Superponer plano catastral (PDF) sobre la ortofoto (PRO) ----------
+  // El usuario sube el plano de catastro en PDF; lo rasterizamos con pdf.js y lo colocamos
+  // semitransparente sobre la ortofoto para comparar linderos. Posición con un marcador
+  // que se arrastra, escala y rotación con deslizadores; la rotación se "hornea" en la
+  // imagen con un canvas, así Leaflet solo maneja un recuadro alineado a los ejes y la
+  // superposición se mantiene correcta al hacer zoom o mover el mapa.
+  let pdfjsP = null, po = null;
+  function cargarPdfJs() {
+    if (pdfjsP) return pdfjsP;
+    pdfjsP = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+      s.onload = () => { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; res(window.pdfjsLib); } catch (e) { rej(e); } };
+      s.onerror = () => rej(new Error('No se pudo cargar el lector de PDF.'));
+      document.head.appendChild(s);
+    });
+    return pdfjsP;
+  }
+  function anchoLoteM(r) {   // ancho aproximado del lote en metros, para arrancar a escala
+    if (r.poly && r.poly[0] && r.poly[0][0]) {
+      const ring = r.poly[0][0]; let x0 = 180, x1 = -180, y0 = 90, y1 = -90;
+      for (const [x, y] of ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      const lat = (y0 + y1) / 2, wM = (x1 - x0) * 111320 * Math.cos(lat * Math.PI / 180);
+      if (wM > 2) return Math.max(wM, 10);
+    }
+    return 60;
+  }
+  function rotarCanvas(src, deg) {
+    if (!deg) return src;
+    const rad = deg * Math.PI / 180, s = Math.abs(Math.sin(rad)), c = Math.abs(Math.cos(rad)), w = src.width, h = src.height;
+    const ow = Math.ceil(w * c + h * s), oh = Math.ceil(w * s + h * c);
+    const cv = document.createElement('canvas'); cv.width = ow; cv.height = oh;
+    const ctx = cv.getContext('2d'); ctx.translate(ow / 2, oh / 2); ctx.rotate(rad); ctx.drawImage(src, -w / 2, -h / 2); return cv;
+  }
+  function planoRender() {
+    if (!po) return;
+    const out = rotarCanvas(po.src, po.rot), aspect = out.height / out.width;
+    const [lat, lng] = po.center, hM = po.widthM * aspect;
+    const dLat = (hM / 2) / 111320, dLng = (po.widthM / 2) / (111320 * Math.cos(lat * Math.PI / 180));
+    const bounds = [[lat - dLat, lng - dLng], [lat + dLat, lng + dLng]];
+    const url = out.toDataURL('image/png');
+    if (!po.overlay) { po.overlay = L.imageOverlay(url, bounds, { opacity: po.opacity, interactive: false, pane: 'overlayPane' }).addTo(map); }
+    else { po.overlay.setUrl(url); po.overlay.setBounds(bounds); po.overlay.setOpacity(po.opacity); }
+    if (po.marker) po.marker.setLatLng(po.center);
+  }
+  function planoCerrar() {
+    if (!po) return;
+    if (po.overlay) po.overlay.remove();
+    if (po.marker) po.marker.remove();
+    if (po.bar) po.bar.remove();
+    po = null;
+  }
+  function planoBarra() {
+    const bar = document.createElement('div');
+    bar.className = 'plano-bar';
+    bar.innerHTML = `<div class="pb-h"><b>Plano catastral sobre la ortofoto</b><button class="pb-x" data-pb="x" title="Quitar">✕</button></div>
+      <label>Opacidad <input type="range" data-pb="op" min="10" max="100" value="${Math.round(po.opacity * 100)}"></label>
+      <label>Escala <input type="range" data-pb="sc" min="10" max="400" value="${Math.round(po.widthM)}"></label>
+      <label>Rotación <input type="range" data-pb="ro" min="-180" max="180" value="${po.rot}"></label>
+      <div class="pb-b"><button class="btn sm" data-pb="g90">Girar 90°</button><button class="btn sm" data-pb="fit">Centrar</button></div>
+      <p class="pb-tip">Arrastrá el ✛ para mover el plano. Ajustá opacidad, escala y rotación hasta que calce con la ortofoto.</p>`;
+    bar.addEventListener('input', e => {
+      const k = e.target.dataset.pb; if (!k) return;
+      if (k === 'op') po.opacity = e.target.value / 100;
+      else if (k === 'sc') po.widthM = +e.target.value;
+      else if (k === 'ro') po.rot = +e.target.value;
+      planoRender();
+    });
+    bar.addEventListener('click', e => {
+      const k = e.target.dataset.pb; if (!k) return;
+      if (k === 'x') { planoCerrar(); return; }
+      if (k === 'g90') { po.rot = ((po.rot + 90 + 180) % 360) - 180; bar.querySelector('[data-pb="ro"]').value = po.rot; planoRender(); }
+      if (k === 'fit' && po.overlay) map.fitBounds(po.overlay.getBounds(), { maxZoom: 20, padding: [30, 30] });
+    });
+    (document.querySelector('.mapwrap') || document.body).appendChild(bar);
+    return bar;
+  }
+  async function abrirPlanoPDF(r) {
+    if (!r.ll) { toast('Este remate no tiene ubicación en el mapa.'); return; }
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/pdf,.pdf'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+    inp.onchange = async () => {
+      const file = inp.files && inp.files[0]; inp.remove();
+      if (!file) return;
+      toast('Procesando el plano…');
+      try {
+        const pdfjs = await cargarPdfJs();
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjs.getDocument({ data: buf }).promise;
+        const page = await pdf.getPage(1);
+        const vp0 = page.getViewport({ scale: 1 });
+        const scale = Math.min(2200 / vp0.width, 2200 / vp0.height, 4);   // objetivo ~2200 px, sin pasarse
+        const vp = page.getViewport({ scale });
+        const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+        await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+        planoCerrar();
+        po = { r, src: cv, center: [r.ll[1], r.ll[0]], widthM: anchoLoteM(r), rot: 0, opacity: 0.6, overlay: null, marker: null };
+        po.marker = L.marker(po.center, { draggable: true, zIndexOffset: 2000, icon: L.divIcon({ className: 'plano-mk', html: '✛', iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map);
+        po.marker.on('drag', () => { const ll = po.marker.getLatLng(); po.center = [ll.lat, ll.lng]; planoRender(); });
+        po.bar = planoBarra();
+        planoRender();
+        if (open) closeFicha();   // deja ver el mapa con el plano superpuesto
+        map.fitBounds(po.overlay.getBounds(), { maxZoom: 19, padding: [40, 40] });
+        toast('Plano cargado. Ajustalo con los controles.');
+      } catch (err) {
+        toast((err && err.message) || 'No se pudo leer el PDF.');
+      }
+    };
+    inp.click();
+  }
 
   // ---------- expediente: acceso ----------
   // ---------- Ventanas con Tabler (Bootstrap) ----------
