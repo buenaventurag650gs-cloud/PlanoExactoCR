@@ -92,8 +92,8 @@
   const num = (n, cls) => L.divIcon({ className: 'lnum ' + (cls || ''), html: n, iconSize: [22, 22], iconAnchor: [11, 11] });
   const sldText = name => `<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>${name}</Name><UserStyle><FeatureTypeStyle><Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
   const SNIT = {
-    cat: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { className: 'tl-cat' }),
-    vias: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { className: 'tl-vias' }),
+    cat: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', { crs: L.CRS.EPSG4326, className: 'tl-cat' }),
+    vias: () => wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'vias_publicas', { crs: L.CRS.EPSG4326, className: 'tl-vias' }),
     hidro: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:hidrografia_5000', { sld_body: sldLine('IGN_5:hidrografia_5000', HIDRO, 2.4, 1) }),
     curvas: () => wms('https://geos.snitcr.go.cr/be/IGN_5/wms', 'IGN_5:curvas_5000', { sld_body: sldLine('IGN_5:curvas_5000', CURV, 0.9, 0.85) })
   };
