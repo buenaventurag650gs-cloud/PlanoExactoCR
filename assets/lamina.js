@@ -68,7 +68,7 @@
               <span><i class="nb">2</i>Escuela${e.escP ? ' · ' + esc(titleCase(e.escP.t)) : ''}</span>
               <span><i class="sw" style="background:rgba(106,153,78,.3);border:1px solid rgba(106,153,78,.8)"></i>Cobertura de agua (AyA/ASADA, implícita)</span>
               <span><i class="sw" style="background:rgba(218,139,55,.3);border:1px solid rgba(218,139,55,.8)"></i>Postes y tendido eléctrico (ARESEP)</span>
-              <span>Zona eléctrica por operador y cobertura móvil 4G, si existen (ARESEP/ICE)</span>
+              <span>Zona eléctrica por operador, si existe (ARESEP)</span>
             </div>
           </div>
           <div class="lvars">${variables(r).map(([k, v, w]) => `<div class="${w ? 'w' : ''}"><small>${k}</small><b>${esc(v)}</b></div>`).join('')}</div>
@@ -146,9 +146,6 @@
       const g = L.layerGroup(pts.map(ll => L.circleMarker(ll, { radius: 2.6, color: '#fff', weight: 0.8, fillColor: 'rgb(218,139,55)', fillOpacity: 0.95, interactive: false })));
       g.addTo(m);
     }).catch(() => {});
-    // Cobertura móvil 4G (ICE/Kolbi): una sola tecnología representativa, en tile
-    // normal (sin proxy) porque aquí solo se muestra la imagen, no se leen sus píxeles.
-    wms('https://mapas.ice.go.cr/geoserver/ice/wms', 'ice:lte', { version: '1.3.0', opacity: 0.3, zIndex: 3, attribution: 'Cobertura móvil &copy; ICE (Kolbi)' }).addTo(m);
   }
 
   L_.maps = [];
@@ -193,10 +190,10 @@
     // Recuadro: detalle del predio
     const d = L.map('ldet', opt).setView(c, 18);
     d.getContainer().classList.add('on-sat');
-    esri('World_Imagery').addTo(d); SNIT.curvas().addTo(d); SNIT.hidro().addTo(d);
+    esri('World_Imagery', { maxNativeZoom: 18 }).addTo(d); SNIT.curvas().addTo(d); SNIT.hidro().addTo(d);
     if (r.poly) L.polygon(ringsLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.3 }).addTo(d);
     else L.circle(c, { radius: 600, color: TERRA_D, weight: 2, dashArray: '6 5', fill: false }).addTo(d);
-    const dfit = () => pg ? d.fitBounds(pg.getBounds(), { padding: [16, 16], maxZoom: 20 }) : d.setView(c, 14);
+    const dfit = () => pg ? d.fitBounds(pg.getBounds(), { padding: [16, 16], maxZoom: 18 }) : d.setView(c, 14);
     dfit(); L_.maps.push([d, dfit]);
 
     // Recuadro: ubicación en el país
