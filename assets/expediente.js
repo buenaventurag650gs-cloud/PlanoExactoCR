@@ -84,7 +84,7 @@
     const tl = r.isPlano ? '' : `<section class="blk"><h2>${I.gavel}Remate</h2>
       <table class="tb"><thead><tr><th>Etapa</th><th>Fecha</th><th class="n">Base</th></tr></thead><tbody>
       ${r.fd.map((d, k) => `<tr class="${k < r.st ? 'past' : ''}${k === r.st ? ' now' : ''}"><td>${PX.ETAPA[k]}${k ? ` <small>${PX.PCT[k] * 100} %</small>` : ''}</td><td>${fdate(d, true)}</td><td class="n">${PX.duo(r.bases[k], r.mon)}</td></tr>`).join('')}</tbody></table>
-      <dl class="kv sm"><dt>Expediente</dt><dd class="num">${esc(r.exp || '—')}</dd><dt>Despacho</dt><dd>${esc(r.juz || '—')}<small class="sub">${jc
+      <dl class="kv sm"><dt>Expediente</dt><dd class="num">${esc(r.exp || '—')}${r.exp ? `<small class="sub"><a href="https://pjenlinea.poder-judicial.go.cr/GestionEnLinea/inicio/consultas" target="_blank" rel="noopener">Consultar en el Poder Judicial</a> <small class="note2">(pegá el número de expediente en el buscador)</small></small>` : ''}</dd><dt>Despacho</dt><dd>${esc(r.juz || '—')}<small class="sub">${jc
         ? `<a href="tel:+506${jc.tel.replace(/\D/g, '')}">Llamar</a> · <a href="mailto:${jc.mail}">Escribir</a> · ${jc.tel}`
         : `<a href="tel:+50622953000">Central del Poder Judicial</a> · <a href="mailto:institucionalidad@poder-judicial.go.cr">Escribir</a> <small class="note2">(sin contacto directo de este despacho; línea gratuita 800-800-3000)</small>`
       }</small></dd><dt>Proceso</dt><dd>${esc(PX.cap(r.proc) || '—')}</dd><dt>Boletín Judicial</dt><dd>Nº ${(r.bols || [r.bol]).join(' y ')} de 2026</dd></dl></section>`;
@@ -140,13 +140,21 @@
     const riesg = `<section class="blk"><h2>${I.alerta}Riesgos posibles</h2><div class="rl">${ries.length ? ries.map(x => `<div class="r${x.n}"><i>${x.n === 1 ? 'i' : '!'}</i><span><b>${esc(x.t)}</b> <em>${lv[x.n]}</em><br>${esc(x.d)}</span></div>`).join('') : '<p>Sin riesgos detectados en los datos disponibles.</p>'}</div></section>`;
     const potl = `<section class="blk"><h2>${I.star}Potencialidades</h2><div class="rl pos">${pots.length ? pots.slice(0, 6).map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div></section>`;
     const chk = `<section class="blk"><h2>${I.list}Antes de ofertar</h2><ul class="chk">${PX.pro.CHECK.map(t => `<li>☐ ${t}</li>`).join('')}</ul></section>`;
+    const procLegal = `<section class="blk"><h2>${I.book}Cómo funciona el proceso de remate</h2><dl class="kv sm">
+      <dt>Art. 157 · Señalamiento y publicación</dt><dd>El tribunal fija en una sola resolución las fechas de las hasta tres subastas posibles. El edicto se publica en el Boletín Judicial y describe el bien, la base y los gravámenes que soporta.</dd>
+      <dt>Art. 158 · Suspensión</dt><dd>Solo se suspende si lo pide el acreedor, o si alguien deposita ante el tribunal una suma que cubra toda la deuda reclamada más costas. Un depósito claramente insuficiente no lo suspende; uno dudoso deja la subasta condicionada a completarlo en pocos días.</dd>
+      <dt>Art. 159 · Participar y pagar</dt><dd>Para ofertar hay que depositar el 50 % de la base (efectivo, entero bancario o cheque certificado de un banco costarricense). Quien gana tiene 3 días hábiles para depositar el resto en el Banco Nacional; si no lo hace, pierde el depósito y el remate se declara insubsistente.</dd>
+      <dt>Art. 161 · Si no hay postores</dt><dd>Sin ofertas en el primer remate, se repite con la base rebajada 25 %; si tampoco hay postores, un tercer remate arranca en el 25 % de la base original. Si ni así se presenta nadie, el bien se adjudica al acreedor ejecutante por ese mismo 25 %.</dd>
+      <dt>Art. 162 · Remate insubsistente</dt><dd>Si quien ganó no paga a tiempo, el 30 % de su depósito queda como indemnización para los acreedores y el resto se abona a la deuda. Se vuelve a subastar, pero esa vez el depósito para participar es por el 100 % de la base.</dd>
+      <dt>Art. 163 · Aprobación</dt><dd>Cumplidos los requisitos, el tribunal aprueba el remate, cancela los gravámenes posteriores al que se ejecuta y ordena entregar el bien al rematante — ahí se vuelve dueño de verdad.</dd>
+      </dl><p class="note2">Resumen en lenguaje llano del Código Procesal Civil (Ley 9342); no sustituye el texto legal ni asesoría de un abogado.</p></section>`;
 
     const fuentes = `<section class="blk"><h2>${I.book}Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · ICE: cobertura móvil e internet fijo · ARESEP: tendido eléctrico y transporte · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
     h += `<section class="page">${head('Detalles técnicos y de mercado')}<div class="cols">
         <div class="col"><p class="colkick">Detalles técnicos y legales</p>${tl}${reg}${serv}${grav}</div>
         <div class="col"><p class="colkick">Análisis de mercado</p>${val}${ana}</div></div>${foot(2)}</section>`;
     h += `<section class="page">${head('Normativa, potencial y riesgos')}<div class="cols">
-        <div class="col"><p class="colkick">Normativa y potencial</p>${norm}${potc}${chk}</div>
+        <div class="col"><p class="colkick">Normativa y potencial</p>${norm}${potc}${chk}${procLegal}</div>
         <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
     if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
