@@ -102,6 +102,26 @@
   </div></div>
 </div>
 <div class="modal-backdrop fade show" id="dlgDestBack" style="display:none"></div>
+<!-- Editar los textos de un correo de campaña -->
+<div class="modal modal-blur" id="dlgTxt" tabindex="-1" role="dialog" aria-modal="true" style="display:none">
+  <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width:900px"><div class="modal-content">
+    <div class="modal-header"><h3 class="modal-title" id="dlgTxtTitle">Editar textos</h3><button type="button" class="btn-close" data-tx="no" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="text-secondary small mb-2">Marcadores que podés usar: <span id="dlgTxtMarcas"></span>. Se rellenan solos con los datos de cada persona.</p>
+          <div id="dlgTxtCampos"></div>
+        </div>
+        <div class="col-lg-6">
+          <div class="d-flex justify-content-between align-items-center mb-2"><span class="fw-medium">Vista previa</span><button class="btn btn-sm" id="dlgTxtRefresh"><i class="ti ti-refresh me-1"></i>Actualizar</button></div>
+          <div id="dlgTxtPrev" style="border:1px solid var(--tblr-border-color);border-radius:8px;max-height:460px;overflow:auto;background:#EEF2F0"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost-danger me-auto" data-tx="reset">Restaurar textos por defecto</button><button class="btn" data-tx="no">Cancelar</button><button class="btn btn-primary" data-tx="si">Guardar cambios</button></div>
+  </div></div>
+</div>
+<div class="modal-backdrop fade show" id="dlgTxtBack" style="display:none"></div>
 <!-- Modal agregar/editar abogado -->
 <div class="modal modal-blur" id="dlgAbog" tabindex="-1" role="dialog" aria-modal="true" style="display:none">
   <div class="modal-dialog modal-dialog-centered" style="max-width:560px"><div class="modal-content">
@@ -191,7 +211,7 @@
       <td><div class="fw-medium">${esc(c.nombre)}</div><div class="text-secondary small">${esc(c.asunto)}</div>${c.activarPlan ? `<div class="badge bg-green-lt mt-1">Activa ${NOM[c.activarPlan] || c.activarPlan} por ${c.activarDias} días al enviar</div>` : ''}</td>
       <td>${c.faltan} persona${c.faltan === 1 ? '' : 's'} sin recibirlo</td>
       <td>${c.enviados}</td>
-      <td><div class="btn-list flex-nowrap"><button class="btn btn-sm" data-c="prueba">Probar a mi correo</button><button class="btn btn-sm btn-danger" data-c="enviar" ${c.faltan ? '' : 'disabled'}>Elegir y enviar</button></div></td></tr>`).join('')
+      <td><div class="btn-list flex-nowrap">${c.editable ? '<button class="btn btn-sm" data-c="texto"><i class="ti ti-edit me-1"></i>Editar textos</button>' : ''}<button class="btn btn-sm" data-c="prueba">Probar a mi correo</button><button class="btn btn-sm btn-danger" data-c="enviar" ${c.faltan ? '' : 'disabled'}>Elegir y enviar</button></div></td></tr>`).join('')
       : '<tr><td colspan="4" class="text-secondary">No hay mensajes preparados todavía.</td></tr>';
   }
   // Abre el modal con cajitas, una por destinatario elegible; resuelve con la lista
@@ -216,9 +236,66 @@
       };
     });
   }
+  // Editor de los textos de un correo: formulario a la izquierda, vista previa a la derecha.
+  let txtActual = null;   // { campana, campos }
+  function recogerTextos() {
+    const out = {};
+    for (const campo of (txtActual ? txtActual.campos : [])) {
+      const el = $('fx_' + campo.clave); if (!el) continue;
+      out[campo.clave] = campo.tipo === 'lista' ? el.value.split('\n').map(s => s.trim()).filter(Boolean) : el.value;
+    }
+    return out;
+  }
+  async function previewTextos() {
+    const prev = $('dlgTxtPrev'); prev.innerHTML = '<p class="text-secondary p-3 m-0">Generando vista previa…</p>';
+    const r = await fetch('/api/admin/campana-texto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: txtActual.campana, accion: 'preview', textos: recogerTextos() }) });
+    const j = await r.json().catch(() => ({}));
+    prev.innerHTML = r.ok ? j.html : '<p class="text-danger p-3 m-0">' + esc(j.error || 'No se pudo generar la vista previa') + '</p>';
+  }
+  async function editarTextos(id, nombre) {
+    const r = await fetch('/api/admin/campana-texto?campana=' + encodeURIComponent(id), { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(j.error || 'No se pudo cargar el texto', 'danger'); return; }
+    txtActual = { campana: id, campos: j.campos };
+    $('dlgTxtTitle').textContent = 'Editar textos · ' + nombre;
+    $('dlgTxtMarcas').innerHTML = (j.marcadores || []).map(m => `<code>${esc(m)}</code>`).join(' ');
+    $('dlgTxtCampos').innerHTML = j.campos.map(c => {
+      const val = c.tipo === 'lista' ? (Array.isArray(c.valor) ? c.valor.join('\n') : '') : (c.valor || '');
+      const marca = c.personalizado ? ' <span class="badge bg-blue-lt">editado</span>' : '';
+      if (c.tipo === 'linea') return `<div class="mb-3"><label class="form-label">${esc(c.label)}${marca}</label><input id="fx_${esc(c.clave)}" class="form-control" value="${esc(val)}"></div>`;
+      const filas = c.tipo === 'lista' ? Math.max(3, (val.split('\n').length)) : 2;
+      const ayuda = c.tipo === 'lista' ? '<div class="form-hint">Una línea por beneficio.</div>' : '';
+      return `<div class="mb-3"><label class="form-label">${esc(c.label)}${marca}</label><textarea id="fx_${esc(c.clave)}" class="form-control" rows="${filas}">${esc(val)}</textarea>${ayuda}</div>`;
+    }).join('');
+    const d = $('dlgTxt'); d.style.display = 'block'; d.classList.add('show'); $('dlgTxtBack').style.display = 'block';
+    previewTextos();
+    return new Promise(res => {
+      const cerrar = () => { d.style.display = 'none'; d.classList.remove('show'); $('dlgTxtBack').style.display = 'none'; d.onclick = null; $('dlgTxtRefresh').onclick = null; txtActual = null; res(); };
+      $('dlgTxtRefresh').onclick = previewTextos;
+      // Actualiza la vista previa al dejar de escribir en cualquier campo.
+      let t; $('dlgTxtCampos').oninput = () => { clearTimeout(t); t = setTimeout(previewTextos, 600); };
+      d.onclick = async e => {
+        const act = e.target.closest('[data-tx]');
+        if (e.target === d) return cerrar();
+        if (!act) return;
+        if (act.dataset.tx === 'no') return cerrar();
+        if (act.dataset.tx === 'reset') {
+          if (!(await confirmar('¿Restaurar los textos por defecto?', 'Se borran tus cambios en este correo y vuelve al texto original.', { peligro: true, ok: 'Restaurar' }))) return;
+          await fetch('/api/admin/campana-texto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'restaurar' }) });
+          toast('Textos restaurados', 'success'); cerrar(); editarTextos(id, nombre); cargarCampanas(); return;
+        }
+        if (act.dataset.tx === 'si') {
+          const rr = await fetch('/api/admin/campana-texto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, textos: recogerTextos() }) });
+          toast(rr.ok ? 'Textos guardados' : 'No se pudo guardar', rr.ok ? 'success' : 'danger');
+          if (rr.ok) { cerrar(); cargarCampanas(); }
+        }
+      };
+    });
+  }
   $('tc').addEventListener('click', async e => {
     const b = e.target.closest('button[data-c]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, nombre = tr.querySelector('.fw-medium').textContent;
+    if (b.dataset.c === 'texto') { editarTextos(id, nombre); return; }
     if (b.dataset.c === 'prueba') {
       const correo = 'planoexactocr@gmail.com';
       const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'prueba', correo }) });

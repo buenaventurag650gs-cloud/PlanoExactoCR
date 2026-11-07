@@ -496,25 +496,60 @@ ${imgBloque}<div style="padding:12px 16px 14px">
 <div style="font-size:13px;color:#4C5953;margin:0 0 8px">${r.area ? miles(r.area) + " m² &middot; " : ""}${dinero(baseActual, r.mon)}${fecha ? " &middot; " + etapa + " el " + fecha : ""}</div>
 <span style="font-size:13px;color:#159B75;font-weight:bold">Ver en el mapa →</span></div></a>` };
 }
+// ---------- Textos editables de las campañas ----------
+// Cada campaña declara en `textos` sus líneas editables, con marcadores {nombre}, {correo},
+// {hasta}, {dias}, {pct}, {cupon} que se rellenan por destinatario. El administrador puede
+// reescribirlas desde /admin (se guardan en config con la clave camp:<id> y se fusionan con los
+// valores por defecto). La estructura visual —cajas, tarjetas de remates, botones, colores— vive
+// en el código y no es editable, para que el correo no se pueda romper desde el panel.
+const cap1 = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+// Rellena los marcadores {x} y limpia los huecos que deja un nombre vacío (comas y espacios sueltos).
+function sub(s, v) {
+  return String(s == null ? "" : s).replace(/\{(\w+)\}/g, (_, k) => (v && v[k] != null) ? String(v[k]) : "")
+    .replace(/¡\s+/g, "¡").replace(/\s+([,.;:!?])/g, "$1").replace(/^[\s,;:]+/, "").replace(/\s{2,}/g, " ").trim();
+}
+// Textos resueltos de una campaña: valor por defecto, o la reescritura del admin si existe.
+function textosDe(c, ov) {
+  const T = {};
+  for (const k in (c.textos || {})) {
+    const def = c.textos[k].def, o = ov && ov[k];
+    if (c.textos[k].tipo === "lista") T[k] = Array.isArray(o) && o.length ? o : def;
+    else T[k] = (o != null && String(o).trim() !== "") ? o : def;
+  }
+  return T;
+}
+// Reescrituras guardadas de una campaña (vacío si no hay o si falla la lectura).
+async function textosGuardados(env, id) {
+  try { const r = await env.DB.prepare("SELECT v FROM config WHERE k = ?").bind("camp:" + id).first(); return r && r.v ? JSON.parse(r.v) : {}; }
+  catch (_) { return {}; }
+}
+
 const CAMPANAS = {
   tour: {
     nombre: "Tour rápido + cupón de 50 %",
-    construir: (us, props, env) => {
+    textos: {
+      asunto:     { label: "Asunto", tipo: "linea", def: "{nombre}, tu cupón de {pct} % en PlanoExactoCR" },
+      saludo:     { label: "Saludo", tipo: "linea", def: "Hola {nombre}," },
+      intro1:     { label: "Primer párrafo", tipo: "parrafo", def: "PlanoExactoCR junta en un solo mapa todos los remates judiciales vigentes en Costa Rica: ubicación exacta por plano o finca, zona homogénea de Hacienda, agua potable, electricidad, cobertura móvil, vías, ríos y distancia a la costa." },
+      intro2:     { label: "Segundo párrafo", tipo: "parrafo", def: "Con tu cuenta gratis ya ves lo básico de cada remate. Con un plan de pago generás el expediente completo en PDF: gravámenes explicados, potencial constructivo, valor de referencia y los riesgos del lote, listo para imprimir o mandarle a quien decida con vos." },
+      cuponTitulo:{ label: "Etiqueta del cupón", tipo: "linea", def: "Cupón especial · solo por correo" },
+      cuponNota:  { label: "Nota del cupón", tipo: "parrafo", def: "en la primera mensualidad de cualquier plan. Escribí este código al pagar:" },
+      boton:      { label: "Texto del botón", tipo: "linea", def: "Ver mapa de remates" }
+    },
+    construir: (us, props, env, T) => {
+      T = T || textosDe(CAMPANAS.tour, {});
       const dom = (env && env.DOMINIO) || "planoexactocr.com";
       const cp = us.cupon || "EJEMPLO50";
       const pct = Math.round(CUPON_PCT * 100);
       const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
-      const asunto = nombre ? `${nombre}, tu cupón de ${pct} % en PlanoExactoCR` : `Tu cupón de ${pct} % en PlanoExactoCR`;
-      const parrafos = [
-        nombre ? `Hola ${nombre},` : "Hola,",
-        "PlanoExactoCR junta en un solo mapa todos los remates judiciales vigentes en Costa Rica: ubicación exacta por plano o finca, zona homogénea de Hacienda, agua potable, electricidad, cobertura móvil, vías, ríos y distancia a la costa.",
-        "Con tu cuenta gratis ya ves lo básico de cada remate. Con un plan de pago generás el expediente completo en PDF: gravámenes explicados, potencial constructivo, valor de referencia y los riesgos del lote, listo para imprimir o mandarle a quien decida con vos."
-      ];
+      const v = { nombre, pct, cupon: cp };
+      const asunto = cap1(sub(T.asunto, v));
+      const parrafos = [esc(sub(T.saludo, v)), esc(sub(T.intro1, v)), esc(sub(T.intro2, v))];
       // Cupón especial del correo: 50 % con el código, escribiéndolo al pagar.
       const cupon = `<div style="margin:4px 0 22px;border:2px solid #C8553D;border-radius:12px;background:#FBF1EE;padding:18px 20px;text-align:center">
-<p style="font-size:12px;font-weight:bold;color:#C8553D;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">Cupón especial &middot; solo por correo</p>
+<p style="font-size:12px;font-weight:bold;color:#C8553D;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">${esc(sub(T.cuponTitulo, v))}</p>
 <p style="font-size:24px;font-weight:bold;color:#073B32;margin:0 0 4px">${pct}&nbsp;% de descuento</p>
-<p style="font-size:13px;color:#4C5953;margin:0 0 14px">en la primera mensualidad de cualquier plan. Escribí este código al pagar:</p>
+<p style="font-size:13px;color:#4C5953;margin:0 0 14px">${esc(sub(T.cuponNota, v))}</p>
 <span style="display:inline-block;background:#fff;border:2px dashed #C8553D;border-radius:8px;padding:10px 24px;font-size:21px;font-weight:bold;letter-spacing:2px;color:#073B32">${esc(cp)}</span></div>`;
       const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
       const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
@@ -532,52 +567,61 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
       const refTexto = `\n\n2x1: traé un compa y ganan los dos. Invitá a un amigo con tu enlace: él entra con ${pct} % de descuento y vos te ganás un mes gratis cuando pague. ${refLink}`;
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + cuponTexto + propsTexto + refTexto + "\n\nVer el mapa: " + enlace;
-      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace, env) };
+      const texto = [sub(T.saludo, v), sub(T.intro1, v), sub(T.intro2, v)].join("\n\n") + cuponTexto + propsTexto + refTexto + "\n\nVer el mapa: " + enlace;
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, sub(T.boton, v), enlace, env) };
     }
   },
   semana: {
     nombre: "Semana de prueba de Esencial",
     activarPlan: "basico",   // al enviar (no en la prueba), se activa este plan por activarDias días, sin necesidad de código
     activarDias: 7,
-    construir: (us, props, env) => {
-      const dom = (env && env.DOMINIO) || "planoexactocr.com";
-      const correo = us.correo || "tu correo";
-      const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
-      const hasta = sumarDias(hoy(), 7);
-      const hastaFmt = new Date(hasta + "T12:00:00Z").toLocaleDateString("es-CR", { day: "numeric", month: "long" });
-      const asunto = nombre ? `${nombre}, tu semana de prueba de Esencial ya está activa` : "Tu semana de prueba de Esencial ya está activa";
-      const parrafos = [
-        `¡Hola${nombre ? " " + nombre : ""}! &#128075;`,
-        "Te regalamos una semana de prueba del plan Esencial de PlanoExactoCR &mdash; ya está activa en tu cuenta, sin tarjeta ni código que escribir.",
-        "Durante tu semana de prueba vas a tener:"
-      ];
-      const BENEFICIOS = [
+    textos: {
+      asunto:      { label: "Asunto", tipo: "linea", def: "{nombre}, tu semana de prueba de Esencial ya está activa" },
+      saludo:      { label: "Saludo", tipo: "linea", def: "¡Hola {nombre}!" },
+      intro:       { label: "Párrafo de apertura", tipo: "parrafo", def: "Te regalamos una semana de prueba del plan Esencial de PlanoExactoCR — ya está activa en tu cuenta, sin tarjeta ni código que escribir." },
+      tituloLista: { label: "Línea antes de la lista de beneficios", tipo: "linea", def: "Durante tu semana de prueba vas a tener:" },
+      beneficios:  { label: "Beneficios (uno por línea)", tipo: "lista", def: [
         "Valor de Hacienda e índice Puja/Hacienda de cada remate",
         "Escala PECR completa",
         "Atributos del lote",
         "Apoyo legal en sitio",
         "Ordenar la lista, filtrar recientes y usar la vista de calendario"
-      ];
+      ] },
+      avisoTitulo:  { label: "Etiqueta de la caja de regalo", tipo: "linea", def: "Semana de prueba · ya está activa" },
+      avisoTitular: { label: "Titular de la caja de regalo", tipo: "linea", def: "{nombre}, tenés Esencial gratis {dias} días" },
+      avisoNota:    { label: "Nota de la caja de regalo", tipo: "parrafo", def: "Válida hasta el {hasta} en la cuenta {correo}. Si te sirve, podés seguir con el plan cuando se acabe." },
+      boton:        { label: "Texto del botón", tipo: "linea", def: "Ver mis remates →" }
+    },
+    construir: (us, props, env, T) => {
+      T = T || textosDe(CAMPANAS.semana, {});
+      const dom = (env && env.DOMINIO) || "planoexactocr.com";
+      const dias = CAMPANAS.semana.activarDias || 7;
+      const correo = us.correo || "tu correo";
+      const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
+      const hastaFmt = new Date(sumarDias(hoy(), dias) + "T12:00:00Z").toLocaleDateString("es-CR", { day: "numeric", month: "long" });
+      const v = { nombre, correo, hasta: hastaFmt, dias };
+      const asunto = cap1(sub(T.asunto, v));
+      const parrafos = [esc(sub(T.saludo, v)) + " &#128075;", esc(sub(T.intro, v)), esc(sub(T.tituloLista, v))];
+      const BENEFICIOS = (Array.isArray(T.beneficios) ? T.beneficios : []).map((b) => String(b).trim()).filter(Boolean);
       const beneficios = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;width:100%">
-${BENEFICIOS.map((b) => `<tr><td style="width:26px;vertical-align:top;padding:3px 10px 3px 0"><span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:#159B75;color:#fff;font-size:11px;font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif">&#10003;</span></td><td style="font-size:13.5px;color:#073B32;padding:3px 0;line-height:1.4">${esc(b)}</td></tr>`).join("")}
+${BENEFICIOS.map((b) => `<tr><td style="width:26px;vertical-align:top;padding:3px 10px 3px 0"><span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:#159B75;color:#fff;font-size:11px;font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif">&#10003;</span></td><td style="font-size:13.5px;color:#073B32;padding:3px 0;line-height:1.4">${esc(sub(b, v))}</td></tr>`).join("")}
 </table>`;
       const aviso = `<div style="margin:4px 0 18px;border:2px solid #159B75;border-radius:12px;background:#F2F7F4;padding:18px 20px;text-align:center">
-<p style="font-size:12px;font-weight:bold;color:#159B75;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">&#127873; Semana de prueba &middot; ya está activa</p>
-<p style="font-size:21px;font-weight:bold;color:#073B32;margin:0 0 4px">${nombre ? esc(nombre) + ", t" : "T"}enés Esencial gratis 7 días</p>
-<p style="font-size:13px;color:#4C5953;margin:0">Válida hasta el ${esc(hastaFmt)} en la cuenta ${esc(correo)}. Si te sirve, podés seguir con el plan cuando se acabe.</p></div>`;
+<p style="font-size:12px;font-weight:bold;color:#159B75;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">&#127873; ${esc(sub(T.avisoTitulo, v))}</p>
+<p style="font-size:21px;font-weight:bold;color:#073B32;margin:0 0 4px">${esc(cap1(sub(T.avisoTitular, v)))}</p>
+<p style="font-size:13px;color:#4C5953;margin:0">${esc(sub(T.avisoNota, v))}</p></div>`;
       const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
       const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
 <p style="font-size:13px;font-weight:bold;color:#073B32;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
 ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const extra = aviso + beneficios + bloqueProps;
       const enlace = `https://${dom}/mapa`;
-      const avisoTexto = `\n\nYa activamos tu semana de prueba de Esencial en tu cuenta (${correo}), válida hasta el ${hastaFmt}. No hace falta código ni tarjeta.`;
-      const beneficiosTexto = "\n\n" + BENEFICIOS.map((b) => `- ${b}`).join("\n");
+      const avisoTexto = "\n\n" + sub(T.avisoNota, v);
+      const beneficiosTexto = "\n\n" + BENEFICIOS.map((b) => `- ${sub(b, v)}`).join("\n");
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&#128075;/g, "").replace(/&mdash;/g, "—").replace(/&nbsp;/g, " ").trim()).join("\n\n") + beneficiosTexto + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
-      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mis remates →", enlace, env) };
+      const texto = [sub(T.saludo, v), sub(T.intro, v), sub(T.tituloLista, v)].join("\n\n") + beneficiosTexto + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, sub(T.boton, v), enlace, env) };
     }
   }
 };
@@ -897,12 +941,47 @@ async function admin(request, env, u) {
     const out = [];
     for (const id in CAMPANAS) {
       const c = CAMPANAS[id];
-      const prev = c.construir({ cupon: "EJEMPLO50" }, [], env);
+      const T = textosDe(c, await textosGuardados(env, id));
+      const prev = c.construir({ cupon: "EJEMPLO50", nombre: "María", correo: "correo@ejemplo.com" }, [], env, T);
       const enviados = await env.DB.prepare("SELECT COUNT(*) AS n FROM campanas WHERE campana = ?").bind(id).first();
       const faltan = await destinatariosCampana(env, id);
-      out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length, activarPlan: c.activarPlan || null, activarDias: c.activarDias || 0 });
+      out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length, activarPlan: c.activarPlan || null, activarDias: c.activarDias || 0, editable: !!c.textos });
     }
     return json({ campanas: out }, 200, 0);
+  }
+  if (ruta === "campana-texto") {   // leer (GET) o guardar/restaurar (POST) los textos editables de una campaña
+    if (request.method === "GET") {
+      const id = u.searchParams.get("campana"), c = CAMPANAS[id];
+      if (!c || !c.textos) return json({ error: "Esta campaña no tiene textos editables" }, 400, 0);
+      const ov = await textosGuardados(env, id);
+      const campos = Object.keys(c.textos).map((k) => ({ clave: k, label: c.textos[k].label, tipo: c.textos[k].tipo, valor: textosDe(c, ov)[k], porDefecto: c.textos[k].def, personalizado: ov[k] != null && ov[k] !== "" }));
+      return json({ campana: id, nombre: c.nombre, campos, marcadores: ["{nombre}", "{correo}", "{hasta}", "{dias}", "{pct}", "{cupon}"] }, 200, 0);
+    }
+    if (request.method === "POST") {
+      const b = await leerJSON(request), c = b && CAMPANAS[b.campana];
+      if (!c || !c.textos) return json({ error: "Campaña desconocida o sin textos editables" }, 400, 0);
+      if (b.accion === "preview") {   // construye el correo con los textos del borrador, sin guardar nada
+        const T = textosDe(c, b.textos || {});
+        const props = await mejoresPropiedades(u, env, 3).catch(() => []);
+        const msg = c.construir({ cupon: "EJEMPLO50", nombre: "María", correo: "correo@ejemplo.com" }, props, env, T);
+        return json({ asunto: msg.asunto, html: msg.html }, 200, 0);
+      }
+      if (b.accion === "restaurar") {
+        await env.DB.prepare("DELETE FROM config WHERE k = ?").bind("camp:" + b.campana).run();
+        return json({ ok: true, restaurado: true }, 200, 0);
+      }
+      // Guardar solo las claves conocidas; una lista llega como arreglo de líneas, lo demás como texto.
+      const limpio = {};
+      for (const k in c.textos) {
+        if (!(b.textos && k in b.textos)) continue;
+        const val = b.textos[k];
+        if (c.textos[k].tipo === "lista") limpio[k] = (Array.isArray(val) ? val : String(val || "").split("\n")).map((x) => String(x).trim()).filter(Boolean).slice(0, 20);
+        else limpio[k] = String(val == null ? "" : val).slice(0, 2000);
+      }
+      await env.DB.prepare("INSERT INTO config (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind("camp:" + b.campana, JSON.stringify(limpio)).run();
+      return json({ ok: true }, 200, 0);
+    }
+    return json({ error: "Método no permitido" }, 405, 0);
   }
   if (ruta === "campana-destinatarios") {   // lista de elegibles (correo, nombre) para marcar con cajitas en /admin
     const id = u.searchParams.get("campana");
@@ -915,11 +994,12 @@ async function admin(request, env, u) {
     const b = await leerJSON(request);
     const c = b && CAMPANAS[b.campana];
     if (!c) return json({ error: "Campaña desconocida" }, 400, 0);
+    const T = textosDe(c, await textosGuardados(env, b.campana));
     if (b.accion === "prueba") {
       const correo = String(b.correo || "").trim().toLowerCase();
       if (!CORREO_OK.test(correo)) return json({ error: "Correo de prueba inválido" }, 400, 0);
       const props = await mejoresPropiedades(u, env, 3);
-      const msg = c.construir({ cupon: "EJEMPLO50" }, props, env);
+      const msg = c.construir({ cupon: "EJEMPLO50", nombre: "María", correo }, props, env, T);
       const res = await enviarCorreoDbg(env, correo, "[Prueba] " + msg.asunto, msg.texto, msg.html);
       return json(res, res.ok ? 200 : 502, 0);
     }
@@ -933,7 +1013,7 @@ async function admin(request, env, u) {
       dest = dest.slice(0, 300);
       let enviados = 0, fallidos = 0, ultimoError = "";
       for (const us of dest) {
-        const msg = c.construir(us, props, env);
+        const msg = c.construir(us, props, env, T);
         const res = await enviarCorreoDbg(env, us.correo, msg.asunto, msg.texto, msg.html);
         if (res.ok) {
           await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run();
