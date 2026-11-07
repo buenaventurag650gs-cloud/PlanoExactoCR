@@ -535,6 +535,39 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + cuponTexto + propsTexto + refTexto + "\n\nVer el mapa: " + enlace;
       return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mapa de remates", enlace, env) };
     }
+  },
+  semana: {
+    nombre: "Semana gratis de Esencial",
+    activarPlan: "basico",   // al enviar (no en la prueba), se activa este plan por activarDias días, sin necesidad de código
+    activarDias: 7,
+    construir: (us, props, env) => {
+      const dom = (env && env.DOMINIO) || "planoexactocr.com";
+      const correo = us.correo || "tu correo";
+      const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
+      const hasta = sumarDias(hoy(), 7);
+      const hastaFmt = new Date(hasta + "T12:00:00Z").toLocaleDateString("es-CR", { day: "numeric", month: "long" });
+      const asunto = nombre ? `${nombre}, ya activamos tu semana gratis de Esencial` : "Ya activamos tu semana gratis de Esencial";
+      const parrafos = [
+        nombre ? `Hola ${nombre},` : "Hola,",
+        "Te regalamos una semana del plan Esencial de PlanoExactoCR, ya activa en tu cuenta: sin tarjeta, sin código que escribir.",
+        "Con Esencial ves el valor de Hacienda y el índice Puja/Hacienda de cada remate, la escala PECR completa, atributos del lote, apoyo legal en sitio, y podés ordenar la lista, filtrar recientes y usar la vista de calendario."
+      ];
+      const aviso = `<div style="margin:4px 0 22px;border:2px solid #159B75;border-radius:12px;background:#F2F7F4;padding:18px 20px;text-align:center">
+<p style="font-size:12px;font-weight:bold;color:#159B75;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">Regalo &middot; ya está activo</p>
+<p style="font-size:22px;font-weight:bold;color:#073B32;margin:0 0 4px">1 semana de Esencial</p>
+<p style="font-size:13px;color:#4C5953;margin:0">Válida hasta el ${esc(hastaFmt)} en la cuenta ${esc(correo)}. Si te sirve, podés seguir con el plan cuando se acabe.</p></div>`;
+      const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
+      const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
+<p style="font-size:13px;font-weight:bold;color:#073B32;text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px">3 remates con mejor índice PECR esta semana</p>
+${tarjetas.map((t) => t.html).join("")}</div>` : "";
+      const extra = aviso + bloqueProps;
+      const enlace = `https://${dom}/mapa`;
+      const avisoTexto = `\n\nYa activamos una semana del plan Esencial en tu cuenta (${correo}), válida hasta el ${hastaFmt}. No hace falta código ni tarjeta.`;
+      const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
+        tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mis remates", enlace, env) };
+    }
   }
 };
 async function destinatariosCampana(env, id) {
@@ -856,7 +889,7 @@ async function admin(request, env, u) {
       const prev = c.construir({ cupon: "EJEMPLO50" }, [], env);
       const enviados = await env.DB.prepare("SELECT COUNT(*) AS n FROM campanas WHERE campana = ?").bind(id).first();
       const faltan = await destinatariosCampana(env, id);
-      out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length });
+      out.push({ id, nombre: c.nombre, asunto: prev.asunto, parrafos: prev.html, enviados: enviados.n, faltan: faltan.length, activarPlan: c.activarPlan || null, activarDias: c.activarDias || 0 });
     }
     return json({ campanas: out }, 200, 0);
   }
@@ -891,8 +924,11 @@ async function admin(request, env, u) {
       for (const us of dest) {
         const msg = c.construir(us, props, env);
         const res = await enviarCorreoDbg(env, us.correo, msg.asunto, msg.texto, msg.html);
-        if (res.ok) { await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run(); enviados++; }
-        else { fallidos++; ultimoError = res.error || ""; }
+        if (res.ok) {
+          await env.DB.prepare("INSERT OR IGNORE INTO campanas (campana, correo, enviado) VALUES (?,?,?)").bind(b.campana, us.correo, new Date().toISOString()).run();
+          if (c.activarPlan) await env.DB.prepare("UPDATE usuarios SET plan = ?, pro_hasta = ? WHERE id = ?").bind(c.activarPlan, sumarDias(hoy(), c.activarDias || 7), us.id).run().catch(() => {});
+          enviados++;
+        } else { fallidos++; ultimoError = res.error || ""; }
       }
       return json({ ok: true, enviados, fallidos, total: dest.length, error: fallidos ? ultimoError : undefined }, 200, 0);
     }

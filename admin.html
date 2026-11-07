@@ -187,8 +187,8 @@
     const r = await fetch('/api/admin/campanas', { cache: 'no-store' });
     if (!r.ok) { $('tc').innerHTML = '<tr><td colspan="4" class="text-secondary">No se pudo cargar.</td></tr>'; return; }
     const L = (await r.json()).campanas;
-    $('tc').innerHTML = L.length ? L.map(c => `<tr data-id="${esc(c.id)}">
-      <td><div class="fw-medium">${esc(c.nombre)}</div><div class="text-secondary small">${esc(c.asunto)}</div></td>
+    $('tc').innerHTML = L.length ? L.map(c => `<tr data-id="${esc(c.id)}" data-activar-plan="${esc(c.activarPlan || '')}" data-activar-dias="${c.activarDias || 0}">
+      <td><div class="fw-medium">${esc(c.nombre)}</div><div class="text-secondary small">${esc(c.asunto)}</div>${c.activarPlan ? `<div class="badge bg-green-lt mt-1">Activa ${NOM[c.activarPlan] || c.activarPlan} por ${c.activarDias} días al enviar</div>` : ''}</td>
       <td>${c.faltan} persona${c.faltan === 1 ? '' : 's'} sin recibirlo</td>
       <td>${c.enviados}</td>
       <td><div class="btn-list flex-nowrap"><button class="btn btn-sm" data-c="prueba">Probar a mi correo</button><button class="btn btn-sm btn-danger" data-c="enviar" ${c.faltan ? '' : 'disabled'}>Elegir y enviar</button></div></td></tr>`).join('')
@@ -228,7 +228,9 @@
     }
     const correos = await elegirDestinatarios(id, nombre);
     if (!correos || !correos.length) return;
-    if (!(await confirmar('¿Enviar este correo?', `Se manda «${nombre}» a ${correos.length} persona${correos.length === 1 ? '' : 's'} marcada${correos.length === 1 ? '' : 's'}. No se repite a quien ya lo recibió, pero esto no se puede deshacer.`, { peligro: true, ok: 'Enviar ahora' }))) return;
+    const activarPlan = tr.dataset.activarPlan, activarDias = tr.dataset.activarDias;
+    const avisoPlan = activarPlan ? ` Además, se les activa el plan ${NOM[activarPlan] || activarPlan} por ${activarDias} días de inmediato, sin que tengan que hacer nada.` : '';
+    if (!(await confirmar('¿Enviar este correo?', `Se manda «${nombre}» a ${correos.length} persona${correos.length === 1 ? '' : 's'} marcada${correos.length === 1 ? '' : 's'}. No se repite a quien ya lo recibió, pero esto no se puede deshacer.${avisoPlan}`, { peligro: true, ok: 'Enviar ahora' }))) return;
     const r = await fetch('/api/admin/campana', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campana: id, accion: 'enviar', correos }) });
     const j = await r.json().catch(() => ({}));
     toast(r.ok ? `Enviado a ${j.enviados} de ${j.total}${j.fallidos ? ' (' + j.fallidos + ' fallaron: ' + j.error + ')' : ''}` : (j.error || 'No se pudo enviar'), r.ok && !j.fallidos ? 'success' : 'warning');
