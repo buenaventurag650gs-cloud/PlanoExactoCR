@@ -48,9 +48,11 @@
     const datos = r.isPlano
       ? [['Área según catastro', `<span class="num">${fnum(a)}</span> m²`], ['En remate', r.remate ? 'Sí' : 'No'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || '—')]]
       : [['Base vigente · ' + PX.ETAPA[r.st], PX.duo(r.bv, r.mon), 'w'], ['Fecha del remate', PX.fdate(r.next, true)], ['Área', a ? `<span class="num">${fnum(a)}</span> m²` : '—'], ['Precio por m²', r.usdm2 ? PX.duo(r.usdm2, 'USD') : '—'], ['Finca', esc(r.fincaTxt)], ['Plano', esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : '—'))]];
+    const fichaURL = location.origin + '/mapa#' + r.key;
+    const pmQR = PX.qrSVG ? `<a class="pmqr" href="${esc(fichaURL)}" target="_blank" rel="noopener" title="Ver esta ficha actualizada en línea">${PX.qrSVG(fichaURL, { nivel: 'M', quiet: 1 })}</a>` : '';
     return `<section class="lamina page" aria-label="Lámina del lote">
       <header class="ph"><div class="lbrand"><span class="mark"><img src="assets/img/logo-mark.svg" alt="" width="40" height="32"></span><span class="wmcol"><span class="wm"><span class="w1">PLANO</span><span class="w2">EXACTO</span><span class="w3">CR</span></span><span class="lsub">${esc(PX.CONTACTO.web)} · @${esc(PX.CONTACTO.ig)}</span></span></div>
-        <div class="pt"><span class="colkick">Resumen orientativo</span><b>${esc(r.nom)}</b><span>${esc(r.lugar || '')}</span></div><div class="pm"><b class="num">${meta.folio}</b><span>${PX.fdate(new Date())}</span></div></header>
+        <div class="pt"><span class="colkick">Resumen orientativo</span><b>${esc(r.nom)}</b><span>${esc(r.lugar || '')}</span></div><div class="pm">${pmQR}<span class="pmtxt"><b class="num">${meta.folio}</b><span>${PX.fdate(new Date())}</span><small>Ficha en línea ↗</small></span></div></header>
       <div class="lbody">
         <div class="lmapcol">
           <div class="lmapwrap"><div id="lmap" class="lmap"></div>
@@ -76,8 +78,8 @@
         <div class="lside">
           <div class="ldatos">${datos.map(([k, v, w]) => `<div class="${w || ''}"><small>${k}</small><b>${v}</b></div>`).join('')}</div>
           <div class="lidx"><div class="lscore"><span class="score big" style="--p:${s.total || 0}" data-v="${s.total ?? '–'}"></span><b>${PX.scoreLabel(s.total)}</b><small>Índice PlanoExacto</small></div>${radar(s)}</div>
-          <div class="lpot"><h3>Potencialidades</h3>${pot.length ? pot.map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<div><span>Sin ventajas destacadas en los datos disponibles.</span></div>'}</div>
-          <div class="lrie"><h3>Riesgos posibles <small>${alto} altos · ${med} medios</small></h3>${rie.length ? rie.map(x => `<div class="n${x.n}"><i>${x.n === 1 ? 'i' : '!'}</i><span><b>${esc(x.t)}.</b> ${esc(x.d.split('. ')[0].replace(/\.$/, ''))}.</span></div>`).join('') : '<div><span>Sin riesgos detectados en los datos disponibles.</span></div>'}</div>
+          <div class="lpot"><h3>Potencialidades</h3>${pot.length ? pot.map(x => `<div><i>+</i><span><b>${esc(x.t)}.</b> ${esc(x.d)}</span></div>`).join('') : '<p>Sin ventajas destacadas en los datos disponibles.</p>'}</div>
+          <div class="lrie"><h3>Riesgos posibles <small>${alto} altos · ${med} medios</small></h3>${rie.length ? rie.map(x => `<div class="n${x.n}"><i>${x.n === 1 ? 'i' : '!'}</i><span><b>${esc(x.t)}.</b> ${esc(x.d.split('. ')[0].replace(/\.$/, ''))}.</span></div>`).join('') : '<p>Sin riesgos detectados en los datos disponibles.</p>'}</div>
         </div>
       </div>
       <footer class="pf">Compendio de información pública y análisis orientativo: no es certificado de uso de suelo, certificación registral o catastral, avalúo ni estudio de título. Mapas © Esri, Maxar · Registro Inmobiliario · IGN.<span class="num">1</span></footer>

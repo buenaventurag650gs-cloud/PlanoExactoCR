@@ -38,7 +38,12 @@ body { background: var(--bg); }
 .lbrand .wm { font-size: 14px; }
 .lsub { font-size: 9px; color: #55635D; letter-spacing: .01em; }
 .pt { display: grid; } .pt b { font: 600 18px/1.2 var(--f-display); } .pt span { color: #55635D; }
-.pm { text-align: right; display: grid; color: #55635D; font-size: 11.5px; } .pm b { color: #073B32; font-size: 12px; }
+.pm { display: flex; align-items: center; gap: 8px; color: #55635D; font-size: 11.5px; }
+.pmqr { flex: none; width: 40px; height: 40px; display: block; }
+.pmqr svg { width: 100%; height: 100%; display: block; }
+.pmtxt { display: grid; text-align: right; }
+.pmtxt b { color: #073B32; font-size: 12px; }
+.pmtxt small { color: #159B75; font-size: 9px; font-weight: 600; }
 .pf { margin-top: auto; display: flex; justify-content: space-between; gap: 16px; font-size: 10px; color: #7B8782; border-top: 1px solid #DCD8CE; padding-top: 6px; }
 .money .u { color: #159B75; }
 .duo .eq, .duo .eq .u { color: #55635D; }
@@ -102,6 +107,7 @@ body { background: var(--bg); }
 .lrie h3 { color: #A2462A; } .lrie h3 small { font-weight: 600; letter-spacing: 0; text-transform: none; color: #55635D; margin-left: 4px; }
 .lpot div, .lrie div, .rl div { display: grid; grid-template-columns: 17px 1fr; gap: 7px; line-height: 1.38; font-size: 11.5px; }
 .lpot div, .lrie div { font-size: 11px; line-height: 1.32; }
+.lpot p, .lrie p { margin: 0; font-size: 11px; line-height: 1.32; color: #55635D; }
 .edicto.cols2 { column-count: 2; column-gap: 26px; font-size: 11px; }
 .lpot i, .lrie i, .rl i { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font: 700 10px/1 var(--f-body); font-style: normal; color: #fff; background: #2E7D5B; margin-top: 1px; }
 .lrie i, .rl .r3 i { background: #C8553D; } .lrie .n2 i, .rl .r2 i { background: #D98A5F; } .lrie .n1 i, .rl .r1 i { background: #8A948F; }
@@ -146,7 +152,7 @@ dl.kv.sm { grid-template-columns: 112px 1fr; gap: 3px 10px; margin-top: 8px; }
   .lbody, .cols { grid-template-columns: 1fr; }
   .lmapwrap { height: 520px; }
   .lvars { grid-template-columns: 1fr 1fr; }
-  .ph { grid-template-columns: 1fr; } .pm { text-align: left; }
+  .ph { grid-template-columns: 1fr; } .pm { justify-content: flex-start; } .pmtxt { text-align: left; }
   .inset.det { width: 150px; height: 120px; }
 }
 @page { size: letter landscape; margin: 8mm; }
@@ -180,6 +186,7 @@ dl.kv.sm { grid-template-columns: 112px 1fr; gap: 3px 10px; margin-top: 8px; }
 <main id="doc" class="doc" aria-live="polite"><p class="muted">Cargando expediente…</p></main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="assets/core.js"></script>
+<script src="assets/qr.js"></script>
 <script src="assets/pro.js"></script>
 <script src="assets/lamina.js"></script>
 <script src="assets/expediente.js"></script>
