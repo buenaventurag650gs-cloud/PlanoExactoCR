@@ -136,12 +136,22 @@
       ${nv.alertas.length ? `<div class="gl">${nv.alertas.map(t => `<div>${esc(t)}</div>`).join('')}</div>` : ''}
       ${nv.vigente ? '' : `<p class="note2">Fuente: ${esc(PX.pro.NAC.fuente)}.</p>`}</section>`;
     const z = e.zh, pcr = PX.pecr(r), vd = PX.pro.valDefaults(r), vc = PX.pro.valCalc(r, vd), ip = PX.iph(r);
+    // Barra graduada del nivel PECR (eje $/m² en escala log). El icono del nivel es la franja de
+    // color; la base vigente se marca con una barrita (el diamante amarillo es de Hacienda, que
+    // se muestra arriba, no aquí). Así no se confunden PECR y Hacienda.
+    const pecrBar = pcr ? (() => {
+      const bu = r.usdm2, L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100));
+      return `<div class="prange"><div class="pr-t"><i style="left:${L(pcr[2])}%;width:${L(pcr[3]) - L(pcr[2])}%;background:#2A6B4D"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}</div>
+        <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">$${v}</span>`).join('')}</div>
+        ${bu != null ? `<div class="pleg"><span class="sw lvl" style="background:#2A6B4D"></span>Rango del nivel<span class="sw mk"></span>Base vigente (${PX.duoI(bu, 'USD', '/m²')})</div>` : ''}</div>`;
+    })() : '';
     const val = `<section class="blk"><h2>${I.valor}Valor y mercado</h2><dl class="kv sm">
       ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : ''}
       ${vc.total ? `<dt>Valor de referencia</dt><dd>${PX.duoI(vc.total, 'CRC')}<small class="sub">Terreno ${PX.duoI(vc.terreno, 'CRC')}${vd.ac ? ` + construcción estimada ${fnum(vd.ac)} m² ${vd.tip} (${PX.duoI(vc.vnr, 'CRC')})` : ''}</small></dd>` : ''}
       ${ip ? `<dt>Índice Puja/Hacienda</dt><dd><b>${Math.round(ip.v)}</b> · ${esc(ip.band[1])}<small class="sub">Base vigente ÷ valor según Hacienda × 100. Por etapa: ${ip.etapas.map((v, i) => ['1.º', '2.º', '3.º'][i] + ' ' + Math.round(v)).join(' · ')}${ip.aviso ? '. ' + esc(ip.aviso) : ''}</small>${PX.iphBar(ip.v, true)}</dd>` : ''}
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de ${PX.PECR_N}</b> · ${esc(pcr[1])}</div><div class="sc">${PX.PECR.map(x => `<span class="${x[0] === pcr[0] ? 'me' : x[0] < pcr[0] ? 'on' : ''}"></span>`).join('')}</div>
+        ${pecrBar}
         ${PX.pecrTable(pcr, r.usdm2, null, '#2A6B4D')}</div>` : ''}
       <p class="note2">Referencias orientativas, no avalúo. Construcción estimada con supuestos editables en la herramienta PRO «Valor de referencia».</p></section>`;
     const ana = `<section class="blk"><h2>${I.entorno}Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
