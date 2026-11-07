@@ -91,7 +91,7 @@
     const diff = r.area && r.areaCat ? (r.areaCat - r.area) / r.area : null;
     const reg = `<section class="blk"><h2>${I.registro}Registro y catastro</h2><dl class="kv sm">
       <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.der && r.der !== '000' ? ' <span class="tag warn">derecho parcial</span>' : ''}</dd>
-      <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : 'No indicado'))}</dd>
+      <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : 'No indicado'))}${(r.plano || r.planoCat) ? ` <button class="btn-copy" onclick="navigator.clipboard.writeText('${esc(r.planoCat || '')}');this.textContent='✓ Copiado';setTimeout(()=>this.textContent='Copiar',1500)" title="Copiar número de plano">Copiar</button><small class="sub"><a href="https://siri.rnp.go.cr/SIRI/index.jsp?faces-redirect=true" target="_blank" rel="noopener">Consultar en SIRI (Registro Nacional) ↗</a></small>` : ''}</dd>
       ${r.nat ? `<dt>Naturaleza</dt><dd>${esc(r.nat)}</dd>` : ''}
       <dt>Área</dt><dd>${r.area ? `<span class="num">${fnum(r.area)}</span> m² en edicto` : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? `<span class="num">${fnum(r.areaCat)}</span> m² en catastro` : ''}${diff != null && Math.abs(diff) > 0.1 ? ` <span class="tag warn">${diff > 0 ? '+' : ''}${Math.round(diff * 100)} %</span>` : ''}</dd>
       ${nv.dims ? `<dt>Dimensiones</dt><dd>≈ <span class="num">${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)}</span> m <small class="sub">relación frente/fondo 1:${fnum(nv.dims.rel, 1)}, medida sobre el polígono catastral</small></dd>` : ''}
