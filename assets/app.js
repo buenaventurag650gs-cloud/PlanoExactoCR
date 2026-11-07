@@ -1500,9 +1500,12 @@
   }
   function planoRender() {
     if (!po) return;
-    const out = rotarCanvas(po.src, po.rot), aspect = out.height / out.width;
-    const [lat, lng] = po.center, hM = po.widthM * aspect;
-    const dLat = (hM / 2) / 111320, dLng = (po.widthM / 2) / (111320 * Math.cos(lat * Math.PI / 180));
+    const out = rotarCanvas(po.src, po.rot);
+    // Escala anclada al original: `widthM` es el ancho del plano sin rotar. Así, al girar,
+    // el recuadro cambia pero el plano conserva su tamaño físico sobre el terreno.
+    const mpp = po.widthM / po.src.width, wM = out.width * mpp, hM = out.height * mpp;
+    const [lat, lng] = po.center;
+    const dLat = (hM / 2) / 111320, dLng = (wM / 2) / (111320 * Math.cos(lat * Math.PI / 180));
     const bounds = [[lat - dLat, lng - dLng], [lat + dLat, lng + dLng]];
     const url = out.toDataURL('image/png');
     if (!po.overlay) { po.overlay = L.imageOverlay(url, bounds, { opacity: po.opacity, interactive: false, pane: 'overlayPane' }).addTo(map); }
