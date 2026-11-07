@@ -537,7 +537,7 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
     }
   },
   semana: {
-    nombre: "Semana gratis de Esencial",
+    nombre: "Semana de prueba de Esencial",
     activarPlan: "basico",   // al enviar (no en la prueba), se activa este plan por activarDias días, sin necesidad de código
     activarDias: 7,
     construir: (us, props, env) => {
@@ -546,11 +546,11 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const nombre = us.nombre ? esc(String(us.nombre).trim().split(/\s+/)[0]) : "";
       const hasta = sumarDias(hoy(), 7);
       const hastaFmt = new Date(hasta + "T12:00:00Z").toLocaleDateString("es-CR", { day: "numeric", month: "long" });
-      const asunto = nombre ? `${nombre}, ya activamos tu semana gratis de Esencial` : "Ya activamos tu semana gratis de Esencial";
+      const asunto = nombre ? `${nombre}, tu semana de prueba de Esencial ya está activa` : "Tu semana de prueba de Esencial ya está activa";
       const parrafos = [
-        nombre ? `Hola ${nombre},` : "Hola,",
-        "Te regalamos una semana del plan Esencial de PlanoExactoCR, ya activa en tu cuenta: sin tarjeta, sin código que escribir.",
-        "Con Esencial, de más vas a tener:"
+        `¡Hola${nombre ? " " + nombre : ""}! &#128075;`,
+        "Te regalamos una semana de prueba del plan Esencial de PlanoExactoCR &mdash; ya está activa en tu cuenta, sin tarjeta ni código que escribir.",
+        "Durante tu semana de prueba vas a tener:"
       ];
       const BENEFICIOS = [
         "Valor de Hacienda e índice Puja/Hacienda de cada remate",
@@ -563,8 +563,8 @@ ${tarjetas.map((t) => t.html).join("")}</div>` : "";
 ${BENEFICIOS.map((b) => `<tr><td style="width:26px;vertical-align:top;padding:3px 10px 3px 0"><span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:#159B75;color:#fff;font-size:11px;font-weight:bold;text-align:center;font-family:Arial,Helvetica,sans-serif">&#10003;</span></td><td style="font-size:13.5px;color:#073B32;padding:3px 0;line-height:1.4">${esc(b)}</td></tr>`).join("")}
 </table>`;
       const aviso = `<div style="margin:4px 0 18px;border:2px solid #159B75;border-radius:12px;background:#F2F7F4;padding:18px 20px;text-align:center">
-<p style="font-size:12px;font-weight:bold;color:#159B75;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">Regalo &middot; ya está activo</p>
-<p style="font-size:22px;font-weight:bold;color:#073B32;margin:0 0 4px">1 semana de Esencial</p>
+<p style="font-size:12px;font-weight:bold;color:#159B75;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 6px">&#127873; Semana de prueba &middot; ya está activa</p>
+<p style="font-size:21px;font-weight:bold;color:#073B32;margin:0 0 4px">${nombre ? esc(nombre) + ", t" : "T"}enés Esencial gratis 7 días</p>
 <p style="font-size:13px;color:#4C5953;margin:0">Válida hasta el ${esc(hastaFmt)} en la cuenta ${esc(correo)}. Si te sirve, podés seguir con el plan cuando se acabe.</p></div>`;
       const tarjetas = (props || []).map((r) => tarjetaPropiedadCorreo(r, env));
       const bloqueProps = tarjetas.length ? `<div style="margin:4px 0 20px">
@@ -572,12 +572,12 @@ ${BENEFICIOS.map((b) => `<tr><td style="width:26px;vertical-align:top;padding:3p
 ${tarjetas.map((t) => t.html).join("")}</div>` : "";
       const extra = aviso + beneficios + bloqueProps;
       const enlace = `https://${dom}/mapa`;
-      const avisoTexto = `\n\nYa activamos una semana del plan Esencial en tu cuenta (${correo}), válida hasta el ${hastaFmt}. No hace falta código ni tarjeta.`;
+      const avisoTexto = `\n\nYa activamos tu semana de prueba de Esencial en tu cuenta (${correo}), válida hasta el ${hastaFmt}. No hace falta código ni tarjeta.`;
       const beneficiosTexto = "\n\n" + BENEFICIOS.map((b) => `- ${b}`).join("\n");
       const propsTexto = tarjetas.length ? "\n\n3 remates con mejor índice PECR esta semana:\n" +
         tarjetas.map((t) => `- ${t.loc || "Costa Rica"} — ${t.fecha ? "remate el " + t.fecha + " — " : ""}${t.enlace}`).join("\n") : "";
-      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join("\n\n") + beneficiosTexto + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
-      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mis remates", enlace, env) };
+      const texto = parrafos.map((p) => p.replace(/<[^>]+>/g, "").replace(/&#128075;/g, "").replace(/&mdash;/g, "—").replace(/&nbsp;/g, " ").trim()).join("\n\n") + beneficiosTexto + avisoTexto + propsTexto + "\n\nVer el mapa: " + enlace;
+      return { asunto, texto, html: correoHTMLCampana(asunto, parrafos, extra, "Ver mis remates →", enlace, env) };
     }
   }
 };
