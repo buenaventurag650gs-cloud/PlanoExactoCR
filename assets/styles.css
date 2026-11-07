@@ -53,6 +53,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.gold { background: var(--goldbg); color: var(--gold); border-color: transparent; font-weight: 600; }
 .btn.sm { padding: 5px 9px; font-size: 12px; }
 .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.bic { display: inline-flex; align-items: center; margin-right: 5px; margin-left: -1px; }
+.bic svg { width: 15px; height: 15px; opacity: .85; }
 .btn-copy { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; margin-left: 6px; vertical-align: middle; }
 .btn-copy:hover { background: var(--accent-soft); }
 .tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 1px 6px; border-radius: 4px; background: var(--chip); color: var(--muted); }
@@ -155,6 +157,9 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 .fav[aria-pressed="true"] svg, .favbtn[aria-pressed="true"] svg { fill: currentColor; }
 .favbtn[aria-pressed="true"] { background: #FBE9E3; border-color: #E9B8A8; }
 .newbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.topbtn svg { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.topbtn[aria-pressed="true"] { background: var(--goldbg, #FBF0D6); border-color: #E6C65C; color: #9A7B16; }
+.topbtn[aria-pressed="true"] svg { fill: currentColor; }
 .rk.rp i { background: #2E7D5B; }
 
 /* Doble moneda: la principal arriba y su equivalente debajo */
@@ -500,6 +505,14 @@ header.top::before { content: ""; position: absolute; left: 0; right: 0; top: 0;
 .leaflet-marker-icon:hover .gr { transform: scale(1.08); }
 .gr.mini { width: 22px; height: 22px; } .gr.mini::before { width: 15px; height: 15px; } .gr.mini b { font-size: 8.5px; }
 .legend .pd { width: 13px; height: 13px; flex: none; margin: 0 2px; }
+/* Pantallas táctiles: el punto visible sigue pequeño, pero el área que recibe el toque
+   se amplía a ~44px (mínimo recomendado) con un pseudo-elemento invisible, para que sea
+   fácil tocar un remate en el teléfono sin tapar el mapa. */
+@media (pointer: coarse) {
+  .leaflet-marker-icon.pt::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); border-radius: 50%; }
+  .pd { transition: none; }
+  .legend .pd::after { content: none; }
+}
 /* Pago por SINPE Móvil */
 .pgmonto { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--chip); margin: 10px 0; }
 .pgmonto span { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }

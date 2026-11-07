@@ -9,6 +9,9 @@
   // Precios en colones (se muestran también en dólares).
   // Cuenta gratis: «semanal» expedientes por semana. Esencial: «semanalEsencial» por semana. PRO: sin límite.
   PX.PRECIOS = { esencial: 5190, esencialAnual: 51900, pro: 11290, anual: 112900, expediente: 5000, semanal: 1, semanalEsencial: 5, cupon: 50, cuponRef: 50 };
+  // Contacto de PlanoExactoCR — fuente única para expediente, inicio y pie de página.
+  // Cuando se defina el número de WhatsApp, cambiar `wa` acá y se actualiza en todo el sitio.
+  PX.CONTACTO = { web: 'planoexactocr.com', correo: 'hola@planoexactocr.com', ig: 'planoexacto', igUrl: 'https://instagram.com/planoexacto', wa: '', waUrl: '' };
   const MES = PX.MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
   const MESL = PX.MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIA = PX.DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -315,7 +318,11 @@
     elec: ic('<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>'),
     tele: ic('<path d="M8.1 16.5c2.1-2.1 5.7-2.1 7.8 0"/><path d="M5 13.4c3.9-3.9 10.1-3.9 14 0"/><path d="M2 10.3C7.1 5.1 16.9 5.1 22 10.3"/><circle cx="12" cy="20" r="1"/>'),
     bus: ic('<path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M7 18h10"/><rect x="4" y="4" width="16" height="14" rx="4"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>'),
-    servicios: ic('<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>')
+    servicios: ic('<path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>'),
+    // Acciones del panel derecho de la ficha
+    cmp: ic('<path d="M4 7h12l-3-3M20 17H8l3 3"/>'),
+    campana: ic('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
+    ojoNo: ic('<path d="M3 3l18 18"/><path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 4.1M6.6 6.6A18 18 0 0 0 2 12s3.5 7 10 7a10.6 10.6 0 0 0 4-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>')
   };
   // Ícono para cada fila de la ficha según su etiqueta
   PX.rowIcon = t => {

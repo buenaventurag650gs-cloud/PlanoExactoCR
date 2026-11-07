@@ -129,6 +129,7 @@
     CHK.forEach(k => $(k).checked = !!(s.chk ? s.chk[k] : (k === 'fSemana' ? s.wk : k === 'fNoServ' ? s.ns : k === 'fPR' ? s.pr : k === 'fAgua' ? s.ag : false)));
     onlyFav = !!s.fav; $('favOnly').setAttribute('aria-pressed', onlyFav);
     onlyNew = !!s.nw; $('newOnly').setAttribute('aria-pressed', onlyNew);
+    onlyTop = false; $('topOnly').setAttribute('aria-pressed', false);
     attrOn.clear(); if (PX.isPro()) (s.attrs || []).forEach(a => attrOn.add(a)); $('order').value = s.order || 'fecha';
     paintAttrs(); setTab('rem'); apply(); if (s.prov || s.canton || s.q) fitShown();
   }
@@ -136,6 +137,21 @@
   let shown = [], limit = 100;
   const scoreCache = new Map();
   const sc = r => { if (!scoreCache.has(r.key)) scoreCache.set(r.key, PX.score(r)); return scoreCache.get(r.key); };
+  // Top 70: los 10 mejores remates de cada provincia según el índice PlanoExacto (7 provincias × 10).
+  // Como lo ofrece el plan PRO («Top 10 por provincia»). Se calcula una vez por sesión.
+  let _top70 = null;
+  const TOP_X_PROV = 10;
+  function top70() {
+    if (_top70) return _top70;
+    const s = new Set();
+    for (let p = 1; p <= PX.PROVS.length; p++) {
+      live.filter(r => !r.isPlano && r.prov === p)
+        .sort((a, b) => (sc(b).total || 0) - (sc(a).total || 0))
+        .slice(0, TOP_X_PROV)
+        .forEach(r => s.add(r.key));
+    }
+    _top70 = s; return s;
+  }
   function apply() {
     const qRaw = $('q').value.trim(), q = PX.norm(qRaw), qd = qRaw.replace(/\D/g, '');
     const p = +$('fProv').value, c = $('fCanton').value;
@@ -154,6 +170,7 @@
       if (!verOcultos && PX.estaOculto(r.key)) return false;
       if (onlyFav && !PX.isFav(r.key)) return false;
       if (onlyNew && !(r.pub && PX.now - r.pub < 7 * 864e5)) return false;
+      if (onlyTop && !top70().has(r.key)) return false;
       if (!stOn[r.st]) return false;
       if (p && r.prov !== p) return false;
       if (c && r.cn !== c) return false;
@@ -193,7 +210,7 @@
     // contadores por grupo
     const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size + !isNaN(m2n) + !isNaN(m2x) + !isNaN(iphN) + !isNaN(iphX);
     [['onU', nU], ['onR', nR], ['onC', nC]].forEach(([id, n]) => { $(id).hidden = !n; $(id).textContent = n + (n === 1 ? ' filtro' : ' filtros'); });
-    const nt = nU + nR + nC + onlyFav; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = false;
+    const nt = nU + nR + nC + onlyFav + onlyTop; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = false;
     limit = 100; renderList(); renderMarkers();
   }
   ['q', 'fMin', 'fMax', 'aMin', 'aMax', 'm2Min', 'm2Max', 'iphMin', 'iphMax'].forEach(id => $(id).addEventListener('input', apply));
@@ -232,9 +249,14 @@
     if (onlyFav) apply(); else renderList();
     if (open === key) openFicha(open, false);
   }
-  let onlyFav = false, onlyNew = false, verOcultos = false;
+  let onlyFav = false, onlyNew = false, onlyTop = false, verOcultos = false;
   $('favOnly').onclick = () => { onlyFav = !onlyFav; $('favOnly').setAttribute('aria-pressed', onlyFav); apply(); };
   $('newOnly').onclick = () => { onlyNew = !onlyNew; $('newOnly').setAttribute('aria-pressed', onlyNew); apply(); };
+  $('topOnly').onclick = () => {
+    if (!PX.isPro()) { openPlanes(); return; }   // «Top 10 por provincia» es una función del plan PRO
+    onlyTop = !onlyTop; $('topOnly').setAttribute('aria-pressed', onlyTop); apply();
+    if (onlyTop) { toast(`Mostrando los ${TOP_X_PROV} mejores remates por provincia según el índice PlanoExacto`); fitShown(); }
+  };
   // Toggle «ver remates ocultos» desde Mi cuenta / botón flotante cuando hay ocultos
   PX.setVerOcultos = v => { verOcultos = !!v; apply(); };
   PX.getVerOcultos = () => verOcultos;
@@ -1016,8 +1038,9 @@
   const TERRA = '#D9906E', TERRA_D = '#C8553D';   // terracota del logo: predios en el mapa
   const ZSEP = 13;          // desde este zoom ya no se agrupa
   const RADIO = 54;         // distancia en píxeles para agrupar
+  const COARSE = matchMedia('(pointer: coarse)').matches;   // teléfono/tableta: puntos un poco más grandes
   const xIcon = (st, big, fav, exacto) => {
-    const c = XC[st] || '#15302A', d = big === 2 ? 26 : big ? 20 : 15;
+    const c = XC[st] || '#15302A', d = (big === 2 ? 26 : big ? 20 : 15) + (COARSE ? 3 : 0);
     const txt = big === 2 ? `<b>${st + 1}</b>` : '';
     return L.divIcon({ className: 'pt', iconSize: [d, d], iconAnchor: [d / 2, d / 2],
       html: `<span class="pd${exacto ? '' : ' aprox'}" style="--c:${c};width:${d}px;height:${d}px">${txt}${fav ? '<i class="pf"></i>' : ''}</span>` });
@@ -1111,14 +1134,15 @@
       <div class="input-group input-group-sm mt-2"><input type="text" class="form-control" id="lnew" placeholder="Nueva lista" aria-label="Nombre de la nueva lista"><button class="btn" id="lnewb">Crear</button></div></div></div>`;
   }
   function actionsHTML(r) {
-    const inCmp = cmp.includes(r.key), sg = PX.sigo(r.key), oc = PX.estaOculto(r.key);
+    const inCmp = cmp.includes(r.key), sg = PX.sigo(r.key), oc = PX.estaOculto(r.key), I = PX.ICON;
+    const bi = ico => `<span class="bic">${ico}</span>`;
     return `<div class="btn-list mb-3">
-      <button class="btn btn-sm${inCmp ? ' btn-primary' : ''}" data-act="cmp" aria-pressed="${inCmp}">${inCmp ? 'En comparación' : 'Comparar'}</button>
-      ${r.isPlano ? '' : `<button class="btn btn-sm${sg ? ' btn-primary' : ''}" data-act="sigo" aria-pressed="${sg}">${sg ? 'Siguiendo' : 'Seguir'}</button>`}
-      <button class="btn btn-sm" data-act="lista">Guardar en lista</button>
-      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Abrir el predio en Google Maps">Google Maps</a>` : ''}
-      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Si hay cobertura de Street View, abre la vista a nivel calle; si no, Google Maps muestra el punto">Street View</a>` : ''}
-      ${r.isPlano ? '' : `<button class="btn btn-sm${oc ? ' btn-outline-primary' : ''}" data-act="ocultar" title="${oc ? 'Volver a mostrar este remate' : 'Ocúltalo del mapa y de las listas. Podés recuperarlo desde «Mi cuenta → Ocultos».'}">${oc ? 'Volver a mostrar' : 'No ver más'}</button>`}
+      <button class="btn btn-sm${inCmp ? ' btn-primary' : ''}" data-act="cmp" aria-pressed="${inCmp}">${bi(I.cmp)}${inCmp ? 'En comparación' : 'Comparar'}</button>
+      ${r.isPlano ? '' : `<button class="btn btn-sm${sg ? ' btn-primary' : ''}" data-act="sigo" aria-pressed="${sg}">${bi(I.campana)}${sg ? 'Siguiendo' : 'Seguir'}</button>`}
+      <button class="btn btn-sm" data-act="lista">${bi(I.list)}Guardar en lista</button>
+      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Abrir el predio en Google Maps">${bi(I.pin)}Google Maps</a>` : ''}
+      ${r.ll ? `<a class="btn btn-sm" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener" title="Si hay cobertura de Street View, abre la vista a nivel calle; si no, Google Maps muestra el punto">${bi(I.eye)}Street View</a>` : ''}
+      ${r.isPlano ? '' : `<button class="btn btn-sm${oc ? ' btn-outline-primary' : ''}" data-act="ocultar" title="${oc ? 'Volver a mostrar este remate' : 'Ocúltalo del mapa y de las listas. Podés recuperarlo desde «Mi cuenta → Ocultos».'}">${bi(oc ? I.eye : I.ojoNo)}${oc ? 'Volver a mostrar' : 'No ver más'}</button>`}
     </div>${listMenu(r)}`;
   }
   // Forma del predio en pequeño: contorno a escala con norte y barra de escala
@@ -1226,7 +1250,7 @@
       ${actionsHTML(r)}
       ${r.rev ? `<div class="alert alert-warning"><div>${esc(r.rev)}</div></div>` : ''}
       ${fGrupo('Información base')}
-      ${r.isPlano ? '' : `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div></div>`}
+      ${r.isPlano ? '' : `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div>${(r.fd || []).some((d, k) => k >= r.st) ? `<div class="card-body py-2">${PX.isPro() ? `<button class="btn btn-sm w-100" data-act="ics"><span class="bic">${PX.ICON.cal}</span>Agregar a mi calendario</button>` : `<button class="btn btn-sm w-100" data-act="ics" title="Exporta las fechas del remate a tu calendario (función PRO)"><span class="bic">${PX.ICON.cal}</span>Agendar en mi calendario<span class="ms-2">${PX.PRO}</span></button>`}</div>` : ''}</div>`}
       ${ESEsec('Número de finca y plano, servidumbres citadas y origen de la ubicación.', I.registro, 'Registro y ubicación', `<dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
@@ -1348,6 +1372,38 @@
   }
   function closeFicha() { $('ficha').hidden = true; open = null; if (tab === 'top') renderHub(); selLayer.clearLayers(); document.querySelectorAll('.item[aria-current]').forEach(e => e.removeAttribute('aria-current')); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.querySelector('#layer > *')) closeLayer(); else if (open) closeFicha(); } });
+  // Exportar las fechas del remate a un archivo .ics (PRO). Zona horaria de Costa Rica (sin horario de verano).
+  function descargarICS(r) {
+    const p = n => String(n).padStart(2, '0');
+    const now = new Date();
+    const stamp = `${now.getUTCFullYear()}${p(now.getUTCMonth() + 1)}${p(now.getUTCDate())}T${p(now.getUTCHours())}${p(now.getUTCMinutes())}${p(now.getUTCSeconds())}Z`;
+    const esci = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    const local = d => `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+    const url = location.origin + '/mapa#' + r.key;
+    const eventos = (r.fd || []).map((d0, k) => {
+      const d = new Date(d0); if (isNaN(d.getTime()) || k < r.st) return '';   // solo etapas pendientes
+      const allDay = d.getHours() === 0 && d.getMinutes() === 0;
+      const fin = new Date(d.getTime() + 36e5);
+      const resumen = `Remate ${PX.ETAPA[k]} — ${r.nom}`;
+      const desc = `${PX.ETAPA[k]} · base ${PX.mt(PX.conv(r.bases[k], r.mon, 'CRC'), 'CRC')}${r.exp ? ' · Exp. ' + r.exp : ''}${r.juz ? '\n' + r.juz : ''}\nFicha: ${url}\n\nCompendio orientativo de PlanoExactoCR; confirme la fecha y hora exactas en el expediente judicial antes de presentarse.`;
+      return ['BEGIN:VEVENT', `UID:${r.key}-${k}@planoexactocr.com`, `DTSTAMP:${stamp}`,
+        allDay ? `DTSTART;VALUE=DATE:${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` : `DTSTART;TZID=America/Costa_Rica:${local(d)}`,
+        allDay ? '' : `DTEND;TZID=America/Costa_Rica:${local(fin)}`,
+        `SUMMARY:${esci(resumen)}`, r.juz || r.lugar ? `LOCATION:${esci(r.juz || r.lugar)}` : '',
+        `DESCRIPTION:${esci(desc)}`,
+        'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', `DESCRIPTION:${esci('Recordatorio: ' + resumen)}`, 'END:VALARM',
+        'END:VEVENT'].filter(Boolean).join('\r\n');
+    }).filter(Boolean);
+    if (!eventos.length) { toast('Este remate ya no tiene fechas pendientes.'); return; }
+    const cal = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PlanoExactoCR//Remates//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'BEGIN:VTIMEZONE', 'TZID:America/Costa_Rica', 'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:-0600', 'TZOFFSETTO:-0600', 'TZNAME:CST', 'END:STANDARD', 'END:VTIMEZONE',
+      ...eventos, 'END:VCALENDAR'].join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([cal], { type: 'text/calendar;charset=utf-8' }));
+    a.download = `remate-${r.key}.ics`; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    toast('Evento de calendario descargado. Ábrelo para agregarlo a tu agenda.');
+  }
   $('ficha').addEventListener('click', e => {
     if (e.target.closest('a[href="#"]')) e.preventDefault();
     const pt = e.target.closest('[data-protool]'); if (pt && open) { openPro(PX.item(open), pt.dataset.protool); return; }
@@ -1359,6 +1415,7 @@
     if (act === 'cmp') { toggleCmp(r.key); openFicha(open, false); return; }
     if (act === 'sigo') { const on = PX.toggleSigo(r.key); if (on) { PX.acct.snap = PX.acct.snap || {}; PX.acct.snap[r.key] = { st: r.st, bv: r.bv }; PX.saveAcct(); } toast(on ? 'Lo verás en Mi cuenta → Seguimiento' : 'Dejaste de seguir este remate'); openFicha(open, false); renderList(); return; }
     if (act === 'lista') { $('lmenu').hidden = !$('lmenu').hidden; return; }
+    if (act === 'ics') { if (PX.isPro()) descargarICS(r); else openPlanes(); return; }
     if (act === 'rem') { openFicha(r.remate, true); return; }
     if (act === 'ocultar') {
       const on = PX.toggleOculto(r.key);
@@ -1732,7 +1789,7 @@
     const [l, k] = n.split('|'); const it = PX.acct.listas.find(x => x.id === l).items.find(i => i.k === k);
     it.nota = e.target.value; PX.store.set('px-acct', PX.acct);
   });
-  document.addEventListener('px-acct', () => { paintPlan(); renderList(); paintAttrs(); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (!PX.isPro()) { attrOn.clear(); } if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop(); $('cmpN').textContent = cmp.length; });
+  document.addEventListener('px-acct', () => { paintPlan(); renderList(); paintAttrs(); syncLayers(); if (!$('lyrPanel').hidden) renderLyrPanel(); if (!PX.isPro()) { attrOn.clear(); if (onlyTop) { onlyTop = false; $('topOnly').setAttribute('aria-pressed', false); apply(); } } if (open) openFicha(open, false); if (tab === 'cmp') renderCmp(); if (tab === 'top') renderTop(); $('cmpN').textContent = cmp.length; });
 
   // ---------- buscar plano ----------
   let plaMode = 'plano';

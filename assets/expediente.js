@@ -161,12 +161,25 @@
 
     const apoyoLegal = `<section class="blk"><h2>⚖️ Apoyo legal en sitio</h2><div id="exp-apoyo">Cargando apoyo legal…</div></section>`;
     const fuentes = `<section class="blk"><h2>${I.book}Fuentes</h2><p class="note2">Boletín Judicial · Registro Inmobiliario (SNIT) · IGN: límites, hidrografía, curvas, vías, escuelas, puertos · Hacienda (ONT): zonas homogéneas y tipologías 2023 · AyA: coberturas de agua · INVU: planes reguladores y reglamentos · MINAE: cobertura 2020, zonas de vida · CCSS: salud · ICE: cobertura móvil e internet fijo · ARESEP: tendido eléctrico y transporte · BCCR: ${PX.duoT(1, 'USD')}, ${esc(PX.tc.fecha)}.</p></section>`;
+    const C = PX.CONTACTO;
+    const svgIG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>';
+    const svgWA = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l1.7-5A8.5 8.5 0 1 1 8 18.3z"/><path d="M8.5 9.5c0 4 2 6 6 6 .8 0 1.3-1 1-1.6l-1.6-.8-1 1c-1.2-.5-2-1.3-2.5-2.5l1-1-.8-1.6c-.6-.3-1.6.2-1.6 1z"/></svg>';
+    const svgML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+    const svgWEB = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>';
+    const contacto = `<section class="blk contacto"><h2>${I.info}¿Dudas sobre este remate? Hablemos</h2>
+      <p class="note2 mb-1">PlanoExactoCR acompaña el proceso: resolvemos dudas y, con el plan PRO, te conectamos con apoyo legal cerca del juzgado.</p>
+      <div class="cx">
+        <a href="mailto:${esc(C.correo)}?subject=${encodeURIComponent('Consulta sobre ' + r.nom)}">${svgML}<span>${esc(C.correo)}</span></a>
+        <a href="${esc(C.igUrl)}" target="_blank" rel="noopener">${svgIG}<span>@${esc(C.ig)}</span></a>
+        ${C.waUrl ? `<a href="${esc(C.waUrl)}?text=${encodeURIComponent('Hola, tengo una duda sobre ' + r.nom)}" target="_blank" rel="noopener">${svgWA}<span>WhatsApp</span></a>` : ''}
+        <a href="https://${esc(C.web)}" target="_blank" rel="noopener">${svgWEB}<span>${esc(C.web)}</span></a>
+      </div></section>`;
     h += `<section class="page">${head('Detalles técnicos y de mercado')}<div class="cols">
         <div class="col"><p class="colkick">Detalles técnicos y legales</p>${tl}${reg}${serv}${grav}</div>
         <div class="col"><p class="colkick">Análisis de mercado</p>${val}${ana}</div></div>${foot(2)}</section>`;
     h += `<section class="page">${head('Normativa, potencial y riesgos')}<div class="cols">
         <div class="col"><p class="colkick">Normativa y potencial</p>${norm}${potc}${chk}${procLegal}</div>
-        <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${apoyoLegal}${fuentes}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
+        <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${apoyoLegal}${fuentes}${contacto}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
     if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
