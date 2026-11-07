@@ -199,11 +199,20 @@
   PX.prepare = function (R) {
     for (const r of R) {
       r.key = 'r' + r.id;
+      r.fuente = r.fuente || 'judicial';   // judicial (Boletín) · icd · banco · sicop · otro
       r.fd = (r.f || []).map(s => new Date(s));
-      const i = r.fd.findIndex(d => d >= PX.now);
-      r.st = i; r.next = i >= 0 ? r.fd[i] : null;
-      r.bases = (r.f || []).map((_, k) => r.base * PX.PCT[k]);
-      r.bv = i >= 0 ? r.base * PX.PCT[i] : null;
+      if (r.fuente === 'judicial') {
+        const i = r.fd.findIndex(d => d >= PX.now);
+        r.st = i; r.next = i >= 0 ? r.fd[i] : null;
+        r.bases = (r.f || []).map((_, k) => r.base * PX.PCT[k]);
+        r.bv = i >= 0 ? r.base * PX.PCT[i] : null;
+      } else {
+        // Fuentes no judiciales (ICD, banco, SICOP…): precio único de venta, sin etapas de remate.
+        // `precio` es el precio de venta/base; `fv` la fecha de cierre o subasta, si la hay.
+        r.st = -1; r.bases = [];
+        r.bv = r.precio != null ? r.precio : (r.base != null ? r.base : null);
+        r.next = r.fv ? new Date(r.fv) : null;
+      }
       r.exact = r.loc === 'plano' || r.loc === 'finca';
       r.tg = r.tg || [];
       r.fincaTxt = (r.prov ? r.prov + '-' : '') + (r.finca || '') + (r.filial ? '-F' : '') + (r.der ? '-' + r.der : '');
@@ -324,6 +333,20 @@
     campana: ic('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
     ojoNo: ic('<path d="M3 3l18 18"/><path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 4.1M6.6 6.6A18 18 0 0 0 2 12s3.5 7 10 7a10.6 10.6 0 0 0 4-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>')
   };
+  // ---------- Fuentes de los inmuebles ----------
+  // PlanoExactoCR recibe inmuebles de varias fuentes, no solo del Boletín Judicial.
+  // `remate: true` indica que el bien tiene etapas (1.º/2.º/3.º); las demás son venta a precio único.
+  // El origen (teléfono/correo/enlace de contacto) va en r.origen = { ent, tel, correo, url }.
+  PX.FUENTES = {
+    judicial: { label: 'Remate judicial', short: 'Judicial', color: '#B42318', remate: true },
+    icd:      { label: 'Comiso (ICD)', short: 'ICD', color: '#7A4FB0', remate: true },
+    banco:    { label: 'Bien adjudicado a banco', short: 'Banco', color: '#1F6F8B', remate: false },
+    sicop:    { label: 'Venta pública (SICOP)', short: 'SICOP', color: '#2F7D32', remate: false },
+    otro:     { label: 'Otra fuente', short: 'Otra', color: '#6E6E6E', remate: false }
+  };
+  PX.fuenteDe = r => PX.FUENTES[r && r.fuente] || PX.FUENTES.judicial;
+  // Etiqueta de origen para la lista y la ficha; vacía para los remates judiciales (la vista no cambia).
+  PX.fuenteTag = r => { const f = PX.FUENTES[r && r.fuente]; return f && r.fuente && r.fuente !== 'judicial' ? `<span class="tag" style="background:color-mix(in srgb, ${f.color} 15%, transparent);color:${f.color}" title="Origen del dato">${f.short}</span>` : ''; };
   // Ícono para cada fila de la ficha según su etiqueta
   PX.rowIcon = t => {
     const n = PX.norm(t), I = PX.ICON;

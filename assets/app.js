@@ -58,6 +58,19 @@
     $('fProv').insertAdjacentHTML('beforeend', `<option value="${i + 1}">${p} (${live.filter(r => r.prov === i + 1).length})</option>`);
     $('plaProv').insertAdjacentHTML('beforeend', `<option value="${i + 1}">${p}</option>`);
   });
+  // Filtro por origen del dato: solo aparece cuando hay más de una fuente en los datos
+  // (mientras todo sea judicial, queda oculto y la vista no cambia).
+  (() => {
+    const cnt = {}; live.forEach(r => { const f = r.fuente || 'judicial'; cnt[f] = (cnt[f] || 0) + 1; });
+    const claves = Object.keys(cnt);
+    if (claves.length > 1) {
+      $('fFuenteRow').hidden = false;
+      claves.sort((a, b) => cnt[b] - cnt[a]).forEach(k => {
+        const f = PX.FUENTES[k] || PX.FUENTES.otro;
+        $('fFuente').insertAdjacentHTML('beforeend', `<option value="${k}">${f.label} (${cnt[k]})</option>`);
+      });
+    }
+  })();
   function fillCantones() {
     const p = +$('fProv').value, sel = $('fCanton'), keep = sel.value, cs = {};
     live.filter(r => !p || r.prov === p).forEach(r => { if (r.cn) cs[r.cn] = (cs[r.cn] || 0) + 1; });
@@ -117,10 +130,10 @@
   }
 
   const CHK = ['fSemana', 'fMes', 'fNoServ', 'fPR', 'fAgua', 'fAyA'];
-  const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, m2min: $('m2Min').value, m2max: $('m2Max').value, iphmin: $('iphMin').value, iphmax: $('iphMax').value, cur: PX.cur,
+  const filtState = () => ({ q: $('q').value, prov: $('fProv').value, canton: $('fCanton').value, fuente: $('fFuente').value, st: stOn.slice(), min: $('fMin').value, max: $('fMax').value, amin: $('aMin').value, amax: $('aMax').value, m2min: $('m2Min').value, m2max: $('m2Max').value, iphmin: $('iphMin').value, iphmax: $('iphMax').value, cur: PX.cur,
     tipos: [...tipoOn], chk: Object.fromEntries(CHK.map(k => [k, $(k).checked])), attrs: [...attrOn], order: $('order').value, fav: onlyFav, nw: onlyNew });
   function setFilt(s) {
-    $('q').value = s.q || ''; $('fProv').value = s.prov || ''; fillCantones(); $('fCanton').value = s.canton || '';
+    $('q').value = s.q || ''; $('fProv').value = s.prov || ''; fillCantones(); $('fCanton').value = s.canton || ''; $('fFuente').value = s.fuente || '';
     (s.st || [true, true, true]).forEach((v, i) => { stOn[i] = v; document.querySelector(`.stg[data-i="${i}"]`).setAttribute('aria-pressed', v); });
     if (s.cur && s.cur !== PX.cur) { PX.setCur(s.cur); setCurUI(); }
     $('fMin').value = s.min || ''; $('fMax').value = s.max || ''; $('aMin').value = s.amin || ''; $('aMax').value = s.amax || '';
@@ -154,7 +167,7 @@
   }
   function apply() {
     const qRaw = $('q').value.trim(), q = PX.norm(qRaw), qd = qRaw.replace(/\D/g, '');
-    const p = +$('fProv').value, c = $('fCanton').value;
+    const p = +$('fProv').value, c = $('fCanton').value, fu = $('fFuente').value;
     const mult = PX.cur === 'CRC' ? 1e6 : 1e3;
     const mn = parseFloat($('fMin').value), mx = parseFloat($('fMax').value);
     const mnV = isNaN(mn) ? null : mn * mult, mxV = isNaN(mx) ? null : mx * mult;
@@ -173,6 +186,7 @@
       if (onlyTop && !top70().has(r.key)) return false;
       if (!stOn[r.st]) return false;
       if (p && r.prov !== p) return false;
+      if (fu && (r.fuente || 'judicial') !== fu) return false;
       if (c && r.cn !== c) return false;
       if (tipoOn.size && !tipoOn.has(r.tipo)) return false;
       if (mes && !(r.pub && r.pub >= hace30)) return false;
@@ -208,13 +222,13 @@
       : o === 'iph' ? (a, b) => (a.iphV ?? Infinity) - (b.iphV ?? Infinity)
       : (a, b) => a.next - b.next);
     // contadores por grupo
-    const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size + !isNaN(m2n) + !isNaN(m2x) + !isNaN(iphN) + !isNaN(iphX);
+    const nU = (q ? 1 : 0) + (p ? 1 : 0) + (c ? 1 : 0) + (fu ? 1 : 0), nR = stOn.filter(x => !x).length + (mnV != null) + (mxV != null) + wk + mes, nC = tipoOn.size + !isNaN(an) + !isNaN(ax) + ns + pr + ag + aya + attrOn.size + !isNaN(m2n) + !isNaN(m2x) + !isNaN(iphN) + !isNaN(iphX);
     [['onU', nU], ['onR', nR], ['onC', nC]].forEach(([id, n]) => { $(id).hidden = !n; $(id).textContent = n + (n === 1 ? ' filtro' : ' filtros'); });
     const nt = nU + nR + nC + onlyFav + onlyTop; $('nAct').textContent = nt ? nt + (nt === 1 ? ' activo' : ' activos') : ''; $('resetF').disabled = false;
     limit = 100; renderList(); renderMarkers();
   }
   ['q', 'fMin', 'fMax', 'aMin', 'aMax', 'm2Min', 'm2Max', 'iphMin', 'iphMax'].forEach(id => $(id).addEventListener('input', apply));
-  ['fCanton', 'order'].concat(CHK).forEach(id => $(id).addEventListener('change', apply));
+  ['fCanton', 'order', 'fFuente'].concat(CHK).forEach(id => $(id).addEventListener('change', apply));
   $('resetF').onclick = () => { setFilt({ order: $('order').value }); calDay = null; if (open) closeFicha(); vistaInicial(); toast('Filtros y mapa restablecidos'); };
   $('fProv').addEventListener('change', () => { fillCantones(); $('fCanton').value = ''; apply(); fitShown(); });
   $('fCanton').addEventListener('change', fitShown);
@@ -226,6 +240,7 @@
   // ---------- lista ----------
   function itemHTML(r) {
     const tags = [PX.tipoTag(r)];
+    const ftag = PX.fuenteTag(r); if (ftag) tags.push(ftag);
     if (r.serv && r.serv.length) tags.push(`<span class="tag warn">Servidumbre</span>`);
     if (r.pub && PX.now - r.pub < 7 * 864e5) tags.push(`<span class="tag ok">Nuevo</span>`);
     if (PX.sigo(r.key)) tags.push(`<span class="tag gold">Siguiendo</span>`);
@@ -1029,7 +1044,7 @@
   function tip(r) {
     const a = PX.prof(r);
     if (r.isPlano) return `<span class="tipn">${esc(r.nom)}</span>${a ? fnum(a) + ' m²' : ''}<br><span class="tipm">${esc(r.lugar)}</span>`;
-    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.stageBadge(r.st, true)} ${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st]} · ${fdate(r.next)}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
+    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.stageBadge(r.st, true)} ${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st] || PX.fuenteDe(r).short}${r.next ? ' · ' + fdate(r.next) : ''}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
   }
   const ringLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
   // Marcadores: de lejos, círculos que agrupan los remates cercanos con su número y un anillo con la proporción
@@ -1186,7 +1201,7 @@
     f.innerHTML = `<div class="tb fichatb" data-bs-theme="${tbTema()}">${fHead(r)}
     <div class="fbody">
       <h2 class="mb-1">${esc(r.nom.replace(/ · /g, ' | '))}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
-      ${fPrecio(`Base vigente | ${PX.ETAPA[r.st] || ''} | ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), a ? AREA_ICON + '<b class="area-val">' + fnum(a) + ' m²</b>' : 'área s/d')}
+      ${fPrecio(`${PX.fuenteDe(r).remate ? 'Base vigente' : 'Precio de venta'} | ${PX.ETAPA[r.st] || ''} | ${r.next ? fdate(r.next) : '—'}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), a ? AREA_ICON + '<b class="area-val">' + fnum(a) + ' m²</b>' : 'área s/d')}
       ${r.poly ? `<div class="formap mb-3">${formaSVG(r)}</div>` : ''}
       <div class="card bg-primary text-white"><div class="card-body">
         <h3 class="card-title text-white">Crea tu cuenta gratis para ver la ficha</h3>
@@ -1227,7 +1242,7 @@
       top = fPrecio('Área según catastro', `${fnum(a)} m²`, '', r.remate ? '<a href="#" data-act="rem">Está en remate: ver ficha</a>' : 'No aparece en los remates vigentes');
     } else {
       const m2 = r.bv && a ? PX.conv(r.bv, r.mon, PX.cur) / a : null;
-      top = fPrecio(`Base vigente | ${PX.ETAPA[r.st]} | ${fdate(r.next)}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), `${a ? AREA_ICON + '<b class="area-val">' + fnum(a) + ' m²</b>' : 'área s/d'}${r.usdm2 ? ' | ' + PX.duoI(r.usdm2, 'USD', ' por m²') : ''}`);
+      top = fPrecio(`${PX.fuenteDe(r).remate ? 'Base vigente' : 'Precio de venta'} | ${PX.ETAPA[r.st] || ''} | ${r.next ? fdate(r.next) : '—'}`, PX.money(r.bv, r.mon), PX.other(r.bv, r.mon), `${a ? AREA_ICON + '<b class="area-val">' + fnum(a) + ' m²</b>' : 'área s/d'}${r.usdm2 ? ' | ' + PX.duoI(r.usdm2, 'USD', ' por m²') : ''}`);
     }
     const tl = (r.fd || []).map((d, k) => `<div class="list-group-item${k === r.st ? ' active' : ''}${k < r.st ? ' text-secondary' : ''}"><div class="row align-items-center g-2"><div class="col-auto">${PX.stageBadge(k, true)}</div>
         <div class="col"><div class="fw-medium">${PX.ETAPA[k]}${k ? ` · ${PX.PCT[k] * 100} %` : ''}</div><div class="small text-secondary">${fdate(d, true)}</div></div><div class="col-auto text-end${k < r.st ? ' text-decoration-line-through' : ''}">${PX.duo(r.bases[k], r.mon)}</div></div></div>`).join('');
@@ -1244,6 +1259,12 @@
     const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
     const pecrH = pc ? pecrHTML(r, pc) : '';
     const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
+    // Para inmuebles que no son remate judicial (banco, SICOP, etc.): bloque de origen en vez del timeline.
+    const origenCard = r => { const fsrc = PX.fuenteDe(r), o = r.origen || {};
+      const contacto = [o.ent ? esc(o.ent) : '', o.tel ? `<a href="tel:${esc(o.tel)}">${esc(o.tel)}</a>` : '', o.correo ? `<a href="mailto:${esc(o.correo)}">${esc(o.correo)}</a>` : '', o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">Ver publicación</a>` : ''].filter(Boolean).join(' · ');
+      return `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.info}</span><h3 class="card-title">Origen · ${esc(fsrc.short)}</h3>${r.next ? `<div class="card-actions">${PX.whenTag(r.next)}</div>` : ''}</div>
+        <div class="card-body"><dl class="kv"><dt>Fuente</dt><dd>${esc(fsrc.label)}</dd>${r.bv != null ? `<dt>Precio</dt><dd class="num">${PX.duoI(r.bv, r.mon)}</dd>` : ''}${r.next ? `<dt>Fecha</dt><dd>${fdate(r.next)}</dd>` : ''}${contacto ? `<dt>Contacto</dt><dd>${contacto}</dd>` : ''}</dl></div></div>`;
+    };
     f.innerHTML = `<div class="tb fichatb" data-bs-theme="${tbTema()}">${fHead(r, `<button class="btn btn-sm favbtn${fav ? ' btn-primary' : ''}" data-act="fav" aria-pressed="${fav}">${PX.HEART}<span class="ms-1">${fav ? 'En favoritos' : 'Favorito'}</span></button>`)}
     <div class="fbody">
       <h2 class="mb-1">${esc(r.nom.replace(/ · /g, ' | '))}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
@@ -1251,7 +1272,7 @@
       ${actionsHTML(r)}
       ${r.rev ? `<div class="alert alert-warning"><div>${esc(r.rev)}</div></div>` : ''}
       ${fGrupo('Información base')}
-      ${r.isPlano ? '' : `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div>${(r.fd || []).some((d, k) => k >= r.st) ? `<div class="card-body py-2">${PX.isPro() ? `<button class="btn btn-sm w-100" data-act="ics"><span class="bic">${PX.ICON.cal}</span>Agregar a mi calendario</button>` : `<button class="btn btn-sm w-100" data-act="ics" title="Exporta las fechas del remate a tu calendario (función PRO)"><span class="bic">${PX.ICON.cal}</span>Agendar en mi calendario<span class="ms-2">${PX.PRO}</span></button>`}</div>` : ''}</div>`}
+      ${r.isPlano ? '' : (PX.fuenteDe(r).remate ? `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div>${(r.fd || []).some((d, k) => k >= r.st) ? `<div class="card-body py-2">${PX.isPro() ? `<button class="btn btn-sm w-100" data-act="ics"><span class="bic">${PX.ICON.cal}</span>Agregar a mi calendario</button>` : `<button class="btn btn-sm w-100" data-act="ics" title="Exporta las fechas del remate a tu calendario (función PRO)"><span class="bic">${PX.ICON.cal}</span>Agendar en mi calendario<span class="ms-2">${PX.PRO}</span></button>`}</div>` : ''}</div>` : origenCard(r))}
       ${ESEsec('Número de finca y plano, servidumbres citadas y origen de la ubicación.', I.registro, 'Registro y ubicación', `<dl class="kv">
         <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.multi ? ' <span class="tag warn">varias fincas o derechos</span>' : ''}</dd>
         <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) + ' (catastro)' : 'No indicado'))}</dd>
@@ -1982,7 +2003,7 @@
         ${row('Base vigente', its.map(r => r.isPlano ? '<span class="muted">No está en remate</span>' : PX.duo(r.bv, r.mon)), best(its.map(r => r.isPlano ? null : PX.usd(r.bv, r.mon)), false))}
         ${row('Área', its.map(r => PX.prof(r) ? fnum(PX.prof(r)) + ' m²' : '—'), best(its.map(PX.prof), true))}
         ${row('Precio por m²', its.map(r => r.usdm2 == null ? '—' : PX.duo(r.usdm2, 'USD')), best(m2, false))}
-        ${row('Fecha', its.map(r => r.isPlano ? '—' : `${PX.ETAPA[r.st]}<br><small class="muted">${fdate(r.next)}</small>`), -1)}
+        ${row('Fecha', its.map(r => r.isPlano ? '—' : `${PX.ETAPA[r.st] || PX.fuenteDe(r).short}<br><small class="muted">${r.next ? fdate(r.next) : '—'}</small>`), -1)}
         ${row('Ubicación', its.map(r => esc(r.cn || '—')), -1)}
         ${row('Plan regulador', its.map(r => r.ent && r.ent.pr ? (r.ent.pr.si ? 'Vigente' : 'No vigente') : '—'), -1)}
         ${PX.DIMS.map(d => row(d.n, S.map(s => s[d.k] == null ? '–' : `<span class="num">${s[d.k]}</span>`), best(S.map(s => s[d.k]), true))).join('')}
