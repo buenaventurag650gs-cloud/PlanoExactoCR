@@ -1841,6 +1841,28 @@ async function manejarPeticion(request, env) {
       if (p === "/admin/registros.csv") return env.REGISTROS ? exportarRegistros(env) : txt("Falta el almacenamiento de registros (KV).", 503);
       if (p === "/admin/usuarios.csv") return env.DB ? exportarUsuarios(env) : txt("Falta la base de datos (D1).", 503);
     }
+    // Vista "compartir": tarjeta visual 1200×800 con mapa Leaflet + ficha (admin).
+    // /compartir        → redirige a /compartir/0 (el primer remate con polígono)
+    // /compartir/<id>   → página HTML con mapa y panel de datos, lista para screenshot
+    if (p === "/compartir") return Response.redirect(new URL("/compartir/0", u).toString(), 302);
+    const mCompartir = p.match(/^\/compartir\/(\d+)$/);
+    if (mCompartir) {
+      if (!adm) return txt("Acceso restringido", 401);
+      // Sirve compartir.html inyectando los datos completos del remate en window.__PX_DATA__
+      const id = parseInt(mCompartir[1], 10);
+      const R = await (await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)))).json();
+      const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);
+      const meds = prepararTarjeta(R, ahora);
+      const r = !isNaN(id) && id > 0 ? R.find((x) => x.id === id) : R.find((x) => x.poly);
+      const metaR = await (await env.ASSETS.fetch(new Request(new URL("/data/meta.json", u)))).json().catch(() => ({}));
+      const htmlR = await env.ASSETS.fetch(new Request(new URL("/compartir.html", u)));
+      let html = await htmlR.text();
+      // Inyectar datos antes del cierre de </head>
+      const inject = `<script>window.__PX_DATA__=${JSON.stringify({ r, R_len: R.length, r_idx: r ? R.indexOf(r) : 0, meta: metaR })};<\/script>`;
+      html = html.replace("</head>", inject + "\n</head>");
+      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "private, no-store" } });
+    }
+
     // Tarjeta social de un remate (admin). Variantes:
     //   /tarjeta/<id>              → página HTML con preview y botón "Descargar PNG"
     //   /tarjeta/<id>.svg          → SVG con fuente de Google Fonts (ligero, para inspección)

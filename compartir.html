@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tarjeta · PlanoExactoCR</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/proj4@2.9.0/dist/proj4.js" integrity="sha256-tsjlDiRXDSAsuQALr13ta74LzDw1fOf0yfPGMB2FmfU=" crossorigin=""></script>
+<script src="/assets/core.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Jost', system-ui, sans-serif; background: #F1EEE7; color: #1a1a1a; }
+
+/* ── Tarjeta 1200×800 centrada ── */
+.tarjeta {
+  width: 1200px; height: 800px;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  overflow: hidden;
+  background: #F1EEE7;
+  position: relative;
+}
+
+/* ── Mapa ── */
+#map { width: 100%; height: 100%; }
+
+/* ── Panel derecho ── */
+.panel {
+  display: flex; flex-direction: column;
+  background: #FAFAF8;
+  border-left: 1px solid #D6D3CB;
+  overflow: hidden;
+}
+
+/* Cabecera del panel */
+.panel-head {
+  background: #1F3D2E;
+  color: #fff;
+  padding: 16px 20px 14px;
+  flex-shrink: 0;
+}
+.panel-head .marca {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 0.08em;
+  opacity: 0.7; margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.panel-head .marca svg { opacity: 0.9; }
+.panel-head h1 {
+  font-size: 15px; font-weight: 600; line-height: 1.3;
+  margin-bottom: 4px;
+}
+.panel-head .loc { font-size: 12px; opacity: 0.75; }
+
+/* Badge de etapa */
+.etapa-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px; border-radius: 3px;
+  margin-bottom: 8px;
+}
+.etapa-1 { background: #2B5C8A; color: #fff; }
+.etapa-2 { background: #B7791F; color: #fff; }
+.etapa-3 { background: #B42318; color: #fff; }
+
+/* Precio */
+.precio-bloque {
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid #E8E5DF;
+  flex-shrink: 0;
+}
+.precio-bloque .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #55635D; margin-bottom: 2px; }
+.precio-bloque .val { font-size: 24px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+.precio-bloque .alt { font-size: 13px; color: #55635D; margin-top: 2px; }
+
+/* Índice PECR */
+.pecr-bloque {
+  padding: 12px 20px;
+  border-bottom: 1px solid #E8E5DF;
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.pecr-num {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-weight: 700; flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.12);
+}
+.pecr-num .n { font-size: 24px; line-height: 1; }
+.pecr-num .de { font-size: 10px; opacity: 0.75; }
+.pecr-info .titulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #55635D; }
+.pecr-info .label { font-size: 14px; font-weight: 600; }
+.pecr-info .desc { font-size: 11px; color: #55635D; line-height: 1.35; }
+
+/* Radar de dimensiones */
+.dims-bloque {
+  padding: 10px 20px 12px;
+  border-bottom: 1px solid #E8E5DF;
+  flex-shrink: 0;
+}
+.dims-bloque .titulo { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #55635D; margin-bottom: 8px; }
+.dims-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.dim-item { display: flex; flex-direction: column; gap: 3px; }
+.dim-item .dim-lbl { font-size: 10px; color: #55635D; }
+.dim-item .dim-bar { height: 6px; border-radius: 3px; background: #E8E5DF; overflow: hidden; }
+.dim-item .dim-fill { height: 100%; border-radius: 3px; }
+.dim-item .dim-val { font-size: 11px; font-weight: 600; color: #1a1a1a; }
+
+/* Datos de entorno */
+.datos-bloque {
+  padding: 10px 20px;
+  flex: 1;
+  overflow: hidden;
+}
+.datos-bloque .titulo { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #55635D; margin-bottom: 8px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+.kv dt { font-size: 10px; color: #55635D; white-space: nowrap; padding-top: 1px; }
+.kv dd { font-size: 11px; font-weight: 500; }
+
+/* Pie */
+.panel-foot {
+  padding: 8px 20px;
+  border-top: 1px solid #E8E5DF;
+  font-size: 9px; color: #55635D;
+  flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-foot .url { font-weight: 600; color: #1F3D2E; }
+
+/* ── Controles fuera de la tarjeta (solo admin, no se ven en screenshot) ── */
+.controles {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+  font-family: 'Jost', system-ui, sans-serif;
+}
+.controles button {
+  background: #1F3D2E; color: #fff; border: none; cursor: pointer;
+  padding: 10px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.controles button:hover { background: #2D5440; }
+.controles .nav-btn { background: #55635D; }
+.controles .nav-btn:hover { background: #3D4A44; }
+.error-msg { color: #B42318; background: #fff; padding: 20px; font-size: 14px; }
+
+/* ── Ocultar controles de Leaflet (modo captura) ── */
+.leaflet-control-zoom { display: none !important; }
+.leaflet-control-attribution { display: none !important; }
+
+/* ── Colores PECR por nivel ── */
+.pecr-1  { background: #E0CFA3; color: #3a2e0d; }
+.pecr-2  { background: #CFC48D; color: #3a2e0d; }
+.pecr-3  { background: #B8BA7C; color: #2a2e0d; }
+.pecr-4  { background: #9DAE70; color: #1a2a0a; }
+.pecr-5  { background: #80A068; color: #fff; }
+.pecr-6  { background: #619060; color: #fff; }
+.pecr-7  { background: #477F57; color: #fff; }
+.pecr-8  { background: #316C4E; color: #fff; }
+.pecr-9  { background: #1F5843; color: #fff; }
+.pecr-10 { background: #123F31; color: #fff; }
+
+/* ── Fill de barras por dimensión ── */
+.fill-juridica   { background: #2B5C8A; }
+.fill-precio     { background: #9DAE70; }
+.fill-servicios  { background: #E9C46A; }
+.fill-restricciones { background: #E07C4F; }
+
+/* Wrapper centrado para modo pantalla completa */
+body > .wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="tarjeta" id="tarjeta">
+    <div id="map"></div>
+    <div class="panel" id="panel">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#55635D;font-size:14px">
+        Cargando…
+      </div>
+    </div>
+  </div>
+</div>
+<div class="controles" id="controles">
+  <button id="btn-png">⬇ Descargar PNG</button>
+  <button class="nav-btn" id="btn-prev">← Anterior</button>
+  <button class="nav-btn" id="btn-next">Siguiente →</button>
+</div>
+
+<script>
+(async function () {
+  'use strict';
+
+  // ── Parámetros de URL ──────────────────────────────────────────────────────
+  const qs = new URLSearchParams(location.search);
+  const id = parseInt(qs.get('id') || '', 10);
+
+  // ── Paleta PECR ──────────────────────────────────────────────────────────
+  const PECR_COL = ['#E0CFA3','#CFC48D','#B8BA7C','#9DAE70','#80A068','#619060','#477F57','#316C4E','#1F5843','#123F31'];
+  const PECR_TXT = ['#3a2e0d','#3a2e0d','#2a2e0d','#1a2a0a','#fff','#fff','#fff','#fff','#fff','#fff'];
+
+  // ── Formato de números ────────────────────────────────────────────────────
+  const fnum = v => v == null ? '—' : Number(v).toLocaleString('de-DE', { maximumFractionDigits: 0 });
+  const fmt_crc = v => v == null ? '—' : '₡' + fnum(v);
+  const fmt_usd = v => v == null ? '—' : '$' + (v < 10 ? v.toFixed(1) : fnum(v));
+  const dist = m => m < 1000 ? fnum(m) + ' m' : (m / 1000).toFixed(1) + ' km';
+  const esc = s => s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // ── Datos inyectados por el worker (window.__PX_DATA__) ──────────────────
+  // El worker sirve esta página con los datos completos del remate inyectados
+  // para evitar problemas de autenticación en fetch desde el cliente.
+  const D = window.__PX_DATA__;
+  if (!D || !D.r) {
+    document.getElementById('panel').innerHTML = `<div class="error-msg">No hay datos. Accede desde /compartir/&lt;id&gt;</div>`;
+    return;
+  }
+  const META = D.meta || {};
+  PX.tc = META.tc || { venta: 530 };
+  // Inicializar PX con un array mínimo que contenga el remate actual
+  if (PX.prepare) PX.prepare([D.r]);
+
+  // Remate actual (el worker inyecta solo el remate solicitado y su índice)
+  let idx = D.r_idx || 0;
+  // Para navegación entre remates, necesitamos cargar todos los datos
+  // (solo se usa al hacer clic en Anterior/Siguiente, con carga lazy)
+  let R_cache = null;
+  async function getR() {
+    if (R_cache) return R_cache;
+    try {
+      R_cache = await PX.get('data/remates.json');
+      PX.tc = META.tc || { venta: 530 };
+      PX.prepare(R_cache);
+    } catch (e) {
+      // Si falla (sin cuenta), solo navegamos al remate actual
+      R_cache = [D.r];
+    }
+    return R_cache;
+  }
+
+  function renderRemate(i, rOverride) {
+    const r = rOverride || (R_cache && R_cache[i]);
+    if (!r) return;
+
+    // ── Mapa Leaflet ──────────────────────────────────────────────────────
+    const mapEl = document.getElementById('map');
+    if (window._leafMap) { window._leafMap.remove(); }
+    const map = L.map('map', {
+      zoomControl: false, attributionControl: false,
+      scrollWheelZoom: false, dragging: false, doubleClickZoom: false,
+      keyboard: false, touchZoom: false, boxZoom: false
+    });
+    window._leafMap = map;
+
+    // Capa base satelital Esri
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 20, maxNativeZoom: 19
+    }).addTo(map);
+
+    // Polígono del lote
+    const poly = r.poly;
+    let loteLayer = null;
+    if (poly) {
+      const coords = poly.map(part => part.map(ring => ring.map(([x, y]) => [y, x])));
+      loteLayer = L.geoJSON({ type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: poly } }, {
+        style: { color: '#fff', weight: 2.5, fillColor: '#fff', fillOpacity: 0.15 }
+      }).addTo(map);
+    }
+
+    // Círculos concéntricos
+    const ll = r.ll ? [r.ll[1], r.ll[0]] : null;
+    if (ll) {
+      [500, 250, 100].forEach(m => {
+        L.circle(ll, { radius: m, color: '#fff', weight: 1, fill: false, opacity: 0.4 }).addTo(map);
+      });
+    }
+
+    // Encuadre
+    if (loteLayer) {
+      const bounds = loteLayer.getBounds();
+      const pad = Math.max(bounds.getNorth() - bounds.getSouth(), bounds.getEast() - bounds.getWest()) * 2;
+      map.fitBounds(bounds.pad(2.5));
+    } else if (ll) {
+      map.setView(ll, 16);
+    } else {
+      map.setView([9.7, -84.0], 8);
+    }
+
+    // ── Panel ─────────────────────────────────────────────────────────────
+    const e = r.ent || {};
+    const pn = PX.PROVS ? PX.PROVS[(r.prov || 1) - 1] : '';
+    const finca = `Finca ${r.prov}-${r.finca}-${r.der}`;
+    const nombre = r.nom || r.nat || finca;
+    const loc = [r.dn, r.cn, r.pn].filter(Boolean).join(', ');
+
+    // Etapa actual
+    const st = r.st >= 0 ? r.st : 0;
+    const ETAPAS = PX.ETAPA || ['1.er remate','2.º remate','3.er remate'];
+    const etapaLbl = ETAPAS[st] || `${st + 1}.º remate`;
+    const baseV = r.bases ? r.bases[st] : r.base;
+    const baseM = r.mon || 'CRC';
+
+    // Fecha del próximo remate
+    const fd = r.fd || r.f || [];
+    const nextDate = fd[st] ? new Date(fd[st]) : null;
+    const fdate = d => d ? d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+
+    // PECR
+    const pecrN = r.pecr ? r.pecr : (PX.pecrCalc ? PX.pecrCalc(r) : null);
+    const pecrData = pecrN ? PX.PECR[pecrN - 1] : null;
+
+    // Score
+    const s = PX.score ? PX.score(r) : {};
+    const scoreLabel = PX.scoreLabel || (v => v >= 75 ? 'Muy favorable' : v >= 60 ? 'Favorable' : v >= 45 ? 'Intermedio' : v >= 30 ? 'Con reparos' : 'Desfavorable');
+
+    // Área
+    const area = r.areaCat || r.area;
+
+    // $/m²
+    const usdm2 = r.usdm2;
+
+    // Valor de Hacienda
+    const zhV = e.zh && e.zh.v ? e.zh.v : null;
+    const zhUSD = zhV && PX.tc ? (zhV / PX.tc.venta) : null;
+
+    const panel = document.getElementById('panel');
+    panel.innerHTML = `
+      <div class="panel-head">
+        <div class="marca">
+          <svg width="18" height="14" viewBox="0 0 50 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 34L25 4L44 34H6Z" stroke="white" stroke-width="3" fill="none"/>
+            <circle cx="25" cy="22" r="5" fill="white"/>
+          </svg>
+          PlanoExactoCR
+        </div>
+        <span class="etapa-badge etapa-${st + 1}">${etapaLbl}${nextDate ? ' · ' + fdate(nextDate) : ''}</span>
+        <h1>${esc(nombre)}</h1>
+        <div class="loc">${esc(loc)}${area ? ' · ' + fnum(area) + ' m²' : ''}</div>
+      </div>
+
+      <div class="precio-bloque">
+        <div class="lbl">Base vigente</div>
+        <div class="val">${baseM === 'CRC' ? '₡' : '$'}${fnum(baseV)}</div>
+        ${usdm2 ? `<div class="alt">${fmt_usd(usdm2)} /m²${zhV && zhUSD ? ' · Hacienda: ' + fmt_usd(zhUSD) + '/m²' : ''}</div>` : ''}
+        <div style="font-size:11px;color:#55635D;margin-top:4px">${esc(finca)}${r.plano ? ' · Plano ' + esc(r.plano) : ''}</div>
+      </div>
+
+      ${pecrN ? `
+      <div class="pecr-bloque">
+        <div class="pecr-num pecr-${pecrN}">
+          <span class="n">${pecrN}</span>
+          <span class="de">/ 10</span>
+        </div>
+        <div class="pecr-info">
+          <div class="titulo">Escala PECR</div>
+          <div class="label">${scoreLabel(pecrN * 10)}</div>
+          <div class="desc">${pecrData ? esc(pecrData[1]) : ''}</div>
+        </div>
+      </div>` : ''}
+
+      ${s.total != null ? `
+      <div class="dims-bloque">
+        <div class="titulo">Índice PlanoExacto · ${s.total}</div>
+        <div class="dims-row">
+          ${dim('Jurídica', s.juridica, 'juridica')}
+          ${dim('Precio/m²', s.precio, 'precio')}
+          ${dim('Servicios', s.servicios, 'servicios')}
+          ${dim('Restricciones', s.restricciones, 'restricciones')}
+        </div>
+      </div>` : ''}
+
+      <div class="datos-bloque">
+        <div class="titulo">Entorno</div>
+        <dl class="kv">
+          ${e.elev != null ? `<dt>Elevación</dt><dd>${fnum(e.elev)} msnm${e.pend != null ? ' · ' + e.pend + ' % pendiente' : ''}</dd>` : ''}
+          ${e.cob ? `<dt>Cobertura</dt><dd>${esc(e.cob)}</dd>` : ''}
+          ${e.zv ? `<dt>Zona de vida</dt><dd>${esc(e.zv)}</dd>` : ''}
+          ${e.cu ? `<dt>Cuenca</dt><dd>${esc(e.cu)}</dd>` : ''}
+          ${e.via ? `<dt>Acceso</dt><dd>${esc(e.via.t)}${e.via.d != null ? ' a ' + dist(e.via.d) : ''}</dd>` : ''}
+          ${e.salud ? `<dt>Salud</dt><dd>${esc(e.salud.n || e.salud.c)} a ${dist(e.salud.d)}</dd>` : ''}
+          ${e.esc != null ? `<dt>Escuela</dt><dd>${dist(e.esc)}</dd>` : ''}
+          ${e.pr && e.pr.si ? `<dt>Plan reg.</dt><dd>${esc(e.pr.canton)} ${esc(e.pr.anno || '')}</dd>` : ''}
+          ${e.zh && e.zh.n ? `<dt>Zona hom.</dt><dd>${esc(e.zh.n)}</dd>` : ''}
+          ${r.grav ? `<dt>Gravámenes</dt><dd>${esc(r.grav.length > 60 ? r.grav.slice(0, 57) + '…' : r.grav)}</dd>` : ''}
+        </dl>
+      </div>
+
+      <div class="panel-foot">
+        <span>Remate ${r.id !== undefined ? '#' + r.id : ''} · ${new Date().toLocaleDateString('es-CR')}</span>
+        <span class="url">planoexactocr.com</span>
+      </div>
+    `;
+  }
+
+  function dim(lbl, val, cls) {
+    if (val == null) return '';
+    return `<div class="dim-item">
+      <div class="dim-lbl">${lbl} <span class="dim-val">${val}</span></div>
+      <div class="dim-bar"><div class="dim-fill fill-${cls}" style="width:${Math.min(100, val)}%"></div></div>
+    </div>`;
+  }
+
+  // ── Render inicial (con datos inyectados) ────────────────────────────────
+  // renderRemate usa el remate inyectado directamente la primera vez
+  function renderByData(r) {
+    renderRemate(0, r);
+  }
+  renderByData(D.r);
+
+  // ── Navegación ────────────────────────────────────────────────────────────
+  document.getElementById('btn-prev').addEventListener('click', async () => {
+    const R = await getR();
+    for (let i = idx - 1; i >= 0; i--) { if (R[i].poly) { idx = i; break; } }
+    renderRemate(idx);
+    history.replaceState(null, '', location.pathname.replace(/\/\d+$/, '') + '/' + R[idx].id);
+  });
+  document.getElementById('btn-next').addEventListener('click', async () => {
+    const R = await getR();
+    for (let i = idx + 1; i < R.length; i++) { if (R[i].poly) { idx = i; break; } }
+    renderRemate(idx);
+    history.replaceState(null, '', location.pathname.replace(/\/\d+$/, '') + '/' + R[idx].id);
+  });
+
+  // ── Descargar PNG vía html2canvas ────────────────────────────────────────
+  document.getElementById('btn-png').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-png');
+    const ctrl = document.getElementById('controles');
+    btn.textContent = 'Generando…'; btn.disabled = true;
+
+    // Cargar html2canvas si no está
+    if (!window.html2canvas) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    // Ocultar controles durante captura
+    ctrl.style.display = 'none';
+
+    try {
+      const canvas = await html2canvas(document.getElementById('tarjeta'), {
+        useCORS: true, allowTaint: false, scale: 2,
+        width: 1200, height: 800,
+        backgroundColor: '#F1EEE7',
+        logging: false,
+        ignoreElements: el => el.id === 'controles'
+      });
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `remate-${R[idx].id}.png`;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } catch (err) {
+      alert('No se pudo generar el PNG: ' + err.message);
+    } finally {
+      ctrl.style.display = '';
+      btn.textContent = '⬇ Descargar PNG'; btn.disabled = false;
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
