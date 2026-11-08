@@ -1385,21 +1385,47 @@ function datosTarjeta(r, meds) {
 const TJ_MARK = (cx, cy, s) => `<g transform="translate(${cx},${cy}) scale(${s})" fill="#fff"><path d="M0,41.913 L55.826,14 L43.503,7.839 L35.677,11.752 L40.174,14 L0,34.087 L-40.174,14 L-35.677,11.752 L-43.503,7.839 L-55.826,14 Z"/><path d="M0,27.913 L55.826,0 L43.503,-6.161 L35.677,-2.248 L40.174,0 L0,20.087 L-40.174,0 L-35.677,-2.248 L-43.503,-6.161 L-55.826,0 Z" opacity=".85"/><path d="M-55.826,-14 L0,13.913 L55.826,-14 L0,-41.913 Z M40.174,-14 L0,6.087 L-40.174,-14 L0,-34.087 Z"/></g>`;
 const TJ_IC = { ruler: '<path d="M5 4h14a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1"/><path d="M8 4v3M12 4v4M16 4v3"/>', dollar: '<path d="M12 3v18"/><path d="M16 8a4 4 0 0 0 -4 -2.5c-2 0 -3.5 1 -3.5 2.7c0 3.5 7.5 1.8 7.5 5.3c0 1.8 -1.6 2.9 -3.8 2.9a4.3 4.3 0 0 1 -4.2 -2.4"/>', tag: '<path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M3 6v5.5a1 1 0 0 0 .3 .7l9 9a1 1 0 0 0 1.4 0l5.5 -5.5a1 1 0 0 0 0 -1.4l-9 -9a1 1 0 0 0 -.7 -.3h-5.5a1 1 0 0 0 -1 1z"/>', pin: '<path d="M12 21c-4.5 -4.5 -7 -7.5 -7 -11a7 7 0 0 1 14 0c0 3.5 -2.5 6.5 -7 11z"/><path d="M12 10m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"/>', gauge: '<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 12l4 -3"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>', cal: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/><path d="M4 10h16M8 4v3M16 4v3"/>' };
 // Arma el SVG 2000×2000 del remate r con los datos ya calculados d.
-// opts.satDataUri: si viene, usa data URI en vez de URL externa (self-contained, apto para canvas sin tainting)
-// opts.fontDataUri: si viene, inyecta @font-face con la fuente embebida en vez de @import de Google Fonts
+// Diseño: mapa técnico vectorial a pantalla completa (polígono del lote como protagonista sobre
+// una cuadrícula arquitectónica) + inset chico (300×300) en esquina sup-derecha con la vista
+// satelital de contexto. Al ser el inset pequeño, Chrome no lo downsamplea al rasterizar a canvas.
+//
+// opts.insetSatDataUri: satelital pequeña como data URI (se usa en el inset). Si no viene, se usa
+//   la URL externa — útil para ver el SVG inline en un browser; no apto para canvas (cross-origin).
+// opts.fontDataUri: fuente Jost incrustada como @font-face (preferible para canvas vs @import).
 function tarjetaSVG(r, d, opts = {}) {
-  const W = 2000, BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
-  // bbox mercator del lote, con margen amplio (menos zoom) y cuadrado
+  const W = 2000, INSET = 300;
+  const BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
+  // bbox mercator del lote
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
   for (const pg of (r.poly || [])) for (const ring of pg) { const rm = ring.map(aMerc); ringsM.push(rm); for (const m of rm) { if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; } }
-  let polyPts = "", satURL = "";
+
+  let polyPtsGrande = "", polyPtsInset = "", satURL = "";
   if (isFinite(x0)) {
-    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
-    const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
-    const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh, toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * W];
-    polyPts = ringsM.map((rg) => rg.map(toPx).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
-    satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${W}&format=jpg&f=image`;
+    const cxM = (x0 + x1) / 2, cyM = (y0 + y1) / 2;
+    const polyW = Math.max(x1 - x0, 40), polyH = Math.max(y1 - y0, 40);
+
+    // Polígono grande: centrado en (1000, 800), llena hasta ~1100 px del canvas
+    const targetGrande = 1100;
+    const escPoly = targetGrande / Math.max(polyW, polyH);
+    const cxP = 1000, cyP = 800;
+    const toPxG = (m) => [cxP + (m[0] - cxM) * escPoly, cyP - (m[1] - cyM) * escPoly];
+    polyPtsGrande = ringsM.map((rg) => rg.map(toPxG).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
+
+    // Inset: bbox ampliado 3.2x para dar contexto alrededor del lote
+    let hwI = polyW / 2 * 3.2, hhI = polyH / 2 * 3.2;
+    const mayI = Math.max(hwI, hhI, 1); if (mayI < 40) { const k = 40 / mayI; hwI *= k; hhI *= k; } hwI = hhI = Math.max(hwI, hhI);
+    const bx0 = cxM - hwI, bx1 = cxM + hwI, by0 = cyM - hhI, by1 = cyM + hhI;
+    const toPxI = (m) => [(m[0] - bx0) / (bx1 - bx0) * INSET, (by1 - m[1]) / (by1 - by0) * INSET];
+    polyPtsInset = ringsM.map((rg) => rg.map(toPxI).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
+    // Satelital pequeña (600×600) para el inset, suficiente para retina a 300×300
+    satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=600,600&format=jpg&f=image`;
   }
+
+  // Cuadrícula técnica: líneas finas cada 100 px, mayores cada 500 px
+  let gridFina = "", gridMayor = "";
+  for (let i = 1; i < 20; i++) { gridFina += `<line x1="${i * 100}" y1="0" x2="${i * 100}" y2="${W}"/><line x1="0" y1="${i * 100}" x2="${W}" y2="${i * 100}"/>`; }
+  for (let i = 1; i < 4; i++) { gridMayor += `<line x1="${i * 500}" y1="0" x2="${i * 500}" y2="${W}"/><line x1="0" y1="${i * 500}" x2="${W}" y2="${i * 500}"/>`; }
+
   const rows = [["ruler", "Área", d.area], ["dollar", "Precio por m²", d.m2]];
   if (d.hacienda) rows.push(["tag", d.hacienda, null]);
   if (d.costa) rows.push(["pin", d.costa, null]);
@@ -1414,26 +1440,45 @@ function tarjetaSVG(r, d, opts = {}) {
         : `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}" font-weight="500">${esc(a)}</text>`);
     rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
   });
-  // opts.sinSatelital: omite el <image> por completo (el cliente pinta la satelital aparte en el canvas)
-  const satHref = opts.sinSatelital ? "" : (opts.satDataUri || satURL);
+
+  const satHref = opts.insetSatDataUri || satURL;
   const styleFuente = opts.fontDataUri
     ? `<style>@font-face{font-family:'Jost';font-weight:300 700;font-style:normal;src:url('${opts.fontDataUri}') format('truetype');}</style>`
     : `<style>@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700');</style>`;
+
+  // Marca de agua: nombre del cantón detrás del polígono
+  const marcaAgua = esc((d.lugar || "").toUpperCase().split(",").pop().trim());
+  const insetX = W - 150 - INSET, insetY = 220;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
 <defs>
 ${styleFuente}
-<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity=".10"/><stop offset=".20" stop-color="${BRAND}" stop-opacity=".14"/><stop offset=".40" stop-color="${BRAND}" stop-opacity=".45"/><stop offset=".50" stop-color="${BRAND}" stop-opacity=".88"/><stop offset=".60" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#052A24" stop-opacity=".97"/></linearGradient>
-<linearGradient id="topv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".12" stop-color="#000" stop-opacity="0"/></linearGradient>
-<linearGradient id="ph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5a2e"/><stop offset=".5" stop-color="#2f4d2a"/><stop offset="1" stop-color="#21391f"/></linearGradient>
+<linearGradient id="fondo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d2b24"/><stop offset=".5" stop-color="#082019"/><stop offset="1" stop-color="#031512"/></linearGradient>
+<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity="0"/><stop offset=".45" stop-color="${BRAND}" stop-opacity="0"/><stop offset=".55" stop-color="${BRAND}" stop-opacity=".82"/><stop offset=".65" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#031512" stop-opacity=".98"/></linearGradient>
+<clipPath id="insetClip"><rect x="0" y="0" width="${INSET}" height="${INSET}" rx="14" ry="14"/></clipPath>
 </defs>
-<rect width="${W}" height="${W}" fill="url(#ph)"/>
-${satHref ? `<image href="${opts.satDataUri ? satHref : esc(satHref)}" x="0" y="0" width="${W}" height="${W}" preserveAspectRatio="xMidYMid slice"/>` : ""}
-${polyPts ? `<polygon points="${polyPts}" fill="#C8503A" fill-opacity=".14" stroke="${TERRA}" stroke-width="8" stroke-linejoin="round"/>` : ""}
+
+<rect width="${W}" height="${W}" fill="url(#fondo)"/>
+<g stroke="#ffffff" stroke-opacity=".025" stroke-width="1" shape-rendering="crispEdges">${gridFina}</g>
+<g stroke="#ffffff" stroke-opacity=".07" stroke-width="1.2" shape-rendering="crispEdges">${gridMayor}</g>
+<text x="1000" y="900" font-size="280" fill="#ffffff" fill-opacity=".04" font-weight="700" text-anchor="middle" letter-spacing="-10">${marcaAgua}</text>
+${polyPtsGrande ? `<polygon points="${polyPtsGrande}" fill="${TERRA}" fill-opacity=".22" stroke="${TERRA}" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>` : ""}
 <rect width="${W}" height="${W}" fill="url(#scrim)"/>
-<rect width="${W}" height="${W}" fill="url(#topv)"/>
+
+${satHref ? `<g transform="translate(${insetX}, ${insetY})">
+  <rect x="-8" y="-8" width="${INSET + 16}" height="${INSET + 16}" rx="18" fill="#000" fill-opacity=".45"/>
+  <g clip-path="url(#insetClip)">
+    <image href="${opts.insetSatDataUri ? satHref : esc(satHref)}" x="0" y="0" width="${INSET}" height="${INSET}" preserveAspectRatio="xMidYMid slice"/>
+    ${polyPtsInset ? `<polygon points="${polyPtsInset}" fill="${TERRA}" fill-opacity=".10" stroke="${TERRA}" stroke-width="2.5" stroke-linejoin="round"/>` : ""}
+  </g>
+  <rect x="0" y="0" width="${INSET}" height="${INSET}" rx="14" fill="none" stroke="#ffffff" stroke-opacity=".30" stroke-width="1.5"/>
+  <text x="${INSET / 2}" y="${INSET + 40}" font-size="22" fill="${MUT}" text-anchor="middle" letter-spacing="3" font-weight="500">VISTA SATELITAL</text>
+</g>` : ""}
+
 ${TJ_MARK(210, 120, 1.05)}
 <text x="300" y="138" font-size="62" letter-spacing="4" fill="#fff" font-weight="300">PLANO<tspan font-weight="700">EXACTO</tspan><tspan>CR</tspan></text>
 <rect x="${W - 150 - 360}" y="78" width="360" height="92" rx="46" fill="${TEAL}"/><text x="${W - 150 - 180}" y="138" font-size="46" text-anchor="middle" fill="#042019" font-weight="600">${esc(d.etapa)}</text>
+
 <text x="150" y="985" font-size="48" letter-spacing="3" fill="${TEALSOFT}" font-weight="600">${esc((d.tipo || "").toUpperCase())} · ${esc((d.lugar || "").toUpperCase())}</text>
 <text x="150" y="1052" font-size="50" fill="${MUT}">Base de remate</text>
 <text x="146" y="1178" font-size="156" fill="#fff" font-weight="700" letter-spacing="-2">${esc(d.base)}</text>
@@ -1527,42 +1572,22 @@ function paginaTarjetaDescarga(id) {
     btn.disabled = true; const original = btn.textContent;
     btn.textContent = "Generando…"; msg.className = "msg";
     try {
-      // 1. Pedir en paralelo la satelital (JPEG mismo origen) y el SVG overlay (sin satelital).
-      const [satBlob, svgText] = await Promise.all([
-        fetch("/tarjeta/${id}.sat.jpg", { credentials: "same-origin" })
-          .then(r => r.ok ? r.blob() : null).catch(() => null),
-        fetch("/tarjeta/${id}.svg?embed=1", { credentials: "same-origin" })
-          .then(r => { if (!r.ok) throw new Error("SVG " + r.status); return r.text(); })
-      ]);
+      // 1. Pedir el SVG self-contained: trae el mapa técnico vectorial, el inset satelital
+      //    (300×300 — pequeño, no sufre el downsample de Chrome) y la fuente Jost incrustada.
+      const svgResp = await fetch("/tarjeta/${id}.svg?embed=1", { credentials: "same-origin" });
+      if (!svgResp.ok) throw new Error("SVG " + svgResp.status);
+      const svgText = await svgResp.text();
 
+      // 2. Rasterizar en canvas 2000×2000.
+      const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      let svgImg;
+      try { svgImg = await cargarImg(url); } finally { URL.revokeObjectURL(url); }
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, 2000, 2000);
+      ctx.drawImage(svgImg, 0, 0, 2000, 2000);
 
-      // 2. Pintar la satelital a tamaño completo (si llegó). Al ser JPEG nativo, el canvas
-      //    la rasteriza a 2000×2000 con calidad plena — evita el downsampling que Chrome
-      //    aplica cuando la satelital va como <image> dentro del SVG.
-      if (satBlob) {
-        const satUrl = URL.createObjectURL(satBlob);
-        try {
-          const satImg = await cargarImg(satUrl);
-          ctx.drawImage(satImg, 0, 0, 2000, 2000);
-        } finally { URL.revokeObjectURL(satUrl); }
-      } else {
-        // Fallback: degradado verde (mismo que usa el SVG como fondo) para no dejar transparente.
-        const g = ctx.createLinearGradient(0, 0, 2000, 2000);
-        g.addColorStop(0, "#3b5a2e"); g.addColorStop(0.5, "#2f4d2a"); g.addColorStop(1, "#21391f");
-        ctx.fillStyle = g; ctx.fillRect(0, 0, 2000, 2000);
-      }
-
-      // 3. Pintar el SVG overlay (polígono, scrim, textos, íconos, fuente Jost embebida) encima.
-      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-      const svgUrl = URL.createObjectURL(svgBlob);
-      try {
-        const svgImg = await cargarImg(svgUrl);
-        ctx.drawImage(svgImg, 0, 0, 2000, 2000);
-      } finally { URL.revokeObjectURL(svgUrl); }
-
-      // 4. Exportar PNG y descargar.
+      // 3. Exportar PNG y descargar.
       const pngBlob = await new Promise((ok, fail) =>
         canvas.toBlob(b => b ? ok(b) : fail(new Error("canvas.toBlob falló")), "image/png"));
       const a = document.createElement("a");
@@ -1570,7 +1595,7 @@ function paginaTarjetaDescarga(id) {
       a.download = "remate-${id}.png";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      say(satBlob ? "Listo." : "Listo (sin imagen satelital, se usó fondo de respaldo).", true);
+      say("Listo.", true);
     } catch (e) {
       say("Error: " + (e && e.message ? e.message : e), false);
     } finally {
@@ -1742,33 +1767,13 @@ async function manejarPeticion(request, env) {
       if (p === "/admin/usuarios.csv") return env.DB ? exportarUsuarios(env) : txt("Falta la base de datos (D1).", 503);
     }
     // Tarjeta social de un remate (admin). Variantes:
-    //   /tarjeta/<id>              → página HTML con preview y botón "Descargar PNG" (compone en canvas en el cliente)
-    //   /tarjeta/<id>.svg          → SVG puro con la URL satelital externa (ligero, para inspección)
-    //   /tarjeta/<id>.svg?embed=1  → SVG overlay SIN satelital, con fuente Jost incrustada (el cliente pinta la satelital aparte)
-    //   /tarjeta/<id>.sat.jpg      → JPEG satelital del bbox del lote (mismo origen, listo para canvas sin tainting)
+    //   /tarjeta/<id>              → página HTML con preview y botón "Descargar PNG"
+    //   /tarjeta/<id>.svg          → SVG puro (inset satelital usa URL externa — para inspección)
+    //   /tarjeta/<id>.svg?embed=1  → SVG self-contained: inset satelital pequeño y fuente Jost como data URIs (apto para canvas)
     const mTarjetaHTML = p.match(/^\/tarjeta\/(\d+)$/);
     if (mTarjetaHTML) {
       if (!adm) return txt("Acceso restringido", 401);
       return paginaTarjetaDescarga(mTarjetaHTML[1]);
-    }
-    const mTarjetaSat = p.match(/^\/tarjeta\/(\d+)\.sat\.jpg$/);
-    if (mTarjetaSat) {
-      if (!adm) return txt("Acceso restringido", 401);
-      const id = parseInt(mTarjetaSat[1], 10);
-      const R = await (await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)))).json();
-      const r = R.find((x) => x.id === id);
-      if (!r) return txt("Remate no encontrado", 404);
-      // Mismo cálculo de bbox que tarjetaSVG
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (const pg of (r.poly || [])) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
-      if (!isFinite(x0)) return txt("Sin polígono", 404);
-      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
-      const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
-      const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
-      const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=2000,2000&format=jpg&f=image`;
-      const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
-      if (!satR.ok) return txt("Satelital no disponible (" + satR.status + ")", 502);
-      return new Response(await satR.arrayBuffer(), { headers: { "content-type": "image/jpeg", "cache-control": "private, max-age=3600" } });
     }
     if (p.startsWith("/tarjeta/") && p.endsWith(".svg")) {
       if (!adm) return txt("Acceso restringido", 401);
@@ -1781,10 +1786,27 @@ async function manejarPeticion(request, env) {
       if (!r) return txt("Remate no encontrado", 404);
       const opts = {};
       if (u.searchParams.get("embed") === "1") {
-        // Overlay SIN satelital (el cliente la pinta en una capa aparte en el canvas).
-        opts.sinSatelital = true;
-        // Fuente Jost incrustada: @font-face con data URI funciona mejor que @import de Google Fonts
-        // cuando el SVG se dibuja a canvas (algunos browsers no siguen @import en ese contexto).
+        // 1. Satelital pequeña (600×600) para el inset — como va a 300×300 en la tarjeta, Chrome la
+        //    rasteriza a canvas sin downsamplearla (no es la imagen grande de antes).
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const pg of (r.poly || [])) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
+        if (isFinite(x0)) {
+          const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+          const polyW = Math.max(x1 - x0, 40), polyH = Math.max(y1 - y0, 40);
+          let hw = polyW / 2 * 3.2, hh = polyH / 2 * 3.2;
+          const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
+          const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
+          const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=600,600&format=jpg&f=image`;
+          try {
+            const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
+            if (satR.ok) {
+              const b = new Uint8Array(await satR.arrayBuffer()); let s = ""; const chunk = 0x8000;
+              for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
+              opts.insetSatDataUri = "data:image/jpeg;base64," + btoa(s);
+            }
+          } catch (_) { /* si falla, la ruta ignora el inset y queda sin imagen satelital */ }
+        }
+        // 2. Fuente Jost como @font-face embebida (más confiable que @import en canvas)
         try {
           const fR = await env.ASSETS.fetch(new Request(new URL("/assets/Jost.ttf", u)));
           if (fR.ok) {
@@ -1792,7 +1814,7 @@ async function manejarPeticion(request, env) {
             for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
             opts.fontDataUri = "data:font/ttf;base64," + btoa(s);
           }
-        } catch (_) { /* queda @import — algunos clientes de canvas igual lo resolverán */ }
+        } catch (_) { /* queda @import */ }
       }
       return new Response(tarjetaSVG(r, datosTarjeta(r, meds), opts), { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, no-store" } });
     }
