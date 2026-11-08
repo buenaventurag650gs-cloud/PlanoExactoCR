@@ -1296,6 +1296,147 @@ async function datosPublicos(u, env) {
   return DATOS;
 }
 const tipoTxt = (t) => ({ "Con construcción": "Casa o edificación", "Lote": "Lote", "Agrícola": "Finca agrícola", "Filial": "Filial en condominio" }[t] || t || "Propiedad");
+
+// ---------- Tarjeta social de un remate (imagen 2000×2000 para redes) ----------
+// Imagen lista para postear: satelital de fondo (a resolución real, no la miniatura de 600 px
+// del correo), el polígono del lote en vector (siempre nítido) y el panel con los mismos datos
+// de la ficha. El índice, el % vs Hacienda y la distancia a costa se calculan acá (espejo de
+// core.js) para que la imagen no dependa del navegador. Usa los datos COMPLETOS (ent, grav…),
+// por eso la ruta va protegida con admin: la imagen final es pública, el endpoint no.
+// PASO 1: entrega el SVG. El PNG (resvg-wasm + fuente Jost) y el lote mensual llegan después.
+const TC_TARJETA = 456.32;   // ₡/US$ — espejo de PX.tc.venta en core.js (mantener sincronizado)
+const usdDe = (v, from) => v == null ? null : from === "USD" ? v : v / TC_TARJETA;
+const profDe = (r) => r.area || r.areaCat || null;
+const clampP = (v) => Math.max(0, Math.min(100, Math.round(v)));
+const normTxt = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const limpiarGravT = (t) => normTxt(t).replace(/libres? de (gravamenes|anotaciones|hipotecas)( hipotecarios)?((,| y| e) (gravamenes|anotaciones|hipotecas))*/g, " ");
+// Prepara R (st, bv, usdm2, exact) y las medianas de $/m² por cantón/provincia — igual que core.js.
+function prepararTarjeta(R, ahora) {
+  for (const r of R) {
+    const i = (r.f || []).findIndex((f) => f >= ahora);
+    if ((r.fuente || "judicial") === "judicial") { r.st = i; r.bv = i >= 0 ? r.base * PCT[i] : null; r.next = i >= 0 ? r.f[i] : null; }
+    else { r.st = -1; r.bv = r.precio != null ? r.precio : (r.base != null ? r.base : null); r.next = r.fv || null; }
+    r.exact = r.loc === "plano" || r.loc === "finca";
+    r.tg = r.tg || [];
+    r.usdm2 = r.bv && profDe(r) ? usdDe(r.bv, r.mon) / profDe(r) : null;
+  }
+  const med = (a) => { if (!a.length) return null; a = a.slice().sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+  const byC = {}, byP = {};
+  for (const r of R) if (r.st >= 0 && r.usdm2) { (byC[r.prov + "|" + r.cn] = byC[r.prov + "|" + r.cn] || []).push(r.usdm2); (byP[r.prov] = byP[r.prov] || []).push(r.usdm2); }
+  const medC = {}, medP = {};
+  for (const k in byC) if (byC[k].length >= 3) medC[k] = med(byC[k]);
+  for (const k in byP) medP[k] = med(byP[k]);
+  return { medC, medP };
+}
+const medForT = (r, m) => m.medC[r.prov + "|" + r.cn] != null ? m.medC[r.prov + "|" + r.cn] : (m.medP[r.prov] != null ? m.medP[r.prov] : null);
+// Índice 0–100 (sanidad jurídica 35, precio 25, servicios 25, restricciones 15) — espejo de PX.score.
+function indiceTarjeta(r, meds) {
+  let j = 100; const sub = (p) => j -= p;
+  const serv = r.serv || []; if (serv.length) sub(Math.min(36, 12 * serv.length));
+  const g = limpiarGravT(r.grav);
+  if (/hipotec/.test(g) && !/libre de gravamenes hipotecarios|libre de hipotecas/.test(g)) sub(15);
+  if (/anotaci/.test(g)) sub(10); if (/usufruct/.test(g)) sub(15); if (/embargo/.test(g)) sub(5);
+  if (r.der && r.der !== "000" && r.der !== "0") sub(15); if (r.multi) sub(8); if (r.filial) sub(5);
+  if (!r.exact) sub(15); if (r.rev) sub(15);
+  if (r.area && r.areaCat && Math.abs(r.areaCat - r.area) / r.area > 0.1) sub(10);
+  const juridica = clampP(j);
+  const medv = medForT(r, meds); let precio = null;
+  if (r.usdm2 && medv) precio = clampP(50 - 50 * Math.log2(r.usdm2 / medv));
+  const e = r.ent || {}; let s = 0;
+  if (e.pr && e.pr.si) s += 20;
+  if (r.tg.includes("frente") || (e.via && e.via.d <= 10)) s += 25;
+  if (e.salud) { const d = e.salud.d; s += d <= 1000 ? 20 : d <= 3000 ? 12 : d <= 6000 ? 5 : 0; }
+  if (e.esc != null) s += e.esc <= 1000 ? 15 : e.esc <= 2000 ? 8 : 0;
+  if (e.cob === "Zona urbana" || r.tg.includes("urbano")) s += 20;
+  const servicios = clampP(s);
+  let x = 100; const res = (p) => x -= p;
+  if (!r.exact) x = 60; else {
+    if (e.agua != null) { if (e.agua <= 15) res(45); else if (e.agua <= 50) res(25); else if (e.agua <= 100) res(10); }
+    if (e.pend != null) { if (e.pend >= 30) res(30); else if (e.pend >= 15) res(15); }
+    if (e.costa != null && e.costa <= 250) res(30);
+    if (e.cob === "Cobertura forestal") res(20);
+    if (e.prot) res(25); if (e.psa) res(15);
+  }
+  const restricciones = clampP(x);
+  const W = { juridica: 35, precio: 25, servicios: 25, restricciones: 15 }, out = { juridica, precio, servicios, restricciones };
+  let sw = 0, sv = 0; for (const k in W) if (out[k] != null && W[k] > 0) { sw += W[k]; sv += W[k] * out[k]; }
+  return sw ? Math.round(sv / sw) : null;
+}
+const distT = (d) => d == null ? null : d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1).replace(".", ",")} km`;
+function datosTarjeta(r, meds) {
+  const base = r.bv != null ? r.bv : r.base, area = profDe(r);
+  const m2 = (base != null && area) ? base / area : null;
+  const zh = (r.ent && r.ent.zh) ? r.ent.zh.v : null;
+  let hacienda = null;
+  if (zh && m2 != null) { const m2crc = r.mon === "USD" ? m2 * TC_TARJETA : m2, pc = Math.round((1 - m2crc / zh) * 100); if (Math.abs(pc) >= 1) hacienda = `${Math.abs(pc)}% ${pc > 0 ? "bajo" : "sobre"} el valor de zona de Hacienda`; }
+  let fecha = null; if (r.next && /^\d{4}-\d\d-\d\d/.test(r.next)) fecha = `${+r.next.slice(8, 10)} ${MES[(+r.next.slice(5, 7)) - 1].slice(0, 3)}`;
+  return {
+    etapa: r.st >= 0 ? ETAPA[r.st] : "Venta",
+    tipo: tipoTxt(r.tipo), lugar: [r.dn, r.cn].filter(Boolean).join(", "),
+    base: base != null ? dinero(base, r.mon) : "—",
+    area: area ? miles(area) + " m²" : "—",
+    m2: m2 != null ? dinero(m2, r.mon) : "—",
+    hacienda,
+    costa: (r.ent && r.ent.costa != null && r.ent.costa <= 3000) ? `A ${distT(r.ent.costa)} de la costa` : null,
+    indice: (() => { const t = indiceTarjeta(r, meds); return t != null ? `${t}/100` : null; })(),
+    fecha
+  };
+}
+const TJ_MARK = (cx, cy, s) => `<g transform="translate(${cx},${cy}) scale(${s})" fill="#fff"><path d="M0,41.913 L55.826,14 L43.503,7.839 L35.677,11.752 L40.174,14 L0,34.087 L-40.174,14 L-35.677,11.752 L-43.503,7.839 L-55.826,14 Z"/><path d="M0,27.913 L55.826,0 L43.503,-6.161 L35.677,-2.248 L40.174,0 L0,20.087 L-40.174,0 L-35.677,-2.248 L-43.503,-6.161 L-55.826,0 Z" opacity=".85"/><path d="M-55.826,-14 L0,13.913 L55.826,-14 L0,-41.913 Z M40.174,-14 L0,6.087 L-40.174,-14 L0,-34.087 Z"/></g>`;
+const TJ_IC = { ruler: '<path d="M5 4h14a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1"/><path d="M8 4v3M12 4v4M16 4v3"/>', dollar: '<path d="M12 3v18"/><path d="M16 8a4 4 0 0 0 -4 -2.5c-2 0 -3.5 1 -3.5 2.7c0 3.5 7.5 1.8 7.5 5.3c0 1.8 -1.6 2.9 -3.8 2.9a4.3 4.3 0 0 1 -4.2 -2.4"/>', tag: '<path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M3 6v5.5a1 1 0 0 0 .3 .7l9 9a1 1 0 0 0 1.4 0l5.5 -5.5a1 1 0 0 0 0 -1.4l-9 -9a1 1 0 0 0 -.7 -.3h-5.5a1 1 0 0 0 -1 1z"/>', pin: '<path d="M12 21c-4.5 -4.5 -7 -7.5 -7 -11a7 7 0 0 1 14 0c0 3.5 -2.5 6.5 -7 11z"/><path d="M12 10m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"/>', gauge: '<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 12l4 -3"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>', cal: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/><path d="M4 10h16M8 4v3M16 4v3"/>' };
+// Arma el SVG 2000×2000 del remate r con los datos ya calculados d.
+function tarjetaSVG(r, d) {
+  const W = 2000, BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
+  // bbox mercator del lote, con margen amplio (menos zoom) y cuadrado
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
+  for (const pg of (r.poly || [])) for (const ring of pg) { const rm = ring.map(aMerc); ringsM.push(rm); for (const m of rm) { if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; } }
+  let polyPts = "", satURL = "";
+  if (isFinite(x0)) {
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
+    const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
+    const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh, toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * W];
+    polyPts = ringsM.map((rg) => rg.map(toPx).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
+    satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${W}&format=jpg&f=image`;
+  }
+  const rows = [["ruler", "Área", d.area], ["dollar", "Precio por m²", d.m2]];
+  if (d.hacienda) rows.push(["tag", d.hacienda, null]);
+  if (d.costa) rows.push(["pin", d.costa, null]);
+  if (d.indice) rows.push(["gauge", "Índice PlanoExacto", d.indice]);
+  rows.push(["cal", "Remate", d.fecha || "—"]);
+  const Y0 = 1322, RG = 92, chip = 86; let rowsSVG = "";
+  rows.forEach((row, i) => {
+    const y = Y0 + i * RG, cy = y, ic = row[0], a = row[1], b = row[2];
+    const txt = b != null
+      ? `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}">${esc(a)} · <tspan font-weight="700">${esc(b)}</tspan></text>`
+      : (/\d|%/.test(a) ? `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}">${esc(a).replace(/^(\d+%|A \d[\d.,]* ?k?m)/, '<tspan font-weight="700">$1</tspan>')}</text>`
+        : `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}" font-weight="500">${esc(a)}</text>`);
+    rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
+<defs>
+<style>@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700');</style>
+<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity=".10"/><stop offset=".20" stop-color="${BRAND}" stop-opacity=".14"/><stop offset=".40" stop-color="${BRAND}" stop-opacity=".45"/><stop offset=".50" stop-color="${BRAND}" stop-opacity=".88"/><stop offset=".60" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#052A24" stop-opacity=".97"/></linearGradient>
+<linearGradient id="topv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".12" stop-color="#000" stop-opacity="0"/></linearGradient>
+<linearGradient id="ph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5a2e"/><stop offset=".5" stop-color="#2f4d2a"/><stop offset="1" stop-color="#21391f"/></linearGradient>
+</defs>
+<rect width="${W}" height="${W}" fill="url(#ph)"/>
+${satURL ? `<image href="${esc(satURL)}" x="0" y="0" width="${W}" height="${W}" preserveAspectRatio="xMidYMid slice"/>` : ""}
+${polyPts ? `<polygon points="${polyPts}" fill="#C8503A" fill-opacity=".14" stroke="${TERRA}" stroke-width="8" stroke-linejoin="round"/>` : ""}
+<rect width="${W}" height="${W}" fill="url(#scrim)"/>
+<rect width="${W}" height="${W}" fill="url(#topv)"/>
+${TJ_MARK(210, 120, 1.05)}
+<text x="300" y="138" font-size="62" letter-spacing="4" fill="#fff" font-weight="300">PLANO<tspan font-weight="700">EXACTO</tspan><tspan>CR</tspan></text>
+<rect x="${W - 150 - 360}" y="78" width="360" height="92" rx="46" fill="${TEAL}"/><text x="${W - 150 - 180}" y="138" font-size="46" text-anchor="middle" fill="#042019" font-weight="600">${esc(d.etapa)}</text>
+<text x="150" y="985" font-size="48" letter-spacing="3" fill="${TEALSOFT}" font-weight="600">${esc((d.tipo || "").toUpperCase())} · ${esc((d.lugar || "").toUpperCase())}</text>
+<text x="150" y="1052" font-size="50" fill="${MUT}">Base de remate</text>
+<text x="146" y="1178" font-size="156" fill="#fff" font-weight="700" letter-spacing="-2">${esc(d.base)}</text>
+<line x1="150" y1="1242" x2="1850" y2="1242" stroke="#fff" stroke-opacity=".12"/>
+${rowsSVG}
+<line x1="150" y1="1858" x2="1850" y2="1858" stroke="#fff" stroke-opacity=".12"/>
+<text x="150" y="1922" font-size="44" fill="${MUT}">Ubica · Comprende · Decide</text>
+<text x="1850" y="1922" font-size="44" fill="${TEALSOFT}" text-anchor="end" font-weight="600">planoexactocr.com</text>
+</svg>`;
+}
 function pagSEO(u, titulo, desc, cuerpo, ld) {
   const canon = "https://" + u.host + u.pathname;
   return new Response(`<!doctype html><html lang="es-CR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1453,6 +1594,18 @@ async function manejarPeticion(request, env) {
       if (p.startsWith("/api/admin/")) return admin(request, env, u);
       if (p === "/admin/registros.csv") return env.REGISTROS ? exportarRegistros(env) : txt("Falta el almacenamiento de registros (KV).", 503);
       if (p === "/admin/usuarios.csv") return env.DB ? exportarUsuarios(env) : txt("Falta la base de datos (D1).", 503);
+    }
+    // Tarjeta social de un remate (admin: usa datos completos; la imagen final es lo que se postea)
+    if (p.startsWith("/tarjeta/") && p.endsWith(".svg")) {
+      if (!adm) return txt("Acceso restringido", 401);
+      const id = parseInt(p.slice("/tarjeta/".length, -4), 10);
+      if (!Number.isInteger(id)) return txt("No encontrado", 404);
+      const R = await (await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)))).json();
+      const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);
+      const meds = prepararTarjeta(R, ahora);
+      const r = R.find((x) => x.id === id);
+      if (!r) return txt("Remate no encontrado", 404);
+      return new Response(tarjetaSVG(r, datosTarjeta(r, meds)), { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, no-store" } });
     }
     const ses = adm ? null : await leerSesion(request, env).catch(() => null);
     const dentro = adm || !!ses;
