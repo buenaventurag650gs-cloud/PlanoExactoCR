@@ -1437,6 +1437,118 @@ ${rowsSVG}
 <text x="1850" y="1922" font-size="44" fill="${TEALSOFT}" text-anchor="end" font-weight="600">planoexactocr.com</text>
 </svg>`;
 }
+// ---------- resvg-wasm: rasterizador SVG → PNG ----------
+// assets/resvg.wasm  = index_bg.wasm de @resvg/resvg-wasm (módulo wasm-bindgen)
+// assets/resvg.js    = index.js del mismo paquete (wrapper JS que expone initWasm/Resvg)
+// assets/Jost.ttf    = fuente TTF embebida (resvg no tiene acceso a red)
+//
+// Patrón: cargar el .wasm como ArrayBuffer, importar el wrapper JS con import(),
+// inicializar una vez por instancia del Worker y reutilizar.
+// Cache del módulo resvg (inicializado una vez por instancia del Worker)
+let _resvgModule = null;
+async function resvgCargar(env, baseURL) {
+  if (_resvgModule) return _resvgModule;
+  // Cargar wrapper JS del paquete (assets/resvg.js = index.js de @resvg/resvg-wasm)
+  const jsR = await env.ASSETS.fetch(new Request(new URL("/assets/resvg.js", baseURL)));
+  if (!jsR.ok) throw new Error("assets/resvg.js no encontrado (" + jsR.status + ")");
+  const jsText = await jsR.text();
+  // Ejecutar como módulo CommonJS (el archivo usa module.exports)
+  const mod = { exports: {} };
+  // eslint-disable-next-line no-new-func
+  new Function("module", "exports", jsText)(mod, mod.exports);
+  const { initWasm, Resvg } = mod.exports;
+  if (typeof initWasm !== "function" || typeof Resvg !== "function") throw new Error("resvg.js no exporta initWasm/Resvg correctamente");
+  // Inicializar con el .wasm (initWasm lanza si ya fue llamado — solo una vez)
+  const wasmR = await env.ASSETS.fetch(new Request(new URL("/assets/resvg.wasm", baseURL)));
+  if (!wasmR.ok) throw new Error("assets/resvg.wasm no encontrado (" + wasmR.status + ")");
+  await initWasm(wasmR.arrayBuffer()); // acepta Promise<ArrayBuffer>
+  _resvgModule = { Resvg };
+  return _resvgModule;
+}
+
+// Genera PNG rasterizando el SVG de tarjeta con la satelital incrustada como data URI.
+async function tarjetaPNG(r, d, env, u) {
+  const W = 2000;
+  // 1. Calcular bbox (igual que tarjetaSVG)
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
+  for (const pg of (r.poly || [])) for (const ring of pg) { const rm = ring.map(aMerc); ringsM.push(rm); for (const m of rm) { if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; } }
+  let polyPts = "", satDataUri = "";
+  if (isFinite(x0)) {
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
+    const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
+    const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh, toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * W];
+    polyPts = ringsM.map((rg) => rg.map(toPx).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
+    // 2. Pedir satelital de Esri y convertir a data URI (resvg no carga URLs externas)
+    const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${W}&format=jpg&f=image`;
+    try {
+      const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
+      if (satR.ok) {
+        const satBytes = new Uint8Array(await satR.arrayBuffer());
+        let b64 = ""; const chunk = 0x8000;
+        for (let i = 0; i < satBytes.length; i += chunk) b64 += String.fromCharCode(...satBytes.subarray(i, i + chunk));
+        satDataUri = "data:image/jpeg;base64," + btoa(b64);
+      }
+    } catch (_) { /* sin satelital: fondo degradado verde */ }
+  }
+  // 3. SVG con imagen incrustada (sin @import de Google Fonts: resvg no tiene red)
+  const svg = tarjetaSVGInline(r, d, polyPts, satDataUri);
+  // 4. Cargar fuente Jost TTF
+  const fontR = await env.ASSETS.fetch(new Request(new URL("/assets/Jost.ttf", u)));
+  if (!fontR.ok) throw new Error("assets/Jost.ttf no encontrado");
+  const fontData = new Uint8Array(await fontR.arrayBuffer());
+  // 5. Inicializar resvg y rasterizar
+  const { Resvg } = await resvgCargar(env, u);
+  // API de Resvg2 (wrapper del paquete): new Resvg(svg, { font: { fontBuffers, loadSystemFonts } })
+  const resvg = new Resvg(svg, { font: { fontBuffers: [fontData], loadSystemFonts: false } });
+  const rendered = resvg.render();
+  const png = rendered.asPng();
+  rendered.free();
+  resvg.free();
+  return png; // Uint8Array
+}
+
+// SVG con imagen ya incrustada como data URI (resvg no tiene red)
+function tarjetaSVGInline(r, d, polyPts, satDataUri) {
+  const W = 2000, BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
+  const rows = [["ruler", "Área", d.area], ["dollar", "Precio por m²", d.m2]];
+  if (d.hacienda) rows.push(["tag", d.hacienda, null]);
+  if (d.costa) rows.push(["pin", d.costa, null]);
+  if (d.indice) rows.push(["gauge", "Índice PlanoExacto", d.indice]);
+  rows.push(["cal", "Remate", d.fecha || "—"]);
+  const Y0 = 1322, RG = 92, chip = 86; let rowsSVG = "";
+  rows.forEach((row, i) => {
+    const y = Y0 + i * RG, cy = y, ic = row[0], a = row[1], b = row[2];
+    const txt = b != null
+      ? `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}">${esc(a)} · <tspan font-weight="700">${esc(b)}</tspan></text>`
+      : (/\d|%/.test(a) ? `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}">${esc(a).replace(/^(\d+%|A \d[\d.,]* ?k?m)/, '<tspan font-weight="700">$1</tspan>')}</text>`
+        : `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}" font-weight="500">${esc(a)}</text>`);
+    rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
+<defs>
+<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity=".10"/><stop offset=".20" stop-color="${BRAND}" stop-opacity=".14"/><stop offset=".40" stop-color="${BRAND}" stop-opacity=".45"/><stop offset=".50" stop-color="${BRAND}" stop-opacity=".88"/><stop offset=".60" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#052A24" stop-opacity=".97"/></linearGradient>
+<linearGradient id="topv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".12" stop-color="#000" stop-opacity="0"/></linearGradient>
+<linearGradient id="ph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5a2e"/><stop offset=".5" stop-color="#2f4d2a"/><stop offset="1" stop-color="#21391f"/></linearGradient>
+</defs>
+<rect width="${W}" height="${W}" fill="url(#ph)"/>
+${satDataUri ? `<image href="${satDataUri}" x="0" y="0" width="${W}" height="${W}" preserveAspectRatio="xMidYMid slice"/>` : ""}
+${polyPts ? `<polygon points="${polyPts}" fill="#C8503A" fill-opacity=".14" stroke="${TERRA}" stroke-width="8" stroke-linejoin="round"/>` : ""}
+<rect width="${W}" height="${W}" fill="url(#scrim)"/>
+<rect width="${W}" height="${W}" fill="url(#topv)"/>
+${TJ_MARK(210, 120, 1.05)}
+<text x="300" y="138" font-size="62" letter-spacing="4" fill="#fff" font-weight="300">PLANO<tspan font-weight="700">EXACTO</tspan><tspan>CR</tspan></text>
+<rect x="${W - 150 - 360}" y="78" width="360" height="92" rx="46" fill="${TEAL}"/><text x="${W - 150 - 180}" y="138" font-size="46" text-anchor="middle" fill="#042019" font-weight="600">${esc(d.etapa)}</text>
+<text x="150" y="985" font-size="48" letter-spacing="3" fill="${TEALSOFT}" font-weight="600">${esc((d.tipo || "").toUpperCase())} · ${esc((d.lugar || "").toUpperCase())}</text>
+<text x="150" y="1052" font-size="50" fill="${MUT}">Base de remate</text>
+<text x="146" y="1178" font-size="156" fill="#fff" font-weight="700" letter-spacing="-2">${esc(d.base)}</text>
+<line x1="150" y1="1242" x2="1850" y2="1242" stroke="#fff" stroke-opacity=".12"/>
+${rowsSVG}
+<line x1="150" y1="1858" x2="1850" y2="1858" stroke="#fff" stroke-opacity=".12"/>
+<text x="150" y="1922" font-size="44" fill="${MUT}">Ubica · Comprende · Decide</text>
+<text x="1850" y="1922" font-size="44" fill="${TEALSOFT}" text-anchor="end" font-weight="600">planoexactocr.com</text>
+</svg>`;
+}
+
 function pagSEO(u, titulo, desc, cuerpo, ld) {
   const canon = "https://" + u.host + u.pathname;
   return new Response(`<!doctype html><html lang="es-CR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1606,6 +1718,22 @@ async function manejarPeticion(request, env) {
       const r = R.find((x) => x.id === id);
       if (!r) return txt("Remate no encontrado", 404);
       return new Response(tarjetaSVG(r, datosTarjeta(r, meds)), { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, no-store" } });
+    }
+    if (p.startsWith("/tarjeta/") && p.endsWith(".png")) {
+      if (!adm) return txt("Acceso restringido", 401);
+      const id = parseInt(p.slice("/tarjeta/".length, -4), 10);
+      if (!Number.isInteger(id)) return txt("No encontrado", 404);
+      const R = await (await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)))).json();
+      const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);
+      const meds = prepararTarjeta(R, ahora);
+      const r = R.find((x) => x.id === id);
+      if (!r) return txt("Remate no encontrado", 404);
+      try {
+        const pngBytes = await tarjetaPNG(r, datosTarjeta(r, meds), env, u);
+        return new Response(pngBytes, { headers: { "content-type": "image/png", "cache-control": "private, max-age=3600", "content-disposition": `attachment; filename="remate-${id}.png"` } });
+      } catch (e) {
+        return txt("Error al generar PNG: " + e.message, 500);
+      }
     }
     const ses = adm ? null : await leerSesion(request, env).catch(() => null);
     const dentro = adm || !!ses;
