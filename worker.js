@@ -1414,7 +1414,8 @@ function tarjetaSVG(r, d, opts = {}) {
         : `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}" font-weight="500">${esc(a)}</text>`);
     rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
   });
-  const satHref = opts.satDataUri || satURL;
+  // opts.sinSatelital: omite el <image> por completo (el cliente pinta la satelital aparte en el canvas)
+  const satHref = opts.sinSatelital ? "" : (opts.satDataUri || satURL);
   const styleFuente = opts.fontDataUri
     ? `<style>@font-face{font-family:'Jost';font-weight:300 700;font-style:normal;src:url('${opts.fontDataUri}') format('truetype');}</style>`
     : `<style>@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700');</style>`;
@@ -1512,33 +1513,64 @@ function paginaTarjetaDescarga(id) {
   const msg = document.getElementById("msg");
   const canvas = document.getElementById("c");
   const say = (t, ok) => { msg.textContent = t; msg.className = "msg " + (ok?"ok":"err"); };
+
+  // Carga una imagen desde URL y resuelve cuando está completamente decodificada.
+  const cargarImg = (src) => new Promise((ok, fail) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => (img.decode ? img.decode().then(() => ok(img)).catch(() => ok(img)) : ok(img));
+    img.onerror = () => fail(new Error("No se pudo cargar " + src));
+    img.src = src;
+  });
+
   btn.addEventListener("click", async () => {
     btn.disabled = true; const original = btn.textContent;
     btn.textContent = "Generando…"; msg.className = "msg";
     try {
-      const svgResp = await fetch("/tarjeta/${id}.svg?embed=1", { credentials: "same-origin" });
-      if (!svgResp.ok) throw new Error("No se pudo cargar el SVG (" + svgResp.status + ")");
-      const svgText = await svgResp.text();
-      const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.decoding = "async";
-      await new Promise((ok, fail) => {
-        img.onload = ok;
-        img.onerror = () => fail(new Error("El navegador no pudo renderizar el SVG"));
-        img.src = url;
-      });
+      // 1. Pedir en paralelo la satelital (JPEG mismo origen) y el SVG overlay (sin satelital).
+      const [satBlob, svgText] = await Promise.all([
+        fetch("/tarjeta/${id}.sat.jpg", { credentials: "same-origin" })
+          .then(r => r.ok ? r.blob() : null).catch(() => null),
+        fetch("/tarjeta/${id}.svg?embed=1", { credentials: "same-origin" })
+          .then(r => { if (!r.ok) throw new Error("SVG " + r.status); return r.text(); })
+      ]);
+
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, 2000, 2000);
-      ctx.drawImage(img, 0, 0, 2000, 2000);
-      URL.revokeObjectURL(url);
-      const pngBlob = await new Promise((ok, fail) => canvas.toBlob(b => b ? ok(b) : fail(new Error("canvas.toBlob falló")), "image/png"));
+
+      // 2. Pintar la satelital a tamaño completo (si llegó). Al ser JPEG nativo, el canvas
+      //    la rasteriza a 2000×2000 con calidad plena — evita el downsampling que Chrome
+      //    aplica cuando la satelital va como <image> dentro del SVG.
+      if (satBlob) {
+        const satUrl = URL.createObjectURL(satBlob);
+        try {
+          const satImg = await cargarImg(satUrl);
+          ctx.drawImage(satImg, 0, 0, 2000, 2000);
+        } finally { URL.revokeObjectURL(satUrl); }
+      } else {
+        // Fallback: degradado verde (mismo que usa el SVG como fondo) para no dejar transparente.
+        const g = ctx.createLinearGradient(0, 0, 2000, 2000);
+        g.addColorStop(0, "#3b5a2e"); g.addColorStop(0.5, "#2f4d2a"); g.addColorStop(1, "#21391f");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 2000, 2000);
+      }
+
+      // 3. Pintar el SVG overlay (polígono, scrim, textos, íconos, fuente Jost embebida) encima.
+      const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      try {
+        const svgImg = await cargarImg(svgUrl);
+        ctx.drawImage(svgImg, 0, 0, 2000, 2000);
+      } finally { URL.revokeObjectURL(svgUrl); }
+
+      // 4. Exportar PNG y descargar.
+      const pngBlob = await new Promise((ok, fail) =>
+        canvas.toBlob(b => b ? ok(b) : fail(new Error("canvas.toBlob falló")), "image/png"));
       const a = document.createElement("a");
       a.href = URL.createObjectURL(pngBlob);
       a.download = "remate-${id}.png";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      say("Listo. Si no inició la descarga, revisá que el navegador no la haya bloqueado.", true);
+      say(satBlob ? "Listo." : "Listo (sin imagen satelital, se usó fondo de respaldo).", true);
     } catch (e) {
       say("Error: " + (e && e.message ? e.message : e), false);
     } finally {
@@ -1709,14 +1741,34 @@ async function manejarPeticion(request, env) {
       if (p === "/admin/registros.csv") return env.REGISTROS ? exportarRegistros(env) : txt("Falta el almacenamiento de registros (KV).", 503);
       if (p === "/admin/usuarios.csv") return env.DB ? exportarUsuarios(env) : txt("Falta la base de datos (D1).", 503);
     }
-    // Tarjeta social de un remate (admin). Tres variantes:
-    //   /tarjeta/<id>         → página HTML con preview y botón "Descargar PNG" (se genera en el navegador con canvas)
-    //   /tarjeta/<id>.svg     → SVG puro con la URL satelital externa (ligero, para inspección)
-    //   /tarjeta/<id>.svg?embed=1 → SVG self-contained con imagen satelital y fuente Jost como data URIs (apto para canvas)
+    // Tarjeta social de un remate (admin). Variantes:
+    //   /tarjeta/<id>              → página HTML con preview y botón "Descargar PNG" (compone en canvas en el cliente)
+    //   /tarjeta/<id>.svg          → SVG puro con la URL satelital externa (ligero, para inspección)
+    //   /tarjeta/<id>.svg?embed=1  → SVG overlay SIN satelital, con fuente Jost incrustada (el cliente pinta la satelital aparte)
+    //   /tarjeta/<id>.sat.jpg      → JPEG satelital del bbox del lote (mismo origen, listo para canvas sin tainting)
     const mTarjetaHTML = p.match(/^\/tarjeta\/(\d+)$/);
     if (mTarjetaHTML) {
       if (!adm) return txt("Acceso restringido", 401);
       return paginaTarjetaDescarga(mTarjetaHTML[1]);
+    }
+    const mTarjetaSat = p.match(/^\/tarjeta\/(\d+)\.sat\.jpg$/);
+    if (mTarjetaSat) {
+      if (!adm) return txt("Acceso restringido", 401);
+      const id = parseInt(mTarjetaSat[1], 10);
+      const R = await (await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)))).json();
+      const r = R.find((x) => x.id === id);
+      if (!r) return txt("Remate no encontrado", 404);
+      // Mismo cálculo de bbox que tarjetaSVG
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const pg of (r.poly || [])) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
+      if (!isFinite(x0)) return txt("Sin polígono", 404);
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
+      const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
+      const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
+      const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=2000,2000&format=jpg&f=image`;
+      const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
+      if (!satR.ok) return txt("Satelital no disponible (" + satR.status + ")", 502);
+      return new Response(await satR.arrayBuffer(), { headers: { "content-type": "image/jpeg", "cache-control": "private, max-age=3600" } });
     }
     if (p.startsWith("/tarjeta/") && p.endsWith(".svg")) {
       if (!adm) return txt("Acceso restringido", 401);
@@ -1729,26 +1781,10 @@ async function manejarPeticion(request, env) {
       if (!r) return txt("Remate no encontrado", 404);
       const opts = {};
       if (u.searchParams.get("embed") === "1") {
-        // 1. Satelital: fetch y a base64 (canvas en cliente no acepta cross-origin tainted)
-        const d = datosTarjeta(r, meds);
-        // Reproducir el bbox para obtener la URL (mismo cálculo que en tarjetaSVG)
-        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-        for (const pg of (r.poly || [])) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
-        if (isFinite(x0)) {
-          const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
-          const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
-          const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
-          const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=2000,2000&format=jpg&f=image`;
-          try {
-            const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
-            if (satR.ok) {
-              const b = new Uint8Array(await satR.arrayBuffer()); let s = ""; const chunk = 0x8000;
-              for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
-              opts.satDataUri = "data:image/jpeg;base64," + btoa(s);
-            }
-          } catch (_) { /* seguimos sin satelital embebida; el polígono y los degradados dan igual */ }
-        }
-        // 2. Fuente Jost: fetch del asset local y a base64
+        // Overlay SIN satelital (el cliente la pinta en una capa aparte en el canvas).
+        opts.sinSatelital = true;
+        // Fuente Jost incrustada: @font-face con data URI funciona mejor que @import de Google Fonts
+        // cuando el SVG se dibuja a canvas (algunos browsers no siguen @import en ese contexto).
         try {
           const fR = await env.ASSETS.fetch(new Request(new URL("/assets/Jost.ttf", u)));
           if (fR.ok) {
