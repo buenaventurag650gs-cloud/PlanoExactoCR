@@ -1393,32 +1393,30 @@ const TJ_IC = { ruler: '<path d="M5 4h14a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-14a1 1 
 //   la URL externa — útil para ver el SVG inline en un browser; no apto para canvas (cross-origin).
 // opts.fontDataUri: fuente Jost incrustada como @font-face (preferible para canvas vs @import).
 function tarjetaSVG(r, d, opts = {}) {
-  const W = 2000, INSET = 300;
+  const W = 2000;
   const BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
   // bbox mercator del lote
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
   for (const pg of (r.poly || [])) for (const ring of pg) { const rm = ring.map(aMerc); ringsM.push(rm); for (const m of rm) { if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; } }
 
-  let polyPtsGrande = "", polyPtsInset = "", satURL = "";
+  let polyPtsGrande = "", escalaMetros = 0, escalaPx = 0;
   if (isFinite(x0)) {
     const cxM = (x0 + x1) / 2, cyM = (y0 + y1) / 2;
     const polyW = Math.max(x1 - x0, 40), polyH = Math.max(y1 - y0, 40);
 
-    // Polígono grande: centrado en (1000, 800), llena hasta ~1100 px del canvas
+    // Polígono grande: centrado en (1000, 760), llena hasta ~1100 px del canvas
     const targetGrande = 1100;
     const escPoly = targetGrande / Math.max(polyW, polyH);
-    const cxP = 1000, cyP = 800;
+    const cxP = 1000, cyP = 760;
     const toPxG = (m) => [cxP + (m[0] - cxM) * escPoly, cyP - (m[1] - cyM) * escPoly];
     polyPtsGrande = ringsM.map((rg) => rg.map(toPxG).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
 
-    // Inset: bbox ampliado 3.2x para dar contexto alrededor del lote
-    let hwI = polyW / 2 * 3.2, hhI = polyH / 2 * 3.2;
-    const mayI = Math.max(hwI, hhI, 1); if (mayI < 40) { const k = 40 / mayI; hwI *= k; hhI *= k; } hwI = hhI = Math.max(hwI, hhI);
-    const bx0 = cxM - hwI, bx1 = cxM + hwI, by0 = cyM - hhI, by1 = cyM + hhI;
-    const toPxI = (m) => [(m[0] - bx0) / (bx1 - bx0) * INSET, (by1 - m[1]) / (by1 - by0) * INSET];
-    polyPtsInset = ringsM.map((rg) => rg.map(toPxI).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
-    // Satelital pequeña (600×600) para el inset, suficiente para retina a 300×300
-    satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=600,600&format=jpg&f=image`;
+    // Escala métrica: elegir un valor "redondo" cuya representación en px quede ~150 px
+    const metrosEnBarra = 150 / escPoly;
+    const magnitud = Math.pow(10, Math.floor(Math.log10(metrosEnBarra)));
+    const normalizado = metrosEnBarra / magnitud;
+    escalaMetros = magnitud * (normalizado >= 5 ? 5 : normalizado >= 2 ? 2 : 1);
+    escalaPx = escalaMetros * escPoly;
   }
 
   // Cuadrícula técnica: líneas finas cada 100 px, mayores cada 500 px
@@ -1441,40 +1439,54 @@ function tarjetaSVG(r, d, opts = {}) {
     rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
   });
 
-  const satHref = opts.insetSatDataUri || satURL;
   const styleFuente = opts.fontDataUri
     ? `<style>@font-face{font-family:'Jost';font-weight:300 700;font-style:normal;src:url('${opts.fontDataUri}') format('truetype');}</style>`
     : `<style>@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700');</style>`;
 
   // Marca de agua: nombre del cantón detrás del polígono
   const marcaAgua = esc((d.lugar || "").toUpperCase().split(",").pop().trim());
-  const insetX = W - 150 - INSET, insetY = 220;
+
+  // Formato de la escala métrica (abajo-derecha del polígono)
+  const escalaTxt = escalaMetros >= 1000 ? `${(escalaMetros / 1000).toLocaleString("de-DE")} km` : `${Math.round(escalaMetros)} m`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
 <defs>
 ${styleFuente}
 <linearGradient id="fondo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d2b24"/><stop offset=".5" stop-color="#082019"/><stop offset="1" stop-color="#031512"/></linearGradient>
 <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity="0"/><stop offset=".45" stop-color="${BRAND}" stop-opacity="0"/><stop offset=".55" stop-color="${BRAND}" stop-opacity=".82"/><stop offset=".65" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#031512" stop-opacity=".98"/></linearGradient>
-<clipPath id="insetClip"><rect x="0" y="0" width="${INSET}" height="${INSET}" rx="14" ry="14"/></clipPath>
 </defs>
 
+<!-- Fondo y cuadrícula técnica -->
 <rect width="${W}" height="${W}" fill="url(#fondo)"/>
 <g stroke="#ffffff" stroke-opacity=".025" stroke-width="1" shape-rendering="crispEdges">${gridFina}</g>
 <g stroke="#ffffff" stroke-opacity=".07" stroke-width="1.2" shape-rendering="crispEdges">${gridMayor}</g>
-<text x="1000" y="900" font-size="280" fill="#ffffff" fill-opacity=".04" font-weight="700" text-anchor="middle" letter-spacing="-10">${marcaAgua}</text>
+
+<!-- Marca de agua tipográfica del cantón -->
+<text x="1000" y="870" font-size="280" fill="#ffffff" fill-opacity=".04" font-weight="700" text-anchor="middle" letter-spacing="-10">${marcaAgua}</text>
+
+<!-- Polígono del lote: protagonista vectorial -->
 ${polyPtsGrande ? `<polygon points="${polyPtsGrande}" fill="${TERRA}" fill-opacity=".22" stroke="${TERRA}" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>` : ""}
+
+<!-- Scrim degradado abajo para legibilidad de textos -->
 <rect width="${W}" height="${W}" fill="url(#scrim)"/>
 
-${satHref ? `<g transform="translate(${insetX}, ${insetY})">
-  <rect x="-8" y="-8" width="${INSET + 16}" height="${INSET + 16}" rx="18" fill="#000" fill-opacity=".45"/>
-  <g clip-path="url(#insetClip)">
-    <image href="${opts.insetSatDataUri ? satHref : esc(satHref)}" x="0" y="0" width="${INSET}" height="${INSET}" preserveAspectRatio="xMidYMid slice"/>
-    ${polyPtsInset ? `<polygon points="${polyPtsInset}" fill="${TERRA}" fill-opacity=".10" stroke="${TERRA}" stroke-width="2.5" stroke-linejoin="round"/>` : ""}
-  </g>
-  <rect x="0" y="0" width="${INSET}" height="${INSET}" rx="14" fill="none" stroke="#ffffff" stroke-opacity=".30" stroke-width="1.5"/>
-  <text x="${INSET / 2}" y="${INSET + 40}" font-size="22" fill="${MUT}" text-anchor="middle" letter-spacing="3" font-weight="500">VISTA SATELITAL</text>
+<!-- Brújula: flecha de norte estilo arquitectónico, esquina sup-derecha debajo del badge -->
+<g transform="translate(1800, 270)">
+  <circle r="54" fill="#042019" fill-opacity=".55" stroke="${TEALSOFT}" stroke-opacity=".5" stroke-width="1.5"/>
+  <path d="M0,-38 L15,20 L0,10 L-15,20 Z" fill="${TEALSOFT}"/>
+  <path d="M0,-38 L15,20 L0,10 Z" fill="#ffffff" opacity=".9"/>
+  <text y="46" font-size="24" fill="${TEALSOFT}" text-anchor="middle" font-weight="700" letter-spacing="3">N</text>
+</g>
+
+<!-- Escala métrica horizontal, barra de referencia para el polígono -->
+${escalaPx > 0 ? `<g transform="translate(1850, 1280)" font-weight="500">
+  <line x1="${-escalaPx}" y1="-6" x2="${-escalaPx}" y2="6" stroke="${TEALSOFT}" stroke-width="2.5"/>
+  <line x1="${-escalaPx}" y1="0" x2="0" y2="0" stroke="${TEALSOFT}" stroke-width="2.5"/>
+  <line x1="0" y1="-6" x2="0" y2="6" stroke="${TEALSOFT}" stroke-width="2.5"/>
+  <text x="${-escalaPx / 2}" y="-18" font-size="24" fill="${MUT}" text-anchor="middle" letter-spacing="2">${escalaTxt}</text>
 </g>` : ""}
 
+<!-- Marca + badge -->
 ${TJ_MARK(210, 120, 1.05)}
 <text x="300" y="138" font-size="62" letter-spacing="4" fill="#fff" font-weight="300">PLANO<tspan font-weight="700">EXACTO</tspan><tspan>CR</tspan></text>
 <rect x="${W - 150 - 360}" y="78" width="360" height="92" rx="46" fill="${TEAL}"/><text x="${W - 150 - 180}" y="138" font-size="46" text-anchor="middle" fill="#042019" font-weight="600">${esc(d.etapa)}</text>
@@ -1768,8 +1780,11 @@ async function manejarPeticion(request, env) {
     }
     // Tarjeta social de un remate (admin). Variantes:
     //   /tarjeta/<id>              → página HTML con preview y botón "Descargar PNG"
-    //   /tarjeta/<id>.svg          → SVG puro (inset satelital usa URL externa — para inspección)
-    //   /tarjeta/<id>.svg?embed=1  → SVG self-contained: inset satelital pequeño y fuente Jost como data URIs (apto para canvas)
+    //   /tarjeta/<id>.svg          → SVG con fuente de Google Fonts (ligero, para inspección)
+    //   /tarjeta/<id>.svg?embed=1  → SVG self-contained (fuente Jost incrustada) — apto para canvas
+    //
+    // Nota: por limitaciones de Chrome al rasterizar SVGs con <image> embebidos a canvas (downsample
+    // agresivo), la satelital ya no forma parte de la tarjeta. El polígono vectorial es el protagonista.
     const mTarjetaHTML = p.match(/^\/tarjeta\/(\d+)$/);
     if (mTarjetaHTML) {
       if (!adm) return txt("Acceso restringido", 401);
@@ -1786,27 +1801,7 @@ async function manejarPeticion(request, env) {
       if (!r) return txt("Remate no encontrado", 404);
       const opts = {};
       if (u.searchParams.get("embed") === "1") {
-        // 1. Satelital pequeña (600×600) para el inset — como va a 300×300 en la tarjeta, Chrome la
-        //    rasteriza a canvas sin downsamplearla (no es la imagen grande de antes).
-        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-        for (const pg of (r.poly || [])) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
-        if (isFinite(x0)) {
-          const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-          const polyW = Math.max(x1 - x0, 40), polyH = Math.max(y1 - y0, 40);
-          let hw = polyW / 2 * 3.2, hh = polyH / 2 * 3.2;
-          const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
-          const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
-          const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=600,600&format=jpg&f=image`;
-          try {
-            const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
-            if (satR.ok) {
-              const b = new Uint8Array(await satR.arrayBuffer()); let s = ""; const chunk = 0x8000;
-              for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
-              opts.insetSatDataUri = "data:image/jpeg;base64," + btoa(s);
-            }
-          } catch (_) { /* si falla, la ruta ignora el inset y queda sin imagen satelital */ }
-        }
-        // 2. Fuente Jost como @font-face embebida (más confiable que @import en canvas)
+        // Fuente Jost como @font-face embebida (más confiable que @import de Google Fonts en canvas)
         try {
           const fR = await env.ASSETS.fetch(new Request(new URL("/assets/Jost.ttf", u)));
           if (fR.ok) {
@@ -1814,7 +1809,7 @@ async function manejarPeticion(request, env) {
             for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
             opts.fontDataUri = "data:font/ttf;base64," + btoa(s);
           }
-        } catch (_) { /* queda @import */ }
+        } catch (_) { /* queda @import — la mayoría de clientes de canvas igual lo resolverán */ }
       }
       return new Response(tarjetaSVG(r, datosTarjeta(r, meds), opts), { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, no-store" } });
     }
