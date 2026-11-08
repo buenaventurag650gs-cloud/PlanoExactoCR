@@ -1437,33 +1437,112 @@ ${rowsSVG}
 <text x="1850" y="1922" font-size="44" fill="${TEALSOFT}" text-anchor="end" font-weight="600">planoexactocr.com</text>
 </svg>`;
 }
-// ---------- resvg-wasm: rasterizador SVG → PNG ----------
-// assets/resvg.wasm  = index_bg.wasm de @resvg/resvg-wasm (módulo wasm-bindgen)
-// assets/resvg.js    = index.js del mismo paquete (wrapper JS que expone initWasm/Resvg)
-// assets/Jost.ttf    = fuente TTF embebida (resvg no tiene acceso a red)
-//
-// Patrón: cargar el .wasm como ArrayBuffer, importar el wrapper JS con import(),
-// inicializar una vez por instancia del Worker y reutilizar.
-// Cache del módulo resvg (inicializado una vez por instancia del Worker)
-let _resvgModule = null;
+// ---------- resvg-wasm inline: SVG → PNG en el Worker ----------
+// Código del paquete @resvg/resvg-wasm incrustado directamente (sin eval/new Function).
+// assets/resvg.wasm = index_bg.wasm del paquete. assets/Jost.ttf = fuente embebida.
+var _rsvgWasm;
+var _rsvgHeap = new Array(128).fill(void 0);
+_rsvgHeap.push(void 0, null, true, false);
+var _rsvgHeapNext = _rsvgHeap.length;
+function _rsvgAddObj(obj) { if (_rsvgHeapNext === _rsvgHeap.length) _rsvgHeap.push(_rsvgHeap.length + 1); const idx = _rsvgHeapNext; _rsvgHeapNext = _rsvgHeap[idx]; _rsvgHeap[idx] = obj; return idx; }
+function _rsvgGetObj(idx) { return _rsvgHeap[idx]; }
+function _rsvgDropObj(idx) { if (idx < 132) return; _rsvgHeap[idx] = _rsvgHeapNext; _rsvgHeapNext = idx; }
+function _rsvgTakeObj(idx) { const r = _rsvgGetObj(idx); _rsvgDropObj(idx); return r; }
+var _rsvgVecLen = 0;
+var _rsvgU8 = null;
+function _rsvgGetU8() { if (!_rsvgU8 || _rsvgU8.byteLength === 0) _rsvgU8 = new Uint8Array(_rsvgWasm.memory.buffer); return _rsvgU8; }
+var _rsvgI32 = null;
+function _rsvgGetI32() { if (!_rsvgI32 || _rsvgI32.byteLength === 0) _rsvgI32 = new Int32Array(_rsvgWasm.memory.buffer); return _rsvgI32; }
+var _rsvgEnc = new TextEncoder("utf-8");
+var _rsvgDec = new TextDecoder("utf-8", { ignoreBOM: true, fatal: true });
+function _rsvgPassStr(arg, malloc, realloc) {
+  if (realloc === void 0) { const buf = _rsvgEnc.encode(arg); const ptr2 = malloc(buf.length, 1) >>> 0; _rsvgGetU8().subarray(ptr2, ptr2 + buf.length).set(buf); _rsvgVecLen = buf.length; return ptr2; }
+  let len = arg.length, ptr = malloc(len, 1) >>> 0; const mem = _rsvgGetU8(); let off = 0;
+  for (; off < len; off++) { const c = arg.charCodeAt(off); if (c > 127) break; mem[ptr + off] = c; }
+  if (off !== len) { if (off !== 0) arg = arg.slice(off); ptr = realloc(ptr, len, len = off + arg.length * 3, 1) >>> 0; const view = _rsvgGetU8().subarray(ptr + off, ptr + len); const ret = _rsvgEnc.encodeInto ? _rsvgEnc.encodeInto(arg, view) : { written: (_rsvgEnc.encode(arg), view.set(_rsvgEnc.encode(arg)), _rsvgEnc.encode(arg).length) }; off += ret.written; }
+  _rsvgVecLen = off; return ptr;
+}
+function _rsvgGetStr(ptr, len) { ptr = ptr >>> 0; return _rsvgDec.decode(_rsvgGetU8().subarray(ptr, ptr + len)); }
+function _rsvgHandleErr(f, args) { try { return f.apply(this, args); } catch (e) { _rsvgWasm.__wbindgen_exn_store(_rsvgAddObj(e)); } }
+function _rsvgIsNone(x) { return x === void 0 || x === null; }
+var _RsvgBBox = class { static __wrap(ptr) { ptr = ptr >>> 0; const o = Object.create(_RsvgBBox.prototype); o.__wbg_ptr = ptr; return o; } free() { _rsvgWasm.__wbg_bbox_free(this.__wbg_ptr); this.__wbg_ptr = 0; } };
+var _RsvgRenderedImage = class {
+  static __wrap(ptr) { ptr = ptr >>> 0; const o = Object.create(_RsvgRenderedImage.prototype); o.__wbg_ptr = ptr; return o; }
+  free() { _rsvgWasm.__wbg_renderedimage_free(this.__wbg_ptr); this.__wbg_ptr = 0; }
+  get width() { return _rsvgWasm.renderedimage_width(this.__wbg_ptr) >>> 0; }
+  get height() { return _rsvgWasm.renderedimage_height(this.__wbg_ptr) >>> 0; }
+  asPng() { try { const rp = _rsvgWasm.__wbindgen_add_to_stack_pointer(-16); _rsvgWasm.renderedimage_asPng(rp, this.__wbg_ptr); const r0 = _rsvgGetI32()[rp/4+0], r1 = _rsvgGetI32()[rp/4+1], r2 = _rsvgGetI32()[rp/4+2]; if (r2) throw _rsvgTakeObj(r1); return _rsvgTakeObj(r0); } finally { _rsvgWasm.__wbindgen_add_to_stack_pointer(16); } }
+};
+var _RsvgBase = class {
+  static __wrap(ptr) { ptr = ptr >>> 0; const o = Object.create(_RsvgBase.prototype); o.__wbg_ptr = ptr; return o; }
+  free() { _rsvgWasm.__wbg_resvg_free(this.__wbg_ptr); this.__wbg_ptr = 0; }
+  constructor(svg, options, custom_font_buffers) {
+    try {
+      const rp = _rsvgWasm.__wbindgen_add_to_stack_pointer(-16);
+      var ptr0 = _rsvgIsNone(options) ? 0 : _rsvgPassStr(options, _rsvgWasm.__wbindgen_malloc, _rsvgWasm.__wbindgen_realloc);
+      var len0 = _rsvgVecLen;
+      _rsvgWasm.resvg_new(rp, _rsvgAddObj(svg), ptr0, len0, _rsvgIsNone(custom_font_buffers) ? 0 : _rsvgAddObj(custom_font_buffers));
+      const r0 = _rsvgGetI32()[rp/4+0], r1 = _rsvgGetI32()[rp/4+1], r2 = _rsvgGetI32()[rp/4+2];
+      if (r2) throw _rsvgTakeObj(r1);
+      return _RsvgBase.__wrap(r0);
+    } finally { _rsvgWasm.__wbindgen_add_to_stack_pointer(16); }
+  }
+  get width() { return _rsvgWasm.resvg_width(this.__wbg_ptr); }
+  get height() { return _rsvgWasm.resvg_height(this.__wbg_ptr); }
+  render() {
+    try { const rp = _rsvgWasm.__wbindgen_add_to_stack_pointer(-16); _rsvgWasm.resvg_render(rp, this.__wbg_ptr); const r0 = _rsvgGetI32()[rp/4+0], r1 = _rsvgGetI32()[rp/4+1], r2 = _rsvgGetI32()[rp/4+2]; if (r2) throw _rsvgTakeObj(r1); return _RsvgRenderedImage.__wrap(r0); }
+    finally { _rsvgWasm.__wbindgen_add_to_stack_pointer(16); }
+  }
+};
+function _rsvgGetImports() {
+  const imp = { wbg: {} };
+  imp.wbg.__wbg_new_d258248ed531ff54 = (a0,a1) => _rsvgAddObj(new Error(_rsvgGetStr(a0,a1)));
+  imp.wbg.__wbindgen_memory = () => _rsvgAddObj(_rsvgWasm.memory);
+  imp.wbg.__wbg_buffer_085ec1f694018c4f = (a0) => _rsvgAddObj(_rsvgGetObj(a0).buffer);
+  imp.wbg.__wbg_newwithbyteoffsetandlength_6da8e527659b86aa = (a0,a1,a2) => _rsvgAddObj(new Uint8Array(_rsvgGetObj(a0), a1>>>0, a2>>>0));
+  imp.wbg.__wbindgen_object_drop_ref = (a0) => { _rsvgTakeObj(a0); };
+  imp.wbg.__wbg_new_8125e318e6245eed = (a0) => _rsvgAddObj(new Uint8Array(_rsvgGetObj(a0)));
+  imp.wbg.__wbg_values_e80af618f92c8649 = (a0) => _rsvgAddObj(_rsvgGetObj(a0).values());
+  imp.wbg.__wbg_next_ddb3312ca1c4e32a = function() { return _rsvgHandleErr(function(a0) { return _rsvgAddObj(_rsvgGetObj(a0).next()); }, arguments); };
+  imp.wbg.__wbg_done_5c1f01fb660d73b5 = (a0) => _rsvgGetObj(a0).done ? 1 : 0;
+  imp.wbg.__wbg_value_1695675138684bd5 = (a0) => _rsvgAddObj(_rsvgGetObj(a0).value);
+  imp.wbg.__wbg_instanceof_Uint8Array_d8d9cb2b8e8ac1d4 = (a0) => { try { return _rsvgGetObj(a0) instanceof Uint8Array ? 1 : 0; } catch { return 0; } };
+  imp.wbg.__wbindgen_string_get = (a0,a1) => { const obj = _rsvgGetObj(a1); const ret = typeof obj==="string" ? obj : void 0; var p1 = _rsvgIsNone(ret) ? 0 : _rsvgPassStr(ret, _rsvgWasm.__wbindgen_malloc, _rsvgWasm.__wbindgen_realloc); _rsvgGetI32()[a0/4+1] = _rsvgVecLen; _rsvgGetI32()[a0/4+0] = p1; };
+  imp.wbg.__wbg_new_898a68150f225f2e = () => _rsvgAddObj(new Array());
+  imp.wbg.__wbindgen_string_new = (a0,a1) => _rsvgAddObj(_rsvgGetStr(a0,a1));
+  imp.wbg.__wbg_push_ca1c26067ef907ac = (a0,a1) => _rsvgGetObj(a0).push(_rsvgGetObj(a1));
+  imp.wbg.__wbg_length_72e2208bbc0efc61 = (a0) => _rsvgGetObj(a0).length;
+  imp.wbg.__wbg_set_5cf90238115182c3 = (a0,a1,a2) => { _rsvgGetObj(a0).set(_rsvgGetObj(a1), a2>>>0); };
+  imp.wbg.__wbindgen_throw = (a0,a1) => { throw new Error(_rsvgGetStr(a0,a1)); };
+  return imp;
+}
+var _rsvgInitialized = false;
+async function resvgInit(wasmArrayBuffer) {
+  if (_rsvgInitialized) return;
+  const { instance } = await WebAssembly.instantiate(wasmArrayBuffer, _rsvgGetImports());
+  _rsvgWasm = instance.exports; _rsvgI32 = null; _rsvgU8 = null;
+  _rsvgInitialized = true;
+}
+class ResvgWasm extends _RsvgBase {
+  constructor(svg, options) {
+    if (!_rsvgInitialized) throw new Error("resvg: llamá resvgInit() primero");
+    const font = options && options.font;
+    if (font && Object.prototype.hasOwnProperty.call(font, "fontBuffers")) {
+      const opts = Object.assign({}, options, { font: Object.assign({}, font, { fontBuffers: void 0 }) });
+      super(svg, JSON.stringify(opts), font.fontBuffers);
+    } else {
+      super(svg, JSON.stringify(options || {}));
+    }
+  }
+}
+// Cache: cargar e inicializar wasm una vez por instancia del Worker
+let _resvgWasmLoaded = false;
 async function resvgCargar(env, baseURL) {
-  if (_resvgModule) return _resvgModule;
-  // Cargar wrapper JS del paquete (assets/resvg.js = index.js de @resvg/resvg-wasm)
-  const jsR = await env.ASSETS.fetch(new Request(new URL("/assets/resvg.js", baseURL)));
-  if (!jsR.ok) throw new Error("assets/resvg.js no encontrado (" + jsR.status + ")");
-  const jsText = await jsR.text();
-  // Ejecutar como módulo CommonJS (el archivo usa module.exports)
-  const mod = { exports: {} };
-  // eslint-disable-next-line no-new-func
-  new Function("module", "exports", jsText)(mod, mod.exports);
-  const { initWasm, Resvg } = mod.exports;
-  if (typeof initWasm !== "function" || typeof Resvg !== "function") throw new Error("resvg.js no exporta initWasm/Resvg correctamente");
-  // Inicializar con el .wasm (initWasm lanza si ya fue llamado — solo una vez)
+  if (_resvgWasmLoaded) return;
   const wasmR = await env.ASSETS.fetch(new Request(new URL("/assets/resvg.wasm", baseURL)));
   if (!wasmR.ok) throw new Error("assets/resvg.wasm no encontrado (" + wasmR.status + ")");
-  await initWasm(wasmR.arrayBuffer()); // acepta Promise<ArrayBuffer>
-  _resvgModule = { Resvg };
-  return _resvgModule;
+  await resvgInit(await wasmR.arrayBuffer());
+  _resvgWasmLoaded = true;
 }
 
 // Genera PNG rasterizando el SVG de tarjeta con la satelital incrustada como data URI.
@@ -1497,9 +1576,8 @@ async function tarjetaPNG(r, d, env, u) {
   if (!fontR.ok) throw new Error("assets/Jost.ttf no encontrado");
   const fontData = new Uint8Array(await fontR.arrayBuffer());
   // 5. Inicializar resvg y rasterizar
-  const { Resvg } = await resvgCargar(env, u);
-  // API de Resvg2 (wrapper del paquete): new Resvg(svg, { font: { fontBuffers, loadSystemFonts } })
-  const resvg = new Resvg(svg, { font: { fontBuffers: [fontData], loadSystemFonts: false } });
+  await resvgCargar(env, u);
+  const resvg = new ResvgWasm(svg, { font: { fontBuffers: [fontData], loadSystemFonts: false } });
   const rendered = resvg.render();
   const png = rendered.asPng();
   rendered.free();
