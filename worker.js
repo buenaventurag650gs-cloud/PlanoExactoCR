@@ -1449,6 +1449,60 @@ function tarjetaSVG(r, d, opts = {}) {
   // Formato de la escala métrica (abajo-derecha del polígono)
   const escalaTxt = escalaMetros >= 1000 ? `${(escalaMetros / 1000).toLocaleString("de-DE")} km` : `${Math.round(escalaMetros)} m`;
 
+  // Cajetín técnico (estilo plano arquitectónico): coordenadas, topografía, cobertura, zona de vida,
+  // cuenca hidrográfica y plan regulador — todo tomado directamente de r.ent y r.ll
+  const ent = r.ent || {}, ll = r.ll || [];
+  const [lon, lat] = ll;
+  const fmtCoord = (v, pos, neg) => (v == null ? "—" : `${Math.abs(v).toFixed(4)}° ${v >= 0 ? pos : neg}`);
+  const coordLat = fmtCoord(lat, "N", "S"), coordLon = fmtCoord(lon, "E", "O");
+  const topoTxt = (ent.elev != null && ent.pend != null) ? `${ent.elev} msnm · ${ent.pend}% pendiente`
+    : (ent.elev != null ? `${ent.elev} msnm` : (ent.pend != null ? `${ent.pend}% pendiente` : "—"));
+  const cuencaTxt = ent.cu || "—";
+  const cobTxt = ent.cob || "—";
+  const zvTxt = ent.zv || "—";
+  const planTxt = ent.pr ? (ent.pr.si ? ("Vigente · " + (ent.pr.canton || "") + (ent.pr.anno ? " (" + ent.pr.anno + ")" : "")).trim() : "No vigente") : "—";
+  // Word-wrap simple para campos largos (zona de vida principalmente)
+  const envolver = (s, max) => {
+    const palabras = String(s || "—").split(" ");
+    const lineas = []; let cur = "";
+    for (const w of palabras) {
+      if ((cur + " " + w).trim().length > max) { if (cur) lineas.push(cur.trim()); cur = w; }
+      else cur = (cur + " " + w).trim();
+    }
+    if (cur) lineas.push(cur.trim());
+    return lineas;
+  };
+  const zvLineas = envolver(zvTxt, 30).slice(0, 2);
+  const cobLineas = envolver(cobTxt, 30).slice(0, 2);
+  // Chips del cajetín (etiqueta → valor en una o más líneas)
+  const CHIPS = [
+    { lbl: "COORDENADAS", vals: [coordLat, coordLon], tam: 28 },
+    { lbl: "TOPOGRAFÍA", vals: [topoTxt], tam: 28 },
+    { lbl: "COBERTURA DEL SUELO", vals: cobLineas, tam: 26 },
+    { lbl: "ZONA DE VIDA", vals: zvLineas, tam: 22 },
+    { lbl: "CUENCA HIDROGRÁFICA", vals: [cuencaTxt], tam: 26 },
+    { lbl: "PLAN REGULADOR", vals: [planTxt], tam: 22 }
+  ];
+  // Calcular altura requerida del panel
+  let altPanel = 60; // header decorativo
+  for (const c of CHIPS) { altPanel += 30 + c.vals.length * (c.tam + 6) + 24; }
+  altPanel += 20;
+  const panelX = 1340, panelY = 220, panelW = 510;
+  let cajetinSVG = "", yActual = 60;
+  for (let i = 0; i < CHIPS.length; i++) {
+    const c = CHIPS[i];
+    cajetinSVG += `<text x="40" y="${yActual}" font-size="17" fill="${MUT}" letter-spacing="3" font-weight="500">${c.lbl}</text>`;
+    yActual += 32;
+    for (const v of c.vals) {
+      cajetinSVG += `<text x="40" y="${yActual}" font-size="${c.tam}" fill="#fff" font-weight="500">${esc(v)}</text>`;
+      yActual += c.tam + 6;
+    }
+    yActual += 18;
+    if (i < CHIPS.length - 1) {
+      cajetinSVG += `<line x1="40" y1="${yActual - 10}" x2="${panelW - 40}" y2="${yActual - 10}" stroke="#fff" stroke-opacity=".08"/>`;
+    }
+  }
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
 <defs>
 ${styleFuente}
@@ -1470,12 +1524,21 @@ ${polyPtsGrande ? `<polygon points="${polyPtsGrande}" fill="${TERRA}" fill-opaci
 <!-- Scrim degradado abajo para legibilidad de textos -->
 <rect width="${W}" height="${W}" fill="url(#scrim)"/>
 
-<!-- Brújula: flecha de norte estilo arquitectónico, esquina sup-derecha debajo del badge -->
-<g transform="translate(1800, 270)">
-  <circle r="54" fill="#042019" fill-opacity=".55" stroke="${TEALSOFT}" stroke-opacity=".5" stroke-width="1.5"/>
-  <path d="M0,-38 L15,20 L0,10 L-15,20 Z" fill="${TEALSOFT}"/>
-  <path d="M0,-38 L15,20 L0,10 Z" fill="#ffffff" opacity=".9"/>
-  <text y="46" font-size="24" fill="${TEALSOFT}" text-anchor="middle" font-weight="700" letter-spacing="3">N</text>
+<!-- Cajetín técnico (estilo plano arquitectónico), esquina sup-derecha debajo del badge.
+     Contiene coordenadas, topografía, cobertura, zona de vida, cuenca y plan regulador,
+     más una mini-brújula en la esquina superior. -->
+<g transform="translate(${panelX}, ${panelY})">
+  <rect width="${panelW}" height="${altPanel}" rx="18" fill="#042019" fill-opacity=".6" stroke="${TEALSOFT}" stroke-opacity=".35" stroke-width="1.5"/>
+  <line x1="40" y1="24" x2="${panelW - 100}" y2="24" stroke="${TEALSOFT}" stroke-opacity=".4" stroke-width="1"/>
+  <text x="40" y="22" font-size="14" fill="${TEALSOFT}" letter-spacing="4" font-weight="600">FICHA TÉCNICA</text>
+  <!-- Mini-brújula en la esquina sup-derecha del cajetín -->
+  <g transform="translate(${panelW - 52}, 48)">
+    <circle r="30" fill="#073B32" fill-opacity=".7" stroke="${TEALSOFT}" stroke-opacity=".6" stroke-width="1.2"/>
+    <path d="M0,-20 L9,11 L0,5 L-9,11 Z" fill="${TEALSOFT}"/>
+    <path d="M0,-20 L9,11 L0,5 Z" fill="#fff" opacity=".9"/>
+    <text y="26" font-size="14" fill="${TEALSOFT}" text-anchor="middle" font-weight="700" letter-spacing="2">N</text>
+  </g>
+  ${cajetinSVG}
 </g>
 
 <!-- Escala métrica horizontal, barra de referencia para el polígono -->
