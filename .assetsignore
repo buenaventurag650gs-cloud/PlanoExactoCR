@@ -11,5 +11,4 @@ scripts
 README.md
 worker.js
 wrangler.toml
-assets/resvg.wasm
 ck

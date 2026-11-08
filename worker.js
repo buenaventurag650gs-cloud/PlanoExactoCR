@@ -1,5 +1,4 @@
 import { EmailMessage } from "cloudflare:email";
-import resvgWasmModule from "./assets/resvg.wasm";
 // PlanoExactoCR en Cloudflare Workers (con archivos estáticos).
 // · Cuentas de usuario con correo y contraseña (base de datos D1, binding DB): mapa abierto, ficha con cuenta gratis.
 // · Administración con la contraseña del sitio (variable secreta SITE_PASSWORD): /admin, catastro y vista PRO de prueba.
@@ -1386,7 +1385,9 @@ function datosTarjeta(r, meds) {
 const TJ_MARK = (cx, cy, s) => `<g transform="translate(${cx},${cy}) scale(${s})" fill="#fff"><path d="M0,41.913 L55.826,14 L43.503,7.839 L35.677,11.752 L40.174,14 L0,34.087 L-40.174,14 L-35.677,11.752 L-43.503,7.839 L-55.826,14 Z"/><path d="M0,27.913 L55.826,0 L43.503,-6.161 L35.677,-2.248 L40.174,0 L0,20.087 L-40.174,0 L-35.677,-2.248 L-43.503,-6.161 L-55.826,0 Z" opacity=".85"/><path d="M-55.826,-14 L0,13.913 L55.826,-14 L0,-41.913 Z M40.174,-14 L0,6.087 L-40.174,-14 L0,-34.087 Z"/></g>`;
 const TJ_IC = { ruler: '<path d="M5 4h14a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1"/><path d="M8 4v3M12 4v4M16 4v3"/>', dollar: '<path d="M12 3v18"/><path d="M16 8a4 4 0 0 0 -4 -2.5c-2 0 -3.5 1 -3.5 2.7c0 3.5 7.5 1.8 7.5 5.3c0 1.8 -1.6 2.9 -3.8 2.9a4.3 4.3 0 0 1 -4.2 -2.4"/>', tag: '<path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M3 6v5.5a1 1 0 0 0 .3 .7l9 9a1 1 0 0 0 1.4 0l5.5 -5.5a1 1 0 0 0 0 -1.4l-9 -9a1 1 0 0 0 -.7 -.3h-5.5a1 1 0 0 0 -1 1z"/>', pin: '<path d="M12 21c-4.5 -4.5 -7 -7.5 -7 -11a7 7 0 0 1 14 0c0 3.5 -2.5 6.5 -7 11z"/><path d="M12 10m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"/>', gauge: '<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 12l4 -3"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>', cal: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/><path d="M4 10h16M8 4v3M16 4v3"/>' };
 // Arma el SVG 2000×2000 del remate r con los datos ya calculados d.
-function tarjetaSVG(r, d) {
+// opts.satDataUri: si viene, usa data URI en vez de URL externa (self-contained, apto para canvas sin tainting)
+// opts.fontDataUri: si viene, inyecta @font-face con la fuente embebida en vez de @import de Google Fonts
+function tarjetaSVG(r, d, opts = {}) {
   const W = 2000, BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
   // bbox mercator del lote, con margen amplio (menos zoom) y cuadrado
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
@@ -1413,15 +1414,19 @@ function tarjetaSVG(r, d) {
         : `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}" font-weight="500">${esc(a)}</text>`);
     rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
   });
+  const satHref = opts.satDataUri || satURL;
+  const styleFuente = opts.fontDataUri
+    ? `<style>@font-face{font-family:'Jost';font-weight:300 700;font-style:normal;src:url('${opts.fontDataUri}') format('truetype');}</style>`
+    : `<style>@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700');</style>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
 <defs>
-<style>@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700');</style>
+${styleFuente}
 <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity=".10"/><stop offset=".20" stop-color="${BRAND}" stop-opacity=".14"/><stop offset=".40" stop-color="${BRAND}" stop-opacity=".45"/><stop offset=".50" stop-color="${BRAND}" stop-opacity=".88"/><stop offset=".60" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#052A24" stop-opacity=".97"/></linearGradient>
 <linearGradient id="topv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".12" stop-color="#000" stop-opacity="0"/></linearGradient>
 <linearGradient id="ph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5a2e"/><stop offset=".5" stop-color="#2f4d2a"/><stop offset="1" stop-color="#21391f"/></linearGradient>
 </defs>
 <rect width="${W}" height="${W}" fill="url(#ph)"/>
-${satURL ? `<image href="${esc(satURL)}" x="0" y="0" width="${W}" height="${W}" preserveAspectRatio="xMidYMid slice"/>` : ""}
+${satHref ? `<image href="${opts.satDataUri ? satHref : esc(satHref)}" x="0" y="0" width="${W}" height="${W}" preserveAspectRatio="xMidYMid slice"/>` : ""}
 ${polyPts ? `<polygon points="${polyPts}" fill="#C8503A" fill-opacity=".14" stroke="${TERRA}" stroke-width="8" stroke-linejoin="round"/>` : ""}
 <rect width="${W}" height="${W}" fill="url(#scrim)"/>
 <rect width="${W}" height="${W}" fill="url(#topv)"/>
@@ -1438,195 +1443,112 @@ ${rowsSVG}
 <text x="1850" y="1922" font-size="44" fill="${TEALSOFT}" text-anchor="end" font-weight="600">planoexactocr.com</text>
 </svg>`;
 }
-// ---------- resvg-wasm inline: SVG → PNG en el Worker ----------
-// Código del paquete @resvg/resvg-wasm incrustado directamente (sin eval/new Function).
-// assets/resvg.wasm = index_bg.wasm del paquete. assets/Jost.ttf = fuente embebida.
-var _rsvgWasm;
-var _rsvgHeap = new Array(128).fill(void 0);
-_rsvgHeap.push(void 0, null, true, false);
-var _rsvgHeapNext = _rsvgHeap.length;
-function _rsvgAddObj(obj) { if (_rsvgHeapNext === _rsvgHeap.length) _rsvgHeap.push(_rsvgHeap.length + 1); const idx = _rsvgHeapNext; _rsvgHeapNext = _rsvgHeap[idx]; _rsvgHeap[idx] = obj; return idx; }
-function _rsvgGetObj(idx) { return _rsvgHeap[idx]; }
-function _rsvgDropObj(idx) { if (idx < 132) return; _rsvgHeap[idx] = _rsvgHeapNext; _rsvgHeapNext = idx; }
-function _rsvgTakeObj(idx) { const r = _rsvgGetObj(idx); _rsvgDropObj(idx); return r; }
-var _rsvgVecLen = 0;
-var _rsvgU8 = null;
-function _rsvgGetU8() { if (!_rsvgU8 || _rsvgU8.byteLength === 0) _rsvgU8 = new Uint8Array(_rsvgWasm.memory.buffer); return _rsvgU8; }
-var _rsvgI32 = null;
-function _rsvgGetI32() { if (!_rsvgI32 || _rsvgI32.byteLength === 0) _rsvgI32 = new Int32Array(_rsvgWasm.memory.buffer); return _rsvgI32; }
-var _rsvgEnc = new TextEncoder("utf-8");
-var _rsvgDec = new TextDecoder("utf-8", { ignoreBOM: true, fatal: true });
-function _rsvgPassStr(arg, malloc, realloc) {
-  if (realloc === void 0) { const buf = _rsvgEnc.encode(arg); const ptr2 = malloc(buf.length, 1) >>> 0; _rsvgGetU8().subarray(ptr2, ptr2 + buf.length).set(buf); _rsvgVecLen = buf.length; return ptr2; }
-  let len = arg.length, ptr = malloc(len, 1) >>> 0; const mem = _rsvgGetU8(); let off = 0;
-  for (; off < len; off++) { const c = arg.charCodeAt(off); if (c > 127) break; mem[ptr + off] = c; }
-  if (off !== len) { if (off !== 0) arg = arg.slice(off); ptr = realloc(ptr, len, len = off + arg.length * 3, 1) >>> 0; const view = _rsvgGetU8().subarray(ptr + off, ptr + len); const ret = _rsvgEnc.encodeInto ? _rsvgEnc.encodeInto(arg, view) : { written: (_rsvgEnc.encode(arg), view.set(_rsvgEnc.encode(arg)), _rsvgEnc.encode(arg).length) }; off += ret.written; }
-  _rsvgVecLen = off; return ptr;
-}
-function _rsvgGetStr(ptr, len) { ptr = ptr >>> 0; return _rsvgDec.decode(_rsvgGetU8().subarray(ptr, ptr + len)); }
-function _rsvgHandleErr(f, args) { try { return f.apply(this, args); } catch (e) { _rsvgWasm.__wbindgen_exn_store(_rsvgAddObj(e)); } }
-function _rsvgIsNone(x) { return x === void 0 || x === null; }
-var _RsvgBBox = class { static __wrap(ptr) { ptr = ptr >>> 0; const o = Object.create(_RsvgBBox.prototype); o.__wbg_ptr = ptr; return o; } free() { _rsvgWasm.__wbg_bbox_free(this.__wbg_ptr); this.__wbg_ptr = 0; } };
-var _RsvgRenderedImage = class {
-  static __wrap(ptr) { ptr = ptr >>> 0; const o = Object.create(_RsvgRenderedImage.prototype); o.__wbg_ptr = ptr; return o; }
-  free() { _rsvgWasm.__wbg_renderedimage_free(this.__wbg_ptr); this.__wbg_ptr = 0; }
-  get width() { return _rsvgWasm.renderedimage_width(this.__wbg_ptr) >>> 0; }
-  get height() { return _rsvgWasm.renderedimage_height(this.__wbg_ptr) >>> 0; }
-  asPng() { try { const rp = _rsvgWasm.__wbindgen_add_to_stack_pointer(-16); _rsvgWasm.renderedimage_asPng(rp, this.__wbg_ptr); const r0 = _rsvgGetI32()[rp/4+0], r1 = _rsvgGetI32()[rp/4+1], r2 = _rsvgGetI32()[rp/4+2]; if (r2) throw _rsvgTakeObj(r1); return _rsvgTakeObj(r0); } finally { _rsvgWasm.__wbindgen_add_to_stack_pointer(16); } }
-};
-var _RsvgBase = class {
-  static __wrap(ptr) { ptr = ptr >>> 0; const o = Object.create(_RsvgBase.prototype); o.__wbg_ptr = ptr; return o; }
-  free() { _rsvgWasm.__wbg_resvg_free(this.__wbg_ptr); this.__wbg_ptr = 0; }
-  constructor(svg, options, custom_font_buffers) {
+
+// Página HTML para descargar la tarjeta como PNG (admin). El PNG se genera en el navegador:
+//  1) fetch del SVG self-contained (?embed=1 → satelital y Jost como data URI, cero cross-origin)
+//  2) <img> carga el SVG y se pinta en un canvas 2000×2000
+//  3) canvas.toBlob → descarga automática del PNG
+function paginaTarjetaDescarga(id) {
+  const html = `<!doctype html>
+<html lang="es-CR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarjeta remate ${id} — PlanoExactoCR</title>
+<link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap">
+<style>
+  :root{color-scheme:dark;--bg:#0b1a17;--pan:#102823;--brd:#1c3831;--ink:#e6f2ec;--mut:#8ea89f;--teal:#2BA683;--teal2:#159B75}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Jost,system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+  header{padding:14px 22px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:16px}
+  header h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+  header .sp{flex:1}
+  header a{color:var(--mut);text-decoration:none;font-size:14px}
+  header a:hover{color:var(--ink)}
+  main{flex:1;display:grid;grid-template-columns:1fr 320px;gap:24px;padding:24px;max-width:1400px;margin:0 auto;width:100%}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  .preview{background:var(--pan);border:1px solid var(--brd);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;min-height:400px}
+  .preview img{max-width:100%;height:auto;display:block;border-radius:6px}
+  aside{display:flex;flex-direction:column;gap:14px}
+  .panel{background:var(--pan);border:1px solid var(--brd);border-radius:12px;padding:18px}
+  .panel h2{margin:0 0 10px;font-size:14px;font-weight:600;color:var(--mut);letter-spacing:.4px;text-transform:uppercase}
+  button{width:100%;padding:12px 16px;border:none;border-radius:8px;background:var(--teal);color:#042019;font:600 15px/1 Jost,sans-serif;cursor:pointer;transition:background .15s}
+  button:hover:not(:disabled){background:#38bd93}
+  button:disabled{background:#4a6b61;color:#0b1a17;cursor:wait}
+  .hint{font-size:13px;color:var(--mut);margin-top:10px;line-height:1.5}
+  .msg{font-size:13px;margin-top:10px;padding:8px 10px;border-radius:6px;display:none}
+  .msg.ok{display:block;background:#0f3a2c;color:#8ee7c6;border:1px solid #1e5a44}
+  .msg.err{display:block;background:#3a1a1a;color:#f0a0a0;border:1px solid #6b2626}
+  canvas{display:none}
+</style>
+</head><body>
+<header>
+  <h1>Tarjeta remate ${id}</h1>
+  <div class="sp"></div>
+  <a href="/admin">← Admin</a>
+</header>
+<main>
+  <section class="preview">
+    <img id="prev" src="/tarjeta/${id}.svg" alt="Previsualización tarjeta ${id}" />
+  </section>
+  <aside>
+    <div class="panel">
+      <h2>Descargar</h2>
+      <button id="btn">Descargar PNG (2000×2000)</button>
+      <div class="hint">El PNG se arma en tu navegador con la imagen satelital y la fuente Jost incrustadas en el SVG. Tarda unos segundos la primera vez.</div>
+      <div id="msg" class="msg"></div>
+    </div>
+    <div class="panel">
+      <h2>También</h2>
+      <div class="hint">
+        <a href="/tarjeta/${id}.svg" target="_blank" style="color:var(--teal2);text-decoration:none">Ver SVG original</a><br>
+        <a href="/tarjeta/${id}.svg?embed=1" target="_blank" style="color:var(--teal2);text-decoration:none">Ver SVG self-contained</a>
+      </div>
+    </div>
+  </aside>
+</main>
+<canvas id="c" width="2000" height="2000"></canvas>
+<script>
+(function(){
+  const btn = document.getElementById("btn");
+  const msg = document.getElementById("msg");
+  const canvas = document.getElementById("c");
+  const say = (t, ok) => { msg.textContent = t; msg.className = "msg " + (ok?"ok":"err"); };
+  btn.addEventListener("click", async () => {
+    btn.disabled = true; const original = btn.textContent;
+    btn.textContent = "Generando…"; msg.className = "msg";
     try {
-      const rp = _rsvgWasm.__wbindgen_add_to_stack_pointer(-16);
-      var ptr0 = _rsvgIsNone(options) ? 0 : _rsvgPassStr(options, _rsvgWasm.__wbindgen_malloc, _rsvgWasm.__wbindgen_realloc);
-      var len0 = _rsvgVecLen;
-      _rsvgWasm.resvg_new(rp, _rsvgAddObj(svg), ptr0, len0, _rsvgIsNone(custom_font_buffers) ? 0 : _rsvgAddObj(custom_font_buffers));
-      const r0 = _rsvgGetI32()[rp/4+0], r1 = _rsvgGetI32()[rp/4+1], r2 = _rsvgGetI32()[rp/4+2];
-      if (r2) throw _rsvgTakeObj(r1);
-      return _RsvgBase.__wrap(r0);
-    } finally { _rsvgWasm.__wbindgen_add_to_stack_pointer(16); }
-  }
-  get width() { return _rsvgWasm.resvg_width(this.__wbg_ptr); }
-  get height() { return _rsvgWasm.resvg_height(this.__wbg_ptr); }
-  render() {
-    try { const rp = _rsvgWasm.__wbindgen_add_to_stack_pointer(-16); _rsvgWasm.resvg_render(rp, this.__wbg_ptr); const r0 = _rsvgGetI32()[rp/4+0], r1 = _rsvgGetI32()[rp/4+1], r2 = _rsvgGetI32()[rp/4+2]; if (r2) throw _rsvgTakeObj(r1); return _RsvgRenderedImage.__wrap(r0); }
-    finally { _rsvgWasm.__wbindgen_add_to_stack_pointer(16); }
-  }
-};
-function _rsvgGetImports() {
-  const imp = { wbg: {} };
-  imp.wbg.__wbg_new_d258248ed531ff54 = (a0,a1) => _rsvgAddObj(new Error(_rsvgGetStr(a0,a1)));
-  imp.wbg.__wbindgen_memory = () => _rsvgAddObj(_rsvgWasm.memory);
-  imp.wbg.__wbg_buffer_085ec1f694018c4f = (a0) => _rsvgAddObj(_rsvgGetObj(a0).buffer);
-  imp.wbg.__wbg_newwithbyteoffsetandlength_6da8e527659b86aa = (a0,a1,a2) => _rsvgAddObj(new Uint8Array(_rsvgGetObj(a0), a1>>>0, a2>>>0));
-  imp.wbg.__wbindgen_object_drop_ref = (a0) => { _rsvgTakeObj(a0); };
-  imp.wbg.__wbg_new_8125e318e6245eed = (a0) => _rsvgAddObj(new Uint8Array(_rsvgGetObj(a0)));
-  imp.wbg.__wbg_values_e80af618f92c8649 = (a0) => _rsvgAddObj(_rsvgGetObj(a0).values());
-  imp.wbg.__wbg_next_ddb3312ca1c4e32a = function() { return _rsvgHandleErr(function(a0) { return _rsvgAddObj(_rsvgGetObj(a0).next()); }, arguments); };
-  imp.wbg.__wbg_done_5c1f01fb660d73b5 = (a0) => _rsvgGetObj(a0).done ? 1 : 0;
-  imp.wbg.__wbg_value_1695675138684bd5 = (a0) => _rsvgAddObj(_rsvgGetObj(a0).value);
-  imp.wbg.__wbg_instanceof_Uint8Array_d8d9cb2b8e8ac1d4 = (a0) => { try { return _rsvgGetObj(a0) instanceof Uint8Array ? 1 : 0; } catch { return 0; } };
-  imp.wbg.__wbindgen_string_get = (a0,a1) => { const obj = _rsvgGetObj(a1); const ret = typeof obj==="string" ? obj : void 0; var p1 = _rsvgIsNone(ret) ? 0 : _rsvgPassStr(ret, _rsvgWasm.__wbindgen_malloc, _rsvgWasm.__wbindgen_realloc); _rsvgGetI32()[a0/4+1] = _rsvgVecLen; _rsvgGetI32()[a0/4+0] = p1; };
-  imp.wbg.__wbg_new_898a68150f225f2e = () => _rsvgAddObj(new Array());
-  imp.wbg.__wbindgen_string_new = (a0,a1) => _rsvgAddObj(_rsvgGetStr(a0,a1));
-  imp.wbg.__wbg_push_ca1c26067ef907ac = (a0,a1) => _rsvgGetObj(a0).push(_rsvgGetObj(a1));
-  imp.wbg.__wbg_length_72e2208bbc0efc61 = (a0) => _rsvgGetObj(a0).length;
-  imp.wbg.__wbg_set_5cf90238115182c3 = (a0,a1,a2) => { _rsvgGetObj(a0).set(_rsvgGetObj(a1), a2>>>0); };
-  imp.wbg.__wbindgen_throw = (a0,a1) => { throw new Error(_rsvgGetStr(a0,a1)); };
-  return imp;
-}
-var _rsvgInitialized = false;
-async function resvgInit(wasmArrayBuffer) {
-  if (_rsvgInitialized) return;
-  const { instance } = await WebAssembly.instantiate(wasmArrayBuffer, _rsvgGetImports());
-  _rsvgWasm = instance.exports; _rsvgI32 = null; _rsvgU8 = null;
-  _rsvgInitialized = true;
-}
-class ResvgWasm extends _RsvgBase {
-  constructor(svg, options) {
-    if (!_rsvgInitialized) throw new Error("resvg: llamá resvgInit() primero");
-    const font = options && options.font;
-    if (font && Object.prototype.hasOwnProperty.call(font, "fontBuffers")) {
-      const opts = Object.assign({}, options, { font: Object.assign({}, font, { fontBuffers: void 0 }) });
-      super(svg, JSON.stringify(opts), font.fontBuffers);
-    } else {
-      super(svg, JSON.stringify(options || {}));
+      const svgResp = await fetch("/tarjeta/${id}.svg?embed=1", { credentials: "same-origin" });
+      if (!svgResp.ok) throw new Error("No se pudo cargar el SVG (" + svgResp.status + ")");
+      const svgText = await svgResp.text();
+      const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.decoding = "async";
+      await new Promise((ok, fail) => {
+        img.onload = ok;
+        img.onerror = () => fail(new Error("El navegador no pudo renderizar el SVG"));
+        img.src = url;
+      });
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, 2000, 2000);
+      ctx.drawImage(img, 0, 0, 2000, 2000);
+      URL.revokeObjectURL(url);
+      const pngBlob = await new Promise((ok, fail) => canvas.toBlob(b => b ? ok(b) : fail(new Error("canvas.toBlob falló")), "image/png"));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pngBlob);
+      a.download = "remate-${id}.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      say("Listo. Si no inició la descarga, revisá que el navegador no la haya bloqueado.", true);
+    } catch (e) {
+      say("Error: " + (e && e.message ? e.message : e), false);
+    } finally {
+      btn.disabled = false; btn.textContent = original;
     }
-  }
-}
-// Cache: inicializar wasm una vez por instancia del Worker
-// resvgWasmModule es el WebAssembly.Module importado estáticamente (ESM)
-let _resvgWasmLoaded = false;
-async function resvgCargar() {
-  if (_resvgWasmLoaded) return;
-  const { instance } = await WebAssembly.instantiate(resvgWasmModule, _rsvgGetImports());
-  _rsvgWasm = instance.exports; _rsvgI32 = null; _rsvgU8 = null;
-  _rsvgInitialized = true;
-  _resvgWasmLoaded = true;
-}
-
-// Genera PNG rasterizando el SVG de tarjeta con la satelital incrustada como data URI.
-async function tarjetaPNG(r, d, env, u) {
-  const W = 2000;
-  // 1. Calcular bbox (igual que tarjetaSVG)
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const ringsM = [];
-  for (const pg of (r.poly || [])) for (const ring of pg) { const rm = ring.map(aMerc); ringsM.push(rm); for (const m of rm) { if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; } }
-  let polyPts = "", satDataUri = "";
-  if (isFinite(x0)) {
-    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
-    const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
-    const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh, toPx = (m) => [(m[0] - bx0) / (bx1 - bx0) * W, (by1 - m[1]) / (by1 - by0) * W];
-    polyPts = ringsM.map((rg) => rg.map(toPx).map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")).join(" ");
-    // 2. Pedir satelital de Esri y convertir a data URI (resvg no carga URLs externas)
-    const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=${W},${W}&format=jpg&f=image`;
-    try {
-      const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
-      if (satR.ok) {
-        const satBytes = new Uint8Array(await satR.arrayBuffer());
-        let b64 = ""; const chunk = 0x8000;
-        for (let i = 0; i < satBytes.length; i += chunk) b64 += String.fromCharCode(...satBytes.subarray(i, i + chunk));
-        satDataUri = "data:image/jpeg;base64," + btoa(b64);
-      }
-    } catch (_) { /* sin satelital: fondo degradado verde */ }
-  }
-  // 3. SVG con imagen incrustada (sin @import de Google Fonts: resvg no tiene red)
-  const svg = tarjetaSVGInline(r, d, polyPts, satDataUri);
-  // 4. Cargar fuente Jost TTF
-  const fontR = await env.ASSETS.fetch(new Request(new URL("/assets/Jost.ttf", u)));
-  if (!fontR.ok) throw new Error("assets/Jost.ttf no encontrado");
-  const fontData = new Uint8Array(await fontR.arrayBuffer());
-  // 5. Inicializar resvg y rasterizar
-  await resvgCargar();
-  const resvg = new ResvgWasm(svg, { font: { fontBuffers: [fontData], loadSystemFonts: false } });
-  const rendered = resvg.render();
-  const png = rendered.asPng();
-  rendered.free();
-  resvg.free();
-  return png; // Uint8Array
-}
-
-// SVG con imagen ya incrustada como data URI (resvg no tiene red)
-function tarjetaSVGInline(r, d, polyPts, satDataUri) {
-  const W = 2000, BRAND = "#073B32", TEAL = "#159B75", TEALSOFT = "#2BA683", TERRA = "#C8503A", INK = "#fff", MUT = "#9FC3B5";
-  const rows = [["ruler", "Área", d.area], ["dollar", "Precio por m²", d.m2]];
-  if (d.hacienda) rows.push(["tag", d.hacienda, null]);
-  if (d.costa) rows.push(["pin", d.costa, null]);
-  if (d.indice) rows.push(["gauge", "Índice PlanoExacto", d.indice]);
-  rows.push(["cal", "Remate", d.fecha || "—"]);
-  const Y0 = 1322, RG = 92, chip = 86; let rowsSVG = "";
-  rows.forEach((row, i) => {
-    const y = Y0 + i * RG, cy = y, ic = row[0], a = row[1], b = row[2];
-    const txt = b != null
-      ? `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}">${esc(a)} · <tspan font-weight="700">${esc(b)}</tspan></text>`
-      : (/\d|%/.test(a) ? `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}">${esc(a).replace(/^(\d+%|A \d[\d.,]* ?k?m)/, '<tspan font-weight="700">$1</tspan>')}</text>`
-        : `<text x="300" y="${cy + 18}" font-size="50" fill="${INK}" font-weight="500">${esc(a)}</text>`);
-    rowsSVG += `<rect x="150" y="${y - chip / 2}" width="${chip}" height="${chip}" rx="22" fill="${TEAL}" opacity=".16"/><g transform="translate(${150 + chip / 2 - 21},${cy - 21}) scale(1.75)" fill="none" stroke="${TEALSOFT}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TJ_IC[ic]}</g>${txt}${i < rows.length - 1 ? `<line x1="150" y1="${y + RG / 2}" x2="1850" y2="${y + RG / 2}" stroke="#fff" stroke-opacity=".08"/>` : ""}`;
   });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}" font-family="Jost, sans-serif">
-<defs>
-<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${BRAND}" stop-opacity=".10"/><stop offset=".20" stop-color="${BRAND}" stop-opacity=".14"/><stop offset=".40" stop-color="${BRAND}" stop-opacity=".45"/><stop offset=".50" stop-color="${BRAND}" stop-opacity=".88"/><stop offset=".60" stop-color="${BRAND}" stop-opacity=".95"/><stop offset="1" stop-color="#052A24" stop-opacity=".97"/></linearGradient>
-<linearGradient id="topv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".12" stop-color="#000" stop-opacity="0"/></linearGradient>
-<linearGradient id="ph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5a2e"/><stop offset=".5" stop-color="#2f4d2a"/><stop offset="1" stop-color="#21391f"/></linearGradient>
-</defs>
-<rect width="${W}" height="${W}" fill="url(#ph)"/>
-${satDataUri ? `<image href="${satDataUri}" x="0" y="0" width="${W}" height="${W}" preserveAspectRatio="xMidYMid slice"/>` : ""}
-${polyPts ? `<polygon points="${polyPts}" fill="#C8503A" fill-opacity=".14" stroke="${TERRA}" stroke-width="8" stroke-linejoin="round"/>` : ""}
-<rect width="${W}" height="${W}" fill="url(#scrim)"/>
-<rect width="${W}" height="${W}" fill="url(#topv)"/>
-${TJ_MARK(210, 120, 1.05)}
-<text x="300" y="138" font-size="62" letter-spacing="4" fill="#fff" font-weight="300">PLANO<tspan font-weight="700">EXACTO</tspan><tspan>CR</tspan></text>
-<rect x="${W - 150 - 360}" y="78" width="360" height="92" rx="46" fill="${TEAL}"/><text x="${W - 150 - 180}" y="138" font-size="46" text-anchor="middle" fill="#042019" font-weight="600">${esc(d.etapa)}</text>
-<text x="150" y="985" font-size="48" letter-spacing="3" fill="${TEALSOFT}" font-weight="600">${esc((d.tipo || "").toUpperCase())} · ${esc((d.lugar || "").toUpperCase())}</text>
-<text x="150" y="1052" font-size="50" fill="${MUT}">Base de remate</text>
-<text x="146" y="1178" font-size="156" fill="#fff" font-weight="700" letter-spacing="-2">${esc(d.base)}</text>
-<line x1="150" y1="1242" x2="1850" y2="1242" stroke="#fff" stroke-opacity=".12"/>
-${rowsSVG}
-<line x1="150" y1="1858" x2="1850" y2="1858" stroke="#fff" stroke-opacity=".12"/>
-<text x="150" y="1922" font-size="44" fill="${MUT}">Ubica · Comprende · Decide</text>
-<text x="1850" y="1922" font-size="44" fill="${TEALSOFT}" text-anchor="end" font-weight="600">planoexactocr.com</text>
-</svg>`;
+})();
+</script>
+</body></html>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "private, no-store" } });
 }
 
 function pagSEO(u, titulo, desc, cuerpo, ld) {
@@ -1787,7 +1709,15 @@ async function manejarPeticion(request, env) {
       if (p === "/admin/registros.csv") return env.REGISTROS ? exportarRegistros(env) : txt("Falta el almacenamiento de registros (KV).", 503);
       if (p === "/admin/usuarios.csv") return env.DB ? exportarUsuarios(env) : txt("Falta la base de datos (D1).", 503);
     }
-    // Tarjeta social de un remate (admin: usa datos completos; la imagen final es lo que se postea)
+    // Tarjeta social de un remate (admin). Tres variantes:
+    //   /tarjeta/<id>         → página HTML con preview y botón "Descargar PNG" (se genera en el navegador con canvas)
+    //   /tarjeta/<id>.svg     → SVG puro con la URL satelital externa (ligero, para inspección)
+    //   /tarjeta/<id>.svg?embed=1 → SVG self-contained con imagen satelital y fuente Jost como data URIs (apto para canvas)
+    const mTarjetaHTML = p.match(/^\/tarjeta\/(\d+)$/);
+    if (mTarjetaHTML) {
+      if (!adm) return txt("Acceso restringido", 401);
+      return paginaTarjetaDescarga(mTarjetaHTML[1]);
+    }
     if (p.startsWith("/tarjeta/") && p.endsWith(".svg")) {
       if (!adm) return txt("Acceso restringido", 401);
       const id = parseInt(p.slice("/tarjeta/".length, -4), 10);
@@ -1797,23 +1727,38 @@ async function manejarPeticion(request, env) {
       const meds = prepararTarjeta(R, ahora);
       const r = R.find((x) => x.id === id);
       if (!r) return txt("Remate no encontrado", 404);
-      return new Response(tarjetaSVG(r, datosTarjeta(r, meds)), { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, no-store" } });
-    }
-    if (p.startsWith("/tarjeta/") && p.endsWith(".png")) {
-      if (!adm) return txt("Acceso restringido", 401);
-      const id = parseInt(p.slice("/tarjeta/".length, -4), 10);
-      if (!Number.isInteger(id)) return txt("No encontrado", 404);
-      const R = await (await env.ASSETS.fetch(new Request(new URL("/data/remates.json", u)))).json();
-      const ahora = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 16);
-      const meds = prepararTarjeta(R, ahora);
-      const r = R.find((x) => x.id === id);
-      if (!r) return txt("Remate no encontrado", 404);
-      try {
-        const pngBytes = await tarjetaPNG(r, datosTarjeta(r, meds), env, u);
-        return new Response(pngBytes, { headers: { "content-type": "image/png", "cache-control": "private, max-age=3600", "content-disposition": `attachment; filename="remate-${id}.png"` } });
-      } catch (e) {
-        return txt("Error al generar PNG: " + e.message, 500);
+      const opts = {};
+      if (u.searchParams.get("embed") === "1") {
+        // 1. Satelital: fetch y a base64 (canvas en cliente no acepta cross-origin tainted)
+        const d = datosTarjeta(r, meds);
+        // Reproducir el bbox para obtener la URL (mismo cálculo que en tarjetaSVG)
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const pg of (r.poly || [])) for (const ring of pg) for (const pt of ring) { const m = aMerc(pt); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; }
+        if (isFinite(x0)) {
+          const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; let hw = (x1 - x0) / 2 * 3.2, hh = (y1 - y0) / 2 * 3.2;
+          const may = Math.max(hw, hh, 1); if (may < 40) { const k = 40 / may; hw *= k; hh *= k; } hw = hh = Math.max(hw, hh);
+          const bx0 = cx - hw, bx1 = cx + hw, by0 = cy - hh, by1 = cy + hh;
+          const satURL = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bx0},${by0},${bx1},${by1}&bboxSR=102100&imageSR=102100&size=2000,2000&format=jpg&f=image`;
+          try {
+            const satR = await fetch(satURL, { cf: { cacheTtl: 86400, cacheEverything: true } });
+            if (satR.ok) {
+              const b = new Uint8Array(await satR.arrayBuffer()); let s = ""; const chunk = 0x8000;
+              for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
+              opts.satDataUri = "data:image/jpeg;base64," + btoa(s);
+            }
+          } catch (_) { /* seguimos sin satelital embebida; el polígono y los degradados dan igual */ }
+        }
+        // 2. Fuente Jost: fetch del asset local y a base64
+        try {
+          const fR = await env.ASSETS.fetch(new Request(new URL("/assets/Jost.ttf", u)));
+          if (fR.ok) {
+            const b = new Uint8Array(await fR.arrayBuffer()); let s = ""; const chunk = 0x8000;
+            for (let i = 0; i < b.length; i += chunk) s += String.fromCharCode(...b.subarray(i, i + chunk));
+            opts.fontDataUri = "data:font/ttf;base64," + btoa(s);
+          }
+        } catch (_) { /* queda @import — algunos clientes de canvas igual lo resolverán */ }
       }
+      return new Response(tarjetaSVG(r, datosTarjeta(r, meds), opts), { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, no-store" } });
     }
     const ses = adm ? null : await leerSesion(request, env).catch(() => null);
     const dentro = adm || !!ses;
