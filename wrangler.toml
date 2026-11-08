@@ -42,3 +42,8 @@ database_name = "planoexactocr-usuarios"
 # Envío de avisos por correo desde avisos@planoexactocr.com (Email Routing de Cloudflare)
 [[send_email]]
 name = "AVISOS"
+
+# Módulo WASM para rasterizar SVG → PNG (resvg-wasm)
+[[rules]]
+type = "CompiledWasm"
+globs = ["assets/resvg.wasm"]

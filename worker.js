@@ -1,4 +1,5 @@
 import { EmailMessage } from "cloudflare:email";
+import resvgWasmModule from "./assets/resvg.wasm";
 // PlanoExactoCR en Cloudflare Workers (con archivos estáticos).
 // · Cuentas de usuario con correo y contraseña (base de datos D1, binding DB): mapa abierto, ficha con cuenta gratis.
 // · Administración con la contraseña del sitio (variable secreta SITE_PASSWORD): /admin, catastro y vista PRO de prueba.
@@ -1535,13 +1536,14 @@ class ResvgWasm extends _RsvgBase {
     }
   }
 }
-// Cache: cargar e inicializar wasm una vez por instancia del Worker
+// Cache: inicializar wasm una vez por instancia del Worker
+// resvgWasmModule es el WebAssembly.Module importado estáticamente (ESM)
 let _resvgWasmLoaded = false;
-async function resvgCargar(env, baseURL) {
+async function resvgCargar() {
   if (_resvgWasmLoaded) return;
-  const wasmR = await env.ASSETS.fetch(new Request(new URL("/assets/resvg.wasm", baseURL)));
-  if (!wasmR.ok) throw new Error("assets/resvg.wasm no encontrado (" + wasmR.status + ")");
-  await resvgInit(await wasmR.arrayBuffer());
+  const { instance } = await WebAssembly.instantiate(resvgWasmModule, _rsvgGetImports());
+  _rsvgWasm = instance.exports; _rsvgI32 = null; _rsvgU8 = null;
+  _rsvgInitialized = true;
   _resvgWasmLoaded = true;
 }
 
@@ -1576,7 +1578,7 @@ async function tarjetaPNG(r, d, env, u) {
   if (!fontR.ok) throw new Error("assets/Jost.ttf no encontrado");
   const fontData = new Uint8Array(await fontR.arrayBuffer());
   // 5. Inicializar resvg y rasterizar
-  await resvgCargar(env, u);
+  await resvgCargar();
   const resvg = new ResvgWasm(svg, { font: { fontBuffers: [fontData], loadSystemFonts: false } });
   const rendered = resvg.render();
   const png = rendered.asPng();
