@@ -198,7 +198,7 @@ const correoHTMLCampana = (titulo, parrafos, extra, boton, enlace, env) => { con
 <div style="background:#159B75;height:6px;line-height:6px;font-size:0">&nbsp;</div>
 <div style="padding:26px 28px 6px">
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr>
-<td style="vertical-align:middle;padding-right:10px"><img src="https://${dom}/assets/img/correo-logo.png" width="40" height="32" alt="PlanoExactoCR" style="display:block"></td>
+<td style="vertical-align:middle;padding-right:10px"><img src="https://${dom}/assets/img/correo-marca.png" width="42" height="42" alt="PlanoExactoCR" style="display:block;border-radius:10px"></td>
 <td style="vertical-align:middle">
 <div style="font-size:18px;font-weight:bold;color:#073B32;line-height:1.3">PlanoExactoCR</div>
 <div style="color:#4C5953;font-size:12px">Remates judiciales de Costa Rica en un mapa</div>
@@ -1489,8 +1489,8 @@ async function manejarPeticion(request, env) {
     }
     // Versión en las direcciones de scripts y estilos: cada publicación los renueva sin esperar cachés
     if (env.VER && (res.headers.get("content-type") || "").includes("text/html")) {
-      const v = (env.VER.id || "").slice(0, 8), conV = (el, at) => { const x = el.getAttribute(at); if (x && /^\/?assets\/[^?]+\.(js|css)$/.test(x)) el.setAttribute(at, x + "?v=" + v); };
-      res = new HTMLRewriter().on("script[src]", { element: (el) => conV(el, "src") }).on("link[href]", { element: (el) => conV(el, "href") }).transform(res);
+      const v = (env.VER.id || "").slice(0, 8), conV = (el, at) => { const x = el.getAttribute(at); if (x && /^\/?assets\/[^?]+\.(js|css|png|svg|webp|ico|jpg|jpeg|gif)$/.test(x)) el.setAttribute(at, x + "?v=" + v); };
+      res = new HTMLRewriter().on("script[src]", { element: (el) => conV(el, "src") }).on("link[href]", { element: (el) => conV(el, "href") }).on("img[src]", { element: (el) => conV(el, "src") }).transform(res);
     }
     const out = new Response(res.body, res);
     if (!(env.DOMINIO && u.hostname === env.DOMINIO && esIndexable(p))) out.headers.set("X-Robots-Tag", "noindex, nofollow");
