@@ -1201,6 +1201,100 @@
   function barsHTML(s) {
     return `<div class="bars">${PX.DIMS.map(d => `<div class="bar"><span>${d.n}</span><b>${s[d.k] == null ? '–' : s[d.k]}</b><span class="track"><i style="width:${s[d.k] || 0}%"></i></span></div>`).join('')}</div>`;
   }
+  // ---------- Resumen 6 dimensiones ----------
+  // Semáforo: 'ok' = datos responden la pregunta (verde), 'par' = parcial / en desarrollo (amarillo), 'nd' = sin datos (gris)
+  function dimsResumen(r) {
+    if (r.isPlano) return '';
+    const e = r.ent || {}, nv = PX.pro.normativa(r), s = sc(r);
+    const nserv = (r.serv || []).length;
+    const a = PX.prof(r);
+    // Evaluar cada dimensión con los datos disponibles
+    const dims = [
+      {
+        ico: '💰', n: 'Económica',
+        q: '¿Cuál es el valor comercial real?',
+        st: r.iphV != null ? 'ok' : (r.usdm2 != null ? 'par' : 'nd'),
+        resp: r.iphV != null
+          ? `IPH ${Math.round(r.iphV)}% · ${r.usdm2 != null ? Math.round(r.usdm2) + ' USD/m²' : 'precio/m² s/d'}`
+          : r.usdm2 != null
+          ? `${Math.round(r.usdm2)} USD/m² · sin índice Hacienda`
+          : 'Sin valor de Hacienda ni precio/m²',
+        nota: r.iphV != null ? '' : 'Requiere zona homogénea ONT (plan PRO)'
+      },
+      {
+        ico: '📋', n: 'Registral',
+        q: '¿Qué gravámenes se cancelan y cuáles subsisten?',
+        st: r.grav != null ? (r.grav > 0 ? 'par' : 'ok') : 'nd',
+        resp: r.grav != null
+          ? (r.grav === 0 ? 'Sin gravámenes registrados' : `${r.grav} gravamen${r.grav > 1 ? 'es' : ''} · revisar cuáles subsisten`)
+          : 'Sin datos registrales del expediente',
+        nota: r.finca ? `Finca ${r.fincaTxt}` : ''
+      },
+      {
+        ico: '⚖️', n: 'Jurídica',
+        q: '¿Hay oposiciones, suspensiones o incidencias?',
+        st: s.juridica != null ? (s.juridica >= 70 ? 'ok' : s.juridica >= 40 ? 'par' : 'par') : 'nd',
+        resp: s.juridica != null
+          ? `Sanidad jurídica ${s.juridica}/100${nserv > 0 ? ' · ' + nserv + ' servidumbre' + (nserv > 1 ? 's' : '') + ' citada' + (nserv > 1 ? 's' : '') : ''}`
+          : 'Sin análisis jurídico disponible',
+        nota: 'Oposiciones e incidencias requieren revisión manual del expediente'
+      },
+      {
+        ico: '🏗️', n: 'Física',
+        q: '¿Qué construcciones existen y en qué estado?',
+        st: r.tipo != null ? (r.tipo === 'Sin construcción' ? 'ok' : 'par') : 'nd',
+        resp: r.tipo != null
+          ? (r.tipo === 'Sin construcción'
+            ? `Lote sin construcciones · ${a ? fnum(a) + ' m²' : 'área s/d'}`
+            : `${esc(r.tipo)} · estado físico requiere inspección`)
+          : 'Tipo de inmueble no determinado',
+        nota: r.tipo && r.tipo !== 'Sin construcción' ? 'Estado de construcciones: revisar en sitio o con peritaje' : ''
+      },
+      {
+        ico: '👤', n: 'Posesoria',
+        q: '¿Está ocupada? ¿Quién la ocupa?',
+        st: 'nd',
+        resp: 'Sin datos de ocupación actual',
+        nota: 'Requiere visita al sitio o revisión del expediente judicial'
+      },
+      {
+        ico: '🏙️', n: 'Urbanística',
+        q: '¿Qué se puede desarrollar legalmente?',
+        st: nv.vigente ? 'ok' : (nv.titulo && nv.titulo !== 'Sin plan regulador' ? 'par' : 'nd'),
+        resp: nv.vigente
+          ? `${esc(nv.titulo)}`
+          : (nv.titulo && nv.titulo !== 'Sin plan regulador'
+            ? `${esc(nv.titulo)}`
+            : 'Sin plan regulador activo · parámetros nacionales'),
+        nota: nv.vigente ? 'Confirmar usos con certificado de uso de suelo' : ''
+      }
+    ];
+    const semColor = { ok: 'green', par: 'yellow', nd: 'secondary' };
+    const semLabel = { ok: 'Datos disponibles', par: 'Parcial', nd: 'Sin datos' };
+    const rows = dims.map(d => `<div class="dim6-row">
+      <div class="dim6-ico" title="${d.n}">${d.ico}</div>
+      <div class="dim6-body">
+        <div class="dim6-head">
+          <span class="dim6-name">${d.n}</span>
+          <span class="badge bg-${semColor[d.st]}-lt dim6-badge" title="${semLabel[d.st]}">
+            <span class="dim6-dot ${d.st}"></span>${semLabel[d.st]}
+          </span>
+        </div>
+        <div class="dim6-q text-secondary">${d.q}</div>
+        <div class="dim6-resp">${d.resp}</div>
+        ${d.nota ? `<div class="dim6-nota text-secondary">${d.nota}</div>` : ''}
+      </div>
+    </div>`).join('');
+    return `<div class="card card-sm mb-3">
+      <div class="card-header">
+        <span class="avatar avatar-sm bg-primary-lt me-2">🔍</span>
+        <h3 class="card-title">Análisis multidimensional</h3>
+        <div class="card-actions"><span class="text-secondary small">6 dimensiones</span></div>
+      </div>
+      <div class="card-body p-0"><div class="dim6">${rows}</div></div>
+    </div>`;
+  }
+
   function expBox(r) {
     const has = PX.tieneExp(r.key), q = PX.quedan(), n = PX.nivel();
     const label = has ? 'Abrir expediente' : !PX.conCuenta() ? 'Generar expediente' : q > 0 ? `Generar expediente <span class="badge bg-white text-primary ms-2">${n >= 3 ? 'sin límite' : q === 1 ? 'te queda 1' : 'te quedan ' + q}</span>` : `Expediente adicional · ${PX.mt(PX.PRECIOS.expediente, 'CRC')}`;
@@ -1389,6 +1483,7 @@
       ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
         ${full ? '' : `<div class="d-flex align-items-center gap-2 mt-2 small">${PX.PRO}<span class="text-secondary">Desglose en el expediente o en PRO</span><a href="#" class="ms-auto" data-planes>Ver planes</a></div>`}`)}
+      ${dimsResumen(r)}
       ${proBox(r)}
       ${fGrupo('Expediente')}
       ${expBox(r)}
