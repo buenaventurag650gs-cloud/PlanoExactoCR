@@ -1483,9 +1483,6 @@
       ${sec(PX.ICON.valor, 'Índice PlanoExacto', `<div class="idx">${scoreRing(s.total)}<div class="lab"><b>${PX.scoreLabel(s.total)}</b><span>Sanidad jurídica, precio por m², servicios y restricciones</span></div></div>
         <div class="${full ? '' : 'blur'}" aria-hidden="${!full}">${barsHTML(s)}</div>
         ${full ? '' : `<div class="d-flex align-items-center gap-2 mt-2 small">${PX.PRO}<span class="text-secondary">Desglose en el expediente o en PRO</span><a href="#" class="ms-auto" data-planes>Ver planes</a></div>`}`)}
-      ${dimsResumen(r)}
-      ${r.ll && !r.isPlano ? `${fGrupo('Entorno cercano')}
-      <div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">📍</span><h3 class="card-title">Qué hay a 500 m</h3><div class="card-actions"><span class="text-secondary small">OpenStreetMap</span></div></div><div class="card-body p-0"><div id="fosm500">Cargando entorno…</div></div></div>` : ''}
       ${proBox(r)}
       ${fGrupo('Expediente')}
       ${expBox(r)}
@@ -1530,69 +1527,6 @@
       }).catch(() => { const d = $('fapoyo'); if (d) d.textContent = 'No disponible'; });
     } else if (!r.isPlano) {
       const d = $('fapoyo'); if (d) d.textContent = r.juz ? 'Disponible con plan Esencial' : 'Sin juzgado asignado';
-    }
-    // 500 m a la redonda: POIs de OpenStreetMap via Overpass
-    if (r.ll && !r.isPlano) {
-      const [lon, lat] = r.ll;
-      const dosm = $('fosm500');
-      if (dosm) {
-        // Categorías de interés ordenadas por prioridad para lotes
-        const OSM_CATS = [
-          { tag: 'amenity', vals: ['supermarket','marketplace'], n: 'Supermercado / mercado', ico: '🛒' },
-          { tag: 'amenity', vals: ['bank','atm'], n: 'Banco / cajero', ico: '🏦' },
-          { tag: 'amenity', vals: ['hospital','clinic','pharmacy','doctors','health_post'], n: 'Salud', ico: '🏥' },
-          { tag: 'amenity', vals: ['school','university','college','kindergarten'], n: 'Educación', ico: '🏫' },
-          { tag: 'amenity', vals: ['fuel'], n: 'Gasolinera', ico: '⛽' },
-          { tag: 'amenity', vals: ['restaurant','fast_food','cafe','food_court'], n: 'Alimentación', ico: '🍽️' },
-          { tag: 'shop',    vals: ['hardware','building_materials'], n: 'Ferretería / materiales', ico: '🔨' },
-          { tag: 'amenity', vals: ['place_of_worship'], n: 'Iglesia / culto', ico: '⛪' },
-          { tag: 'amenity', vals: ['police'], n: 'Delegación policial', ico: '🚔' },
-          { tag: 'leisure', vals: ['park','playground','sports_centre'], n: 'Parque / deporte', ico: '🌳' },
-        ];
-        // Construir query Overpass compacta
-        const rad = 500;
-        const filters = OSM_CATS.map(c => c.vals.map(v => `nwr["${c.tag}"="${v}"](around:${rad},${lat},${lon});`).join('')).join('');
-        const q = `[out:json][timeout:12];(${filters});out center 60;`;
-        fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`)
-          .then(r => r.json())
-          .then(data => {
-            const d = $('fosm500');
-            if (!d) return;
-            if (!data.elements || !data.elements.length) {
-              d.innerHTML = '<div class="px-3 py-2 text-secondary small">Sin datos de OSM para este punto.</div>';
-              return;
-            }
-            // Agrupar por categoría
-            const grupos = {};
-            for (const el of data.elements) {
-              const tags = el.tags || {};
-              for (const cat of OSM_CATS) {
-                if (cat.vals.includes(tags[cat.tag])) {
-                  if (!grupos[cat.n]) grupos[cat.n] = { ico: cat.ico, items: [] };
-                  if (grupos[cat.n].items.length < 3) {
-                    const nombre = tags.name || tags['name:es'] || tags.brand || cat.n;
-                    // calcular distancia aprox
-                    const elat = el.lat || el.center?.lat, elon = el.lon || el.center?.lon;
-                    let dist = '';
-                    if (elat && elon) {
-                      const dy = (elat - lat) * 110540, dx = (elon - lon) * 111320 * Math.cos(lat * Math.PI / 180);
-                      dist = Math.round(Math.sqrt(dx * dx + dy * dy));
-                    }
-                    grupos[cat.n].items.push({ n: nombre, d: dist });
-                  }
-                  break;
-                }
-              }
-            }
-            const rows = Object.entries(grupos).map(([cn, g]) =>
-              `<div class="osm500-row"><span class="osm500-ico">${g.ico}</span><div class="osm500-body"><b class="osm500-cat">${esc(cn)}</b><div class="osm500-items">${g.items.map(it => `<span class="osm500-it">${esc(it.n)}${it.d ? `<span class="osm500-dist">${it.d < 1000 ? it.d + ' m' : (it.d / 1000).toFixed(1) + ' km'}</span>` : ''}</span>`).join('')}</div></div></div>`
-            ).join('');
-            d.innerHTML = rows.length
-              ? `<div class="osm500">${rows}</div><div class="osm500-attr">Datos: <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a> · CC BY-SA</div>`
-              : '<div class="px-3 py-2 text-secondary small">Sin comercios ni servicios mapeados a 500 m.</div>';
-          })
-          .catch(() => { const d = $('fosm500'); if (d) d.innerHTML = '<div class="px-3 py-2 text-secondary small">No se pudo cargar el entorno (OSM).</div>'; });
-      }
     }
     selLayer.clearLayers();
     if (r.ll) {

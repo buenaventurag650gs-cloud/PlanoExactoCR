@@ -30,7 +30,7 @@
   // de pintar, la ficha completa se sentiría lenta por un puñado de filas. En vez de
   // eso, renderizamos de inmediato sin estos datos y cada uno se inserta solo, por su
   // cuenta, cuando llega (o no aparece si la consulta falla).
-  let posteCerc = null, sutelCov = null, sutelListo = false, cobMovil = null, inetFijo = null, telecomListo = false, transp = null;
+  let posteCerc = null, sutelCov = null, sutelListo = false, cobMovil = null, inetFijo = null, telecomListo = false, transp = null, osmData = null;
   function cargarServicios() {
     if (!r.ll) return;
     const [lon, lat] = r.ll;
@@ -58,6 +58,28 @@
     })();
     // Transporte público: distancia a ruta de bus y estación de tren
     PX.transporteCercano(lon, lat).then(t => { if (t) { transp = t; render(); } }).catch(() => {});
+    // 500 m a la redonda: POIs de OpenStreetMap via Overpass (para página del PDF)
+    if (!r.isPlano) {
+      const OSM_CATS = [
+        { tag: 'amenity', vals: ['supermarket','marketplace'], n: 'Supermercado / mercado', ico: '🛒' },
+        { tag: 'amenity', vals: ['bank','atm'], n: 'Banco / cajero', ico: '🏦' },
+        { tag: 'amenity', vals: ['hospital','clinic','pharmacy','doctors','health_post'], n: 'Salud', ico: '🏥' },
+        { tag: 'amenity', vals: ['school','university','college','kindergarten'], n: 'Educación', ico: '🏫' },
+        { tag: 'amenity', vals: ['fuel'], n: 'Gasolinera', ico: '⛽' },
+        { tag: 'amenity', vals: ['restaurant','fast_food','cafe','food_court'], n: 'Alimentación', ico: '🍽️' },
+        { tag: 'shop',    vals: ['hardware','building_materials'], n: 'Ferretería / materiales', ico: '🔨' },
+        { tag: 'amenity', vals: ['place_of_worship'], n: 'Iglesia / culto', ico: '⛪' },
+        { tag: 'amenity', vals: ['police'], n: 'Delegación policial', ico: '🚔' },
+        { tag: 'leisure', vals: ['park','playground','sports_centre'], n: 'Parque / deporte', ico: '🌳' },
+      ];
+      const rad = 500;
+      const filters = OSM_CATS.map(c => c.vals.map(v => `nwr["${c.tag}"="${v}"](around:${rad},${lat},${lon});`).join('')).join('');
+      const q = `[out:json][timeout:15];(${filters});out center 80;`;
+      fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`)
+        .then(res => res.json())
+        .then(data => { osmData = { cats: OSM_CATS, elements: data.elements || [], lat, lon }; render(); })
+        .catch(() => { osmData = { cats: OSM_CATS, elements: [], lat, lon, err: true }; render(); });
+    }
     // Apoyo legal en sitio
     if (r.juz) {
       fetch('/api/apoyo-legal?juz=' + encodeURIComponent(r.juz)).then(r => r.json()).then(data => {
@@ -191,6 +213,84 @@
         <div class="col"><p class="colkick">Normativa</p>${norm}${chk}${procLegal}</div>
         <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${apoyoLegal}${fuentes}${contacto}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
     if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
+    // Hoja: análisis multidimensional (6 dimensiones)
+    if (!r.isPlano) {
+      const nserv = (r.serv || []).length;
+      const semColor = { ok: '#2fb344', par: '#f76707', nd: '#8c9cb0' };
+      const semLabel = { ok: 'Datos disponibles', par: 'Parcial', nd: 'Sin datos' };
+      const dims = [
+        { ico: '💰', n: 'Económica', q: '¿Cuál es el valor comercial real?',
+          st: r.iphV != null ? 'ok' : (r.usdm2 != null ? 'par' : 'nd'),
+          resp: r.iphV != null ? `IPH ${Math.round(r.iphV)}% · ${r.usdm2 != null ? Math.round(r.usdm2) + ' USD/m²' : 'precio/m² sin dato'}` : r.usdm2 != null ? `${Math.round(r.usdm2)} USD/m² · sin índice Hacienda` : 'Sin valor de Hacienda ni precio/m²',
+          nota: r.iphV != null ? '' : 'Requiere zona homogénea ONT' },
+        { ico: '📋', n: 'Registral', q: '¿Qué gravámenes se cancelan y cuáles subsisten?',
+          st: r.grav != null ? (r.grav > 0 ? 'par' : 'ok') : 'nd',
+          resp: r.grav != null ? (r.grav === 0 ? 'Sin gravámenes registrados' : `${r.grav} gravamen${r.grav > 1 ? 'es' : ''} · revisar cuáles subsisten`) : 'Sin datos registrales',
+          nota: r.finca ? `Finca ${r.finca}` : '' },
+        { ico: '⚖️', n: 'Jurídica', q: '¿Hay oposiciones, suspensiones o incidencias?',
+          st: s.juridica != null ? (s.juridica >= 70 ? 'ok' : 'par') : 'nd',
+          resp: s.juridica != null ? `Sanidad jurídica ${s.juridica}/100${nserv > 0 ? ' · ' + nserv + ' servidumbre' + (nserv > 1 ? 's' : '') : ''}` : 'Sin análisis jurídico disponible',
+          nota: 'Oposiciones e incidencias requieren revisión manual del expediente' },
+        { ico: '🏗️', n: 'Física', q: '¿Qué construcciones existen y en qué estado?',
+          st: r.tipo != null ? (r.tipo === 'Sin construcción' ? 'ok' : 'par') : 'nd',
+          resp: r.tipo != null ? (r.tipo === 'Sin construcción' ? `Lote sin construcciones · ${a ? fnum(a) + ' m²' : 'área sin dato'}` : `${esc(r.tipo)} · estado físico requiere inspección`) : 'Tipo de inmueble no determinado',
+          nota: r.tipo && r.tipo !== 'Sin construcción' ? 'Estado de construcciones: revisar en sitio o con peritaje' : '' },
+        { ico: '👤', n: 'Posesoria', q: '¿Está ocupada? ¿Quién la ocupa?',
+          st: 'nd', resp: 'Sin datos de ocupación actual',
+          nota: 'Requiere visita al sitio o revisión del expediente judicial' },
+        { ico: '🏙️', n: 'Urbanística', q: '¿Qué se puede desarrollar legalmente?',
+          st: nv.vigente ? 'ok' : (nv.titulo && nv.titulo !== 'Sin plan regulador' ? 'par' : 'nd'),
+          resp: nv.vigente ? esc(nv.titulo) : (nv.titulo && nv.titulo !== 'Sin plan regulador' ? esc(nv.titulo) : 'Sin plan regulador activo · parámetros nacionales'),
+          nota: nv.vigente ? 'Confirmar usos con certificado de uso de suelo' : '' },
+      ];
+      const dimRows = dims.map(d => `<tr>
+        <td class="dim6p-ico">${d.ico}</td>
+        <td class="dim6p-dim"><b>${d.n}</b><div class="dim6p-q">${d.q}</div></td>
+        <td class="dim6p-st"><span class="dim6p-dot" style="background:${semColor[d.st]}"></span>${semLabel[d.st]}</td>
+        <td class="dim6p-resp">${d.resp}${d.nota ? `<div class="dim6p-nota">${d.nota}</div>` : ''}</td>
+      </tr>`).join('');
+      h += `<section class="page">${head('Análisis multidimensional')}
+        <div class="dim6p-intro"><p>Evaluación orientativa del lote en seis dimensiones clave para la toma de decisión. <b>Semáforo:</b> verde = datos disponibles y favorables · naranja = datos parciales o con reservas · gris = sin datos en fuentes públicas.</p></div>
+        <table class="dim6p-table"><thead><tr><th></th><th>Dimensión</th><th>Estado</th><th>Hallazgo</th></tr></thead><tbody>${dimRows}</tbody></table>
+        <p class="dim6p-disc">Análisis automático basado en fuentes públicas (Registro Nacional, Catastro, municipalidades, ONT/Hacienda). No sustituye el criterio profesional de un abogado, ingeniero o valuador.</p>
+        ${foot(h.match(/class="page"/g)?.length + 1 || 4)}</section>`;
+    }
+    // Hoja: qué hay a 500 m (OSM)
+    if (!r.isPlano && osmData) {
+      const { cats, elements, lat: olat, lon: olon, err } = osmData;
+      let osmHTML = '';
+      if (err || !elements.length) {
+        osmHTML = '<p class="dim6p-disc">Sin datos de OpenStreetMap para este punto o error de conexión.</p>';
+      } else {
+        const grupos = {};
+        for (const el of elements) {
+          const tags = el.tags || {};
+          for (const cat of cats) {
+            if (cat.vals.includes(tags[cat.tag])) {
+              if (!grupos[cat.n]) grupos[cat.n] = { ico: cat.ico, items: [] };
+              if (grupos[cat.n].items.length < 4) {
+                const nombre = tags.name || tags['name:es'] || tags.brand || cat.n;
+                const elat = el.lat || el.center?.lat, elon = el.lon || el.center?.lon;
+                let dist = 0;
+                if (elat && elon) { const dy = (elat - olat) * 110540, dx = (elon - olon) * 111320 * Math.cos(olat * Math.PI / 180); dist = Math.round(Math.sqrt(dx * dx + dy * dy)); }
+                grupos[cat.n].items.push({ n: nombre, d: dist });
+              }
+              break;
+            }
+          }
+        }
+        const rows = Object.entries(grupos).map(([cn, g]) =>
+          `<tr><td class="osmp-ico">${g.ico}</td><td class="osmp-cat">${esc(cn)}</td><td class="osmp-items">${g.items.map(it => `<span class="osmp-it">${esc(it.n)}${it.d ? ` <span class="osmp-dist">${it.d < 1000 ? it.d + ' m' : (it.d / 1000).toFixed(1) + ' km'}</span>` : ''}</span>`).join(' · ')}</td></tr>`
+        ).join('');
+        osmHTML = rows.length
+          ? `<table class="osmp-table"><thead><tr><th></th><th>Categoría</th><th>Establecimientos más cercanos</th></tr></thead><tbody>${rows}</tbody></table><p class="osmp-attr">Datos: OpenStreetMap · CC BY-SA · overpass-api.de · Radio de búsqueda: 500 m</p>`
+          : '<p class="dim6p-disc">Sin comercios ni servicios mapeados a 500 m en OpenStreetMap.</p>';
+      }
+      h += `<section class="page">${head('Entorno cercano · 500 m a la redonda')}
+        <div class="dim6p-intro"><p>Servicios, comercios y equipamiento urbano ubicados dentro de 500 metros del lote según OpenStreetMap. Útil para evaluar accesibilidad a servicios cotidianos sin vehículo.</p></div>
+        ${osmHTML}
+        ${foot(h.match(/class="page"/g)?.length + 1 || 5)}</section>`;
+    }
     // Hoja adicional: cambio de uso del suelo (3 vistas satélite históricas)
     if (r.ll && !r.isPlano) {
       const hcols = PX.lamina.WAYBACK_VERSIONS.map(v =>
