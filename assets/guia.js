@@ -78,7 +78,7 @@
           <div><b>Alertas</b> ${E_}<span>Avisos por correo o WhatsApp cuando un remate que sigues cambia de fecha o etapa, o cuando sale uno nuevo que cumple una búsqueda guardada. El envío se activa en la siguiente fase.</span></div>
           <div><b>Apoyo legal en sitio</b> ${P_}<span>Lista de abogados disponibles cerca del juzgado del remate, con contacto directo. Aparece en la ficha y en el expediente.</span></div>
           <div><b>Mapa de precios</b> ${P_}<span>Pinta cada cantón según la mediana del precio por m² de sus remates.</span></div>
-          <div><b>Top 10 del mes</b> ${P_}<span>Los remates mejor calificados de cada provincia.</span></div>
+          <div><b>Top 10 por cantón</b> ${P_}<span>Los 10 remates con mejor índice PlanoExacto de cada cantón: filtrá por cantón y mes para ver los más convenientes.</span></div>
           <div><b>Comparar</b><span>Con la cuenta gratis comparas 2 propiedades; con ${P_}, hasta 4, y decides cuánto pesa cada criterio.</span></div>
         </div>`)}
 
@@ -110,7 +110,17 @@
           <div><b>Ubicación exacta o aproximada</b><span>Si el plano o la finca se encontraron en el catastro, la ubicación es exacta. Si no, el punto queda en el distrito o poblado que menciona el edicto: la ficha lo advierte.</span></div>
           <div><b>Zona marítimo terrestre</b><span>Si el lote está cerca de la costa, señala si cae dentro de la franja pública o la restringida. Es un cálculo propio a partir de la línea de costa del IGN, no el amojonamiento oficial, así que no reemplaza la certificación municipal.</span></div>
           <div><b>Tipo de cambio</b><span>El que usamos para convertir entre colones y dólares, del Banco Central, actualizado en cada publicación.</span></div>
-        </div>`)}
+        </div>
+
+        <div class="gcard" id="g-top10"><h4><span class="gi">★</span>Top 10 por cantón: cómo se elige la lista</h4>
+          <p class="gpara">El botón <b>Top 10</b> del panel de listas muestra, para cada cantón, los 10 remates con la nota más alta del <b>índice PlanoExacto</b>, usando los siguientes pesos fijos:</p>
+          <ul class="gkey">
+            <li><span class="gk">40 %</span><span><b>Sanidad jurídica:</b> ausencia de servidumbres problemáticas, gravámenes y derechos reales que compliquen la titulación, más certeza de ubicación en el catastro.</span></li>
+            <li><span class="gk">35 %</span><span><b>Precio por m²:</b> qué tan por debajo de la mediana de su cantón está la base del remate. Cuanto menor sea el precio/m² frente a la zona, mayor la nota.</span></li>
+            <li><span class="gk">25 %</span><span><b>Potencial por servicios:</b> cercanía a vía pública, agua potable (AyA o ASADA), centro de salud, escuela, cobertura eléctrica, zona urbana o plan regulador vigente.</span></li>
+          </ul>
+          <p class="gpara">Los pesos son los mismos para todos los cantones. Con el plan ${P_} podés filtrar por cantón y mes del remate. Para ajustar los pesos según tus prioridades usá la herramienta <b>Comparar</b>.</p>
+          <p class="gmini">El Top 10 se activa con el botón ★ <b>Top 10</b> en la barra del panel de listas. Solo aparecen remates con suficiente información para calcular el índice; algunos remates quedan fuera si no tienen área, plano o coordenadas.</p></div>`)}
 
       ${sec('gloss', 'Glosario', '',
         `<div class="gtable">

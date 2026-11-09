@@ -154,17 +154,19 @@
   let shown = [], limit = 100;
   const scoreCache = new Map();
   const sc = r => { if (!scoreCache.has(r.key)) scoreCache.set(r.key, PX.score(r)); return scoreCache.get(r.key); };
-  // Top 70: los 10 mejores remates de cada provincia según el índice PlanoExacto (7 provincias × 10).
-  // Como lo ofrece el plan PRO («Top 10 por provincia»). Se calcula una vez por sesión.
+  // Top 10 por cantón: los 10 mejores remates de cada cantón según el índice PlanoExacto.
+  // Función PRO. Se calcula una vez por sesión y se invalida si cambia «live».
   let _top70 = null;
-  const TOP_X_PROV = 10;
+  const TOP_X_CANT = 10;
   function top70() {
     if (_top70) return _top70;
     const s = new Set();
-    for (let p = 1; p <= PX.PROVS.length; p++) {
-      live.filter(r => !r.isPlano && r.prov === p)
+    // Agrupar por cantón (r.cn); ignorar remates sin cantón identificado
+    const cantones = [...new Set(live.filter(r => !r.isPlano && r.cn).map(r => r.cn))];
+    for (const cn of cantones) {
+      live.filter(r => !r.isPlano && r.cn === cn)
         .sort((a, b) => (sc(b).total || 0) - (sc(a).total || 0))
-        .slice(0, TOP_X_PROV)
+        .slice(0, TOP_X_CANT)
         .forEach(r => s.add(r.key));
     }
     _top70 = s; return s;
@@ -275,9 +277,9 @@
     onlyNew = !onlyNew; $('newOnly').setAttribute('aria-pressed', onlyNew); apply();
   };
   $('topOnly').onclick = () => {
-    if (!PX.isPro()) { openPlanes(); return; }   // «Top 10 por provincia» es una función del plan PRO
+    if (!PX.isPro()) { openPlanes(); return; }   // «Top 10 por cantón» es una función del plan PRO
     onlyTop = !onlyTop; $('topOnly').setAttribute('aria-pressed', onlyTop); apply();
-    if (onlyTop) { toast(`Mostrando los ${TOP_X_PROV} mejores remates por provincia según el índice PlanoExacto`); fitShown(); }
+    if (onlyTop) { toast(`Mostrando los ${TOP_X_CANT} mejores remates por cantón según el índice PlanoExacto`); fitShown(); }
   };
   // Toggle «ver remates ocultos» desde Mi cuenta / botón flotante cuando hay ocultos
   PX.setVerOcultos = v => { verOcultos = !!v; apply(); };
@@ -286,9 +288,11 @@
   let view = 'list', calDay = null, calMonth = null;
   const dayKey = d => d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
   function renderList() {
+    syncTableBtn();
     const src = view === 'cal' && calDay ? shown.filter(r => dayKey(r.next) === calDay) : shown;
     $('count').innerHTML = `<b class="num">${src.length}</b> de ${live.length}`;
     if (view === 'cal') renderCal();
+    if (view === 'table') { renderTable(); $('list').innerHTML = ''; return; }
     if (!src.length) { $('list').innerHTML = `<div class="empty">${view === 'cal' && !calDay ? 'Elige un día del calendario para ver sus remates.' : 'Ningún remate cumple esos filtros. Prueba quitar alguno o usa «Restablecer».'}</div>`; return; }
     const page = src.slice(0, limit);
     let h = '';
@@ -312,9 +316,71 @@
     const d = e.target.closest('[data-day]'); if (d) { calDay = calDay === d.dataset.day ? null : d.dataset.day; limit = 100; renderList(); return; }
     const cm = e.target.closest('[data-cm]'); if (cm) { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + +cm.dataset.cm, 1); renderCal(); }
   });
-  function setView(v) { view = v; $('vwList').setAttribute('aria-pressed', v === 'list'); $('vwCal').setAttribute('aria-pressed', v === 'cal'); $('cal').hidden = v !== 'cal'; if (v === 'cal' && !calDay) { const nx = shown.filter(r => r.next).sort((a, b) => a.next - b.next)[0]; calDay = nx ? dayKey(nx.next) : null; if (nx) calMonth = new Date(nx.next.getFullYear(), nx.next.getMonth(), 1); } limit = 100; renderList(); }
+  // Estado de la tabla PRO: columna y dirección de orden
+  let tblSort = { col: 'score', dir: 'desc' };
+  function renderTable() {
+    const src = shown;
+    if (!src.length) { $('tbl').innerHTML = `<div class="empty">Ningún remate cumple esos filtros.</div>`; return; }
+    const COLS = [
+      { k: 'nom',      label: 'Nombre',      td: r => `<td class="tc-nom" title="${esc(r.nom)}">${esc(r.nom)}</td>` },
+      { k: 'loc',      label: 'Cantón',       td: r => `<td class="tc-loc">${esc(r.cn || '—')}</td>` },
+      { k: 'fecha',    label: 'Fecha',        td: r => `<td class="tc-num">${fdate(r.next)}</td>` },
+      { k: 'precio',   label: 'Base',         td: r => `<td class="tc-num">${PX.duo(r.bv, r.mon)}</td>` },
+      { k: 'area',     label: 'Área (m²)',    td: r => `<td class="tc-num">${PX.prof(r) ? fnum(PX.prof(r)) : '—'}</td>` },
+      { k: 'm2',       label: 'USD/m²',       td: r => `<td class="tc-num">${r.usdm2 != null ? fnum(Math.round(r.usdm2)) : '—'}</td>` },
+      { k: 'score',    label: 'Índice PX',   td: r => { const s = sc(r); return `<td class="tc-idx">${s.total != null ? s.total : '—'}</td>`; } },
+      { k: 'iph',      label: 'IPH',          td: r => `<td class="tc-num">${r.iphV != null ? Math.round(r.iphV) : '—'}</td>` },
+    ];
+    const sortVal = r => {
+      if (tblSort.col === 'nom') return r.nom || '';
+      if (tblSort.col === 'loc') return r.cn || '';
+      if (tblSort.col === 'fecha') return r.next ? r.next.getTime() : Infinity;
+      if (tblSort.col === 'precio') return r.bv || 0;
+      if (tblSort.col === 'area') return PX.prof(r) || 0;
+      if (tblSort.col === 'm2') return r.usdm2 != null ? r.usdm2 : Infinity;
+      if (tblSort.col === 'score') { const s = sc(r); return s.total != null ? s.total : -1; }
+      if (tblSort.col === 'iph') return r.iphV != null ? r.iphV : Infinity;
+      return 0;
+    };
+    const sorted = [...src].sort((a, b) => {
+      const va = sortVal(a), vb = sortVal(b);
+      const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+      return tblSort.dir === 'asc' ? cmp : -cmp;
+    });
+    const thHTML = c => { const active = tblSort.col === c.k; const dir = active ? tblSort.dir : null;
+      return `<th${active ? ` aria-sort="${dir === 'asc' ? 'ascending' : 'descending'}"` : ''}><button data-ts="${c.k}">${c.label} <span class="sort-ic" aria-hidden="true"></span></button></th>`; };
+    $('tbl').innerHTML = `<table class="proTable" aria-label="Remates en tabla">
+      <thead><tr>${COLS.map(thHTML).join('')}</tr></thead>
+      <tbody>${sorted.map(r => `<tr data-k="${r.key}"${open === r.key ? ' aria-current="true"' : ''}>${COLS.map(c => c.td(r)).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+  }
+  function syncTableBtn() {
+    const show = PX.isPro() && (onlyFav || onlyTop);
+    $('vwTable').hidden = !show;
+    if (!show && view === 'table') { view = 'list'; $('vwList').setAttribute('aria-pressed', 'true'); $('vwTable').setAttribute('aria-pressed', 'false'); $('tbl').hidden = true; }
+  }
+  function setView(v) {
+    view = v;
+    $('vwList').setAttribute('aria-pressed', v === 'list');
+    $('vwCal').setAttribute('aria-pressed', v === 'cal');
+    if ($('vwTable')) $('vwTable').setAttribute('aria-pressed', v === 'table');
+    $('cal').hidden = v !== 'cal';
+    $('tbl').hidden = v !== 'table';
+    if (v === 'cal' && !calDay) { const nx = shown.filter(r => r.next).sort((a, b) => a.next - b.next)[0]; calDay = nx ? dayKey(nx.next) : null; if (nx) calMonth = new Date(nx.next.getFullYear(), nx.next.getMonth(), 1); }
+    limit = 100; renderList();
+  }
   $('vwList').onclick = () => setView('list');
   $('vwCal').onclick = () => { if (!PX.isEsencial()) { openPlanes('La vista de calendario es una función del plan Esencial.'); return; } setView('cal'); };
+  $('vwTable').onclick = () => { if (!PX.isPro()) { openPlanes('La vista de tabla es una función del plan PRO.'); return; } setView('table'); };
+  $('tbl').addEventListener('click', e => {
+    const th = e.target.closest('[data-ts]'); if (th) {
+      const col = th.dataset.ts;
+      if (tblSort.col === col) tblSort.dir = tblSort.dir === 'asc' ? 'desc' : 'asc';
+      else { tblSort.col = col; tblSort.dir = col === 'nom' || col === 'loc' ? 'asc' : 'desc'; }
+      renderTable(); return;
+    }
+    const tr = e.target.closest('tr[data-k]'); if (tr) openFicha(tr.dataset.k, true);
+  });
   $('list').addEventListener('click', e => {
     if (e.target.id === 'more') { limit += 100; renderList(); return; }
     const fv = e.target.closest('[data-fav]'); if (fv) { e.stopPropagation(); favToggle(fv.dataset.fav); return; }
@@ -2047,9 +2113,10 @@
     if (e.target.id === 'wReset') { W = Object.assign({}, PX.W0); PX.store.set('px-w', W); renderCmp(); }
   });
 
-  // ---------- Top 10 del mes por provincia ----------
+  // ---------- Top 10 del mes por cantón ----------
   const WTOP = { juridica: 40, precio: 35, servicios: 25, restricciones: 0 };
-  let topProv = PX.store.get('px-topprov', 1), topMes = 0;
+  // topCanton: nombre del cantón seleccionado; '' = todos los cantones
+  let topCanton = PX.store.get('px-topcant', ''), topMes = 0;
   function renderHub() {
     const r = open ? PX.item(open) : null, pro = PX.isPro();
     $('proHub').innerHTML = `<div class="procard"><h3>Herramientas</h3>
@@ -2058,7 +2125,7 @@
         <div class="acts"><button class="btn sm" data-about="guia">Cómo usar las herramientas</button></div></div>
       ${PX.pro.TOOLS.map(t => `<div class="procard${t.st === 'soon' ? ' soon' : ''}"><h3>${PX.pro.tag(t.k)} ${t.n} ${t.st === 'soon' ? '<span class="tag">Próximamente</span>' : ''}</h3><p>${t.q}</p>
         ${t.st === 'soon' ? '' : t.map ? `<div class="acts"><button class="btn sm" data-hubmap>${lyrState.precios && pro ? 'Ver en el mapa' : 'Activar en el mapa'}</button></div>` : t.list ? '' : `<div class="acts"><button class="btn sm" data-hubtool="${t.k}"${r ? '' : ' disabled'}>${r ? 'Abrir para este lote' : 'Primero abre un lote'}</button></div>`}</div>`).join('')}
-      <h3 style="margin:8px 0 0;font:600 16px/1.2 var(--f-display);display:flex;gap:8px;align-items:center">${PX.PRO} Top 10 del mes</h3>`;
+      <h3 style="margin:8px 0 0;font:600 16px/1.2 var(--f-display);display:flex;gap:8px;align-items:center">${PX.PRO} Top 10 por cantón</h3>`;
   }
   $('proHub').addEventListener('click', e => {
     const t = e.target.closest('[data-hubtool]'); if (t && open) { openPro(PX.item(open), t.dataset.hubtool); return; }
@@ -2070,7 +2137,7 @@
   function renderTop() {
     renderHub();
     if (!PX.isPro()) {
-      $('topOut').innerHTML = `<div class="teaser"><h3>Los 10 mejores remates de cada provincia</h3><span>Los 10 remates con mejor combinación de:</span>
+      $('topOut').innerHTML = `<div class="teaser"><h3>Top 10 por cantón</h3><span>Los 10 remates con mejor combinación de:</span>
         <ul><li><b>Sanidad jurídica</b> (${WTOP.juridica} %): servidumbres, gravámenes, derechos y certeza de ubicación</li><li><b>Precio por m²</b> (${WTOP.precio} %) frente a la mediana de la zona</li><li><b>Potencial por servicios</b> (${WTOP.servicios} %): plan regulador, acceso, salud, escuela, zona urbana</li></ul>
         <div class="acts"><button class="btn primary" data-pagar="pro">Activar PRO</button><button class="btn" data-planes>Ver planes</button></div></div>
         <div class="blur" aria-hidden="true">${[1, 2, 3].map(i => `<div class="item"><span></span><span class="mid"><div class="t1">Lote destacado ${i}</div><div class="t2">Cantón · 1 000 m²</div></span><span class="rt">₡ 00 M</span></div>`).join('')}</div>`;
@@ -2078,16 +2145,18 @@
     }
     const meses = [0, 1, 2].map(i => { const d = new Date(PX.now.getFullYear(), PX.now.getMonth() + i, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
     const M = meses[topMes];
-    const cand = live.filter(r => r.prov === topProv && r.next.getFullYear() === M.y && r.next.getMonth() === M.m);
+    // Lista de cantones únicos con remates en el mes seleccionado
+    const cantonesDisp = [...new Set(live.filter(r => !r.isPlano && r.cn && r.next.getFullYear() === M.y && r.next.getMonth() === M.m).map(r => r.cn))].sort();
+    const cand = live.filter(r => !r.isPlano && r.cn && r.next.getFullYear() === M.y && r.next.getMonth() === M.m && (!topCanton || r.cn === topCanton));
     const ranked = cand.map(r => ({ r, s: PX.score(r, WTOP) })).filter(x => x.s.total != null).sort((a, b) => b.s.total - a.s.total).slice(0, 10);
-    $('topOut').innerHTML = `<div class="row"><div class="fld"><label for="tProv">Provincia</label><select id="tProv">${PX.PROVS.map((p, i) => `<option value="${i + 1}"${i + 1 === topProv ? ' selected' : ''}>${p}</option>`).join('')}</select></div>
+    $('topOut').innerHTML = `<div class="row"><div class="fld"><label for="tCant">Cantón</label><select id="tCant"><option value="">Todos los cantones</option>${cantonesDisp.map(cn => `<option value="${esc(cn)}"${cn === topCanton ? ' selected' : ''}>${esc(cn)}</option>`).join('')}</select></div>
       <div class="fld"><label for="tMes">Mes del remate</label><select id="tMes">${meses.map((x, i) => `<option value="${i}"${i === topMes ? ' selected' : ''}>${PX.MESL[x.m]} ${x.y}</option>`).join('')}</select></div></div>
-      <div class="foot">Pondera sanidad jurídica ${WTOP.juridica} %, precio por m² ${WTOP.precio} % y potencial por servicios ${WTOP.servicios} %. ${cand.length} remates de ${PX.PROVS[topProv - 1]} con fecha en ${PX.MESL[M.m]}.</div>
+      <div class="foot">Pondera sanidad jurídica ${WTOP.juridica} %, precio por m² ${WTOP.precio} % y potencial por servicios ${WTOP.servicios} %. ${cand.length} remates${topCanton ? ' en ' + topCanton : ''} con fecha en ${PX.MESL[M.m]}. <button class="linkbtn" data-about="guia" data-gsec="top10">Ver metodología</button></div>
       <div class="top">${ranked.length ? ranked.map((x, i) => `<button class="item" data-k="${x.r.key}"><span class="rk">${i + 1}</span><span class="mid"><div class="t1">${esc(x.r.nom)}</div><div class="t2">${esc(x.r.cn || '')} · ${PX.prof(x.r) ? fnum(PX.prof(x.r)) + ' m²' : 'área s/d'} · ${fdate(x.r.next)}</div>
         <div class="mini"><span>Jurídica <b>${x.s.juridica ?? '–'}</b></span><span>Precio <b>${x.s.precio ?? '–'}</b></span><span>Servicios <b>${x.s.servicios ?? '–'}</b></span></div></span>
-        <span class="rt"><div class="price">${PX.duo(x.r.bv, x.r.mon)}</div><div class="when">Índice <b class="num">${x.s.total}</b></div></span></button>`).join('') : '<div class="empty">No hay remates con fecha en ese mes para esta provincia.</div>'}</div>`;
+        <span class="rt"><div class="price">${PX.duo(x.r.bv, x.r.mon)}</div><div class="when">Índice <b class="num">${x.s.total}</b></div></span></button>`).join('') : '<div class="empty">No hay remates con fecha en ese mes para ' + (topCanton ? topCanton : 'ningún cantón') + '.</div>'}</div>`;
   }
-  $('topOut').addEventListener('change', e => { if (e.target.id === 'tProv') { topProv = +e.target.value; PX.store.set('px-topprov', topProv); } if (e.target.id === 'tMes') topMes = +e.target.value; renderTop(); });
+  $('topOut').addEventListener('change', e => { if (e.target.id === 'tCant') { topCanton = e.target.value; PX.store.set('px-topcant', topCanton); } if (e.target.id === 'tMes') topMes = +e.target.value; renderTop(); });
   $('topOut').addEventListener('click', e => { const b = e.target.closest('.item[data-k]'); if (b) openFicha(b.dataset.k, true); });
 
   // ---------- tema ----------
