@@ -191,9 +191,21 @@
         <div class="col"><p class="colkick">Normativa</p>${norm}${chk}${procLegal}</div>
         <div class="col"><p class="colkick">Potencialidades y riesgos</p>${potl}${riesg}${apoyoLegal}${fuentes}${contacto}${!r.isPlano && r.txt && r.txt.length < 1600 && ries.length < 4 ? `<section class="blk"><h2>${I.book}Texto del edicto</h2><p class="edicto">${esc(r.txt)}</p></section>` : ''}</div></div>${foot(3)}</section>`;
     if (!r.isPlano && r.txt && !(r.txt.length < 1600 && ries.length < 4)) h += `<section class="page">${head('Texto del edicto')}<section class="blk"><p class="edicto cols2">${esc(r.txt)}</p><p class="note2">Transcrito del Boletín Judicial. Se omiten nombres de personas deudoras y cédulas.</p></section>${foot(4)}</section>`;
+    // Hoja adicional: cambio de uso del suelo (3 vistas satélite históricas)
+    if (r.ll && !r.isPlano) {
+      const hcols = PX.lamina.WAYBACK_VERSIONS.map(v =>
+        `<div class="hsat-col"><div class="hsat-map" id="hmap-${v.y}"></div><div class="hsat-lbl">${esc(v.t)}</div></div>`
+      ).join('');
+      h += `<section class="page">${head('Cambio de uso del suelo')}
+        <div class="hsat-intro"><p>Las tres imágenes muestran el mismo sitio en distintos períodos para identificar cambios en la cobertura o el uso del suelo. <b>Verificar cambios de vegetación, construcciones, movimientos de tierra o deforestación antes de la compra.</b> Imágenes: Esri/Maxar (actual y ~2015) · Ortofoto IGN/SNIT 2017.</p></div>
+        <div class="hsat-grid">${hcols}</div>
+        <div class="hsat-nota"><b>Nota:</b> Las imágenes son orientativas. La resolución varía según la zona. Para análisis definitivo use Google Earth o el Visor del SINAC.</div>
+        ${foot(h.match(/class="page"/g)?.length + 1 || 4)}</section>`;
+    }
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
     doc.innerHTML = h;
     PX.lamina.init(r);
+    if (r.ll && !r.isPlano) PX.lamina.initHistorial(r);
   }
   function setCur(c) { PX.setCur(c); $('cCRC').setAttribute('aria-pressed', c === 'CRC'); $('cUSD').setAttribute('aria-pressed', c === 'USD'); render(); }
   $('cCRC').onclick = () => setCur('CRC'); $('cUSD').onclick = () => setCur('USD');

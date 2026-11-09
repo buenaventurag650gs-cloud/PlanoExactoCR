@@ -152,6 +152,48 @@
 
   L_.maps = [];
   window.addEventListener('beforeprint', () => L_.maps.forEach(([mp, f]) => { mp.invalidateSize(false); f(); }));
+  // ---------- Hoja satélite histórica ----------
+  // Tres vistas del mismo punto en distintos años para mostrar cambio de uso del suelo.
+  // Wayback de Esri provee tiles de fechas pasadas; ortofoto IGN 2017 cubre todo CR.
+  // Se llama con await desde expediente.js justo después de L_.init.
+  L_.WAYBACK_VERSIONS = [
+    // { año, título, tileURL }
+    { y: 2024, t: 'Actual (~2024)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
+    { y: 2017, t: 'Ortofoto IGN 2017', url: null, wms: true },   // WMS del SNIT
+    { y: 2015, t: 'Histórico (~2015)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/26909/{z}/{y}/{x}' },
+  ];
+
+  L_.initHistorial = async r => {
+    if (!window.L || !r.ll) return;
+    const c = [r.ll[1], r.ll[0]];
+    const opt = { zoomControl: false, attributionControl: false, scrollWheelZoom: false, zoomSnap: 0.5, dragging: false, doubleClickZoom: false, keyboard: false, touchZoom: false };
+    const pg = r.poly ? L.polygon(ringsLL(r), { color: TERRA_D, weight: 2.5, fillColor: TERRA, fillOpacity: 0.3 }) : null;
+    for (const v of L_.WAYBACK_VERSIONS) {
+      const el = document.getElementById('hmap-' + v.y);
+      if (!el) continue;
+      const m = L.map(el, opt);
+      if (v.wms) {
+        // Ortofoto IGN 2017 (SNIT WMS)
+        L.tileLayer.wms('https://geos1.snitcr.go.cr/Ortofoto2017/wms', {
+          layers: 'Ortofoto2017:ortofoto2017_5000_altaresolucion', format: 'image/jpeg',
+          version: '1.1.1', maxZoom: 20, maxNativeZoom: 20
+        }).addTo(m);
+      } else {
+        L.tileLayer(v.url, { maxZoom: 20, maxNativeZoom: 19 }).addTo(m);
+      }
+      // Superponer catastro semitransparente
+      wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', {
+        crs: L.CRS.EPSG4326, opacity: 0.5, className: 'tl-cat'
+      }).addTo(m);
+      if (pg) pg.addTo(m); else L.circleMarker(c, { radius: 10, color: TERRA_D, weight: 2.5, fill: false }).addTo(m);
+      const fit = pg
+        ? () => m.fitBounds(pg.getBounds(), { padding: [12, 12], maxZoom: 18 })
+        : () => m.setView(c, 17);
+      fit();
+      L_.maps.push([m, fit]);
+    }
+  };
+
   L_.init = async r => {
     L_.maps.forEach(([mp]) => mp.remove()); L_.maps = [];
     if (!window.L || !r.ll) return;
