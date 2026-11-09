@@ -197,7 +197,7 @@
         `<div class="hsat-col"><div class="hsat-map" id="hmap-${v.y}"></div><div class="hsat-lbl">${esc(v.t)}</div></div>`
       ).join('');
       h += `<section class="page">${head('Cambio de uso del suelo')}
-        <div class="hsat-intro"><p>Las tres imágenes muestran el mismo sitio en distintos períodos para identificar cambios en la cobertura o el uso del suelo. <b>Verificar cambios de vegetación, construcciones, movimientos de tierra o deforestación antes de la compra.</b> Imágenes: Esri/Maxar (actual y ~2015) · Ortofoto IGN/SNIT 2017.</p></div>
+        <div class="hsat-intro"><p>Las tres imágenes muestran el mismo sitio en distintos períodos para identificar cambios en la cobertura o el uso del suelo. <b>Verificar cambios de vegetación, construcciones, movimientos de tierra o deforestación antes de la compra.</b> Imágenes: Esri/Maxar (actual y ~2014) · Ortofoto IGN/SNIT 2017.</p></div>
         <div class="hsat-grid">${hcols}</div>
         <div class="hsat-nota"><b>Nota:</b> Las imágenes son orientativas. La resolución varía según la zona. Para análisis definitivo use Google Earth o el Visor del SINAC.</div>
         ${foot(h.match(/class="page"/g)?.length + 1 || 4)}</section>`;

@@ -158,9 +158,11 @@
   // Se llama con await desde expediente.js justo después de L_.init.
   L_.WAYBACK_VERSIONS = [
     // { año, título, tileURL }
+    // Wayback release tokens: 10 = 2014-02-20 (el más antiguo disponible)
+    // El archivo de Esri World Imagery comienza en 2014; no hay tiles anteriores en Wayback.
     { y: 2024, t: 'Actual (~2024)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
     { y: 2017, t: 'Ortofoto IGN 2017', url: null, wms: true },   // WMS del SNIT
-    { y: 2015, t: 'Histórico (~2015)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/26909/{z}/{y}/{x}' },
+    { y: 2014, t: 'Histórico (~2014)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10/{z}/{y}/{x}' },
   ];
 
   L_.initHistorial = async r => {
