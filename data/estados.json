@@ -1,0 +1,13 @@
+[
+  {
+    "_comentario": "Registrar aquí los remates cuyo estado cambió. ref = código del Boletín Judicial (campo 'ref' en remates.json). Correr scripts/merge_estados.py después de editar.",
+    "_estados_posibles": ["adjudicado", "desierto", "suspendido"],
+    "_ejemplo": {
+      "ref": "2026208881",
+      "estado": "adjudicado",
+      "vuelta": 2,
+      "fecha": "2026-11-09",
+      "nota": "Adjudicado en segunda vuelta según llamada al juzgado"
+    }
+  }
+]

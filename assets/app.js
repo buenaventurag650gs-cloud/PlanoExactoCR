@@ -1120,7 +1120,8 @@
   function tip(r) {
     const a = PX.prof(r);
     if (r.isPlano) return `<span class="tipn">${esc(r.nom)}</span>${a ? fnum(a) + ' m²' : ''}<br><span class="tipm">${esc(r.lugar)}</span>`;
-    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.stageBadge(r.st, true)} ${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st] || PX.fuenteDe(r).short}${r.next ? ' · ' + fdate(r.next) : ''}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>`;
+    const estadoBadge = r.estado === 'adjudicado' ? '<br><span class="tip-estado adj">🔴 Adjudicado</span>' : r.estado === 'desierto' ? '<br><span class="tip-estado des">🟡 Desierto</span>' : r.estado === 'suspendido' ? '<br><span class="tip-estado sus">🟠 Suspendido</span>' : '';
+    return `<span class="tipn">${PX.isFav(r.key) ? '♥ ' : ''}${esc(r.nom)}</span>${PX.stageBadge(r.st, true)} ${PX.duoI(r.bv, r.mon)}<br>${a ? fnum(a) + ' m²' : 'área s/d'}${r.usdm2 ? ' · ' + PX.duoI(r.usdm2, 'USD', '/m²') : ''}<br><span class="tipm">${PX.ETAPA[r.st] || PX.fuenteDe(r).short}${r.next ? ' · ' + fdate(r.next) : ''}${r.bar && !r.nom.includes(r.bar) ? '<br>' + esc(r.bar) : ''}</span>${estadoBadge}`;
   }
   const ringLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
   // Marcadores: de lejos, círculos que agrupan los remates cercanos con su número y un anillo con la proporción
@@ -1130,8 +1131,8 @@
   const ZSEP = 13;          // desde este zoom ya no se agrupa
   const RADIO = 54;         // distancia en píxeles para agrupar
   const COARSE = matchMedia('(pointer: coarse)').matches;   // teléfono/tableta: puntos un poco más grandes
-  const xIcon = (st, big, fav, exacto) => {
-    const c = XC[st] || '#073B32', d = (big === 2 ? 26 : big ? 20 : 15) + (COARSE ? 3 : 0);
+  const xIcon = (st, big, fav, exacto, overrideColor) => {
+    const c = overrideColor || XC[st] || '#073B32', d = (big === 2 ? 26 : big ? 20 : 15) + (COARSE ? 3 : 0);
     const txt = big === 2 ? `<b>${st + 1}</b>` : '';
     return L.divIcon({ className: 'pt', iconSize: [d, d], iconAnchor: [d / 2, d / 2],
       html: `<span class="pd${exacto ? '' : ' aprox'}" style="--c:${c};width:${d}px;height:${d}px">${txt}${fav ? '<i class="pf"></i>' : ''}</span>` });
@@ -1162,7 +1163,7 @@
     const z = map.getZoom();
     const on = (l, r) => { l.on('click', () => openFicha(r.key, true)); l.on('dblclick', e => { L.DomEvent.stop(e); if (open !== r.key) openFicha(r.key, false); irA(r); }); l.on('mouseover', () => { overMarker = true; hb.hidden = true; }); l.on('mouseout', () => { overMarker = false; }); };
     const punto = r => {
-      const col = XC[r.st], ll = [r.ll[1], r.ll[0]];
+      const col = r.estado ? '#8c9cb0' : XC[r.st], ll = [r.ll[1], r.ll[0]];
       if (r.exact && r.poly && z >= 15) {   // el predio exacto, en el terracota del logo
         const pg = L.polygon(ringLL(r), { color: TERRA_D, weight: 2, fillColor: TERRA, fillOpacity: 0.32 });
         on(pg, r); pg.bindTooltip(tip(r), { direction: 'top', sticky: true }); polys.addLayer(pg);
@@ -1172,7 +1173,8 @@
       }
       // Predio todavía pequeño en pantalla: el punto se achica para no taparlo
       const chico = r.exact && r.poly && z >= 16;
-      const m = L.marker(ll, { opacity: chico ? 0.9 : 1, icon: chico ? xIcon(r.st, 0, PX.isFav(r.key), true) : xIcon(r.st, z >= 14 ? 2 : z >= 11 ? 1 : 0, PX.isFav(r.key), r.exact), keyboard: false, riseOnHover: true });
+      const eCol = r.estado ? col : undefined;
+      const m = L.marker(ll, { opacity: r.estado ? 0.55 : chico ? 0.9 : 1, icon: chico ? xIcon(r.st, 0, PX.isFav(r.key), true, eCol) : xIcon(r.st, z >= 14 ? 2 : z >= 11 ? 1 : 0, PX.isFav(r.key), r.exact, eCol), keyboard: false, riseOnHover: true });
       on(m, r); m.bindTooltip(tip(r), { direction: 'top', offset: [0, -10] });
       markers.addLayer(m);
     };
@@ -1440,6 +1442,7 @@
       <h2 class="mb-1">${esc(r.nom.replace(/ · /g, ' | '))}</h2><div class="text-secondary mb-3">${esc(r.lugar || 'Ubicación por definir')}</div>
       ${top}
       ${actionsHTML(r)}
+      ${r.estado === 'adjudicado' ? `<div class="alert alert-danger mb-3"><div>🔴 <b>Este bien ya fue adjudicado${r.vuelta ? ' en ' + r.vuelta + 'ª vuelta' : ''}${r.adjFecha ? ' el ' + fdate(new Date(r.adjFecha)) : ''}.</b> Ya no está disponible para pujar.${r.adjNota ? ' <span class="text-secondary">' + esc(r.adjNota) + '</span>' : ''}</div></div>` : r.estado === 'desierto' ? `<div class="alert alert-warning mb-3"><div>🟡 <b>Remate declarado desierto${r.vuelta ? ' en ' + r.vuelta + 'ª vuelta' : ''}${r.adjFecha ? ' (' + fdate(new Date(r.adjFecha)) + ')' : ''}.</b> Pendiente nueva publicación.${r.adjNota ? ' ' + esc(r.adjNota) : ''}</div></div>` : r.estado === 'suspendido' ? `<div class="alert alert-warning mb-3"><div>🟠 <b>Proceso suspendido por resolución judicial${r.adjFecha ? ' (' + fdate(new Date(r.adjFecha)) + ')' : ''}.</b>${r.adjNota ? ' ' + esc(r.adjNota) : ''}</div></div>` : ''}
       ${r.rev ? `<div class="alert alert-warning"><div>${esc(r.rev)}</div></div>` : ''}
       ${fGrupo('Información base')}
       ${r.isPlano ? '' : (PX.fuenteDe(r).remate ? `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${PX.ICON.gavel}</span><h3 class="card-title">Remate</h3><div class="card-actions">${PX.whenTag(r.next)}</div></div><div class="list-group list-group-flush ftl">${tl || '<div class="list-group-item text-secondary">Sin fechas legibles en el edicto.</div>'}</div>${(r.fd || []).some((d, k) => k >= r.st) ? `<div class="card-body py-2">${PX.isPro() ? `<button class="btn btn-sm w-100" data-act="ics"><span class="bic">${PX.ICON.cal}</span>Agregar a mi calendario</button>` : `<button class="btn btn-sm w-100" data-act="ics" title="Exporta las fechas del remate a tu calendario (función PRO)"><span class="bic">${PX.ICON.cal}</span>Agendar en mi calendario<span class="ms-2">${PX.PRO}</span></button>`}</div>` : ''}</div>` : origenCard(r))}
