@@ -1707,7 +1707,8 @@ h1{font:800 clamp(26px,4vw,38px)/1.12 var(--f-display);margin:6px 0 6px;text-wra
 .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}.datos div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.datos b{display:block;font:600 21px/1.2 var(--f-body);font-variant-numeric:tabular-nums}.datos span{font-size:13px;color:var(--muted)}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}td.n{text-align:right;white-space:nowrap}tr.ya td{color:var(--muted);text-decoration:line-through}tr.ahora td{font-weight:700}
 .cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
-ul.lista{list-style:none;padding:0;margin:0;display:grid;gap:8px}ul.lista a{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;text-decoration:none;color:var(--ink)}ul.lista small{display:block;color:var(--muted)}ul.lista .p{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:640px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:6px 8px 6px 0;width:56px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}
+.minimap{position:relative;display:block;width:56px;height:56px;border-radius:8px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
 footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 </style></head><body><div class="franja"></div><div class="wrap">
@@ -1718,7 +1719,29 @@ ${cuerpo}
 }
 const CTA = (r) => `<div class="cta"><b>¿Qué más conviene saber antes de ofertar?</b><p>Con la cuenta gratis abres la ficha de cada remate y generas un expediente PDF completo por semana, con el predio en el catastro, el plan regulador, el valor de Hacienda, el agua potable y el entorno.</p>
 <div class="acts"><a class="btn pri" href="/mapa?crear=1${r ? "#r" + r.id : ""}">Crear cuenta gratis</a>${r ? `<a class="btn" href="/mapa#r${r.id}">Ver en el mapa</a>` : `<a class="btn" href="/mapa">Explorar el mapa</a>`}</div></div>`;
-const itemLista = (r) => { const bv = r.base * PCT[r.st]; return `<li><a href="/remate/${r.id}"><span><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}${r.area ? " · " + miles(r.area) + " m²" : ""} · ${ETAPA[r.st]} el ${fechaTxt(r.f[r.st]).split(",")[0]}</small></span><span class="p">${dinero(bv, r.mon)}</span></a></li>`; };
+// Miniatura con un pin sobre la misma tile satelital (Esri World Imagery) que usa el mapa interactivo
+// — solo el punto aproximado del remate, nunca el polígono exacto del lote (eso se ve con la cuenta,
+// en el mapa). z14 muestra el entorno general sin acercarse al nivel de detalle de la parcela.
+const MINIMAPA_Z = 14, MINIMAPA_PX = 56;
+function miniMapa(r) {
+  if (!r.ll) return "";
+  const [lon, lat] = r.ll, n = 2 ** MINIMAPA_Z;
+  const xf = (lon + 180) / 360 * n, latRad = lat * Math.PI / 180;
+  const yf = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+  const x = Math.floor(xf), y = Math.floor(yf), esc256 = MINIMAPA_PX / 256;
+  const px = Math.round((xf - x) * 256 * esc256), py = Math.round((yf - y) * 256 * esc256);
+  const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${MINIMAPA_Z}/${y}/${x}`;
+  return `<span class="minimap"><img src="${url}" width="${MINIMAPA_PX}" height="${MINIMAPA_PX}" loading="lazy" decoding="async" alt="" referrerpolicy="no-referrer"><i style="left:${px}px;top:${py}px"></i></span>`;
+}
+// Fila de tabla de un remate: mapita, propiedad y lugar, tipo, área, próxima fecha y base.
+const filaTabla = (r) => { const bv = r.base * PCT[r.st];
+  return `<tr><td class="c-mapa">${miniMapa(r)}</td>
+    <td><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></td>
+    <td>${esc(tipoTxt(r.tipo))}</td>
+    <td class="n">${r.area ? miles(r.area) + " m²" : "—"}</td>
+    <td>${ETAPA[r.st]}<small>${fechaTxt(r.f[r.st]).split(",")[0]}</small></td>
+    <td class="n p">${dinero(bv, r.mon)}</td></tr>`; };
+const tablaRemates = (L) => `<div class="tscroll"><table class="rtab"><thead><tr><th></th><th>Propiedad</th><th>Tipo</th><th class="n">Área</th><th>Próximo remate</th><th class="n">Base</th></tr></thead><tbody>${L.map(filaTabla).join("")}</tbody></table></div>`;
 const migas = (items) => `<nav class="migas" aria-label="Ruta">${items.map(([t, h]) => h ? `<a href="${h}">${esc(t)}</a>` : esc(t)).join(" › ")}</nav>`;
 const ldMigas = (u, items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map(([t, h], i) => ({ "@type": "ListItem", position: i + 1, name: t, item: "https://" + u.host + (h || u.pathname) })) });
 
@@ -1735,10 +1758,15 @@ async function seo(u, env) {
       { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
   }
   if (p === "/remates") {
+    const TOPE = 150;
+    const ordenados = [...R].sort((a, b) => a.f[a.st].localeCompare(b.f[b.st]));
     const cuerpo = `${migas([["Inicio", "/"], ["Remates judiciales"]])}<h1>Remates judiciales de propiedades en Costa Rica</h1>
 <p class="sub">${R.length} remates vigentes publicados en el Boletín Judicial${meta.ultimoBoletin ? ` (hasta el N.º ${meta.ultimoBoletin})` : ""}, por provincia y cantón. Se actualiza cada día hábil.</p>
 ${PROVS.map((pv, i) => { const L = porProv(i); if (!L.length) return ""; const cs = {}; L.forEach((r) => cs[r.cn] = (cs[r.cn] || 0) + 1);
   return `<h2><a href="/remates/${slug(pv)}">${pv}</a> <small style="color:var(--muted);font-weight:500">${L.length} remates</small></h2><ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(b, "es")).map((c) => `<li><a href="/remates/${slug(pv)}/${slug(c)}">${esc(c)} (${cs[c]})</a></li>`).join("")}</ul>`; }).join("")}
+<h2>Los ${Math.min(TOPE, ordenados.length)} remates más próximos</h2>
+<p class="sub">Ordenados por fecha de remate. Para ver el resto, entra por provincia y cantón arriba.</p>
+${tablaRemates(ordenados.slice(0, TOPE))}
 ${CTA()}`;
     return pagSEO(u, "Remates judiciales en Costa Rica por provincia y cantón · PlanoExactoCR", `${R.length} remates judiciales vigentes de casas, lotes y fincas en Costa Rica, ordenados por provincia y cantón, con base, fechas y ubicación en el mapa.`, cuerpo, ldMigas(u, [["Inicio", "/"], ["Remates", "/remates"]]));
   }
@@ -1755,7 +1783,7 @@ ${CTA()}`;
     const cuerpo = `${migas(ruta)}<h1>Remates judiciales en ${esc(lugar)}</h1>
 <p class="sub">${L.length} ${L.length === 1 ? "propiedad en remate" : "propiedades en remate"} vigentes: ${Object.entries(tipos).map(([t, n]) => `${n} ${t.toLowerCase()}${n > 1 && !t.endsWith("s") ? (t.endsWith("n") ? "es" : "s") : ""}`).join(", ")}. Ordenadas por la fecha del próximo remate.</p>
 ${cn ? "" : `<ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(b, "es")).map((c) => `<li><a href="/remates/${m[1]}/${slug(c)}">${esc(c)} (${cs[c]})</a></li>`).join("")}</ul>`}
-<ul class="lista" style="margin-top:16px">${L.map(itemLista).join("")}</ul>${CTA()}`;
+${tablaRemates(L)}${CTA()}`;
     return pagSEO(u, `Remates judiciales en ${lugar} · casas, lotes y fincas · PlanoExactoCR`, `${L.length} remates judiciales vigentes en ${lugar}: casas, lotes y fincas con base, fechas de remate y ubicación en el mapa. Actualizado del Boletín Judicial.`, cuerpo, ldMigas(u, ruta.map(([t, h]) => [t, h || u.pathname])));
   }
   m = p.match(/^\/remate\/(\d+)$/);
@@ -1771,7 +1799,7 @@ ${cn ? "" : `<ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(
 ${(r.f || []).map((f, k) => `<tr class="${k < r.st ? "ya" : k === r.st ? "ahora" : ""}"><td>${ETAPA[k]}${k ? ` (${PCT[k] * 100} %)` : ""}</td><td>${fechaTxt(f)}</td><td class="n">${dinero(r.base * PCT[k], r.mon)}</td></tr>`).join("")}
 </tbody></table></div>
 ${CTA(r)}
-${vecinos.length ? `<h2>Otros remates en ${esc(r.cn)}</h2><ul class="lista">${vecinos.map(itemLista).join("")}</ul><p><a href="/remates/${slug(r.pn)}/${slug(r.cn)}">Ver todos los remates en ${esc(r.cn)}</a></p>` : ""}`;
+${vecinos.length ? `<h2>Otros remates en ${esc(r.cn)}</h2>${tablaRemates(vecinos)}<p><a href="/remates/${slug(r.pn)}/${slug(r.cn)}">Ver todos los remates en ${esc(r.cn)}</a></p>` : ""}`;
     const desc = `${tipoTxt(r.tipo)} en remate judicial en ${lugar}${r.area ? `, ${miles(r.area)} m²` : ""}. ${ETAPA[r.st]} el ${fechaTxt(r.f[r.st]).split(",")[0]} con base de ${dinero(bv, r.mon)}. Ubicación, plan regulador y valor de Hacienda en PlanoExactoCR.`;
     return pagSEO(u, `${titulo} · base ${dinero(bv, r.mon)} · PlanoExactoCR`, desc, cuerpo, ldMigas(u, ruta.map(([t, h]) => [t, h || u.pathname])));
   }
