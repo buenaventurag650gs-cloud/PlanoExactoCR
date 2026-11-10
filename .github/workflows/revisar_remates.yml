@@ -1,0 +1,35 @@
+name: Revisar estado de remates en el PJ
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'   # lunes a viernes, 7:00 a. m. hora de Costa Rica
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: revisar_remates
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependencias
+        run: pip install --quiet requests
+      - name: Consultar expedientes vencidos en Gestión en Línea (PJ)
+        run: python3 scripts/consultar_pj.py
+      - name: Fusionar estados detectados en remates.json
+        run: python3 scripts/merge_estados.py
+      - name: Guardar cambios (Cloudflare publica solo)
+        run: |
+          git config user.name "PlanoExactoCR (consulta PJ)"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -m "Datos: revisión de estados de remate en el PJ $(date -u +%F)"
+          git push
