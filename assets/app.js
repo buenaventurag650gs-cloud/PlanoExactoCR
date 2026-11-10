@@ -1089,20 +1089,20 @@
 
   // Bloque de la escala PECR en la ficha: nivel, escala de colores y dónde cae la base frente al rango del nivel
   const PECR_COL = ['#E0CFA3', '#CFC48D', '#B8BA7C', '#9DAE70', '#80A068', '#619060', '#477F57', '#316C4E', '#1F5843', '#123F31'];
-  function pecrHTML(r, pc, z) {
-    // Una sola barra (no una escala de 10 casillas repetida): el color resalta el rango
-    // del nivel del predio, la perilla negra marca la base vigente y el diamante amarillo
-    // el valor de Hacienda — así queda claro que son dos cosas distintas (PECR es una
-    // escala propia del sitio; Hacienda es el valor oficial de la zona homogénea).
-    const bu = r.usdm2, zu = z && z.v != null ? z.v / PX.tc.venta : null;
+  function pecrHTML(r, pc) {
+    // PECR y Hacienda son dos cosas distintas y se muestran por separado: el valor de
+    // Hacienda ya está arriba, en «Valor y mercado» (zona homogénea) y en el Índice
+    // Puja/Hacienda; aquí la escala PECR es propia del sitio y no lo repite ni lo mezcla
+    // — solo ubica la base vigente dentro de su propio rango, en una sola barra.
+    const bu = r.usdm2;
     const L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100)); // escala log de $1 a $1 000 por m²
     return `<div class="pecrb emph">
       <div class="iphh"><span class="iphn${pc[0] <= 4 ? ' lt' : ''}" style="--c:${PECR_COL[pc[0] - 1]}">${pc[0]}<small>/${PX.PECR_N}</small></span><div><b><span class="pico">${PX.PECR_ICON[pc[0] - 1]}</span>Nivel ${pc[0]} de ${PX.PECR_N}</b><span>${esc(pc[1])}</span></div><button class="linkbtn" data-about="guia" data-gsec="met">¿Qué es?</button></div>
       <p class="note2">Escala propia de PlanoExactoCR según acceso y dotación de servicios — no es un valor de Hacienda.</p>
-      <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zu != null ? `<b class="mk zh" style="left:${L(zu)}%" title="Valor de Hacienda"></b>` : ''}</div>
+      <div class="prange"><div class="pr-t"><i style="left:${L(pc[2])}%;width:${L(pc[3]) - L(pc[2])}%;background:${PECR_COL[pc[0] - 1]}"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}</div>
         <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">$${v}</span>`).join('')}</div>
-        <div class="pleg">${bu != null ? `<span class="sw mk"></span>Base vigente (${PX.duoI(bu, 'USD', '/m²')})` : ''}${zu != null ? `<span class="sw zh"></span>Hacienda (${PX.duoI(zu, 'USD', '/m²')})` : ''}</div></div>
-      ${PX.pecrTable(pc, bu, zu, PECR_COL[pc[0] - 1])}</div>`;
+        ${bu != null ? `<div class="pleg"><span class="sw mk"></span>Base vigente (${PX.duoI(bu, 'USD', '/m²')})</div>` : ''}</div>
+      ${PX.pecrTable(pc, bu, null, PECR_COL[pc[0] - 1])}</div>`;
   }
 
   // Bloque del Índice Puja/Hacienda en la ficha
@@ -1430,7 +1430,7 @@
     const ESEsec = (que, icon, t, body, right) => ese ? sec(icon, t, body, right) : lockSec(que, icon, t, 2);
     const I = PX.ICON, sec = (icon, t, body, right) => `<div class="card card-sm mb-3"><div class="card-header"><span class="avatar avatar-sm bg-primary-lt me-2">${icon}</span><h3 class="card-title">${t}</h3>${right ? `<div class="card-actions">${right}</div>` : ''}</div><div class="card-body">${body}</div></div>`;
     const z = e.zh, topo = PX.topo(r), nv = PX.pro.normativa(r), dm = nv.dims, pc = PX.pecr(r);
-    const pecrH = pc ? pecrHTML(r, pc, z) : '';
+    const pecrH = pc ? pecrHTML(r, pc) : '';
     const ubic = r.isPlano ? 'Predio del catastro consultado por plano' : r.exact ? `Ubicada por ${r.loc} en el catastro` : 'Aproximada: el punto marca el centro del distrito declarado, porque el catastro no devolvió el predio';
     // Para inmuebles que no son remate judicial (banco, SICOP, etc.): bloque de origen en vez del timeline.
     const origenCard = r => { const fsrc = PX.fuenteDe(r), o = r.origen || {};

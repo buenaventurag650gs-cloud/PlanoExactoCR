@@ -158,17 +158,15 @@
       ${nv.alertas.length ? `<div class="gl">${nv.alertas.map(t => `<div>${esc(t)}</div>`).join('')}</div>` : ''}
       ${nv.vigente ? '' : `<p class="note2">Fuente: ${esc(PX.pro.NAC.fuente)}.</p>`}</section>`;
     const z = e.zh, pcr = PX.pecr(r), vd = PX.pro.valDefaults(r), vc = PX.pro.valCalc(r, vd), ip = PX.iph(r);
-    const zuUSD = z && z.v != null ? z.v / PX.tc.venta : null;
-    // Una sola barra (no una escala de 10 casillas repetida): el color resalta el rango del
-    // nivel del predio, la perilla negra marca la base vigente y el diamante amarillo el
-    // valor de Hacienda — en la misma línea, para que quede claro que son dos cosas
-    // distintas (PECR es una escala propia del sitio; Hacienda es el valor oficial de la
-    // zona homogénea, que también se muestra arriba en la tabla de «Zona homogénea»).
+    // PECR y Hacienda son dos cosas distintas y se muestran por separado: el valor de
+    // Hacienda ya está arriba, en «Zona homogénea» y en el Índice Puja/Hacienda; esta
+    // barra es la escala PECR propia del sitio y no lo repite ni lo mezcla — solo ubica
+    // la base vigente dentro de su propio rango, en una sola línea.
     const pecrBar = pcr ? (() => {
       const bu = r.usdm2, L = v => Math.max(0, Math.min(100, Math.log10(Math.max(1, Math.min(1000, v))) / 3 * 100));
-      return `<div class="prange"><div class="pr-t"><i style="left:${L(pcr[2])}%;width:${L(pcr[3]) - L(pcr[2])}%;background:#2A6B4D"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}${zuUSD != null ? `<b class="mk zh" style="left:${L(zuUSD)}%" title="Valor de Hacienda"></b>` : ''}</div>
+      return `<div class="prange"><div class="pr-t"><i style="left:${L(pcr[2])}%;width:${L(pcr[3]) - L(pcr[2])}%;background:#2A6B4D"></i>${bu != null ? `<b class="mk" style="left:${L(bu)}%" title="Base vigente"></b>` : ''}</div>
         <div class="pr-ax">${[1, 10, 100, 1000].map(v => `<span style="left:${L(v)}%">$${v}</span>`).join('')}</div>
-        <div class="pleg"><span class="sw lvl" style="background:#2A6B4D"></span>Rango del nivel${bu != null ? `<span class="sw mk"></span>Base vigente (${PX.duoI(bu, 'USD', '/m²')})` : ''}${zuUSD != null ? `<span class="sw zh"></span>Hacienda (${PX.duoI(zuUSD, 'USD', '/m²')})` : ''}</div></div>`;
+        ${bu != null ? `<div class="pleg"><span class="sw lvl" style="background:#2A6B4D"></span>Rango del nivel<span class="sw mk"></span>Base vigente (${PX.duoI(bu, 'USD', '/m²')})</div>` : ''}</div>`;
     })() : '';
     const val = `<section class="blk"><h2>${I.valor}Valor y mercado</h2><dl class="kv sm">
       ${z ? `<dt>Zona homogénea</dt><dd>${esc(z.c)} · ${esc(PX.cap(z.n))}<small class="sub">Hacienda (ONT): ${PX.duoI(z.v, 'CRC', '/m²')} · tipología ${esc(z.u)}</small></dd>` : ''}
@@ -177,7 +175,7 @@
       </dl>
       ${pcr ? `<div class="pecr"><div><b>Nivel PECR ${pcr[0]} de ${PX.PECR_N}</b> · ${esc(pcr[1])}</div><p class="note2">Escala propia de PlanoExactoCR según acceso y dotación de servicios — no es un valor de Hacienda.</p>
         ${pecrBar}
-        ${PX.pecrTable(pcr, r.usdm2, zuUSD, '#2A6B4D')}</div>` : ''}
+        ${PX.pecrTable(pcr, r.usdm2, null, '#2A6B4D')}</div>` : ''}
       <p class="note2">Referencias orientativas, no avalúo. Construcción estimada con supuestos editables en la herramienta PRO «Valor de referencia».</p></section>`;
     const ana = `<section class="blk"><h2>${I.entorno}Análisis multidimensional · índice <span class="num">${s.total ?? '–'}</span> ${esc(PX.scoreLabel(s.total).toLowerCase())}</h2>
       ${PX.DIMS.map(d => `<div class="dm"><div class="dmh"><b>${d.n}</b><span class="num">${s[d.k] ?? '–'}</span></div><span class="track"><i style="width:${s[d.k] || 0}%"></i></span>
