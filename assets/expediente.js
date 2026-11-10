@@ -30,7 +30,7 @@
   // de pintar, la ficha completa se sentiría lenta por un puñado de filas. En vez de
   // eso, renderizamos de inmediato sin estos datos y cada uno se inserta solo, por su
   // cuenta, cuando llega (o no aparece si la consulta falla).
-  let posteCerc = null, sutelCov = null, sutelListo = false, cobMovil = null, inetFijo = null, telecomListo = false, transp = null, osmData = null;
+  let posteCerc = null, sutelCov = null, sutelListo = false, cobMovil = null, inetFijo = null, telecomListo = false, transp = null, osmData = null, primera = true;
   function cargarServicios() {
     if (!r.ll) return;
     const [lon, lat] = r.ll;
@@ -143,7 +143,7 @@
     // filas de «Valor y mercado» — agua, electricidad, telecomunicaciones y
     // transporte público — reunido en una sola sección con su propio ícono,
     // igual al de su categoría en el mapa.
-    const serv = `<section class="blk"><h2>${I.servicios}Servicios e infraestructura</h2><dl class="kv sm">
+    const serv = `<section class="blk"><h2>${I.servicios}Servicios e infraestructura</h2><dl class="kv sm" id="serv-dl">
       ${e.aguaS ? `<dt>${I.agua}Agua potable</dt><dd>Cobertura de ${esc(e.aguaS.join(', '))}<small class="sub">AyA / ASADAS / ESPH / municipal</small></dd>` : `<dt>${I.agua}Agua potable</dt><dd>Sin cobertura registrada<small class="sub">AyA / ASADAS / ESPH / municipal</small></dd>`}
       ${e.costa != null ? `<dt>${I.costa}Costa</dt><dd>A <b class="num">${PX.dist(e.costa)}</b>${e.costa <= 200 ? ' <span class="tag warn">zona marítimo terrestre</span>' : ''}<small class="sub">Distancia a la línea de costa (IGN)</small></dd>` : ''}
       ${posteCerc ? `<dt>${I.elec}Tendido eléctrico</dt><dd>Poste más cercano a <b class="num">${PX.dist(posteCerc.d)}</b><small class="sub">Infraestructura vertical del tendido eléctrico (ARESEP)</small></dd>` : `<dt>${I.elec}Tendido eléctrico</dt><dd class="muted">Buscando el poste más cercano…</dd>`}
@@ -286,7 +286,7 @@
           ? `<table class="osmp-table"><thead><tr><th></th><th>Categoría</th><th>Establecimientos más cercanos</th></tr></thead><tbody>${rows}</tbody></table><p class="osmp-attr">Datos: OpenStreetMap · CC BY-SA · overpass-api.de · Radio de búsqueda: 500 m</p>`
           : '<p class="dim6p-disc">Sin comercios ni servicios mapeados a 500 m en OpenStreetMap.</p>';
       }
-      h += `<section class="page">${head('Entorno cercano · 500 m a la redonda')}
+      h += `<section class="page" id="pagina-osm">${head('Entorno cercano · 500 m a la redonda')}
         <div class="dim6p-intro"><p>Servicios, comercios y equipamiento urbano ubicados dentro de 500 metros del lote según OpenStreetMap. Útil para evaluar accesibilidad a servicios cotidianos sin vehículo.</p></div>
         ${osmHTML}
         ${foot(h.match(/class="page"/g)?.length + 1 || 5)}</section>`;
@@ -296,16 +296,40 @@
       const hcols = PX.lamina.WAYBACK_VERSIONS.map(v =>
         `<div class="hsat-col"><div class="hsat-map" id="hmap-${v.y}"></div><div class="hsat-lbl">${esc(v.t)}</div></div>`
       ).join('');
-      h += `<section class="page">${head('Cambio de uso del suelo')}
+      h += `<section class="page" id="pagina-historial">${head('Cambio de uso del suelo')}
         <div class="hsat-intro"><p>Las tres imágenes muestran el mismo sitio en distintos períodos para identificar cambios en la cobertura o el uso del suelo. <b>Verificar cambios de vegetación, construcciones, movimientos de tierra o deforestación antes de la compra.</b> Imágenes: Esri/Maxar (actual y ~2014) · Ortofoto IGN/SNIT 2017.</p></div>
         <div class="hsat-grid">${hcols}</div>
         <div class="hsat-nota"><b>Nota:</b> Las imágenes son orientativas. La resolución varía según la zona. Para análisis definitivo use Google Earth o el Visor del SINAC.</div>
         ${foot(h.match(/class="page"/g)?.length + 1 || 4)}</section>`;
     }
     h += `<div class="legal screen-only">${PX.DISCLAIMER}</div>`;
+
+    // El mapa principal y las 3 láminas satelitales históricas no dependen de los datos
+    // que llegan después (poste, cobertura SUTEL/ICE, transporte, OSM) ni de la moneda
+    // — solo del lote. Antes, cada uno de esos datos al llegar (hasta 6 veces por
+    // expediente) volvía a pintar TODO el documento y recreaba los 4 mapas Leaflet
+    // desde cero (tiles, WMS y geojson repetidos de más) — de ahí el sitio lento y el
+    // PDF tardado. Ahora el documento se pinta por completo la primera vez…
+    if (primera) {
+      doc.innerHTML = h;
+      PX.lamina.init(r);
+      if (r.ll && !r.isPlano) PX.lamina.initHistorial(r);
+      primera = false;
+      return;
+    }
+    // Repintes siguientes (dato tardío o cambio de moneda): se reemplaza todo el texto,
+    // pero los contenedores de los mapas Leaflet ya vivos (el principal y los 3
+    // históricos) se desenganchan antes del reemplazo y se reinsertan después en el
+    // mismo lugar, para no perder los tiles ya cargados ni repetir las peticiones.
+    const idsMapa = ['lmap', ...(PX.lamina.WAYBACK_VERSIONS || []).map(v => 'hmap-' + v.y)];
+    const vivos = {};
+    for (const id of idsMapa) { const el = document.getElementById(id); if (el) vivos[id] = el; }
     doc.innerHTML = h;
-    PX.lamina.init(r);
-    if (r.ll && !r.isPlano) PX.lamina.initHistorial(r);
+    for (const id of idsMapa) {
+      const nuevo = document.getElementById(id);
+      if (nuevo && vivos[id]) nuevo.replaceWith(vivos[id]);
+    }
+    (PX.lamina.maps || []).forEach(([mp]) => { try { mp.invalidateSize(false); } catch (_) {} });
   }
   function setCur(c) { PX.setCur(c); $('cCRC').setAttribute('aria-pressed', c === 'CRC'); $('cUSD').setAttribute('aria-pressed', c === 'USD'); render(); }
   $('cCRC').onclick = () => setCur('CRC'); $('cUSD').onclick = () => setCur('USD');
