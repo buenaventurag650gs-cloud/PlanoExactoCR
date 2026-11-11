@@ -1285,6 +1285,17 @@ const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const miles = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const dinero = (v, mon) => v == null ? "—" : (mon === "USD" ? "$" : "₡") + miles(v);
 const fechaTxt = (iso) => { const [d, h] = String(iso).split("T"); const [y, m, dd] = d.split("-").map(Number); return `${dd} de ${MES[m - 1]} de ${y}${h ? ", " + h : ""}`; };
+const MES3 = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+// Fecha corta para la tabla («17 nov 2026») — fechaTxt sigue igual donde ya se usa (SEO, detalle).
+const fechaCorta = (iso) => { const [y, m, dd] = String(iso).slice(0, 10).split("-").map(Number); return `${dd} ${MES3[m - 1]} ${y}`; };
+// «En 3 días» / «Mañana» / «Hace 2 días», para ubicar de un vistazo qué tan próximo está un remate
+// sin tener que leer y restar fechas. prox:true cuando falta una semana o menos (incluye hoy).
+function diasTxt(iso) {
+  const hoyD = new Date(hoy() + "T00:00:00Z"), f = new Date(String(iso).slice(0, 10) + "T00:00:00Z");
+  const d = Math.round((f - hoyD) / 86400000);
+  const txt = d === 0 ? "Hoy" : d === 1 ? "Mañana" : d === -1 ? "Ayer" : d > 1 ? `En ${d} días` : `Hace ${-d} días`;
+  return { txt, prox: d >= 0 && d <= 7 };
+}
 let DATOS = { etag: null, R: null, meta: null };
 async function datosPublicos(u, env) {
   const body = await rematesLibres(u, env);
@@ -1764,7 +1775,23 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,t
 .febtn .stb.s1{background:#2B5C8A}.febtn .stb.s2{background:#B7791F}.febtn .stb.s3{background:#B42318}
 .febtn.on .stb{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
 .rtab tr.fila-hl{animation:flash 1.4s ease-out 1}@keyframes flash{0%{background:rgba(21,155,117,.18)}100%{background:transparent}}
+.rtab thead th{position:sticky;top:0;z-index:3;background:var(--bg);padding-top:10px;padding-bottom:10px}
+.rtab tbody tr:nth-child(even){background:rgba(127,127,127,.055)}
+.rtab tbody tr[data-prox="1"]{box-shadow:inset 3px 0 0 var(--accent)}
 .rtab tbody tr:hover{background:var(--soft)}
+.rtab td.etapaCell{white-space:nowrap}
+.rtab .etWrap{display:inline-flex;align-items:center;gap:8px;vertical-align:middle}
+.rtab .etbadge{display:inline-flex;align-items:center;flex:none;padding:3px 9px;border-radius:999px;font:700 10.5px/1.4 inherit;color:#fff;white-space:nowrap}
+.rtab .etbadge.e1{background:#2B5C8A}.rtab .etbadge.e2{background:#B7791F}.rtab .etbadge.e3{background:#B42318}
+.rtab .fcell{display:inline-flex;flex-direction:column;line-height:1.3;vertical-align:middle}
+.rtab .fcell b{font-weight:600;font-size:13px}
+.rtab .fcell small{color:var(--muted);font-size:11.5px;font-weight:500}
+.rtab .fcell small.prox{color:var(--accent);font-weight:700}
+.rtab .favstar{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:0;background:transparent;color:var(--line);cursor:pointer;flex:none;font-size:15px;line-height:1;transition:color .12s ease,transform .12s ease}
+.rtab .favstar:hover{color:var(--terra);transform:scale(1.15)}
+.rtab .favstar.on{color:var(--terra)}
+.rtab .favstar[hidden]{display:none}
+.rtab .nomWrap{display:inline-flex;align-items:center;gap:6px}
 footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 </style></head><body><div class="franja"></div><div class="wrap">
 <header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a>
@@ -1790,7 +1817,7 @@ ${cuerpo}
   // antes de que responda la consulta, esperamos ese mismo resultado en vez de asumir «no es PRO»
   // por la carrera entre el clic y el fetch. Admin también puede ordenar (acceso total).
   var yoData = null;
-  var yoPromise = fetch('/api/cuenta/yo', { credentials: 'same-origin', cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ yoData = d; pintarCuenta(d); pintarSortHint(d); return d; }).catch(function(){ pintarSortHint(null); return null; });
+  var yoPromise = fetch('/api/cuenta/yo', { credentials: 'same-origin', cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ yoData = d; pintarCuenta(d); pintarSortHint(d); pintarFavoritos(d); return d; }).catch(function(){ pintarSortHint(null); return null; });
   var proCheck = yoPromise.then(function(d){ return !!(d && ((d.user && d.user.plan === 'pro') || d.admin === true)); });
   function pintarSortHint(d){
     var h = document.getElementById('sortHint'); if (!h) return;
@@ -1840,12 +1867,27 @@ ${cuerpo}
     });
   });
   // Filtro dinámico (busca, provincia, tipo, etapa): oculta filas de la tabla sin recargar la página.
-  // Tipo y etapa son botones (más visibles que un dropdown).
+  // Tipo y etapa son botones (más visibles que un dropdown). Los filtros quedan en la URL (?q=…&prov=…
+  // &tipo=…&etapa=…) sin recargar, para poder compartir el enlace o volver atrás con el navegador.
   var fBusca = document.getElementById('fBusca'), fProv = document.getElementById('fProv'), fCont = document.getElementById('fCont'), fLimpiar = document.getElementById('fLimpiar');
   if (fBusca) {
     var tbodyF = document.querySelector('table.rtab tbody');
     var filas = Array.prototype.slice.call(tbodyF.querySelectorAll('tr'));
-    var fTipo = '', fEtapa = '';
+    var qp = new URLSearchParams(location.search);
+    var fTipo = qp.get('tipo') || '', fEtapa = qp.get('etapa') || '';
+    fBusca.value = qp.get('q') || '';
+    if (qp.get('prov')) fProv.value = qp.get('prov');
+    if (fTipo) document.querySelectorAll('.ftbtn').forEach(function(x){ x.classList.toggle('on', x.dataset.ftipo === fTipo); });
+    if (fEtapa) document.querySelectorAll('.febtn').forEach(function(x){ x.classList.toggle('on', x.dataset.fetapa === fEtapa); });
+    var actualizarUrl = function(){
+      var p = new URLSearchParams();
+      if (fBusca.value.trim()) p.set('q', fBusca.value.trim());
+      if (fProv.value) p.set('prov', fProv.value);
+      if (fTipo) p.set('tipo', fTipo);
+      if (fEtapa) p.set('etapa', fEtapa);
+      var s = p.toString();
+      history.replaceState(null, '', location.pathname + (s ? '?' + s : ''));
+    };
     var filtrar = function(){
       var q = fBusca.value.trim().toLowerCase(), prov = fProv.value.toLowerCase(), n = 0;
       filas.forEach(function(f){
@@ -1854,6 +1896,7 @@ ${cuerpo}
         if (ok) n++;
       });
       fCont.textContent = n + (n === 1 ? ' remate' : ' remates');
+      actualizarUrl();
     };
     [fBusca, fProv].forEach(function(el){ el.addEventListener('input', filtrar); el.addEventListener('change', filtrar); });
     document.querySelectorAll('.ftbtn').forEach(function(b){ b.addEventListener('click', function(){
@@ -1872,11 +1915,39 @@ ${cuerpo}
     });
     filtrar();
   }
+  // --- Favorito inline (estrella) — solo visible con sesión iniciada (cualquier plan, no solo PRO) ---
+  var A0DEF = { comprados: [], usados: {}, expedientes: [], listas: [{ id: 'l1', n: 'Mis favoritos', items: [] }], sigo: [], busquedas: [], notas: {}, ocultos: [] };
+  var misDatos = null;
+  function pintarFavoritos(d){
+    if (!d || !d.user) return;   // sin sesión, las estrellas quedan ocultas (hidden en el HTML)
+    misDatos = Object.assign({}, A0DEF, d.datos || {});
+    if (!Array.isArray(misDatos.listas) || !misDatos.listas.length) misDatos.listas = [{ id: 'l1', n: 'Mis favoritos', items: [] }];
+    var l1 = misDatos.listas.find(function(l){ return l.id === 'l1'; }) || misDatos.listas[0];
+    document.querySelectorAll('.favstar').forEach(function(b){
+      b.hidden = false;
+      var on = l1.items.some(function(i){ return i.k === b.dataset.fav; });
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      b.title = on ? 'Quitar de favoritos' : 'Agregar a favoritos';
+    });
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.favstar'); if (!b || b.hidden || !misDatos) return;
+    e.preventDefault();
+    var k = b.dataset.fav;
+    var l1 = misDatos.listas.find(function(l){ return l.id === 'l1'; });
+    if (!l1) { l1 = { id: 'l1', n: 'Mis favoritos', items: [] }; misDatos.listas.unshift(l1); }
+    var idx = l1.items.findIndex(function(i){ return i.k === k; });
+    var tr = b.closest('tr'), nombreEl = tr && tr.querySelector('a b');
+    if (idx >= 0) l1.items.splice(idx, 1); else l1.items.unshift({ k: k, n: nombreEl ? nombreEl.textContent : '', t: Date.now(), nota: '' });
+    var on = idx < 0;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = on ? 'Quitar de favoritos' : 'Agregar a favoritos';
+    fetch('/api/cuenta/datos', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ datos: misDatos }) }).catch(function(){});
+  });
   // Toda la fila es clicable (no solo el nombre): hace más fácil tocar desde el teléfono.
   document.querySelectorAll('table.rtab tbody tr').forEach(function(tr){
     tr.style.cursor = 'pointer';
     tr.addEventListener('click', function(e){
-      if (e.target.closest('a')) return;   // no interferir con los enlaces que ya tiene
+      if (e.target.closest('a, .favstar')) return;   // no interferir con enlaces ni con el favorito
       var a = tr.querySelector('a[href^="/remate/"]');
       if (a) location.href = a.href;
     });
@@ -1968,13 +2039,14 @@ const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD
   // hay área para que al ordenar ascendente queden al final (sin dato) y no se confundan con una ganga.
   const usdM2 = r.area ? bvUsd / r.area : -1;
   const busca = [r.nom, r.dn, r.cn, r.pn, tipoTxt(r.tipo)].filter(Boolean).join(" ").toLowerCase();
-  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-m2="${usdM2}" data-busca="${esc(busca)}">
+  const dt = diasTxt(r.f[r.st]);
+  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-m2="${usdM2}" data-busca="${esc(busca)}" data-id="${r.id}" data-prox="${dt.prox ? "1" : "0"}">
     <td class="c-mapa">${miniMapa(r)}</td>
-    <td><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></td>
+    <td><span class="nomWrap"><button type="button" class="favstar" data-fav="r${r.id}" hidden title="Agregar a favoritos" aria-label="Agregar a favoritos">★</button><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></span></td>
     <td class="tipoCell"><span class="tipoWrap"><span class="tico">${TIPO_ICON[r.tipo] || TIPO_ICON_DEF}</span>${esc(tipoTxt(r.tipo))}</span></td>
     <td class="n">${r.area ? miles(r.area) + " m²" : "—"}</td>
     <td class="n m2">${r.area ? dinero(Math.round(bv / r.area), r.mon) + "<small>/m²</small>" : "—"}</td>
-    <td>${ETAPA[r.st]}<small>${fechaTxt(r.f[r.st]).split(",")[0]}</small></td>
+    <td class="etapaCell"><span class="etWrap"><span class="etbadge e${r.st + 1}">${ETAPA[r.st]}</span><span class="fcell"><b>${fechaCorta(r.f[r.st])}</b><small${dt.prox ? ' class="prox"' : ""}>${dt.txt}</small></span></span></td>
     <td class="n p">${dinero(bv, r.mon)}</td></tr>`; };
 // Encabezados ordenables (función del plan PRO — ver el script «sortTabla» más abajo en pagSEO).
 const THS = [["", null], ["Propiedad", "nom"], ["Tipo", "tipo"], ["Área", "area"], ["$/m²", "m2"], ["Próximo remate", "fecha"], ["Base", "base"]];
