@@ -335,7 +335,10 @@ dl.kv small.sub { display: block; color: var(--muted); font-size: 11.5px; }
 /* Cabecera compacta: en pantallas medianas los botones quedan solo con ícono (el título aparece al pasar el mouse) */
 .nav { flex-wrap: nowrap; min-width: 0; }
 @media (max-width: 1720px) { header.top .brand .src { display: none; } }
-@media (max-width: 1720px) { .btn.ib:not([data-about="guia"]) > span:not(.ic):not(.badge) { display: none; } .btn.ib:not([data-about="guia"]) { padding-left: 9px; padding-right: 9px; } .vista .vl { font-size: 0; padding-right: 2px; gap: 0; } .vista .vl .ic svg { width: 15px; height: 15px; } }
+@media (max-width: 1720px) { .btn.ib:not([data-about="guia"]):not(.verlista) > span:not(.ic):not(.badge) { display: none; } .btn.ib:not([data-about="guia"]):not(.verlista) { padding-left: 9px; padding-right: 9px; } .vista .vl { font-size: 0; padding-right: 2px; gap: 0; } .vista .vl .ic svg { width: 15px; height: 15px; } }
+.btn.verlista { background: var(--accent-soft, var(--soft)); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.btn.verlista:hover { background: var(--accent); color: var(--accent-ink); }
+.btn.verlista .ic { color: inherit; }
 @media (max-width: 1180px) { .btn.ib > span:not(.ic):not(.badge) { display: none; } .btn.ib { padding-left: 9px; padding-right: 9px; } header.top .kpis { display: none; } }
 
 /* Ficha: encabezados con ícono en placa de color y filas con ícono */

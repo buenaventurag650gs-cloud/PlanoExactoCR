@@ -31,6 +31,8 @@
     const b = $('planBadge'); b.textContent = PX.isPro() ? 'PRO' : PX.isEsencial() ? 'Esencial' : 'Gratis'; b.className = 'badge' + (PX.isPro() ? ' pro' : PX.isEsencial() ? ' ese' : ''); b.hidden = !PX.conCuenta();
     $('bCuenta').querySelector('span:not(.ic):not(.badge)').textContent = PX.conCuenta() ? 'Mi cuenta' : 'Entrar';
     $('bCuenta').classList.toggle('primary', !PX.conCuenta());
+    // Sin cuenta, el enlace abre el flujo de ingreso en el mapa en vez de /cuenta
+    $('bCuenta').setAttribute('href', PX.conCuenta() ? '/cuenta' : '/mapa?entrar=1');
     const vs = document.querySelector('.vista'); if (vs) vs.style.display = PX.admin ? '' : 'none';
     $('attrHint').hidden = PX.isPro();
     // Filtros PRO por IPH y por USD/m²: inputs se deshabilitan y se marca el hint
@@ -2086,7 +2088,8 @@
     sec.innerHTML = `<div class="card-header"><h3 class="card-title">Pagos</h3></div>${L.length ? `<div class="list-group list-group-flush">${L.map(p => `<div class="list-group-item"><div class="row align-items-center"><div class="col"><div class="fw-medium">${CONC[p.concepto] || p.concepto}${p.concepto === 'expedientes' ? ' · ' + p.cantidad : ''}</div><div class="text-secondary small">${fdate(new Date(p.creado))} · comprobante ${esc(p.ref)}${p.nota ? ' · ' + esc(p.nota) : ''}</div></div>
       <div class="col-auto text-end"><div class="fw-medium">${PX.mt(p.monto, 'CRC')}</div><span class="badge bg-${EST[p.estado][1]}-lt">${EST[p.estado][0]}</span></div></div></div>`).join('')}</div>` : '<div class="card-body text-secondary small">Aún no has hecho pagos. Los planes se pagan por SINPE Móvil desde «Ver planes».</div>'}`;
   }
-  $('bCuenta').onclick = () => { renderCuenta(); pintarPagos(); };
+  // Mi cuenta ahora navega a /cuenta (página dedicada). El enlace href="/cuenta" hace el trabajo;
+  // no se intercepta para dejar que el navegador abra la página.
   $('layer').addEventListener('click', async e => {
     const d = e.target.closest('[data-open],[data-unsig],[data-rmi],[data-ren],[data-dell],[data-newl],[data-bus],[data-delb],[data-unocultar],[data-clearocultos],[data-copiar-ref]'); if (!d) return; e.preventDefault();
     const a = PX.acct, ds = d.dataset;

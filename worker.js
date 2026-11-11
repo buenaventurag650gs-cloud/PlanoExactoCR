@@ -1713,6 +1713,22 @@ nav.migas{font-size:13.5px;color:var(--muted);margin:8px 0 4px}nav.migas a{color
 h1{font:800 clamp(26px,4vw,38px)/1.12 var(--f-display);margin:6px 0 6px;text-wrap:balance}h2{font:700 21px/1.25 var(--f-display);margin:26px 0 10px}
 .sub{color:var(--muted);margin:0 0 18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
 .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}.datos div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.datos b{display:block;font:600 21px/1.2 var(--f-body);font-variant-numeric:tabular-nums}.datos span{font-size:13px;color:var(--muted)}
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:14px 0 22px}
+.tarj{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tarj summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tarj summary::-webkit-details-marker{display:none}
+.tarj summary .cnt{color:var(--muted);font-size:13px;padding:2px 8px;border-radius:999px;background:var(--soft)}
+.tarj .items{margin:10px 0 0;padding:0;list-style:none}
+.tarj .items li{padding:7px 0;border-top:1px solid var(--line)}
+.tarj .items li:first-child{border-top:0}
+.tarj .items a{color:var(--ink);text-decoration:none;font-weight:600}
+.tarj .items a:hover{color:var(--accent)}
+.tarj .items small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.items.wide{margin:0 0 18px;padding:0;list-style:none;display:grid;gap:4px}
+.items.wide li{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.items.wide li a{color:var(--ink);text-decoration:none;font-weight:600;flex:1;min-width:0}
+.items.wide li small{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.vacio{color:var(--muted);font-size:14px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}td.n{text-align:right;white-space:nowrap}tr.ya td{color:var(--muted);text-decoration:line-through}tr.ahora td{font-weight:700}
 .cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
 .tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:780px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:8px 10px 8px 0;width:88px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}.rtab td.m2{color:var(--muted);font-variant-numeric:tabular-nums}.rtab td.m2 small{display:inline;color:var(--muted);font-size:11.5px}
@@ -1750,7 +1766,8 @@ footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font
   <div class="seg" role="group" aria-label="Moneda" id="curSeg"><button id="cCRC" aria-pressed="true" title="Ver la base en colones">₡</button><button id="cUSD" aria-pressed="false" title="Ver la base en dólares">$</button></div>
   <button class="icnbtn" id="tTheme" type="button" title="Cambiar colores (claro/oscuro)" aria-label="Cambiar colores"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg></button>
   <a class="btn" href="/mapa" title="Ver el mapa interactivo">Ver el mapa</a>
-  <a class="btn pri" href="/mapa?entrar=1" id="cuentaBtn" title="Entrar o ver tu cuenta">Mi cuenta</a>
+  <a class="btn" href="/remates" title="Ver los remates en una lista">Ver lista</a>
+  <a class="btn pri" href="/cuenta" id="cuentaBtn" title="Entrar o ver tu cuenta">Mi cuenta</a>
 </nav>
 </header>
 ${cuerpo}
@@ -1774,7 +1791,7 @@ ${cuerpo}
     var plan = d.admin ? 'ADMIN' : (d.user.plan === 'pro' ? 'PRO' : d.user.plan === 'basico' ? 'Esencial' : 'Gratis');
     var nombre = d.user.nombre || d.user.correo.split('@')[0];
     btn.innerHTML = 'Mi cuenta <span class="badgeplan">' + plan + '</span>';
-    btn.setAttribute('href', '/mapa');
+    btn.setAttribute('href', '/cuenta');
     btn.setAttribute('title', 'Entraste como ' + nombre + ' (' + plan + ')');
   }
   function avisoPro(th){
@@ -2032,6 +2049,41 @@ ${vecinos.length ? `<h2>Otros remates en ${esc(r.cn)}</h2>${tablaRemates(vecinos
   return null;
 }
 
+// ---------- Página «Mi cuenta» (/cuenta) ----------
+// Página chica, organizada: info de la sesión, favoritos (de la primera lista), demás listas,
+// búsquedas guardadas y ocultos. El contenido editable (crear listas, renombrar, borrar) sigue en
+// /mapa, que es donde se puede cruzar con el mapa; aquí se ven, se cuentan y se entra a cada uno.
+async function paginaCuenta(request, u, env) {
+  if (!env.DB) return pagSEO(u, "Mi cuenta · PlanoExactoCR", "Entrá a tu cuenta de PlanoExactoCR.", `<h1>Mi cuenta</h1><p class="sub">Las cuentas no están disponibles en este momento. Volvé a intentarlo más tarde.</p>`, null);
+  await initDB(env);
+  const us = await usuarioActual(request, env);
+  if (!us) {
+    const h = `<h1>Mi cuenta</h1><p class="sub">Entrá con tu correo para ver tus favoritos, listas y búsquedas guardadas.</p>
+      <div class="cta" style="margin-top:22px"><b>Aún no has entrado</b><p>Con la cuenta gratis podés guardar favoritos, organizarlos en listas y recibir avisos de los remates que seguís.</p><div class="acts"><a class="btn pri" href="/mapa?entrar=1">Entrar o crear cuenta</a><a class="btn" href="/mapa">Explorar sin cuenta</a></div></div>`;
+    return pagSEO(u, "Mi cuenta · PlanoExactoCR", "Entrá a tu cuenta de PlanoExactoCR.", h, null);
+  }
+  let datos = {}; try { datos = JSON.parse(us.datos || "{}"); } catch (_) {}
+  const plan = planVigente(us), listas = Array.isArray(datos.listas) ? datos.listas : [], busquedas = Array.isArray(datos.busquedas) ? datos.busquedas : [], ocultos = Array.isArray(datos.ocultos) ? datos.ocultos : [], sigo = Array.isArray(datos.sigo) ? datos.sigo : [];
+  const nombre = us.nombre || us.correo.split("@")[0];
+  const fmtFecha = (ts) => { try { return new Date(ts).toLocaleDateString("es-CR", { day: "numeric", month: "short", year: "numeric" }); } catch (_) { return ""; } };
+  const tarjetaLista = (l) => `<details class="tarj" ${l.items && l.items.length ? "open" : ""}><summary><b>${esc(l.n)}</b> <span class="cnt">${(l.items || []).length}</span></summary>
+    ${(l.items || []).length ? `<ul class="items">${l.items.map((i) => `<li><a href="/mapa#${esc(i.k)}">${esc(i.n || i.k)}</a>${i.nota ? `<small>${esc(i.nota)}</small>` : ""}</li>`).join("")}</ul>` : `<p class="vacio">Aún no agregaste nada a esta lista.</p>`}</details>`;
+  const planTxt = plan === "pro" ? "PRO" : plan === "basico" ? "Esencial" : "Gratis";
+  const cuerpo = `${migas([["Inicio", "/"], ["Mi cuenta"]])}<h1>Hola, ${esc(nombre)}</h1>
+<p class="sub">Entraste como <b>${esc(us.correo)}</b> · plan <b>${planTxt}</b>${us.pro_hasta && plan !== "free" ? ` hasta ${esc(us.pro_hasta)}` : ""}.</p>
+<div class="datos"><div><b>${listas.reduce((n, l) => n + (l.items || []).length, 0)}</b><span>Favoritos y guardados</span></div><div><b>${listas.length}</b><span>Listas</span></div><div><b>${busquedas.length}</b><span>Búsquedas guardadas</span></div><div><b>${sigo.length}</b><span>Remates que sigo</span></div></div>
+<h2>Tus listas</h2>
+${listas.length ? `<div class="tarjetas">${listas.map(tarjetaLista).join("")}</div>` : `<p class="vacio">Aún no tenés listas. Creá la primera desde <a href="/mapa">el mapa</a>, abriendo un remate y tocando el botón de favoritos.</p>`}
+<h2>Búsquedas guardadas</h2>
+${busquedas.length ? `<ul class="items wide">${busquedas.map((b, i) => `<li><a href="/mapa?bus=${i}">${esc(b.n)}</a><small>${fmtFecha(b.t)}</small></li>`).join("")}</ul>` : `<p class="vacio">No tenés búsquedas guardadas. Desde <a href="/mapa">el mapa</a>, filtra los remates y toca «Guardar búsqueda».</p>`}
+${ocultos.length ? `<h2>Ocultos</h2><p class="sub">${ocultos.length} remates que ocultaste. Para volver a verlos, entrá desde <a href="/mapa">el mapa</a>.</p>` : ""}
+<div class="cta" style="margin-top:28px"><b>¿Querés más alcance?</b><p>Con el plan PRO podés ordenar la lista de remates por cualquier columna, generar más expedientes por semana y ver todas las capas del mapa (catastro, plan regulador, cobertura celular…).</p><div class="acts"><a class="btn pri" href="/mapa?planes=1">Ver los planes</a><a class="btn" href="/mapa">Volver al mapa</a></div></div>`;
+  const r = pagSEO(u, `Mi cuenta · PlanoExactoCR`, "Tu cuenta de PlanoExactoCR: favoritos, listas y búsquedas guardadas.", cuerpo, null);
+  // Página privada: no cachear nada (ni navegador, ni edge)
+  const h = new Headers(r.headers); h.set("cache-control", "private, no-store"); h.set("vary", "Cookie");
+  return new Response(r.body, { headers: h });
+}
+
 const SOLO_ADMIN = new Set(["/assets/ubicar.js", "/admin", "/admin.html", "/catastro", "/catastro.html", "/data/pendientes.json", "/data/catastro_resultados.json", "/data/estado.json", "/admin/registros.csv", "/admin/usuarios.csv"]);
 const INDEXABLES = new Set(["/", "/mapa", "/privacidad", "/robots.txt", "/sitemap.xml"]);
 const esIndexable = (p) => INDEXABLES.has(p) || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/");
@@ -2175,7 +2227,10 @@ async function manejarPeticion(request, env) {
     if ((p === "/api/plano" || p === "/api/finca") && !dentro) return json({ error: "Entra con tu cuenta para buscar planos y fincas." }, 401, 0);
 
     let res;
-    if (p === "/sitemap.xml" || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/")) {
+    if (p === "/cuenta") {
+      res = await paginaCuenta(request, u, env).catch(() => null);
+      if (!res) res = new Response("No se pudo cargar la cuenta en este momento.", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
+    } else if (p === "/sitemap.xml" || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/")) {
       res = await seo(u, env).catch(() => null);
       if (!res) res = new Response("No encontramos esa página. Puede ser un remate que ya pasó.", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
     } else if (p === "/data/remates.json" && !dentro) res = new Response(await rematesLibres(u, env), { headers: { "content-type": "application/json; charset=utf-8" } });
