@@ -127,7 +127,7 @@
     const diff = r.area && r.areaCat ? (r.areaCat - r.area) / r.area : null;
     const reg = `<section class="blk"><h2>${I.registro}Registro y catastro</h2><dl class="kv sm">
       <dt>Finca</dt><dd class="num">${esc(r.fincaTxt)}${r.der && r.der !== '000' ? ' <span class="tag warn">derecho parcial</span>' : ''}</dd>
-      <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : 'No indicado'))}${(r.plano || r.planoCat) ? ` <button class="btn-copy" onclick="navigator.clipboard.writeText('${esc(r.planoCat || '')}');this.textContent='✓ Copiado';setTimeout(()=>this.textContent='Copiar',1500)" title="Copiar número de plano">Copiar</button><small class="sub"><a href="https://siri.rnp.go.cr/SIRI/index.jsp?faces-redirect=true" target="_blank" rel="noopener">Consultar en SIRI (Registro Nacional) ↗</a></small>` : ''}</dd>
+      <dt>Plano</dt><dd class="num">${esc(r.plano || (r.planoCat ? PX.planoTxt(r.planoCat) : 'No indicado'))}${(r.plano || r.planoCat) ? ` <button class="btn-copy" onclick="navigator.clipboard.writeText('${esc(r.planoCat || '')}');this.textContent='✓ Copiado';setTimeout(()=>this.textContent='Copiar',1500)" title="Copiar número de plano">Copiar</button><small class="sub"><a href="https://siri.rnp.go.cr/SIRI/index.jsp?faces-redirect=true" target="_blank" rel="noopener">Consultar en SIRI ↗</a> · <a href="https://www.snitcr.go.cr/" target="_blank" rel="noopener" title="Abrir el geoportal del SNIT — buscar el plano con la capa de Catastro para ver servidumbres">Ver en mapa catastral (SNIT) ↗</a></small>` : ''}</dd>
       ${r.nat ? `<dt>Naturaleza</dt><dd>${esc(r.nat)}</dd>` : ''}
       <dt>Área</dt><dd>${r.area ? `<span class="num">${fnum(r.area)}</span> m² en edicto` : ''}${r.area && r.areaCat ? ' · ' : ''}${r.areaCat ? `<span class="num">${fnum(r.areaCat)}</span> m² en catastro` : ''}${diff != null && Math.abs(diff) > 0.1 ? ` <span class="tag warn">${diff > 0 ? '+' : ''}${Math.round(diff * 100)} %</span>` : ''}</dd>
       ${nv.dims ? `<dt>Dimensiones</dt><dd>≈ <span class="num">${fnum(nv.dims.corto, 1)} × ${fnum(nv.dims.largo, 1)}</span> m <small class="sub">relación frente/fondo 1:${fnum(nv.dims.rel, 1)}, medida sobre el polígono catastral</small></dd>` : ''}
@@ -153,8 +153,9 @@
         `<a href="https://siri.rnp.go.cr/SIRI/index.jsp" target="_blank" rel="noopener" class="chip cita" title="Cita ${c}">${c} ↗</a>`
       ).join('')}</div>`;
     })() : '';
+    const servLinkPlano = (r.plano || r.planoCat) ? `<p class="note2 serv-plano-hint">Para ver gráficamente cómo afecta la servidumbre al predio, consulte el plano catastral <b>${esc(r.plano || PX.planoTxt(r.planoCat))}</b> en el <a href="https://www.snitcr.go.cr/" target="_blank" rel="noopener">Geoportal del SNIT ↗</a> (capa "Planos del Catastro") o en <a href="https://siri.rnp.go.cr/SIRI/index.jsp" target="_blank" rel="noopener">SIRI del Registro Nacional ↗</a>.</p>` : '';
     const grav = r.isPlano ? '' : `<section class="blk"><h2>${I.alerta}Gravámenes y servidumbres</h2>
-      ${(r.serv || []).length ? `<div class="chips">${r.serv.map(x => `<span class="chip warn">${esc(PX.cap(x))}</span>`).join('')}</div>` : '<p class="ok">El edicto no cita servidumbres.</p>'}
+      ${(r.serv || []).length ? `<div class="chips">${r.serv.map(x => `<span class="chip warn">${esc(PX.cap(x))}</span>`).join('')}${servLinkPlano}</div>` : '<p class="ok">El edicto no cita servidumbres.</p>'}
       ${r.grav ? `<p class="raw">${gravConLinks(r.grav)}</p>${gravCitas}` : ''}
       ${gl.length ? `<div class="gl">${gl.map(g => `<div><b>${esc(g.n)}.</b> ${esc(g.d)}</div>`).join('')}</div>` : ''}</section>`;
     // Servicios e infraestructura: todo lo que antes quedaba disuelto entre las
