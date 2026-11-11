@@ -859,6 +859,9 @@
   }
   $('lyrPanel').addEventListener('toggle', e => { const d = e.target.closest('details.lg-g'); if (d) { lyrOpen[d.dataset.g] = d.open; PX.store.set('px-lyrg', lyrOpen); } }, true);
   $('lyrBtn').onclick = () => { const p = $('lyrPanel'); p.hidden = !p.hidden; $('lyrBtn').setAttribute('aria-expanded', !p.hidden); if (!p.hidden) renderLyrPanel(); };
+  // Botón flotante sobre el mapa (solo visible en móvil, donde mapa y lista van apilados):
+  // baja a la lista sin salir de la app ni perder el mapa/filtros actuales.
+  $('verListaFloat').onclick = () => { const s = document.querySelector('aside.side'); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   $('lyrPanel').addEventListener('click', e => {
     // Ojo de la categoría: apaga lo que está prendido (guardando qué eran) y,
     // si todo está apagado y hay memoria, las vuelve a prender.

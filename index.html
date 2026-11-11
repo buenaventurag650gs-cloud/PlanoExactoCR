@@ -183,6 +183,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
 .legend i.ring { background: transparent; border: 1.5px dashed var(--muted); }
 .legend .sep { height: 1px; background: var(--line); }
 .lyrbtn { position: absolute; top: 12px; left: 12px; z-index: 600; box-shadow: var(--shadow); }
+.verlistabtn { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 650; box-shadow: var(--shadow); display: none; }
 .lyrpanel { position: absolute; top: 56px; left: 12px; z-index: 600; width: 300px; max-height: calc(100% - 80px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px 0 10px; }
 .lg-g { border-top: 1px solid var(--line); }
 .lg-g:first-child { border-top: 0; }
@@ -363,6 +364,8 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
   .body { display: flex; flex-direction: column-reverse; }
   .mapwrap { height: 50vh; height: 50svh; position: sticky; top: 0; z-index: 1; }
   .mapwrap:has(.ficha:not([hidden])) { z-index: 2100; }
+  .verlistabtn { display: inline-flex; }
+  .mapwrap:has(.ficha:not([hidden])) .verlistabtn { display: none; }
   .listhead { z-index: 0; }
   aside.side { border-right: 0; }
   .pane { overflow: visible; }
@@ -501,6 +504,7 @@ details.grp > summary .on { font: 600 11px/1 var(--f-mono); letter-spacing: 0; t
       <button class="btn lyrbtn" id="lyrBtn" aria-expanded="false" aria-controls="lyrPanel">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>Capas</button>
       <div class="lyrpanel" id="lyrPanel" hidden></div>
+      <button class="btn verlistabtn" id="verListaFloat" type="button" title="Ir a la lista de remates"><i data-ic="list"></i><span>Ver lista</span></button>
       <div class="hoverbox" id="hoverbox" hidden></div>
       <div class="legend" aria-hidden="true">
         <div class="r"><span class="pd" style="--c:#2B5C8A"></span><span class="stb s1 sm">1.º</span> base completa</div>

@@ -1712,6 +1712,8 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,t
 .avisoPro{position:absolute;top:100%;left:0;z-index:5;margin-top:4px;background:#0E1412;color:#EEF3F0;border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:500;text-transform:none;letter-spacing:0;white-space:normal;width:200px;box-shadow:0 4px 14px rgba(0,0,0,.25)}.avisoPro a{color:#6CC4B8;font-weight:700}
 .minimap{position:relative;display:block;width:56px;height:56px;border-radius:8px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
+.provpills{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 22px}.provpills a{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:13.5px}.provpills a:hover{border-color:var(--accent)}.provpills a b{color:var(--muted);font-weight:600}
+.filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px}.filtros input,.filtros select{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}.filtros input{flex:1 1 220px;min-width:0}.filtros select{flex:0 1 180px}.filtros .fcont{color:var(--muted);font-size:13px;margin-left:auto;white-space:nowrap}
 footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 </style></head><body><div class="franja"></div><div class="wrap">
 <header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
@@ -1751,6 +1753,23 @@ ${cuerpo}
       });
     });
   });
+  // Filtro dinámico (busca, provincia, tipo): oculta filas de la tabla sin recargar la página.
+  var fBusca = document.getElementById('fBusca'), fProv = document.getElementById('fProv'), fTipo = document.getElementById('fTipo'), fCont = document.getElementById('fCont');
+  if (fBusca) {
+    var tbodyF = document.querySelector('table.rtab tbody');
+    var filas = Array.prototype.slice.call(tbodyF.querySelectorAll('tr'));
+    var filtrar = function(){
+      var q = fBusca.value.trim().toLowerCase(), prov = fProv.value.toLowerCase(), tipo = fTipo.value.toLowerCase(), n = 0;
+      filas.forEach(function(f){
+        var ok = (!q || f.dataset.busca.indexOf(q) !== -1) && (!prov || f.dataset.prov === prov) && (!tipo || f.dataset.tipo === tipo);
+        f.hidden = !ok;
+        if (ok) n++;
+      });
+      fCont.textContent = n + (n === 1 ? ' remate' : ' remates');
+    };
+    [fBusca, fProv, fTipo].forEach(function(el){ el.addEventListener('input', filtrar); el.addEventListener('change', filtrar); });
+    filtrar();
+  }
 })();
 </script>
 </body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
@@ -1775,7 +1794,8 @@ function miniMapa(r) {
 // Los atributos data-* no se muestran: son el valor «crudo» (fecha ISO, número, base normalizada
 // a USD con el tipo de cambio de tarjeta) que usa el ordenamiento por columna del lado del cliente.
 const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD" ? bv : bv / TC_TARJETA;
-  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}">
+  const busca = [r.nom, r.dn, r.cn, r.pn, tipoTxt(r.tipo)].filter(Boolean).join(" ").toLowerCase();
+  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-busca="${esc(busca)}">
     <td class="c-mapa">${miniMapa(r)}</td>
     <td><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></td>
     <td>${esc(tipoTxt(r.tipo))}</td>
@@ -1785,6 +1805,16 @@ const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD
 // Encabezados ordenables (función del plan PRO — ver el script «sortTabla» más abajo en pagSEO).
 const THS = [["", null], ["Propiedad", "nom"], ["Tipo", "tipo"], ["Área", "area"], ["Próximo remate", "fecha"], ["Base", "base"]];
 const tablaRemates = (L) => `<div class="tscroll"><table class="rtab"><thead><tr>${THS.map(([t, k]) => k ? `<th class="${k === "area" || k === "base" ? "n " : ""}srt" data-sort="${k}">${t}</th>` : `<th></th>`).join("")}</tr></thead><tbody>${L.map(filaTabla).join("")}</tbody></table></div>`;
+// Barra de filtros del lado del cliente (busca, provincia, tipo) para no depender solo de las
+// páginas estáticas por provincia/cantón al explorar una lista larga — filtra las filas ya
+// pintadas en la tabla (ver «filtroTabla» en el script de pagSEO), sin recargar la página.
+const filtroBar = (L) => { const tipos = [...new Set(L.map((r) => tipoTxt(r.tipo)))].sort((a, b) => a.localeCompare(b, "es"));
+  return `<div class="filtros">
+  <input type="search" id="fBusca" placeholder="Buscar por nombre, cantón o distrito…" aria-label="Buscar remate">
+  <select id="fProv" aria-label="Provincia"><option value="">Toda Costa Rica</option>${PROVS.map((pv) => `<option>${esc(pv)}</option>`).join("")}</select>
+  <select id="fTipo" aria-label="Tipo de propiedad"><option value="">Todo tipo</option>${tipos.map((t) => `<option>${esc(t)}</option>`).join("")}</select>
+  <span class="fcont" id="fCont"></span>
+</div>`; };
 const migas = (items) => `<nav class="migas" aria-label="Ruta">${items.map(([t, h]) => h ? `<a href="${h}">${esc(t)}</a>` : esc(t)).join(" › ")}</nav>`;
 const ldMigas = (u, items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map(([t, h], i) => ({ "@type": "ListItem", position: i + 1, name: t, item: "https://" + u.host + (h || u.pathname) })) });
 
@@ -1803,11 +1833,11 @@ async function seo(u, env) {
   if (p === "/remates") {
     const ordenados = [...R].sort((a, b) => a.f[a.st].localeCompare(b.f[b.st]));
     const cuerpo = `${migas([["Inicio", "/"], ["Remates judiciales"]])}<h1>Remates judiciales de propiedades en Costa Rica</h1>
-<p class="sub">${R.length} remates vigentes publicados en el Boletín Judicial${meta.ultimoBoletin ? ` (hasta el N.º ${meta.ultimoBoletin})` : ""}, por provincia y cantón. Se actualiza cada día hábil.</p>
-${PROVS.map((pv, i) => { const L = porProv(i); if (!L.length) return ""; const cs = {}; L.forEach((r) => cs[r.cn] = (cs[r.cn] || 0) + 1);
-  return `<h2><a href="/remates/${slug(pv)}">${pv}</a> <small style="color:var(--muted);font-weight:500">${L.length} remates</small></h2><ul class="chips">${Object.keys(cs).sort((a, b) => a.localeCompare(b, "es")).map((c) => `<li><a href="/remates/${slug(pv)}/${slug(c)}">${esc(c)} (${cs[c]})</a></li>`).join("")}</ul>`; }).join("")}
+<p class="sub">${R.length} remates vigentes publicados en el Boletín Judicial${meta.ultimoBoletin ? ` (hasta el N.º ${meta.ultimoBoletin})` : ""}. Se actualiza cada día hábil.</p>
+<div class="provpills">${PROVS.map((pv, i) => { const L = porProv(i); return L.length ? `<a href="/remates/${slug(pv)}">${esc(pv)} <b>${L.length}</b></a>` : ""; }).join("")}</div>
 <h2>Los ${ordenados.length} remates vigentes</h2>
-<p class="sub">Ordenados por fecha de remate. Con una cuenta PRO puedes ordenar la tabla por cualquier columna, haciendo clic en su encabezado.</p>
+<p class="sub">Busca, filtra por provincia o tipo, y —con una cuenta PRO— ordena la tabla por cualquier columna con un clic en su encabezado.</p>
+${filtroBar(ordenados)}
 ${tablaRemates(ordenados)}
 ${CTA()}`;
     return pagSEO(u, "Remates judiciales en Costa Rica por provincia y cantón · PlanoExactoCR", `${R.length} remates judiciales vigentes de casas, lotes y fincas en Costa Rica, ordenados por provincia y cantón, con base, fechas y ubicación en el mapa.`, cuerpo, ldMigas(u, [["Inicio", "/"], ["Remates", "/remates"]]));
