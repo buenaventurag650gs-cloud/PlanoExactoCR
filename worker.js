@@ -1746,6 +1746,7 @@ footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font
 </style></head><body><div class="franja"></div><div class="wrap">
 <header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a>
 <nav class="hnav" aria-label="Acciones">
+  <div class="seg" role="group" aria-label="Idioma"><button id="lES" aria-pressed="true" title="Español">ES</button><button id="lEN" aria-pressed="false" title="English">EN</button></div>
   <div class="seg" role="group" aria-label="Moneda" id="curSeg"><button id="cCRC" aria-pressed="true" title="Ver la base en colones">₡</button><button id="cUSD" aria-pressed="false" title="Ver la base en dólares">$</button></div>
   <button class="icnbtn" id="tTheme" type="button" title="Cambiar colores (claro/oscuro)" aria-label="Cambiar colores"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg></button>
   <a class="btn" href="/mapa" title="Ver el mapa interactivo">Ver el mapa</a>
@@ -1880,11 +1881,22 @@ ${cuerpo}
     document.documentElement.dataset.theme = nuevo;
     try { localStorage.setItem('px-theme', nuevo); } catch (e) {}
   });
+  // --- Alternar idioma ES/EN (mismo almacén que la app). El contenido de esta página se arma
+  // del lado del servidor en español; la preferencia se guarda para que al pasar al mapa (o
+  // al volver a esta página en el futuro, cuando tenga versión en inglés) ya se recuerde. ---
+  var lES = document.getElementById('lES'), lEN = document.getElementById('lEN');
+  if (lES && lEN) {
+    var lg = 'es'; try { lg = localStorage.getItem('px-lang') || 'es'; } catch (e) {}
+    var pintarLang = function(l){ lES.setAttribute('aria-pressed', l === 'es'); lEN.setAttribute('aria-pressed', l === 'en'); try { localStorage.setItem('px-lang', l); } catch (e) {} };
+    pintarLang(lg);
+    lES.addEventListener('click', function(){ pintarLang('es'); });
+    lEN.addEventListener('click', function(){ pintarLang('en'); });
+  }
 })();
 </script>
-</body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
+</body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400" } });
 }
-const CTA = (r) => `<div class="cta"><b>¿Qué más conviene saber antes de ofertar?</b><p>Con la cuenta gratis abres la ficha de cada remate y generas un expediente PDF completo por semana, con el predio en el catastro, el plan regulador, el valor de Hacienda, el agua potable y el entorno.</p>
+const CTA = (r) =>`<div class="cta"><b>¿Qué más conviene saber antes de ofertar?</b><p>Con la cuenta gratis abres la ficha de cada remate y generas un expediente PDF completo por semana, con el predio en el catastro, el plan regulador, el valor de Hacienda, el agua potable y el entorno.</p>
 <div class="acts"><a class="btn pri" href="/mapa?crear=1${r ? "#r" + r.id : ""}">Crear cuenta gratis</a>${r ? `<a class="btn" href="/mapa#r${r.id}">Ver en el mapa</a>` : `<a class="btn" href="/mapa">Explorar el mapa</a>`}</div></div>`;
 // Miniatura con un pin sobre la misma tile de calles (Esri World Street Map, el mismo «Calles» que
 // usa el mapa interactivo) — se ve mejor en un tamaño pequeño que la ortofoto satelital, que a este
