@@ -1715,7 +1715,7 @@ h1{font:800 clamp(26px,4vw,38px)/1.12 var(--f-display);margin:6px 0 6px;text-wra
 .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}.datos div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.datos b{display:block;font:600 21px/1.2 var(--f-body);font-variant-numeric:tabular-nums}.datos span{font-size:13px;color:var(--muted)}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}td.n{text-align:right;white-space:nowrap}tr.ya td{color:var(--muted);text-decoration:line-through}tr.ahora td{font-weight:700}
 .cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
-.tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:680px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:8px 10px 8px 0;width:88px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}
+.tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:780px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:8px 10px 8px 0;width:88px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}.rtab td.m2{color:var(--muted);font-variant-numeric:tabular-nums}.rtab td.m2 small{display:inline;color:var(--muted);font-size:11.5px}
 .rtab td.tipoCell{white-space:nowrap;vertical-align:middle}.rtab td.tipoCell .tipoWrap{display:inline-flex;align-items:center;gap:7px;vertical-align:middle}.rtab .tico{color:var(--accent);flex:none;display:inline-flex;vertical-align:middle}.rtab .tico svg{display:block}
 .rtab th.srt{position:relative;cursor:pointer;user-select:none;padding-right:16px}.rtab th.srt:hover{color:var(--ink)}.rtab th.srt::after{content:"↕";position:absolute;right:3px;opacity:.45;font-size:11px}.rtab th.srt.asc::after{content:"↑";opacity:1;color:var(--accent)}.rtab th.srt.desc::after{content:"↓";opacity:1;color:var(--accent)}
 .avisoPro{position:absolute;top:100%;left:0;z-index:5;margin-top:4px;background:#0E1412;color:#EEF3F0;border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:500;text-transform:none;letter-spacing:0;white-space:normal;width:200px;box-shadow:0 4px 14px rgba(0,0,0,.25)}.avisoPro a{color:#6CC4B8;font-weight:700}
@@ -1795,7 +1795,7 @@ ${cuerpo}
           var k = th.dataset.sort, dir = th.classList.contains('asc') ? 'desc' : 'asc';
           thead.querySelectorAll('th[data-sort]').forEach(function(x){ x.classList.remove('asc', 'desc'); });
           th.classList.add(dir);
-          var num = (k === 'area' || k === 'base');
+          var num = (k === 'area' || k === 'base' || k === 'm2');
           var filas = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
           filas.sort(function(a, b){
             var va = a.dataset[k], vb = b.dataset[k];
@@ -1862,11 +1862,15 @@ ${cuerpo}
       cUSD.setAttribute('aria-pressed', c === 'USD');
       try { localStorage.setItem('px-cur', c); } catch (e) {}
       document.querySelectorAll('table.rtab tbody tr').forEach(function(tr){
-        var cel = tr.querySelector('td.p'); if (!cel) return;
-        var usd = parseFloat(tr.dataset.base);
-        if (!isFinite(usd)) return;
-        if (c === 'USD') cel.textContent = '$' + Math.round(usd).toLocaleString('es-CR');
-        else cel.textContent = '₡' + Math.round(usd * 456.32).toLocaleString('es-CR');
+        var cel = tr.querySelector('td.p'); if (cel) {
+          var usd = parseFloat(tr.dataset.base);
+          if (isFinite(usd)) cel.textContent = c === 'USD' ? '$' + Math.round(usd).toLocaleString('es-CR') : '₡' + Math.round(usd * 456.32).toLocaleString('es-CR');
+        }
+        var celM2 = tr.querySelector('td.m2'); if (celM2) {
+          var usdM2 = parseFloat(tr.dataset.m2);
+          if (isFinite(usdM2) && usdM2 > 0) celM2.innerHTML = (c === 'USD' ? '$' + Math.round(usdM2).toLocaleString('es-CR') : '₡' + Math.round(usdM2 * 456.32).toLocaleString('es-CR')) + '<small>/m²</small>';
+          else celM2.textContent = '—';
+        }
       });
     };
     cCRC.addEventListener('click', function(){ aplicarCur('CRC'); });
@@ -1928,17 +1932,21 @@ const TIPO_ICON = {
 };
 const TIPO_ICON_DEF = icoTipo('<path d="M4 6l7-2 9 3-2 13-12-2z"/><circle cx="12" cy="11" r="1.6"/>');
 const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD" ? bv : bv / TC_TARJETA;
+  // $/m² en USD para ordenar (se recalcula en CRC si corresponde al pintar la columna). -1 cuando no
+  // hay área para que al ordenar ascendente queden al final (sin dato) y no se confundan con una ganga.
+  const usdM2 = r.area ? bvUsd / r.area : -1;
   const busca = [r.nom, r.dn, r.cn, r.pn, tipoTxt(r.tipo)].filter(Boolean).join(" ").toLowerCase();
-  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-busca="${esc(busca)}">
+  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-m2="${usdM2}" data-busca="${esc(busca)}">
     <td class="c-mapa">${miniMapa(r)}</td>
     <td><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></td>
     <td class="tipoCell"><span class="tipoWrap"><span class="tico">${TIPO_ICON[r.tipo] || TIPO_ICON_DEF}</span>${esc(tipoTxt(r.tipo))}</span></td>
     <td class="n">${r.area ? miles(r.area) + " m²" : "—"}</td>
+    <td class="n m2">${r.area ? dinero(Math.round(bv / r.area), r.mon) + "<small>/m²</small>" : "—"}</td>
     <td>${ETAPA[r.st]}<small>${fechaTxt(r.f[r.st]).split(",")[0]}</small></td>
     <td class="n p">${dinero(bv, r.mon)}</td></tr>`; };
 // Encabezados ordenables (función del plan PRO — ver el script «sortTabla» más abajo en pagSEO).
-const THS = [["", null], ["Propiedad", "nom"], ["Tipo", "tipo"], ["Área", "area"], ["Próximo remate", "fecha"], ["Base", "base"]];
-const tablaRemates = (L) => `<div class="tscroll"><table class="rtab"><thead><tr>${THS.map(([t, k]) => k ? `<th class="${k === "area" || k === "base" ? "n " : ""}srt" data-sort="${k}">${t}</th>` : `<th></th>`).join("")}</tr></thead><tbody>${L.map(filaTabla).join("")}</tbody></table></div>`;
+const THS = [["", null], ["Propiedad", "nom"], ["Tipo", "tipo"], ["Área", "area"], ["$/m²", "m2"], ["Próximo remate", "fecha"], ["Base", "base"]];
+const tablaRemates = (L) => `<div class="tscroll"><table class="rtab"><thead><tr>${THS.map(([t, k]) => k ? `<th class="${(k === "area" || k === "base" || k === "m2") ? "n " : ""}srt" data-sort="${k}">${t}</th>` : `<th></th>`).join("")}</tr></thead><tbody>${L.map(filaTabla).join("")}</tbody></table></div>`;
 // Barra de filtros del lado del cliente (busca, provincia, tipo, etapa) para no depender solo de las
 // páginas estáticas por provincia/cantón al explorar una lista larga — filtra las filas ya
 // pintadas en la tabla (ver script de pagSEO), sin recargar la página. Tipo y etapa son botones con
