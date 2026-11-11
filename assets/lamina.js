@@ -88,8 +88,21 @@
 
   // ---------- mapas ----------
   const sldLine = (name, c, w, op) => `<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>${name}</Name><UserStyle><FeatureTypeStyle><Rule><LineSymbolizer><Stroke><CssParameter name="stroke">${c}</CssParameter><CssParameter name="stroke-width">${w}</CssParameter><CssParameter name="stroke-opacity">${op}</CssParameter></Stroke></LineSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
-  const wms = (url, layers, o) => L.tileLayer.wms(url, Object.assign({ layers, version: '1.1.1', format: 'image/png', transparent: true, maxZoom: 20 }, o));
-  const esri = (svc, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 20, maxNativeZoom: 19 }, o));
+  // Los geoservicios públicos (SNIT, Wayback) a veces fallan una vez por lentitud o límite de
+  // concurrencia, no porque falte la imagen: reintenta cada baldosa fallida un par de veces antes
+  // de darla por perdida, para no dejar recuadros oscuros por un simple tropiezo de red.
+  const conReintento = (capa) => {
+    const intentos = new WeakMap();
+    capa.on('tileerror', (e) => {
+      const n = (intentos.get(e.tile) || 0) + 1;
+      if (n > 2 || !e.tile) return;
+      intentos.set(e.tile, n);
+      setTimeout(() => { const src = e.tile.src; e.tile.src = ''; e.tile.src = src; }, 500 * n);
+    });
+    return capa;
+  };
+  const wms = (url, layers, o) => conReintento(L.tileLayer.wms(url, Object.assign({ layers, version: '1.1.1', format: 'image/png', transparent: true, maxZoom: 20 }, o)));
+  const esri = (svc, o) => conReintento(L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`, Object.assign({ maxZoom: 20, maxNativeZoom: 19 }, o)));
   const ringsLL = r => r.poly.map(p => p.map(ring => ring.map(([x, y]) => [y, x])));
   const num = (n, cls) => L.divIcon({ className: 'lnum ' + (cls || ''), html: n, iconSize: [22, 22], iconAnchor: [11, 11] });
   const sldText = name => `<?xml version="1.0" encoding="UTF-8"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc"><NamedLayer><Name>${name}</Name><UserStyle><FeatureTypeStyle><Rule><TextSymbolizer><Label><ogc:PropertyName>nom_ofi</ogc:PropertyName></Label><Font><CssParameter name="font-family">SansSerif</CssParameter><CssParameter name="font-size">11</CssParameter><CssParameter name="font-style">italic</CssParameter></Font><Halo><Radius>1.5</Radius><Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill></Halo><Fill><CssParameter name="fill">#2E6FB0</CssParameter></Fill></TextSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
@@ -158,11 +171,14 @@
   // Se llama con await desde expediente.js justo después de L_.init.
   L_.WAYBACK_VERSIONS = [
     // { año, título, tileURL }
-    // Wayback release tokens: 10 = 2014-02-20 (el más antiguo disponible)
-    // El archivo de Esri World Imagery comienza en 2014; no hay tiles anteriores en Wayback.
+    // El release de Wayback más antiguo (10 = 2014-02-20) resultó ser, para buena parte del país
+    // fuera del GAM, una baldosa "sin imagen" (resolución muy baja, no una foto real del sitio):
+    // se verificó pidiendo esa baldosa directamente y comparando su tamaño con releases más
+    // recientes. El release 4756 (2019-12-12) es el más antiguo que ya trae cobertura real y
+    // nítida en todo el territorio, así que es el que usamos como "histórico".
     { y: 2024, t: 'Actual (~2024)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
     { y: 2017, t: 'Ortofoto IGN 2017', url: null, wms: true },   // WMS del SNIT
-    { y: 2014, t: 'Histórico (~2014)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10/{z}/{y}/{x}' },
+    { y: 2019, t: 'Histórico (~2019)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/4756/{z}/{y}/{x}' },
   ];
 
   L_.initHistorial = async r => {
@@ -176,12 +192,12 @@
       const m = L.map(el, opt);
       if (v.wms) {
         // Ortofoto IGN 2017 (SNIT WMS)
-        L.tileLayer.wms('https://geos1.snitcr.go.cr/Ortofoto2017/wms', {
+        conReintento(L.tileLayer.wms('https://geos1.snitcr.go.cr/Ortofoto2017/wms', {
           layers: 'Ortofoto2017:ortofoto2017_5000_altaresolucion', format: 'image/jpeg',
           version: '1.1.1', maxZoom: 20, maxNativeZoom: 20
-        }).addTo(m);
+        })).addTo(m);
       } else {
-        L.tileLayer(v.url, { maxZoom: 20, maxNativeZoom: 19 }).addTo(m);
+        conReintento(L.tileLayer(v.url, { maxZoom: 20, maxNativeZoom: 19 })).addTo(m);
       }
       // Superponer catastro semitransparente
       wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', {
@@ -239,7 +255,9 @@
     esri('World_Imagery', { maxNativeZoom: 18 }).addTo(d); SNIT.curvas().addTo(d); SNIT.hidro().addTo(d);
     if (r.poly) L.polygon(ringsLL(r), { color: TERRA_D, weight: 3, fillColor: TERRA, fillOpacity: 0.3 }).addTo(d);
     else L.circle(c, { radius: 600, color: TERRA_D, weight: 2, dashArray: '6 5', fill: false }).addTo(d);
-    const dfit = () => pg ? d.fitBounds(pg.getBounds(), { padding: [16, 16], maxZoom: 18 }) : d.setView(c, 14);
+    // Sin polígono exacto, un acercamiento fijo (17) mantiene el recuadro realmente "de detalle"
+    // en vez de alejarse hasta verse como el mapa principal (antes caía a zoom 14).
+    const dfit = () => pg ? d.fitBounds(pg.getBounds(), { padding: [16, 16], maxZoom: 18 }) : d.setView(c, 17);
     dfit(); L_.maps.push([d, dfit]);
 
     // Recuadro: ubicación en el país

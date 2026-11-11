@@ -1765,6 +1765,12 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,t
 .filtros .flim{font:inherit;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
 .filtros .flim:hover{color:var(--ink);border-color:var(--ink)}
 .filtros-tipo,.filtros-etapa{display:flex;flex-wrap:wrap;gap:6px}
+.filtros-rango{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.filtros-rango .fchk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.filtros-rango .fchk input{flex:none;width:auto;padding:0}
+.filtros-rango .frango{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.filtros-rango .frango input{font:inherit;width:88px;padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.filtros-rango .frango .u{color:var(--muted)}
 .ftbtn,.febtn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 13px/1.1 inherit;cursor:pointer;transition:all .12s ease}
 .ftbtn:hover,.febtn:hover{border-color:var(--accent);color:var(--accent)}
 .ftbtn.on,.febtn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -1866,39 +1872,90 @@ ${cuerpo}
       });
     });
   });
-  // Filtro dinámico (busca, provincia, tipo, etapa): oculta filas de la tabla sin recargar la página.
-  // Tipo y etapa son botones (más visibles que un dropdown). Los filtros quedan en la URL (?q=…&prov=…
-  // &tipo=…&etapa=…) sin recargar, para poder compartir el enlace o volver atrás con el navegador.
-  var fBusca = document.getElementById('fBusca'), fProv = document.getElementById('fProv'), fCont = document.getElementById('fCont'), fLimpiar = document.getElementById('fLimpiar');
+  // Filtro dinámico (busca, provincia, cantón, tipo, etapa, rango de base/área, próximos 7 días,
+  // solo favoritos): oculta filas de la tabla sin recargar la página — mismas funciones que la
+  // barra izquierda del visor de mapa, adaptadas a esta tabla. Los filtros quedan en la URL
+  // (?q=…&prov=…&canton=…&tipo=…&etapa=…&semana=1&favoritos=1&baseMin=…) sin recargar, para
+  // poder compartir el enlace o volver atrás con el navegador.
+  var fBusca = document.getElementById('fBusca'), fProv = document.getElementById('fProv'), fCanton = document.getElementById('fCanton'), fCont = document.getElementById('fCont'), fLimpiar = document.getElementById('fLimpiar');
+  var fSemana = document.getElementById('fSemana'), fFavOnly = document.getElementById('fFavOnly'), fFavLbl = document.getElementById('fFavLbl');
+  var fBaseMin = document.getElementById('fBaseMin'), fBaseMax = document.getElementById('fBaseMax'), fAreaMin = document.getElementById('fAreaMin'), fAreaMax = document.getElementById('fAreaMax');
+  var pxFiltrar = null;
   if (fBusca) {
     var tbodyF = document.querySelector('table.rtab tbody');
     var filas = Array.prototype.slice.call(tbodyF.querySelectorAll('tr'));
+    // Cantones por provincia (para el <select> dependiente), tomados de las filas ya pintadas.
+    var cantonesPorProv = {};
+    filas.forEach(function(f){
+      var pv = f.dataset.prov, cn = f.querySelector('a small') ? f.querySelector('a small').textContent.split(',').pop().trim() : '';
+      if (!pv || !cn) return;
+      if (!cantonesPorProv[pv]) cantonesPorProv[pv] = {};
+      cantonesPorProv[pv][cn.toLowerCase()] = cn;
+    });
+    var pintarCantones = function(prov, sel){
+      var opts = '<option value="">Todos los cantones</option>';
+      var cs = cantonesPorProv[prov] || {};
+      Object.keys(cs).sort().forEach(function(k){ opts += '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + cs[k] + '</option>'; });
+      fCanton.innerHTML = opts;
+      fCanton.disabled = !prov;
+    };
     var qp = new URLSearchParams(location.search);
     var fTipo = qp.get('tipo') || '', fEtapa = qp.get('etapa') || '';
     fBusca.value = qp.get('q') || '';
     if (qp.get('prov')) fProv.value = qp.get('prov');
+    pintarCantones(fProv.value, qp.get('canton') || '');
+    if (fSemana) fSemana.checked = qp.get('semana') === '1';
+    if (fBaseMin) fBaseMin.value = qp.get('baseMin') || '';
+    if (fBaseMax) fBaseMax.value = qp.get('baseMax') || '';
+    if (fAreaMin) fAreaMin.value = qp.get('areaMin') || '';
+    if (fAreaMax) fAreaMax.value = qp.get('areaMax') || '';
     if (fTipo) document.querySelectorAll('.ftbtn').forEach(function(x){ x.classList.toggle('on', x.dataset.ftipo === fTipo); });
     if (fEtapa) document.querySelectorAll('.febtn').forEach(function(x){ x.classList.toggle('on', x.dataset.fetapa === fEtapa); });
     var actualizarUrl = function(){
       var p = new URLSearchParams();
       if (fBusca.value.trim()) p.set('q', fBusca.value.trim());
       if (fProv.value) p.set('prov', fProv.value);
+      if (fCanton.value) p.set('canton', fCanton.value);
       if (fTipo) p.set('tipo', fTipo);
       if (fEtapa) p.set('etapa', fEtapa);
+      if (fSemana && fSemana.checked) p.set('semana', '1');
+      if (fFavOnly && fFavOnly.checked) p.set('favoritos', '1');
+      if (fBaseMin && fBaseMin.value) p.set('baseMin', fBaseMin.value);
+      if (fBaseMax && fBaseMax.value) p.set('baseMax', fBaseMax.value);
+      if (fAreaMin && fAreaMin.value) p.set('areaMin', fAreaMin.value);
+      if (fAreaMax && fAreaMax.value) p.set('areaMax', fAreaMax.value);
       var s = p.toString();
       history.replaceState(null, '', location.pathname + (s ? '?' + s : ''));
     };
+    // Base/área se filtran siempre en USD (dato fijo de cada fila); si la página muestra colones,
+    // el valor escrito por la persona se convierte antes de comparar, igual que al pintar la tabla.
+    var TC_CLIENTE = 456.32;   // ₡/US$ — espejo de TC_TARJETA del worker (mantener sincronizado)
+    var enUsd = function(v){ if (!v) return null; var n = parseFloat(v); if (isNaN(n)) return null; var cCRCel = document.getElementById('cCRC'); return (cCRCel && cCRCel.getAttribute('aria-pressed') === 'true') ? n / TC_CLIENTE : n; };
     var filtrar = function(){
-      var q = fBusca.value.trim().toLowerCase(), prov = fProv.value.toLowerCase(), n = 0;
+      var q = fBusca.value.trim().toLowerCase(), prov = fProv.value.toLowerCase(), canton = fCanton.value, n = 0;
+      var bMin = enUsd(fBaseMin && fBaseMin.value), bMax = enUsd(fBaseMax && fBaseMax.value);
+      var aMin = fAreaMin && fAreaMin.value ? parseFloat(fAreaMin.value) : null, aMax = fAreaMax && fAreaMax.value ? parseFloat(fAreaMax.value) : null;
+      var soloSemana = fSemana && fSemana.checked, soloFav = fFavOnly && fFavOnly.checked;
       filas.forEach(function(f){
-        var ok = (!q || f.dataset.busca.indexOf(q) !== -1) && (!prov || f.dataset.prov === prov) && (!fTipo || f.dataset.tipo === fTipo) && (!fEtapa || f.dataset.etapa === fEtapa);
+        var ok = (!q || f.dataset.busca.indexOf(q) !== -1) && (!prov || f.dataset.prov === prov) && (!canton || f.dataset.canton === canton) && (!fTipo || f.dataset.tipo === fTipo) && (!fEtapa || f.dataset.etapa === fEtapa);
+        if (ok && soloSemana) ok = f.dataset.prox === '1';
+        if (ok && bMin != null) ok = parseFloat(f.dataset.base) >= bMin;
+        if (ok && bMax != null) ok = parseFloat(f.dataset.base) <= bMax;
+        if (ok && aMin != null) ok = parseFloat(f.dataset.area) >= aMin;
+        if (ok && aMax != null) ok = parseFloat(f.dataset.area) >= 0 && parseFloat(f.dataset.area) <= aMax;
+        if (ok && soloFav) { var star = f.querySelector('.favstar'); ok = !!(star && star.classList.contains('on')); }
         f.hidden = !ok;
         if (ok) n++;
       });
       fCont.textContent = n + (n === 1 ? ' remate' : ' remates');
       actualizarUrl();
     };
-    [fBusca, fProv].forEach(function(el){ el.addEventListener('input', filtrar); el.addEventListener('change', filtrar); });
+    pxFiltrar = filtrar;
+    [fBusca, fBaseMin, fBaseMax, fAreaMin, fAreaMax].forEach(function(el){ if (el) { el.addEventListener('input', filtrar); el.addEventListener('change', filtrar); } });
+    fProv.addEventListener('change', function(){ pintarCantones(fProv.value, ''); filtrar(); });
+    fCanton.addEventListener('change', filtrar);
+    if (fSemana) fSemana.addEventListener('change', filtrar);
+    if (fFavOnly) fFavOnly.addEventListener('change', filtrar);
     document.querySelectorAll('.ftbtn').forEach(function(b){ b.addEventListener('click', function(){
       document.querySelectorAll('.ftbtn').forEach(function(x){ x.classList.remove('on'); });
       b.classList.add('on'); fTipo = b.dataset.ftipo; filtrar();
@@ -1908,11 +1965,14 @@ ${cuerpo}
       b.classList.add('on'); fEtapa = b.dataset.fetapa; filtrar();
     }); });
     if (fLimpiar) fLimpiar.addEventListener('click', function(){
-      fBusca.value = ''; fProv.value = ''; fTipo = ''; fEtapa = '';
+      fBusca.value = ''; fProv.value = ''; fTipo = ''; fEtapa = ''; pintarCantones('', '');
+      if (fSemana) fSemana.checked = false; if (fFavOnly) fFavOnly.checked = false;
+      if (fBaseMin) fBaseMin.value = ''; if (fBaseMax) fBaseMax.value = ''; if (fAreaMin) fAreaMin.value = ''; if (fAreaMax) fAreaMax.value = '';
       document.querySelectorAll('.ftbtn').forEach(function(x){ x.classList.toggle('on', x.dataset.ftipo === ''); });
       document.querySelectorAll('.febtn').forEach(function(x){ x.classList.toggle('on', x.dataset.fetapa === ''); });
       filtrar();
     });
+    if (fFavOnly) fFavOnly.checked = qp.get('favoritos') === '1';
     filtrar();
   }
   // --- Favorito inline (estrella) — solo visible con sesión iniciada (cualquier plan, no solo PRO) ---
@@ -1929,6 +1989,7 @@ ${cuerpo}
       b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
       b.title = on ? 'Quitar de favoritos' : 'Agregar a favoritos';
     });
+    var favLbl = document.getElementById('fFavLbl'); if (favLbl) favLbl.hidden = false;
   }
   document.addEventListener('click', function(e){
     var b = e.target.closest('.favstar'); if (!b || b.hidden || !misDatos) return;
@@ -1942,6 +2003,7 @@ ${cuerpo}
     var on = idx < 0;
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = on ? 'Quitar de favoritos' : 'Agregar a favoritos';
     fetch('/api/cuenta/datos', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ datos: misDatos }) }).catch(function(){});
+    var fFavOnlyChk = document.getElementById('fFavOnly'); if (fFavOnlyChk && fFavOnlyChk.checked && pxFiltrar) pxFiltrar();
   });
   // Toda la fila es clicable (no solo el nombre): hace más fácil tocar desde el teléfono.
   document.querySelectorAll('table.rtab tbody tr').forEach(function(tr){
@@ -2040,7 +2102,7 @@ const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD
   const usdM2 = r.area ? bvUsd / r.area : -1;
   const busca = [r.nom, r.dn, r.cn, r.pn, tipoTxt(r.tipo)].filter(Boolean).join(" ").toLowerCase();
   const dt = diasTxt(r.f[r.st]);
-  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-m2="${usdM2}" data-busca="${esc(busca)}" data-id="${r.id}" data-prox="${dt.prox ? "1" : "0"}">
+  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-canton="${esc((r.cn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-m2="${usdM2}" data-busca="${esc(busca)}" data-id="${r.id}" data-prox="${dt.prox ? "1" : "0"}">
     <td class="c-mapa">${miniMapa(r)}</td>
     <td><span class="nomWrap"><button type="button" class="favstar" data-fav="r${r.id}" hidden title="Agregar a favoritos" aria-label="Agregar a favoritos">★</button><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></span></td>
     <td class="tipoCell"><span class="tipoWrap"><span class="tico">${TIPO_ICON[r.tipo] || TIPO_ICON_DEF}</span>${esc(tipoTxt(r.tipo))}</span></td>
@@ -2057,10 +2119,13 @@ const tablaRemates = (L) => `<div class="tscroll"><table class="rtab"><thead><tr
 // ícono (tipo de propiedad) o distintivo de etapa, más inmediatos de leer que un dropdown.
 const filtroBar = (L) => { const tipos = [...new Set(L.map((r) => r.tipo))].sort((a, b) => tipoTxt(a).localeCompare(tipoTxt(b), "es"));
   const etapas = [...new Set(L.map((r) => r.st))].sort();
+  // Cantones por provincia (para el <select> dependiente, igual que en el mapa): se arma en el
+  // cliente a partir de data-prov/data-canton de las filas ya pintadas — nada que pedir al servidor.
   return `<div class="filtros">
   <div class="filtros-top">
     <input type="search" id="fBusca" placeholder="Buscar por nombre, cantón o distrito…" aria-label="Buscar remate">
     <select id="fProv" aria-label="Provincia"><option value="">Toda Costa Rica</option>${PROVS.map((pv) => `<option>${esc(pv)}</option>`).join("")}</select>
+    <select id="fCanton" aria-label="Cantón"><option value="">Todos los cantones</option></select>
     <span class="fcont" id="fCont"></span>
     <button type="button" class="flim" id="fLimpiar" title="Quitar los filtros">Limpiar filtros</button>
   </div>
@@ -2071,6 +2136,12 @@ const filtroBar = (L) => { const tipos = [...new Set(L.map((r) => r.tipo))].sort
   <div class="filtros-etapa" role="group" aria-label="Etapa del remate">
     <button type="button" class="febtn on" data-fetapa="" title="Toda etapa">Toda etapa</button>
     ${etapas.map((s) => `<button type="button" class="febtn" data-fetapa="${s}" title="${ETAPA[s]} — base al ${PCT[s] * 100} %"><span class="stb s${s + 1}">${s + 1}.º</span>Base al ${PCT[s] * 100} %</button>`).join("")}
+  </div>
+  <div class="filtros-rango">
+    <label class="fchk"><input type="checkbox" id="fSemana"><span>Remate en 7 días</span></label>
+    <label class="fchk" id="fFavLbl" hidden><input type="checkbox" id="fFavOnly"><span>Solo favoritos</span></label>
+    <span class="frango"><span class="u cu">₡</span><input type="number" min="0" step="any" id="fBaseMin" placeholder="Base mín." aria-label="Base mínima"> – <input type="number" min="0" step="any" id="fBaseMax" placeholder="Base máx." aria-label="Base máxima"></span>
+    <span class="frango"><input type="number" min="0" step="any" id="fAreaMin" placeholder="Área mín." aria-label="Área mínima"> – <input type="number" min="0" step="any" id="fAreaMax" placeholder="Área máx." aria-label="Área máxima"><span class="u">m²</span></span>
   </div>
 </div>`; };
 const migas = (items) => `<nav class="migas" aria-label="Ruta">${items.map(([t, h]) => h ? `<a href="${h}">${esc(t)}</a>` : esc(t)).join(" › ")}</nav>`;
