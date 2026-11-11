@@ -300,7 +300,7 @@
         `<div class="hsat-col"><div class="hsat-map" id="hmap-${v.y}"></div><div class="hsat-lbl">${esc(v.t)}</div></div>`
       ).join('');
       h += `<section class="page" id="pagina-historial">${head('Cambio de uso del suelo')}
-        <div class="hsat-intro"><p>Las tres imágenes muestran el mismo sitio en distintos períodos para identificar cambios en la cobertura o el uso del suelo. <b>Verificar cambios de vegetación, construcciones, movimientos de tierra o deforestación antes de la compra.</b> Imágenes: Esri/Maxar (actual y ~2019) · Ortofoto IGN/SNIT 2017.</p></div>
+        <div class="hsat-intro"><p>Las tres imágenes muestran el mismo sitio en distintos períodos para identificar cambios en la cobertura o el uso del suelo. <b>Verificar cambios de vegetación, construcciones, movimientos de tierra o deforestación antes de la compra.</b> Imágenes: Esri/Maxar (actual y ~2014) · Ortofoto IGN/SNIT 2017.</p></div>
         <div class="hsat-grid">${hcols}</div>
         <div class="hsat-nota"><b>Nota:</b> Las imágenes son orientativas. La resolución varía según la zona. Para análisis definitivo use Google Earth o el Visor del SINAC.</div>
         ${foot(h.match(/class="page"/g)?.length + 1 || 4)}</section>`;
@@ -321,10 +321,11 @@
       return;
     }
     // Repintes siguientes (dato tardío o cambio de moneda): se reemplaza todo el texto,
-    // pero los contenedores de los mapas Leaflet ya vivos (el principal y los 3
-    // históricos) se desenganchan antes del reemplazo y se reinsertan después en el
-    // mismo lugar, para no perder los tiles ya cargados ni repetir las peticiones.
-    const idsMapa = ['lmap', ...(PX.lamina.WAYBACK_VERSIONS || []).map(v => 'hmap-' + v.y)];
+    // pero los contenedores de los mapas Leaflet ya vivos (el principal, los insets
+    // de detalle/ubicación y los 3 históricos) se desenganchan antes del reemplazo
+    // y se reinsertan después en el mismo lugar, para no perder los tiles ya
+    // cargados ni repetir las peticiones.
+    const idsMapa = ['lmap', 'ldet', 'lloc', ...(PX.lamina.WAYBACK_VERSIONS || []).map(v => 'hmap-' + v.y)];
     const vivos = {};
     for (const id of idsMapa) { const el = document.getElementById(id); if (el) vivos[id] = el; }
     doc.innerHTML = h;

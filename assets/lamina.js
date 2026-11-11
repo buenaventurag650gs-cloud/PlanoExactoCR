@@ -171,20 +171,13 @@
   // Se llama con await desde expediente.js justo después de L_.init.
   L_.WAYBACK_VERSIONS = [
     // { año, título, tileURL }
-    // El release de Wayback más antiguo (10 = 2014-02-20) resultó ser, para buena parte del país
-    // fuera del GAM, una baldosa "sin imagen" (resolución muy baja, no una foto real del sitio):
-    // se verificó pidiendo esa baldosa directamente y comparando su tamaño con releases más
-    // recientes. El release 4756 (2019-12-12) es el más antiguo que ya trae cobertura real y
-    // nítida en todo el territorio, así que es el que usamos como "histórico".
+    // Wayback solo existe desde 2014 — no hay releases anteriores. El release 10 (2014-02-20)
+    // es lo más cercano a "ca. 2010" que ofrece el servicio. En el GAM tiene imagen real y nítida
+    // (24-30 KB/tile z15-z17); en zonas rurales la resolución es más baja (10-12 KB) pero no es
+    // un placeholder vacío. maxNativeZoom: 17 porque z18+ devuelve error (conexión rechazada).
     { y: 2024, t: 'Actual (~2024)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxNativeZoom: 19 },
     { y: 2017, t: 'Ortofoto IGN 2017', url: null, wms: true },   // WMS del SNIT
-    // OJO con esta capa: los releases de Wayback NO tienen la misma resolución nativa que el mapa
-    // actual. Fuera de ese máximo (variable según la zona; 17 es el que se comprobó disponible en
-    // todo el país para este release) el servidor responde 404 baldosa por baldosa — eso, y no un
-    // problema de red, era lo que dejaba el recuadro "Histórico" en blanco cuando el predio (por
-    // tener polígono exacto) hacía zoom más allá de ese límite. maxNativeZoom evita pedir tiles
-    // que no existen: Leaflet reutiliza la última baldosa real y la amplía en vez de pedir z18/19.
-    { y: 2019, t: 'Histórico (~2019)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/4756/{z}/{y}/{x}', maxNativeZoom: 17 },
+    { y: 2014, t: 'Histórico (~2014)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10/{z}/{y}/{x}', maxNativeZoom: 17 },
   ];
 
   L_.initHistorial = async r => {
