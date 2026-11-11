@@ -1708,6 +1708,7 @@ h1{font:800 clamp(26px,4vw,38px)/1.12 var(--f-display);margin:6px 0 6px;text-wra
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}td.n{text-align:right;white-space:nowrap}tr.ya td{color:var(--muted);text-decoration:line-through}tr.ahora td{font-weight:700}
 .cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
 .tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:640px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:6px 8px 6px 0;width:56px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}
+.rtab td.tipoCell{display:flex;align-items:center;gap:7px;white-space:nowrap}.rtab .tico{color:var(--accent);flex:none;display:inline-flex}
 .rtab th.srt{position:relative;cursor:pointer;user-select:none;padding-right:16px}.rtab th.srt:hover{color:var(--ink)}.rtab th.srt::after{content:"↕";position:absolute;right:3px;opacity:.45;font-size:11px}.rtab th.srt.asc::after{content:"↑";opacity:1;color:var(--accent)}.rtab th.srt.desc::after{content:"↓";opacity:1;color:var(--accent)}
 .avisoPro{position:absolute;top:100%;left:0;z-index:5;margin-top:4px;background:#0E1412;color:#EEF3F0;border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:500;text-transform:none;letter-spacing:0;white-space:normal;width:200px;box-shadow:0 4px 14px rgba(0,0,0,.25)}.avisoPro a{color:#6CC4B8;font-weight:700}
 .minimap{position:relative;display:block;width:56px;height:56px;border-radius:8px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
@@ -1725,8 +1726,10 @@ ${cuerpo}
 // se sirve igual para todos (cacheable); por eso no se decide del lado del servidor, sino que al
 // cargar se consulta la sesión (si hay una, por cookie) con la misma API que usa la app del mapa.
 (function(){
-  var PRO = false;
-  fetch('/api/cuenta/yo', { credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ if (d && d.user && d.user.plan === 'pro') PRO = true; }).catch(function(){});
+  // Promesa (no un booleano simple): si alguien hace clic en un encabezado antes de que la consulta
+  // de sesión responda, esperamos ese mismo resultado en vez de asumir «no es PRO» por la carrera
+  // entre el clic y el fetch — así no se le niega el ordenamiento a una cuenta PRO real.
+  var proCheck = fetch('/api/cuenta/yo', { credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ return !!(d && d.user && d.user.plan === 'pro'); }).catch(function(){ return false; });
   function avisoPro(th){
     if (th.querySelector('.avisoPro')) return;
     var d = document.createElement('div'); d.className = 'avisoPro';
@@ -1738,18 +1741,20 @@ ${cuerpo}
     var thead = tab.querySelector('thead'), tbody = tab.querySelector('tbody');
     thead.querySelectorAll('th[data-sort]').forEach(function(th){
       th.addEventListener('click', function(){
-        if (!PRO) { avisoPro(th); return; }
-        var k = th.dataset.sort, dir = th.classList.contains('asc') ? 'desc' : 'asc';
-        thead.querySelectorAll('th[data-sort]').forEach(function(x){ x.classList.remove('asc', 'desc'); });
-        th.classList.add(dir);
-        var num = (k === 'area' || k === 'base');
-        var filas = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-        filas.sort(function(a, b){
-          var va = a.dataset[k], vb = b.dataset[k];
-          if (num) { va = parseFloat(va); vb = parseFloat(vb); return dir === 'asc' ? va - vb : vb - va; }
-          return dir === 'asc' ? va.localeCompare(vb, 'es') : vb.localeCompare(va, 'es');
+        proCheck.then(function(isPro){
+          if (!isPro) { avisoPro(th); return; }
+          var k = th.dataset.sort, dir = th.classList.contains('asc') ? 'desc' : 'asc';
+          thead.querySelectorAll('th[data-sort]').forEach(function(x){ x.classList.remove('asc', 'desc'); });
+          th.classList.add(dir);
+          var num = (k === 'area' || k === 'base');
+          var filas = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+          filas.sort(function(a, b){
+            var va = a.dataset[k], vb = b.dataset[k];
+            if (num) { va = parseFloat(va); vb = parseFloat(vb); return dir === 'asc' ? va - vb : vb - va; }
+            return dir === 'asc' ? va.localeCompare(vb, 'es') : vb.localeCompare(va, 'es');
+          });
+          filas.forEach(function(f){ tbody.appendChild(f); });
         });
-        filas.forEach(function(f){ tbody.appendChild(f); });
       });
     });
   });
@@ -1793,12 +1798,22 @@ function miniMapa(r) {
 // Fila de tabla de un remate: mapita, propiedad y lugar, tipo, área, próxima fecha y base.
 // Los atributos data-* no se muestran: son el valor «crudo» (fecha ISO, número, base normalizada
 // a USD con el tipo de cambio de tarjeta) que usa el ordenamiento por columna del lado del cliente.
+// Mismos íconos de tipo de propiedad que ya se usan en la app (assets/core.js PX.ICON), repetidos
+// aquí porque esta página se arma del lado del servidor y no tiene acceso a ese objeto en el cliente.
+const icoTipo = (d) => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const TIPO_ICON = {
+  "Lote": icoTipo('<path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v9l8 4 8-4V7"/><path d="M12 11v9"/>'),
+  "Con construcción": icoTipo('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
+  "Agrícola": icoTipo('<path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 8-8 7z"/><path d="M12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 6 7 5.5z"/><path d="M5 21h14"/>'),
+  "Filial": icoTipo('<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>'),
+};
+const TIPO_ICON_DEF = icoTipo('<path d="M4 6l7-2 9 3-2 13-12-2z"/><circle cx="12" cy="11" r="1.6"/>');
 const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD" ? bv : bv / TC_TARJETA;
   const busca = [r.nom, r.dn, r.cn, r.pn, tipoTxt(r.tipo)].filter(Boolean).join(" ").toLowerCase();
   return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-busca="${esc(busca)}">
     <td class="c-mapa">${miniMapa(r)}</td>
     <td><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></td>
-    <td>${esc(tipoTxt(r.tipo))}</td>
+    <td class="tipoCell"><span class="tico">${TIPO_ICON[r.tipo] || TIPO_ICON_DEF}</span>${esc(tipoTxt(r.tipo))}</td>
     <td class="n">${r.area ? miles(r.area) + " m²" : "—"}</td>
     <td>${ETAPA[r.st]}<small>${fechaTxt(r.f[r.st]).split(",")[0]}</small></td>
     <td class="n p">${dinero(bv, r.mon)}</td></tr>`; };
