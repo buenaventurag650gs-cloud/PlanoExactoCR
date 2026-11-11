@@ -1707,11 +1707,11 @@ h1{font:800 clamp(26px,4vw,38px)/1.12 var(--f-display);margin:6px 0 6px;text-wra
 .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}.datos div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.datos b{display:block;font:600 21px/1.2 var(--f-body);font-variant-numeric:tabular-nums}.datos span{font-size:13px;color:var(--muted)}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}td.n{text-align:right;white-space:nowrap}tr.ya td{color:var(--muted);text-decoration:line-through}tr.ahora td{font-weight:700}
 .cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
-.tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:640px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:6px 8px 6px 0;width:56px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}
+.tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:680px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:8px 10px 8px 0;width:88px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}
 .rtab td.tipoCell{display:flex;align-items:center;gap:7px;white-space:nowrap}.rtab .tico{color:var(--accent);flex:none;display:inline-flex}
 .rtab th.srt{position:relative;cursor:pointer;user-select:none;padding-right:16px}.rtab th.srt:hover{color:var(--ink)}.rtab th.srt::after{content:"↕";position:absolute;right:3px;opacity:.45;font-size:11px}.rtab th.srt.asc::after{content:"↑";opacity:1;color:var(--accent)}.rtab th.srt.desc::after{content:"↓";opacity:1;color:var(--accent)}
 .avisoPro{position:absolute;top:100%;left:0;z-index:5;margin-top:4px;background:#0E1412;color:#EEF3F0;border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:500;text-transform:none;letter-spacing:0;white-space:normal;width:200px;box-shadow:0 4px 14px rgba(0,0,0,.25)}.avisoPro a{color:#6CC4B8;font-weight:700}
-.minimap{position:relative;display:block;width:56px;height:56px;border-radius:8px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.minimap{position:relative;display:block;width:88px;height:88px;border-radius:9px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
 .provpills{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 22px}.provpills a{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:13.5px}.provpills a:hover{border-color:var(--accent)}.provpills a b{color:var(--muted);font-weight:600}
 .filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px}.filtros input,.filtros select{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}.filtros input{flex:1 1 220px;min-width:0}.filtros select{flex:0 1 180px}.filtros .fcont{color:var(--muted);font-size:13px;margin-left:auto;white-space:nowrap}
@@ -1781,10 +1781,12 @@ ${cuerpo}
 }
 const CTA = (r) => `<div class="cta"><b>¿Qué más conviene saber antes de ofertar?</b><p>Con la cuenta gratis abres la ficha de cada remate y generas un expediente PDF completo por semana, con el predio en el catastro, el plan regulador, el valor de Hacienda, el agua potable y el entorno.</p>
 <div class="acts"><a class="btn pri" href="/mapa?crear=1${r ? "#r" + r.id : ""}">Crear cuenta gratis</a>${r ? `<a class="btn" href="/mapa#r${r.id}">Ver en el mapa</a>` : `<a class="btn" href="/mapa">Explorar el mapa</a>`}</div></div>`;
-// Miniatura con un pin sobre la misma tile satelital (Esri World Imagery) que usa el mapa interactivo
-// — solo el punto aproximado del remate, nunca el polígono exacto del lote (eso se ve con la cuenta,
-// en el mapa). z14 muestra el entorno general sin acercarse al nivel de detalle de la parcela.
-const MINIMAPA_Z = 14, MINIMAPA_PX = 56;
+// Miniatura con un pin sobre la misma tile de calles (Esri World Street Map, el mismo «Calles» que
+// usa el mapa interactivo) — se ve mejor en un tamaño pequeño que la ortofoto satelital, que a este
+// tamaño es casi ilegible, mientras que las vías y poblados dan contexto de un vistazo. Solo el punto
+// aproximado del remate, nunca el polígono exacto del lote (eso se ve con la cuenta, en el mapa).
+// z14 muestra el entorno general sin acercarse al nivel de detalle de la parcela.
+const MINIMAPA_Z = 14, MINIMAPA_PX = 88;
 function miniMapa(r) {
   if (!r.ll) return "";
   const [lon, lat] = r.ll, n = 2 ** MINIMAPA_Z;
@@ -1792,7 +1794,7 @@ function miniMapa(r) {
   const yf = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
   const x = Math.floor(xf), y = Math.floor(yf), esc256 = MINIMAPA_PX / 256;
   const px = Math.round((xf - x) * 256 * esc256), py = Math.round((yf - y) * 256 * esc256);
-  const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${MINIMAPA_Z}/${y}/${x}`;
+  const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${MINIMAPA_Z}/${y}/${x}`;
   return `<span class="minimap"><img src="${url}" width="${MINIMAPA_PX}" height="${MINIMAPA_PX}" loading="lazy" decoding="async" alt="" referrerpolicy="no-referrer"><i style="left:${px}px;top:${py}px"></i></span>`;
 }
 // Fila de tabla de un remate: mapita, propiedad y lugar, tipo, área, próxima fecha y base.
