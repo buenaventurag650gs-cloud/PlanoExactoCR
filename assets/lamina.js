@@ -176,9 +176,15 @@
     // se verificó pidiendo esa baldosa directamente y comparando su tamaño con releases más
     // recientes. El release 4756 (2019-12-12) es el más antiguo que ya trae cobertura real y
     // nítida en todo el territorio, así que es el que usamos como "histórico".
-    { y: 2024, t: 'Actual (~2024)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
+    { y: 2024, t: 'Actual (~2024)', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxNativeZoom: 19 },
     { y: 2017, t: 'Ortofoto IGN 2017', url: null, wms: true },   // WMS del SNIT
-    { y: 2019, t: 'Histórico (~2019)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/4756/{z}/{y}/{x}' },
+    // OJO con esta capa: los releases de Wayback NO tienen la misma resolución nativa que el mapa
+    // actual. Fuera de ese máximo (variable según la zona; 17 es el que se comprobó disponible en
+    // todo el país para este release) el servidor responde 404 baldosa por baldosa — eso, y no un
+    // problema de red, era lo que dejaba el recuadro "Histórico" en blanco cuando el predio (por
+    // tener polígono exacto) hacía zoom más allá de ese límite. maxNativeZoom evita pedir tiles
+    // que no existen: Leaflet reutiliza la última baldosa real y la amplía en vez de pedir z18/19.
+    { y: 2019, t: 'Histórico (~2019)', url: 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/4756/{z}/{y}/{x}', maxNativeZoom: 17 },
   ];
 
   L_.initHistorial = async r => {
@@ -197,7 +203,7 @@
           version: '1.1.1', maxZoom: 20, maxNativeZoom: 20
         })).addTo(m);
       } else {
-        conReintento(L.tileLayer(v.url, { maxZoom: 20, maxNativeZoom: 19 })).addTo(m);
+        conReintento(L.tileLayer(v.url, { maxZoom: 20, maxNativeZoom: v.maxNativeZoom || 19 })).addTo(m);
       }
       // Superponer catastro semitransparente
       wms('https://siri.snitcr.go.cr/Geoservicios/wms', 'catastro,catastro_aldia', {
