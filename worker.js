@@ -1733,7 +1733,14 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,t
 .cta{display:grid;gap:10px;background:#0E1412;color:#EEF3F0;border-radius:14px;padding:18px;margin:22px 0}.cta p{margin:0;color:#AEBBB5}.cta .btn.pri{background:#6CC4B8;border-color:#6CC4B8;color:#08201D}.cta .btn{background:transparent;color:#EEF3F0;border-color:#2E3A35}.cta .acts{display:flex;flex-wrap:wrap;gap:8px}
 .tscroll{overflow-x:auto;margin:16px 0}.rtab{min-width:780px}.rtab td,.rtab th{vertical-align:middle}.rtab td.c-mapa{padding:8px 10px 8px 0;width:88px}.rtab a{color:var(--ink);text-decoration:none;font-weight:600}.rtab a:hover{text-decoration:underline}.rtab small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}.rtab td.n{text-align:right;white-space:nowrap}.rtab td.p{font-weight:700}.rtab td.m2{color:var(--muted);font-variant-numeric:tabular-nums}.rtab td.m2 small{display:inline;color:var(--muted);font-size:11.5px}
 .rtab td.tipoCell{white-space:nowrap;vertical-align:middle}.rtab td.tipoCell .tipoWrap{display:inline-flex;align-items:center;gap:7px;vertical-align:middle}.rtab .tico{color:var(--accent);flex:none;display:inline-flex;vertical-align:middle}.rtab .tico svg{display:block}
-.rtab th.srt{position:relative;cursor:pointer;user-select:none;padding-right:16px}.rtab th.srt:hover{color:var(--ink)}.rtab th.srt::after{content:"↕";position:absolute;right:3px;opacity:.45;font-size:11px}.rtab th.srt.asc::after{content:"↑";opacity:1;color:var(--accent)}.rtab th.srt.desc::after{content:"↓";opacity:1;color:var(--accent)}
+.rtab th.srt{position:relative;cursor:pointer;user-select:none;padding:7px 22px 7px 10px;border-radius:7px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:11px;letter-spacing:.04em;transition:all .12s ease}
+.rtab th.srt:hover{border-color:var(--accent);color:var(--accent)}
+.rtab th.srt::after{content:"↕";position:absolute;right:6px;top:50%;transform:translateY(-50%);opacity:.5;font-size:11px}
+.rtab th.srt.asc,.rtab th.srt.desc{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rtab th.srt.asc::after{content:"↑";opacity:1}.rtab th.srt.desc::after{content:"↓";opacity:1}
+.sortHint{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:6px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
+.sortHint.si{background:rgba(21,155,117,.15);color:var(--accent)}
+.sortHint.no{background:var(--panel);border:1px solid var(--line);color:var(--muted)}
 .avisoPro{position:absolute;top:100%;left:0;z-index:5;margin-top:4px;background:#0E1412;color:#EEF3F0;border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:500;text-transform:none;letter-spacing:0;white-space:normal;width:200px;box-shadow:0 4px 14px rgba(0,0,0,.25)}.avisoPro a{color:#6CC4B8;font-weight:700}
 .minimap{position:relative;display:block;width:88px;height:88px;border-radius:9px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
@@ -1783,8 +1790,16 @@ ${cuerpo}
   // antes de que responda la consulta, esperamos ese mismo resultado en vez de asumir «no es PRO»
   // por la carrera entre el clic y el fetch. Admin también puede ordenar (acceso total).
   var yoData = null;
-  var yoPromise = fetch('/api/cuenta/yo', { credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ yoData = d; pintarCuenta(d); return d; }).catch(function(){ return null; });
+  var yoPromise = fetch('/api/cuenta/yo', { credentials: 'same-origin', cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ yoData = d; pintarCuenta(d); pintarSortHint(d); return d; }).catch(function(){ pintarSortHint(null); return null; });
   var proCheck = yoPromise.then(function(d){ return !!(d && ((d.user && d.user.plan === 'pro') || d.admin === true)); });
+  function pintarSortHint(d){
+    var h = document.getElementById('sortHint'); if (!h) return;
+    if (d && d.admin) { h.className = 'sortHint si'; h.textContent = '✓ Ordenar activo (ADMIN)'; }
+    else if (d && d.user && d.user.plan === 'pro') { h.className = 'sortHint si'; h.textContent = '✓ Ordenar activo (PRO)'; }
+    else if (d && d.user && d.user.plan === 'basico') { h.className = 'sortHint si'; h.textContent = '✓ Ordenar activo (Esencial)'; }
+    else if (d && d.user) { h.className = 'sortHint no'; h.textContent = 'Ordenar: incluido en el plan PRO (vos: ' + (d.user.plan || 'gratis') + ')'; }
+    else { h.className = 'sortHint no'; h.textContent = 'Ordenar: incluido en el plan PRO'; }
+  }
   function pintarCuenta(d){
     var btn = document.getElementById('cuentaBtn'); if (!btn) return;
     if (!d || !d.user) { btn.textContent = 'Entrar'; btn.setAttribute('href', '/mapa?entrar=1'); return; }
@@ -2007,7 +2022,7 @@ async function seo(u, env) {
 <p class="sub">${R.length} remates vigentes publicados en el Boletín Judicial${meta.ultimoBoletin ? ` (hasta el N.º ${meta.ultimoBoletin})` : ""}. Se actualiza cada día hábil.</p>
 <div class="provpills">${PROVS.map((pv, i) => { const L = porProv(i); return L.length ? `<a href="/remates/${slug(pv)}">${esc(pv)} <b>${L.length}</b></a>` : ""; }).join("")}</div>
 <h2>Los ${ordenados.length} remates vigentes</h2>
-<p class="sub">Busca, filtra por provincia o tipo, y —con una cuenta PRO— ordena la tabla por cualquier columna con un clic en su encabezado.</p>
+<p class="sub">Busca, filtra por provincia o tipo, y —con una cuenta PRO— ordena la tabla por cualquier columna con un clic en su encabezado. <span id="sortHint" class="sortHint no">Ordenar: incluido en el plan PRO</span></p>
 ${filtroBar(ordenados)}
 ${tablaRemates(ordenados)}
 ${CTA()}`;
