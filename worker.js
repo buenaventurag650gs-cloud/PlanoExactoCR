@@ -1714,7 +1714,26 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,t
 .minimap{position:relative;display:block;width:88px;height:88px;border-radius:9px;overflow:hidden;background:var(--line);flex:none}.minimap img{display:block;width:100%;height:100%;object-fit:cover}.minimap i{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#C8553D;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}.chips a{display:inline-block;padding:7px 12px;border-radius:999px;background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
 .provpills{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 22px}.provpills a{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:13.5px}.provpills a:hover{border-color:var(--accent)}.provpills a b{color:var(--muted);font-weight:600}
-.filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px}.filtros input,.filtros select{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}.filtros input{flex:1 1 220px;min-width:0}.filtros select{flex:0 1 180px}.filtros .fcont{color:var(--muted);font-size:13px;margin-left:auto;white-space:nowrap}
+.filtros{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.filtros-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.filtros input,.filtros select{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.filtros input{flex:1 1 220px;min-width:0}
+.filtros select{flex:0 1 180px}
+.filtros .fcont{color:var(--muted);font-size:13px;margin-left:auto;white-space:nowrap}
+.filtros .flim{font:inherit;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+.filtros .flim:hover{color:var(--ink);border-color:var(--ink)}
+.filtros-tipo,.filtros-etapa{display:flex;flex-wrap:wrap;gap:6px}
+.ftbtn,.febtn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 13px/1.1 inherit;cursor:pointer;transition:all .12s ease}
+.ftbtn:hover,.febtn:hover{border-color:var(--accent);color:var(--accent)}
+.ftbtn.on,.febtn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ftbtn.on .tico,.ftbtn.on svg{color:var(--accent-ink)}
+.ftbtn .tico{color:var(--accent);flex:none;display:inline-flex}
+.ftbtn .tico svg{width:14px;height:14px}
+.febtn .stb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font:700 10px/1 inherit;color:#fff}
+.febtn .stb.s1{background:#2B5C8A}.febtn .stb.s2{background:#B7791F}.febtn .stb.s3{background:#B42318}
+.febtn.on .stb{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.rtab tr.fila-hl{animation:flash 1.4s ease-out 1}@keyframes flash{0%{background:rgba(21,155,117,.18)}100%{background:transparent}}
+.rtab tbody tr:hover{background:var(--soft)}
 footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 </style></head><body><div class="franja"></div><div class="wrap">
 <header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
@@ -1758,23 +1777,48 @@ ${cuerpo}
       });
     });
   });
-  // Filtro dinámico (busca, provincia, tipo): oculta filas de la tabla sin recargar la página.
-  var fBusca = document.getElementById('fBusca'), fProv = document.getElementById('fProv'), fTipo = document.getElementById('fTipo'), fCont = document.getElementById('fCont');
+  // Filtro dinámico (busca, provincia, tipo, etapa): oculta filas de la tabla sin recargar la página.
+  // Tipo y etapa son botones (más visibles que un dropdown).
+  var fBusca = document.getElementById('fBusca'), fProv = document.getElementById('fProv'), fCont = document.getElementById('fCont'), fLimpiar = document.getElementById('fLimpiar');
   if (fBusca) {
     var tbodyF = document.querySelector('table.rtab tbody');
     var filas = Array.prototype.slice.call(tbodyF.querySelectorAll('tr'));
+    var fTipo = '', fEtapa = '';
     var filtrar = function(){
-      var q = fBusca.value.trim().toLowerCase(), prov = fProv.value.toLowerCase(), tipo = fTipo.value.toLowerCase(), n = 0;
+      var q = fBusca.value.trim().toLowerCase(), prov = fProv.value.toLowerCase(), n = 0;
       filas.forEach(function(f){
-        var ok = (!q || f.dataset.busca.indexOf(q) !== -1) && (!prov || f.dataset.prov === prov) && (!tipo || f.dataset.tipo === tipo);
+        var ok = (!q || f.dataset.busca.indexOf(q) !== -1) && (!prov || f.dataset.prov === prov) && (!fTipo || f.dataset.tipo === fTipo) && (!fEtapa || f.dataset.etapa === fEtapa);
         f.hidden = !ok;
         if (ok) n++;
       });
       fCont.textContent = n + (n === 1 ? ' remate' : ' remates');
     };
-    [fBusca, fProv, fTipo].forEach(function(el){ el.addEventListener('input', filtrar); el.addEventListener('change', filtrar); });
+    [fBusca, fProv].forEach(function(el){ el.addEventListener('input', filtrar); el.addEventListener('change', filtrar); });
+    document.querySelectorAll('.ftbtn').forEach(function(b){ b.addEventListener('click', function(){
+      document.querySelectorAll('.ftbtn').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on'); fTipo = b.dataset.ftipo; filtrar();
+    }); });
+    document.querySelectorAll('.febtn').forEach(function(b){ b.addEventListener('click', function(){
+      document.querySelectorAll('.febtn').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on'); fEtapa = b.dataset.fetapa; filtrar();
+    }); });
+    if (fLimpiar) fLimpiar.addEventListener('click', function(){
+      fBusca.value = ''; fProv.value = ''; fTipo = ''; fEtapa = '';
+      document.querySelectorAll('.ftbtn').forEach(function(x){ x.classList.toggle('on', x.dataset.ftipo === ''); });
+      document.querySelectorAll('.febtn').forEach(function(x){ x.classList.toggle('on', x.dataset.fetapa === ''); });
+      filtrar();
+    });
     filtrar();
   }
+  // Toda la fila es clicable (no solo el nombre): hace más fácil tocar desde el teléfono.
+  document.querySelectorAll('table.rtab tbody tr').forEach(function(tr){
+    tr.style.cursor = 'pointer';
+    tr.addEventListener('click', function(e){
+      if (e.target.closest('a')) return;   // no interferir con los enlaces que ya tiene
+      var a = tr.querySelector('a[href^="/remate/"]');
+      if (a) location.href = a.href;
+    });
+  });
 })();
 </script>
 </body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
@@ -1812,7 +1856,7 @@ const TIPO_ICON = {
 const TIPO_ICON_DEF = icoTipo('<path d="M4 6l7-2 9 3-2 13-12-2z"/><circle cx="12" cy="11" r="1.6"/>');
 const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD" ? bv : bv / TC_TARJETA;
   const busca = [r.nom, r.dn, r.cn, r.pn, tipoTxt(r.tipo)].filter(Boolean).join(" ").toLowerCase();
-  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-busca="${esc(busca)}">
+  return `<tr data-nom="${esc((r.nom || tipoTxt(r.tipo)).toLowerCase())}" data-tipo="${esc(tipoTxt(r.tipo).toLowerCase())}" data-prov="${esc((r.pn || "").toLowerCase())}" data-etapa="${r.st}" data-area="${r.area || -1}" data-fecha="${esc(r.f[r.st])}" data-base="${bvUsd}" data-busca="${esc(busca)}">
     <td class="c-mapa">${miniMapa(r)}</td>
     <td><a href="/remate/${r.id}"><b>${esc(r.nom || tipoTxt(r.tipo))}</b><small>${esc([r.dn, r.cn].filter(Boolean).join(", "))}</small></a></td>
     <td class="tipoCell"><span class="tico">${TIPO_ICON[r.tipo] || TIPO_ICON_DEF}</span>${esc(tipoTxt(r.tipo))}</td>
@@ -1822,15 +1866,27 @@ const filaTabla = (r) => { const bv = r.base * PCT[r.st], bvUsd = r.mon === "USD
 // Encabezados ordenables (función del plan PRO — ver el script «sortTabla» más abajo en pagSEO).
 const THS = [["", null], ["Propiedad", "nom"], ["Tipo", "tipo"], ["Área", "area"], ["Próximo remate", "fecha"], ["Base", "base"]];
 const tablaRemates = (L) => `<div class="tscroll"><table class="rtab"><thead><tr>${THS.map(([t, k]) => k ? `<th class="${k === "area" || k === "base" ? "n " : ""}srt" data-sort="${k}">${t}</th>` : `<th></th>`).join("")}</tr></thead><tbody>${L.map(filaTabla).join("")}</tbody></table></div>`;
-// Barra de filtros del lado del cliente (busca, provincia, tipo) para no depender solo de las
+// Barra de filtros del lado del cliente (busca, provincia, tipo, etapa) para no depender solo de las
 // páginas estáticas por provincia/cantón al explorar una lista larga — filtra las filas ya
-// pintadas en la tabla (ver «filtroTabla» en el script de pagSEO), sin recargar la página.
-const filtroBar = (L) => { const tipos = [...new Set(L.map((r) => tipoTxt(r.tipo)))].sort((a, b) => a.localeCompare(b, "es"));
+// pintadas en la tabla (ver script de pagSEO), sin recargar la página. Tipo y etapa son botones con
+// ícono (tipo de propiedad) o distintivo de etapa, más inmediatos de leer que un dropdown.
+const filtroBar = (L) => { const tipos = [...new Set(L.map((r) => r.tipo))].sort((a, b) => tipoTxt(a).localeCompare(tipoTxt(b), "es"));
+  const etapas = [...new Set(L.map((r) => r.st))].sort();
   return `<div class="filtros">
-  <input type="search" id="fBusca" placeholder="Buscar por nombre, cantón o distrito…" aria-label="Buscar remate">
-  <select id="fProv" aria-label="Provincia"><option value="">Toda Costa Rica</option>${PROVS.map((pv) => `<option>${esc(pv)}</option>`).join("")}</select>
-  <select id="fTipo" aria-label="Tipo de propiedad"><option value="">Todo tipo</option>${tipos.map((t) => `<option>${esc(t)}</option>`).join("")}</select>
-  <span class="fcont" id="fCont"></span>
+  <div class="filtros-top">
+    <input type="search" id="fBusca" placeholder="Buscar por nombre, cantón o distrito…" aria-label="Buscar remate">
+    <select id="fProv" aria-label="Provincia"><option value="">Toda Costa Rica</option>${PROVS.map((pv) => `<option>${esc(pv)}</option>`).join("")}</select>
+    <span class="fcont" id="fCont"></span>
+    <button type="button" class="flim" id="fLimpiar" title="Quitar los filtros">Limpiar filtros</button>
+  </div>
+  <div class="filtros-tipo" role="group" aria-label="Tipo de propiedad">
+    <button type="button" class="ftbtn on" data-ftipo="" title="Todos los tipos">Todos</button>
+    ${tipos.map((t) => `<button type="button" class="ftbtn" data-ftipo="${esc(tipoTxt(t).toLowerCase())}" title="${esc(tipoTxt(t))}"><span class="tico">${TIPO_ICON[t] || TIPO_ICON_DEF}</span>${esc(tipoTxt(t))}</button>`).join("")}
+  </div>
+  <div class="filtros-etapa" role="group" aria-label="Etapa del remate">
+    <button type="button" class="febtn on" data-fetapa="" title="Toda etapa">Toda etapa</button>
+    ${etapas.map((s) => `<button type="button" class="febtn" data-fetapa="${s}" title="${ETAPA[s]} — base al ${PCT[s] * 100} %"><span class="stb s${s + 1}">${s + 1}.º</span>Base al ${PCT[s] * 100} %</button>`).join("")}
+  </div>
 </div>`; };
 const migas = (items) => `<nav class="migas" aria-label="Ruta">${items.map(([t, h]) => h ? `<a href="${h}">${esc(t)}</a>` : esc(t)).join(" › ")}</nav>`;
 const ldMigas = (u, items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map(([t, h], i) => ({ "@type": "ListItem", position: i + 1, name: t, item: "https://" + u.host + (h || u.pathname) })) });
