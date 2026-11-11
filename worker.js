@@ -1894,7 +1894,7 @@ ${cuerpo}
   }
 })();
 </script>
-</body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400" } });
+</body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache, max-age=0, s-maxage=3600, must-revalidate" } });
 }
 const CTA = (r) =>`<div class="cta"><b>¿Qué más conviene saber antes de ofertar?</b><p>Con la cuenta gratis abres la ficha de cada remate y generas un expediente PDF completo por semana, con el predio en el catastro, el plan regulador, el valor de Hacienda, el agua potable y el entorno.</p>
 <div class="acts"><a class="btn pri" href="/mapa?crear=1${r ? "#r" + r.id : ""}">Crear cuenta gratis</a>${r ? `<a class="btn" href="/mapa#r${r.id}">Ver en el mapa</a>` : `<a class="btn" href="/mapa">Explorar el mapa</a>`}</div></div>`;
