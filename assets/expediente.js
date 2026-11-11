@@ -135,9 +135,27 @@
       <dt>Ubicación</dt><dd>${esc(r.lugar || '—')}<small class="sub">${r.isPlano ? 'Predio del catastro' : r.exact ? 'Ubicada por ' + r.loc + ' en el catastro' : 'Aproximada al centro del distrito'}${r.ll ? ' · ' + r.ll[1].toFixed(5) + ', ' + r.ll[0].toFixed(5) : ''}</small>${r.ll ? `<small class="sub">Mirar en línea: <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Street View</a> · <a href="https://www.google.com/maps/search/?api=1&query=${r.ll[1]},${r.ll[0]}" target="_blank" rel="noopener">Google Maps</a></small>` : ''}</dd>
       ${r.rev ? `<dt>Revisión</dt><dd>${esc(r.rev)}</dd>` : ''}</dl></section>`;
     const gl = r.isPlano ? [] : PX.explicar(r.grav, r.serv);
+    // Convierte citas registrales (YYYY-NNNNNN-01-XXXX-XXX) en enlaces al SIRI del RNP
+    const gravConLinks = (txt) => {
+      if (!txt) return '';
+      // Formato de cita: 4 dígitos año - 6 dígitos secuencial - 2 dígitos registro - 4 dígitos folio - 3 dígitos asiento
+      return esc(txt).replace(/(\d{4}-\d{6}-\d{2}-\d{4}-\d{3})/g, (cita) => {
+        const url = `https://siri.rnp.go.cr/SIRI/index.jsp`;
+        return `<a href="${url}" target="_blank" rel="noopener" class="cita-link" title="Consultar cita ${cita} en SIRI del Registro Nacional">${cita} ↗</a>`;
+      });
+    };
+    const gravCitas = r.grav ? (() => {
+      // Extrae las citas únicas del texto de gravámenes para mostrar como chips de acceso rápido
+      const citasEncontradas = [...(r.grav.matchAll(/\d{4}-\d{6}-\d{2}-\d{4}-\d{3}/g))].map(m => m[0]);
+      const unicas = [...new Set(citasEncontradas)];
+      if (!unicas.length) return '';
+      return `<div class="citas-rn"><small>Consultar en Registro Nacional:</small>${unicas.map(c =>
+        `<a href="https://siri.rnp.go.cr/SIRI/index.jsp" target="_blank" rel="noopener" class="chip cita" title="Cita ${c}">${c} ↗</a>`
+      ).join('')}</div>`;
+    })() : '';
     const grav = r.isPlano ? '' : `<section class="blk"><h2>${I.alerta}Gravámenes y servidumbres</h2>
       ${(r.serv || []).length ? `<div class="chips">${r.serv.map(x => `<span class="chip warn">${esc(PX.cap(x))}</span>`).join('')}</div>` : '<p class="ok">El edicto no cita servidumbres.</p>'}
-      ${r.grav ? `<p class="raw">${esc(r.grav)}</p>` : ''}
+      ${r.grav ? `<p class="raw">${gravConLinks(r.grav)}</p>${gravCitas}` : ''}
       ${gl.length ? `<div class="gl">${gl.map(g => `<div><b>${esc(g.n)}.</b> ${esc(g.d)}</div>`).join('')}</div>` : ''}</section>`;
     // Servicios e infraestructura: todo lo que antes quedaba disuelto entre las
     // filas de «Valor y mercado» — agua, electricidad, telecomunicaciones y
