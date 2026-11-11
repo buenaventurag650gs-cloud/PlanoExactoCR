@@ -1697,8 +1697,16 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--f-body)}a{color:var(--accent)}
 .franja{height:4px;background:linear-gradient(90deg, #073B32 0 60%, #159B75 60%)}
 .wrap{max-width:960px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left,0px))}
-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;flex-wrap:wrap}
 .marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font:300 19px/1 Jost,var(--f-body);letter-spacing:.09em}.marca b{font-weight:700}.marca i{font-style:normal;color:#159B75}.marca img{width:50px;height:auto}
+.hnav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hnav .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+.hnav .seg button{font:600 13px/1 inherit;padding:8px 11px;border:0;background:transparent;color:var(--muted);cursor:pointer;min-width:34px}
+.hnav .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.hnav .icnbtn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.hnav .icnbtn:hover{border-color:var(--accent);color:var(--accent)}
+.hnav #cuentaBtn .badgeplan{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.22);font-size:11px;font-weight:700}
+.hnav #sortHint{color:var(--muted);font-size:12px;padding:6px 10px;border-radius:8px;background:rgba(21,155,117,.08)}
 .lg-oscuro{display:none}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-claro{display:none}:root:not([data-theme="light"]) .lg-oscuro{display:block}}:root[data-theme="dark"] .lg-claro{display:none}:root[data-theme="dark"] .lg-oscuro{display:block}
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:600;text-decoration:none}.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 nav.migas{font-size:13.5px;color:var(--muted);margin:8px 0 4px}nav.migas a{color:var(--muted)}
@@ -1736,7 +1744,14 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,t
 .rtab tbody tr:hover{background:var(--soft)}
 footer{margin:36px 0 30px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 </style></head><body><div class="franja"></div><div class="wrap">
-<header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a><a class="btn" href="/mapa">Ver el mapa</a></header>
+<header><a class="marca" href="/"><img class="lg-claro" src="/assets/img/logo-mark.svg" alt="" width="50" height="40"><img class="lg-oscuro" src="/assets/img/logo-mark-oscuro.svg" alt="" width="50" height="40"><span>PLANO<b>EXACTO</b><i>CR</i></span></a>
+<nav class="hnav" aria-label="Acciones">
+  <div class="seg" role="group" aria-label="Moneda" id="curSeg"><button id="cCRC" aria-pressed="true" title="Ver la base en colones">₡</button><button id="cUSD" aria-pressed="false" title="Ver la base en dólares">$</button></div>
+  <button class="icnbtn" id="tTheme" type="button" title="Cambiar colores (claro/oscuro)" aria-label="Cambiar colores"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg></button>
+  <a class="btn" href="/mapa" title="Ver el mapa interactivo">Ver el mapa</a>
+  <a class="btn pri" href="/mapa?entrar=1" id="cuentaBtn" title="Entrar o ver tu cuenta">Mi cuenta</a>
+</nav>
+</header>
 ${cuerpo}
 <footer>PlanoExactoCR reúne información pública del Boletín Judicial, el Registro Inmobiliario y otras fuentes oficiales con fines orientativos. No es asesoría legal ni un avalúo: verifica siempre en el expediente judicial y el Registro Nacional. · <a href="/privacidad">Privacidad</a></footer>
 </div>
@@ -1745,16 +1760,30 @@ ${cuerpo}
 // se sirve igual para todos (cacheable); por eso no se decide del lado del servidor, sino que al
 // cargar se consulta la sesión (si hay una, por cookie) con la misma API que usa la app del mapa.
 (function(){
-  // Promesa (no un booleano simple): si alguien hace clic en un encabezado antes de que la consulta
-  // de sesión responda, esperamos ese mismo resultado en vez de asumir «no es PRO» por la carrera
-  // entre el clic y el fetch — así no se le niega el ordenamiento a una cuenta PRO real.
-  var proCheck = fetch('/api/cuenta/yo', { credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ return !!(d && d.user && d.user.plan === 'pro'); }).catch(function(){ return false; });
+  // Estado de la sesión (plan, nombre, admin) para pintar el botón «Mi cuenta» y decidir si se
+  // permite ordenar la tabla. Promesa, no un booleano simple: si alguien hace clic en un encabezado
+  // antes de que responda la consulta, esperamos ese mismo resultado en vez de asumir «no es PRO»
+  // por la carrera entre el clic y el fetch. Admin también puede ordenar (acceso total).
+  var yoData = null;
+  var yoPromise = fetch('/api/cuenta/yo', { credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ yoData = d; pintarCuenta(d); return d; }).catch(function(){ return null; });
+  var proCheck = yoPromise.then(function(d){ return !!(d && ((d.user && d.user.plan === 'pro') || d.admin === true)); });
+  function pintarCuenta(d){
+    var btn = document.getElementById('cuentaBtn'); if (!btn) return;
+    if (!d || !d.user) { btn.textContent = 'Entrar'; btn.setAttribute('href', '/mapa?entrar=1'); return; }
+    var plan = d.admin ? 'ADMIN' : (d.user.plan === 'pro' ? 'PRO' : d.user.plan === 'basico' ? 'Esencial' : 'Gratis');
+    var nombre = d.user.nombre || d.user.correo.split('@')[0];
+    btn.innerHTML = 'Mi cuenta <span class="badgeplan">' + plan + '</span>';
+    btn.setAttribute('href', '/mapa');
+    btn.setAttribute('title', 'Entraste como ' + nombre + ' (' + plan + ')');
+  }
   function avisoPro(th){
     if (th.querySelector('.avisoPro')) return;
+    var plan = yoData && yoData.user ? yoData.user.plan : null;
+    var txt = plan === 'pro' ? 'Detectamos que sos PRO pero no se cargó la sesión. Recargá la página para activar el ordenamiento.' : 'Ordenar la tabla es una función del plan PRO. <a href="/mapa?crear=1">Conocé los planes</a>.';
     var d = document.createElement('div'); d.className = 'avisoPro';
-    d.innerHTML = 'Ordenar la tabla es una función del plan PRO. <a href="/mapa?crear=1">Conocé los planes</a>.';
+    d.innerHTML = txt;
     th.appendChild(d);
-    setTimeout(function(){ d.remove(); }, 4000);
+    setTimeout(function(){ d.remove(); }, 5000);
   }
   document.querySelectorAll('table.rtab').forEach(function(tab){
     var thead = tab.querySelector('thead'), tbody = tab.querySelector('tbody');
@@ -1818,6 +1847,38 @@ ${cuerpo}
       var a = tr.querySelector('a[href^="/remate/"]');
       if (a) location.href = a.href;
     });
+  });
+  // --- Alternar moneda (CRC ↔ USD) en la columna «Base» ---
+  // Las filas traen la base en USD en data-base (ya normalizada por el servidor con el tipo de cambio
+  // de tarjeta). El valor nativo en la fila (CRC o USD) está en data-base-nat. Alternar reemplaza la
+  // celda y recuerda la elección en localStorage, como lo hace la app del mapa.
+  var cCRC = document.getElementById('cCRC'), cUSD = document.getElementById('cUSD');
+  if (cCRC && cUSD) {
+    // Recupera la preferencia de moneda guardada por el mapa (mismo almacén)
+    var curGuard = 'CRC'; try { curGuard = localStorage.getItem('px-cur') || 'CRC'; } catch (e) {}
+    var aplicarCur = function(c){
+      cCRC.setAttribute('aria-pressed', c === 'CRC');
+      cUSD.setAttribute('aria-pressed', c === 'USD');
+      try { localStorage.setItem('px-cur', c); } catch (e) {}
+      document.querySelectorAll('table.rtab tbody tr').forEach(function(tr){
+        var cel = tr.querySelector('td.p'); if (!cel) return;
+        var usd = parseFloat(tr.dataset.base);
+        if (!isFinite(usd)) return;
+        if (c === 'USD') cel.textContent = '$' + Math.round(usd).toLocaleString('es-CR');
+        else cel.textContent = '₡' + Math.round(usd * 456.32).toLocaleString('es-CR');
+      });
+    };
+    cCRC.addEventListener('click', function(){ aplicarCur('CRC'); });
+    cUSD.addEventListener('click', function(){ aplicarCur('USD'); });
+    if (curGuard === 'USD') aplicarCur('USD');
+  }
+  // --- Alternar tema claro/oscuro (mismo almacén que la app) ---
+  var tTheme = document.getElementById('tTheme');
+  if (tTheme) tTheme.addEventListener('click', function(){
+    var actual = document.documentElement.dataset.theme || (matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var nuevo = actual === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = nuevo;
+    try { localStorage.setItem('px-theme', nuevo); } catch (e) {}
   });
 })();
 </script>
