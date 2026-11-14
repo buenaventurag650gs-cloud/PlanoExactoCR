@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Capturar datos SIRI · PlanoExactoCR</title><meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg"><link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><script src="/assets/fuentes.js"></script>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--f-body); margin: 0; padding: 24px 16px; }
+main { max-width: 680px; margin: 0 auto; display: grid; gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; display: grid; gap: 12px; }
+h1 { font: 600 22px/1.2 var(--f-display); margin: 0; } h2 { font: 600 16px/1.3 var(--f-display); margin: 0; }
+ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.mk { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; cursor: grab; }
+.mk:active { cursor: grabbing; }
+.muted { color: var(--muted); font-size: 13.5px; }
+a { color: var(--accent); }
+.chip { display: inline-block; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font: 13px var(--f-mono); }
+</style>
+</head>
+<body><main>
+<a href="/mapa" class="muted">← Volver al mapa</a>
+<h1>Capturar datos del SIRI del RNP</h1>
+<div class="card">
+  <p>El SIRI del Registro Nacional tiene la información más completa de cada finca: avalúo, área, plano, gravámenes (hipotecas, embargos, demandas), anotaciones, derechos y linderos. Este marcador lee esa página en tu navegador y la guarda en PlanoExactoCR para que aparezca en el expediente de la finca.</p>
+  <p class="muted">El SIRI requiere clave de acceso y funciona solo desde Costa Rica. PlanoExactoCR nunca guarda tu contraseña del RNP.</p>
+</div>
+<div class="card">
+  <h2>Una sola vez: guarda el botón</h2>
+  <ol>
+    <li>Muestra la barra de marcadores del navegador (en Chrome: <b>Cmd + Shift + B</b> en Mac o <b>Ctrl + Shift + B</b> en Windows).</li>
+    <li>Arrastra este botón a la barra de marcadores: <a class="mk" id="mk" href="#">📋 Capturar SIRI</a></li>
+  </ol>
+</div>
+<div class="card">
+  <h2>Cómo usar el marcador</h2>
+  <ol>
+    <li>Abrí <a href="https://siri.rnp.go.cr/" target="_blank" rel="noopener">siri.rnp.go.cr</a> e iniciá sesión con tu clave RNP.</li>
+    <li>Buscá la finca por número o por número de plano catastrado.</li>
+    <li>En el resultado, entrá a la pestaña <b>Información general</b> del predio.</li>
+    <li>Pulsá el marcador <span class="chip">📋 Capturar SIRI</span>. Verás un aviso en la esquina inferior derecha.</li>
+    <li>Esperá el aviso <b>«Guardado en PlanoExactoCR»</b>. Los datos aparecen de inmediato en el expediente de la finca.</li>
+  </ol>
+  <p class="muted">Si el aviso dice «Necesitás estar logueado en PlanoExactoCR», abrí <a href="/">planoexactocr.com</a>, iniciá sesión, y volvé a pulsar el marcador en el SIRI.</p>
+</div>
+<div class="card">
+  <h2>¿Qué datos se capturan?</h2>
+  <ul style="margin:0;padding-left:20px;display:grid;gap:6px">
+    <li><b>Situación:</b> número de finca, avalúo fiscal, área total, plano, estado, provincia/cantón/distrito</li>
+    <li><b>Naturaleza:</b> tipo de bien (p. ej. terreno urbanizable, finca de recreo)</li>
+    <li><b>Linderos:</b> norte, sur, este, oeste</li>
+    <li><b>Anotaciones:</b> tipo, fecha, participantes</li>
+    <li><b>Gravámenes:</b> hipotecas, embargos, demandas y servidumbres con tomo, asiento y cita</li>
+    <li><b>Derechos:</b> propietarios y copropietarios con cédula, nombre y proporción</li>
+  </ul>
+</div>
+</main>
+<script>
+(async () => {
+  try {
+    const src = await (await fetch('assets/siri-rnp.js', { cache: 'no-store' })).text();
+    const code = src.replace(/\/\*[\s\S]*?\*\//, '').replace('__SITIO__', location.origin).replace(/\n\s*/g, ' ');
+    document.getElementById('mk').href = 'javascript:' + encodeURIComponent(code);
+  } catch (e) {}
+  document.getElementById('mk').addEventListener('click', e => {
+    e.preventDefault();
+    alert('Arrastra el botón a la barra de marcadores; luego úsalo desde siri.rnp.go.cr.');
+  });
+})();
+</script>
+</body></html>

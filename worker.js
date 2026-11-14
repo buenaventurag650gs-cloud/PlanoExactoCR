@@ -68,6 +68,30 @@ function initDB(env) {
         id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, telefono TEXT, correo TEXT,
         juzgados TEXT NOT NULL DEFAULT '[]', zona TEXT, especialidad TEXT,
         activo INTEGER NOT NULL DEFAULT 1, notas TEXT, creado TEXT)`).run().catch(() => {});
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS siri_catastral (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uid INTEGER NOT NULL,
+        finca TEXT NOT NULL,
+        id_predio TEXT,
+        avaluo REAL,
+        area_total REAL,
+        plano TEXT,
+        estado TEXT,
+        provincia TEXT,
+        canton TEXT,
+        distrito TEXT,
+        naturaleza TEXT,
+        linderos TEXT,
+        anotaciones TEXT,
+        gravamenes TEXT,
+        derechos TEXT,
+        filiales TEXT,
+        segregaciones TEXT,
+        historia TEXT,
+        raw TEXT,
+        creado TEXT,
+        UNIQUE(uid, finca)
+      )`).run().catch(() => {});
       return r;
     });
     // Tiempo límite de 8 s: si D1 no responde, la petición falla rápido y con un error claro
@@ -2242,7 +2266,7 @@ ${ocultos.length ? `<h2>Ocultos</h2><p class="sub">${ocultos.length} remates que
   return new Response(r.body, { headers: h });
 }
 
-const SOLO_ADMIN = new Set(["/assets/ubicar.js", "/admin", "/admin.html", "/catastro", "/catastro.html", "/data/pendientes.json", "/data/catastro_resultados.json", "/data/estado.json", "/admin/registros.csv", "/admin/usuarios.csv"]);
+const SOLO_ADMIN = new Set(["/assets/ubicar.js", "/assets/siri-rnp.js", "/admin", "/admin.html", "/catastro", "/catastro.html", "/siri", "/siri.html", "/data/pendientes.json", "/data/catastro_resultados.json", "/data/estado.json", "/admin/registros.csv", "/admin/usuarios.csv"]);
 const INDEXABLES = new Set(["/", "/mapa", "/privacidad", "/robots.txt", "/sitemap.xml"]);
 const esIndexable = (p) => INDEXABLES.has(p) || p === "/remates" || p.startsWith("/remates/") || p.startsWith("/remate/");
 
@@ -2383,6 +2407,51 @@ async function manejarPeticion(request, env) {
       return json(filtrados.length ? filtrados : rows, 200, 300);
     }
     if ((p === "/api/plano" || p === "/api/finca") && !dentro) return json({ error: "Entra con tu cuenta para buscar planos y fincas." }, 401, 0);
+
+    // ---------- Guardar datos del SIRI RNP (enviados por el bookmarklet desde el browser del usuario) ----------
+    if (p === "/api/siri-catastral") {
+      if (!dentro) return json({ error: "Entra con tu cuenta." }, 401, 0);
+      await initDB(env);
+      const usr = await usuarioActual(request, env);
+      if (!usr) return json({ error: "Sesión no válida." }, 401, 0);
+      if (request.method === "GET") {
+        // Consultar datos guardados para una finca
+        const finca = u.searchParams.get("finca") || "";
+        if (!finca) return json({ error: "Falta el parámetro finca." }, 400, 0);
+        const row = await env.DB.prepare("SELECT * FROM siri_catastral WHERE uid = ? AND finca = ?").bind(usr.id, finca).first();
+        if (!row) return json({ found: false }, 200, 0);
+        return json({ found: true, data: { ...row, anotaciones: JSON.parse(row.anotaciones || "[]"), gravamenes: JSON.parse(row.gravamenes || "[]"), derechos: JSON.parse(row.derechos || "[]"), linderos: JSON.parse(row.linderos || "{}"), filiales: JSON.parse(row.filiales || "[]"), segregaciones: JSON.parse(row.segregaciones || "[]"), historia: JSON.parse(row.historia || "[]") } }, 200, 0);
+      }
+      if (request.method === "POST") {
+        let body;
+        try { body = await request.json(); } catch (_) { return json({ error: "JSON inválido." }, 400, 0); }
+        const { finca, id_predio, avaluo, area_total, plano, estado, provincia, canton, distrito, naturaleza, linderos, anotaciones, gravamenes, derechos, filiales, segregaciones, historia } = body;
+        if (!finca) return json({ error: "Falta el campo finca." }, 400, 0);
+        // Validación básica de finca: formato X-NNNNNNN-N-N o solo número
+        const fincaClean = String(finca).trim().slice(0, 30);
+        const ahora = new Date().toISOString();
+        await env.DB.prepare(`INSERT INTO siri_catastral (uid, finca, id_predio, avaluo, area_total, plano, estado, provincia, canton, distrito, naturaleza, linderos, anotaciones, gravamenes, derechos, filiales, segregaciones, historia, raw, creado)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(uid, finca) DO UPDATE SET id_predio=excluded.id_predio, avaluo=excluded.avaluo, area_total=excluded.area_total, plano=excluded.plano, estado=excluded.estado, provincia=excluded.provincia, canton=excluded.canton, distrito=excluded.distrito, naturaleza=excluded.naturaleza, linderos=excluded.linderos, anotaciones=excluded.anotaciones, gravamenes=excluded.gravamenes, derechos=excluded.derechos, filiales=excluded.filiales, segregaciones=excluded.segregaciones, historia=excluded.historia, raw=excluded.raw, creado=excluded.creado`
+        ).bind(
+          usr.id, fincaClean, id_predio || null,
+          typeof avaluo === "number" ? avaluo : null,
+          typeof area_total === "number" ? area_total : null,
+          plano || null, estado || null, provincia || null, canton || null, distrito || null, naturaleza || null,
+          JSON.stringify(linderos || {}),
+          JSON.stringify(Array.isArray(anotaciones) ? anotaciones : []),
+          JSON.stringify(Array.isArray(gravamenes) ? gravamenes : []),
+          JSON.stringify(Array.isArray(derechos) ? derechos : []),
+          JSON.stringify(Array.isArray(filiales) ? filiales : []),
+          JSON.stringify(Array.isArray(segregaciones) ? segregaciones : []),
+          JSON.stringify(Array.isArray(historia) ? historia : []),
+          JSON.stringify(body).slice(0, 32000),
+          ahora
+        ).run();
+        return json({ ok: true, finca: fincaClean, creado: ahora }, 200, 0);
+      }
+      return json({ error: "Método no soportado." }, 405, 0);
+    }
 
     let res;
     if (p === "/cuenta") {
