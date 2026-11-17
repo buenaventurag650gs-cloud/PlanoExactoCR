@@ -17,11 +17,18 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
 ## Qué falta (ver capas.json, estado `pendiente`)
 
 - Capas IFA: geoaptitud (geología/pendientes del terreno — el SNIT no la tiene como
-  capa descargable, hay que buscar otra fuente), edafoaptitud (MAG/INTA), antropoaptitud
-  (uso de suelo detallado — tampoco apareció en el catálogo del SNIT).
-- Patrimonio arqueológico (gestionar acceso con el Museo Nacional).
+  capa descargable, hay que buscar otra fuente), edafoaptitud (MAG/INTA: el INTA tiene
+  nodo registrado en el SNIT pero no publica ahí ninguna capa de suelos consultable),
+  antropoaptitud (uso de suelo detallado — tampoco apareció en el catálogo del SNIT).
+- Patrimonio arqueológico (Museo Nacional): tampoco aparece en el catálogo del SNIT
+  (ni institución ni capa); habría que gestionarlo directo con el Museo.
 - Red vial cantonal (MOPT/CONAVI tiene un nodo registrado en el SNIT pero no publica ahí
   ninguna capa consultable; hay que buscar otra fuente, quizás pidiéndosela directo).
+
+Para geología/pendientes en particular, hay una alternativa que no depende de pedirle
+nada a ninguna institución: un modelo de elevación del terreno internacional y gratuito
+(por ejemplo de satélites de la NASA) cubre todo el país y permite calcular la pendiente
+directamente, sin esperar a CONAVI/INTA/Museo. Aún no implementado.
 
 ## Despliegue automático
 
@@ -30,14 +37,19 @@ Desde noviembre 2026, el Worker `planoexacto-muni` está conectado a GitHub (ram
 cambio a esa rama, Cloudflare lo despliega solo — ya no hace falta correr
 `npx wrangler deploy` a mano salvo que se quiera probar algo localmente antes de subirlo.
 
-## Áreas silvestres protegidas y corredores biológicos (SINAC)
+## Capas de bioaptitud del SINAC
 
-Estas dos capas de bioaptitud ya están `disponible`. Vienen directo del geoservidor
-oficial del SINAC publicado en el SNIT (el catálogo nacional de mapas del gobierno,
-`snitcr.go.cr`), no de una copia nuestra: `archivo` apunta a una URL de tipo WFS
-(`https://geos1pne.sirefor.go.cr/wfs?...`) que entrega el GeoJSON directo, en el mismo
-sistema de coordenadas que el resto del catálogo. Son capas oficiales y de uso libre
-(sin cuenta, sin permiso que pedir).
+Cinco capas de bioaptitud ya están `disponible` directo del geoservidor oficial del
+SINAC publicado en el SNIT (el catálogo nacional de mapas del gobierno, `snitcr.go.cr`),
+no de una copia nuestra: Áreas silvestres protegidas, Corredores biológicos, Patrimonio
+Natural del Estado, Registro Nacional de Humedales y Áreas de Conservación. `archivo`
+apunta a una URL de tipo WFS (`https://geos1pne.sirefor.go.cr/wfs?...`) que entrega el
+GeoJSON directo, en el mismo sistema de coordenadas que el resto del catálogo. Son
+capas oficiales y de uso libre (sin cuenta, sin permiso que pedir).
+
+El SINAC también publica ahí dos capas de Cobertura Forestal (2021 y 2023), pero esas sí
+están marcadas "Derechos de autor" en su metadato — no se agregaron porque ya tenemos
+Cobertura forestal 2020 de MINAE con uso libre, que cubre lo mismo sin esa restricción.
 
 Mismo origen de datos (SNIT) para las 4 capas de amenazas de la Comisión Nacional de
 Emergencias (CNE) en el eje de geoaptitud: coronas de deslizamientos, deslizamientos,

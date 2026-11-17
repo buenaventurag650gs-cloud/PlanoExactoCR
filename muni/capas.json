@@ -78,6 +78,24 @@
           "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=corredoresbiologicos&outputFormat=application/json&srsName=EPSG:4326",
           "fuente": "SINAC (SNIT, capa oficial, uso libre)",
           "estado": "disponible"
+        },
+        {
+          "nombre": "Patrimonio Natural del Estado",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=patrimonio_natural_del_estado&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Registro Nacional de Humedales",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=registro_nacional_humedales&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Áreas de Conservación",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_conservacion&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
         }
       ]
     },
