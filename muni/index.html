@@ -22,6 +22,10 @@
   label.capa { display:flex; align-items:flex-start; gap:7px; padding:4px 0; font-size:13px; cursor:pointer; }
   label.capa input { margin-top:3px; }
   label.capa.pendiente { color:var(--muted); cursor:default; }
+  label.capa input:disabled + span { opacity:.5; }
+  .paso { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:600; margin:4px 0 6px; }
+  .paso .n { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; }
+  #grupos.bloqueado { opacity:.55; pointer-events:none; }
   label.capa .tag { font-size:10px; border-radius:4px; padding:1px 5px; margin-left:auto; white-space:nowrap; }
   .tag.disponible { background:#1f6feb33; color:#58a6ff; }
   .tag.pendiente { background:#8b949e22; color:var(--muted); }
@@ -40,12 +44,16 @@
 <div id="app">
   <div id="panel">
     <h1>Atlas municipal</h1>
-    <p class="sub">Capas para plan regulador e IFA — uso interno del equipo.</p>
+    <p class="sub">Capas para plan regulador e IFA (decreto 44710 / MAPRIOT) — uso interno del equipo.</p>
 
+    <div class="paso"><span class="n">1</span> Elegí el cantón</div>
     <select id="selCanton"><option value="">Cantón…</option></select>
-    <button id="btnAtlas" disabled>Generar atlas del cantón (PDF)</button>
 
-    <div id="grupos"></div>
+    <div class="paso"><span class="n">2</span> Activá las capas (solo del cantón)</div>
+    <p id="hintCanton" class="sub">Elegí un cantón primero; las capas se cargan recortadas a ese cantón.</p>
+    <div id="grupos" class="bloqueado"></div>
+
+    <button id="btnAtlas" disabled>Generar atlas del cantón (PDF)</button>
 
     <div id="fuentes"></div>
   </div>

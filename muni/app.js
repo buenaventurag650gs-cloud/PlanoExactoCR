@@ -16,7 +16,8 @@
   let cantonesFC = null;
   let cantonLayer = null;
   let cantonSel = null;              // feature del cantón elegido en el selector
-  const nacionalesOn = new Map();    // capas nacionales encendidas (nombre -> c), se recargan al cambiar de cantón
+  const activas = new Map();         // capas encendidas (nombre -> c); se recargan al cambiar de cantón
+  const inputsCapa = [];             // checkboxes de capas disponibles, se habilitan al elegir cantón (paso 2)
 
   // Recuadro [minLon, minLat, maxLon, maxLat] de un feature (Polygon o MultiPolygon).
   function bboxDe(feat) {
@@ -37,6 +38,24 @@
   function urlConBbox(url, bbox) {
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}bbox=${bbox.join(',')},EPSG:4326&count=150000`;
+  }
+
+  // Deja solo las geometrías que tocan el cantón elegido (para las capas locales/públicas,
+  // que vienen de todo el país). Las nacionales ya llegan recortadas por bbox desde el servidor.
+  function soloCanton(fc) {
+    if (!cantonSel || !fc || !Array.isArray(fc.features)) return fc;
+    const dentro = fc.features.filter((f) => {
+      if (!f || !f.geometry) return false;
+      try { return turf.booleanIntersects(f, cantonSel); } catch (e) { return true; }
+    });
+    return Object.assign({}, fc, { features: dentro });
+  }
+
+  // Habilita/inhabilita los checkboxes de capas (paso 2) según haya o no cantón elegido.
+  function habilitarCapas(on) {
+    inputsCapa.forEach((i) => { i.disabled = !on; });
+    const g = $('grupos'); if (g) g.classList.toggle('bloqueado', !on);
+    const h = $('hintCanton'); if (h) h.style.display = on ? 'none' : '';
   }
 
   function avisar(mensaje) {
@@ -66,7 +85,10 @@
         <span class="tag ${c.estado}">${c.estado === 'disponible' ? 'lista' : 'pendiente'}</span>`;
       fs.appendChild(lbl);
       if (disponible) {
-        lbl.querySelector('input').addEventListener('change', (e) => toggleCapa(c, e.target.checked));
+        const inp = lbl.querySelector('input');
+        inp.disabled = true; // se habilita al elegir cantón (paso 2)
+        inp.addEventListener('change', (e) => toggleCapa(c, e.target.checked));
+        inputsCapa.push(inp);
       }
     });
     gruposEl.appendChild(fs);
@@ -96,8 +118,9 @@
   };
 
   // Baja un GeoJSON de `url` y lo dibuja como la capa `c` (reemplaza la anterior si la hubiera).
-  async function cargarCapaUrl(c, url) {
-    const data = await fetch(url)
+  // recortar=true: filtra las geometrías al polígono del cantón (capas locales/públicas).
+  async function cargarCapaUrl(c, url, recortar) {
+    let data = await fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error('http ' + r.status);
         return r.json();
@@ -108,6 +131,7 @@
       });
     if (!data) return;
     if (c.nombre === 'Límites cantonales') cantonesFC = data;
+    if (recortar) data = soloCanton(data);
     const color = COLORES[c.nombre] || '#4f8cff';
     const layer = L.geoJSON(data, {
       style: () => ({ color, weight: 1.2, fillOpacity: data.features && data.features[0]?.geometry?.type?.includes('Polygon') ? 0.06 : 0 }),
@@ -117,31 +141,32 @@
     layerLookup[c.nombre] = layer;
   }
 
+  // Carga una capa recortada al cantón elegido: las nacionales por bbox del servidor,
+  // las locales/públicas filtrando al polígono del cantón en el navegador.
+  async function cargar(c) {
+    if (c.filtrar_canton) {
+      if (!cantonSel) return;
+      await cargarCapaUrl(c, urlConBbox(c.archivo, bboxDe(cantonSel)), false);
+    } else if (c.archivo && !c.archivo.startsWith('api:')) {
+      await cargarCapaUrl(c, c.archivo, true);
+    }
+    // api:/api/plano, /api/finca y /api/cobertura — se consultan por lote, no se cargan de una
+  }
+
+  function recargarActivas() {
+    activas.forEach((c) => cargar(c));
+  }
+
   async function toggleCapa(c, on) {
     if (!on) {
       if (layerLookup[c.nombre]) { map.removeLayer(layerLookup[c.nombre]); delete layerLookup[c.nombre]; }
-      nacionalesOn.delete(c.nombre);
+      activas.delete(c.nombre);
       return;
     }
+    if (!cantonSel) { avisar('Elegí un cantón primero (paso 1).'); return; }
     marcarFuente(c);
-    if (c.filtrar_canton) {
-      // Capa nacional (IGN/INTA): se carga solo el recorte del cantón elegido.
-      nacionalesOn.set(c.nombre, c);
-      if (!cantonSel) {
-        avisar(`"${c.nombre}" es una capa nacional; elegí un cantón y se carga recortada a ese cantón.`);
-        return;
-      }
-      await cargarCapaUrl(c, urlConBbox(c.archivo, bboxDe(cantonSel)));
-      return;
-    }
-    if (c.archivo && !c.archivo.startsWith('api:')) {
-      // c.archivo puede ser una URL completa (capas realmente públicas, directo del sitio
-      // público) o una ruta relativa como "data/zonasvida.geojson" (copia propia que vive
-      // en este mismo Worker, sincronizada aparte — ver scripts/sync_cuenta.py).
-      await cargarCapaUrl(c, c.archivo);
-    } else {
-      // api:/api/plano, /api/finca y /api/cobertura — se consultan por lote, no se cargan de una
-    }
+    activas.set(c.nombre, c);
+    await cargar(c);
   }
 
   // ---------- selector de cantón ----------
@@ -154,16 +179,15 @@
     nombres.forEach((n) => sel.insertAdjacentHTML('beforeend', `<option value="${n}">${n}</option>`));
     sel.addEventListener('change', () => {
       $('btnAtlas').disabled = !sel.value;
-      if (!sel.value) return;
+      if (!sel.value) { cantonSel = null; habilitarCapas(false); return; }
       const feat = baseCantones.features.find((f) => f.properties.k === sel.value);
       if (!feat) return;
       cantonSel = feat;
+      habilitarCapas(true);            // paso 2: ya se pueden activar capas
       if (cantonLayer) map.removeLayer(cantonLayer);
       cantonLayer = L.geoJSON(feat, { style: { color: '#4f8cff', weight: 2, fillOpacity: 0.04 } }).addTo(map);
       map.fitBounds(cantonLayer.getBounds(), { padding: [20, 20] });
-      // Recarga cada capa nacional encendida, recortada al nuevo cantón.
-      const bbox = bboxDe(feat);
-      nacionalesOn.forEach((c) => cargarCapaUrl(c, urlConBbox(c.archivo, bbox)));
+      recargarActivas();               // recorta al nuevo cantón las capas ya encendidas
     });
   }
 

@@ -10,9 +10,53 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
   realmente públicas: límites, red eléctrica, ASADAS), o de una copia propia dentro de
   `muni/data/` para las que exigen cuenta (ver la sección de abajo). Nada de esto es
   información de remates.
-- Selector de cantón + botón **Generar atlas**: por ahora recorta visualmente el mapa
-  al cantón elegido e imprime a PDF con el diálogo del navegador. Sirve para probar el
-  flujo con un cantón piloto antes de automatizar el recorte real.
+- Flujo de dos pasos: **(1) elegir cantón → (2) activar capas**. Hasta que no se elige un
+  cantón, las capas están deshabilitadas. Al elegir el cantón, el mapa se centra en él y
+  cada capa que se enciende se carga **recortada a ese cantón**: las nacionales (IGN, INTA)
+  se piden al servidor por `bbox` del cantón; las locales/públicas se filtran al polígono
+  del cantón en el navegador (con turf). Así nunca se baja todo el país.
+- Botón **Generar atlas**: por ahora imprime a PDF el mapa visible del cantón. El recorte
+  real por capa y la exportación a GeoPackage/PDF de láminas están en `scripts/build_atlas.py`.
+
+## Para qué sirve: los mapas del decreto 44710 (IFA) y del MAPRIOT
+
+El objetivo de la herramienta es preparar la cartografía que piden **SETENA** (variable
+ambiental) e **INVU** (plan regulador), según el marco vigente:
+
+- **Decreto 44710-MINAE** (vigente desde ago-2025, derogó el 32967): "Reglamento para la
+  incorporación de la variable ambiental en los planes de ordenamiento territorial". Habilita
+  dos metodologías; la modalidad **IFA** mantiene los cuatro ejes y su suma:
+  `IFA integrado = Geoaptitud + Edafoaptitud + Bioaptitud + Antropoaptitud` (escala 1-5,
+  donde 1 = fragilidad muy alta). Cada eje es un mapa, y de la suma sale el mapa de IFA
+  integrado → zonificación de fragilidad / limitantes técnicas.
+- **MAPRIOT** (INVU 2025, "Manual de Planes Reguladores como Instrumento de Ordenamiento
+  Territorial") y su **Guía para la Elaboración de Cartografía de Planes Reguladores**: el
+  plan regulador exige, entre otros, Mapa Base, Mapa de Uso Actual del Suelo, Mapa de
+  Capacidad de Uso de la Tierra, Mapa de Modalidad de Uso (conforme/subuso/sobreuso), mapas
+  temáticos de diagnóstico por eje, Mapa de Resultados por Eje, Mapa Unificado, Mapa de
+  Zonificación, Vialidad y Mapa Oficial, reunidos en un **Atlas Cartográfico**. La variable
+  ambiental del plan se resuelve con los productos que piden SETENA (IFA) y SENARA
+  (vulnerabilidad de acuíferos).
+
+### Cómo alimentan las capas del catálogo cada eje IFA
+
+- **Geoaptitud** (5 factores): litopetrofísico → geología (DGM); geodinámico externo y
+  amenazas → deslizamientos/fallas/inundación (CNE); estabilidad de laderas → pendientes
+  calculadas de curvas de nivel (IGN); hidrogeológico → acuíferos (Dirección de Agua / SENARA).
+- **Edafoaptitud**: capacidad de uso de la tierra (INTA) + uso actual (IGN cultivos/pastos).
+- **Bioaptitud**: cobertura forestal, ASP, corredores, humedales, áreas de conservación
+  (SINAC) y zonas de vida.
+- **Antropoaptitud**: uso urbano (IGN), planes reguladores vigentes (INVU), sitios
+  arqueológicos (Museo, pendiente) y paisaje.
+
+Los nombres de capa y servidores de cada fuente están en `FUENTES_SNIT.md`.
+
+### Qué falta para producir los mapas finales (no solo las capas de entrada)
+
+Hoy la herramienta reúne y recorta las **capas de entrada** por cantón. Falta la parte
+analítica que convierte esas capas en los mapas que se entregan: calificación 1-5 de cada
+variable, suma y reclasificación por eje, IFA integrado, y de ahí la zonificación. Eso es
+el siguiente bloque de trabajo (metodología del decreto 44710).
 
 ## Qué falta (ver capas.json, estado `pendiente`)
 
