@@ -1,0 +1,21 @@
+# Clon privado para gestión municipal: visor de capas + atlas de cantón.
+# Worker aparte del público (planoexactocr), sin cuentas, sin pagos, sin remates.
+# Protección de acceso: Cloudflare Access (Zero Trust), no un SITE_PASSWORD propio —
+# se configura en el dashboard de Cloudflare, política por correo del equipo.
+name = "planoexacto-muni"
+compatibility_date = "2026-10-01"
+
+# Subdominio propio bajo la misma zona planoexactocr.com; mientras no exista el
+# registro DNS, Cloudflare Access igual puede protegerlo en la dirección workers.dev.
+workers_dev = true
+routes = [
+  { pattern = "atlas.planoexactocr.com", custom_domain = true }
+]
+
+[assets]
+directory = "."
+binding = "ASSETS"
+not_found_handling = "none"
+
+[version_metadata]
+binding = "VER"
