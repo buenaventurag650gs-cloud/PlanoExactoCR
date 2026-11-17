@@ -16,10 +16,19 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
 
 ## Qué falta (ver capas.json, estado `pendiente`)
 
-- Capas IFA: geoaptitud (amenazas CNE, geología, pendientes), edafoaptitud (MAG/INTA),
-  antropoaptitud (uso de suelo detallado).
+- Capas IFA: geoaptitud (geología/pendientes del terreno — el SNIT no la tiene como
+  capa descargable, hay que buscar otra fuente), edafoaptitud (MAG/INTA), antropoaptitud
+  (uso de suelo detallado — tampoco apareció en el catálogo del SNIT).
 - Patrimonio arqueológico (gestionar acceso con el Museo Nacional).
-- Red vial cantonal (MOPT / municipalidad).
+- Red vial cantonal (MOPT/CONAVI tiene un nodo registrado en el SNIT pero no publica ahí
+  ninguna capa consultable; hay que buscar otra fuente, quizás pidiéndosela directo).
+
+## Despliegue automático
+
+Desde noviembre 2026, el Worker `planoexacto-muni` está conectado a GitHub (rama
+`muni-clon-privado`, carpeta `muni`), igual que PlanoExacto. Cada vez que se sube un
+cambio a esa rama, Cloudflare lo despliega solo — ya no hace falta correr
+`npx wrangler deploy` a mano salvo que se quiera probar algo localmente antes de subirlo.
 
 ## Áreas silvestres protegidas y corredores biológicos (SINAC)
 
@@ -30,16 +39,33 @@ oficial del SINAC publicado en el SNIT (el catálogo nacional de mapas del gobie
 sistema de coordenadas que el resto del catálogo. Son capas oficiales y de uso libre
 (sin cuenta, sin permiso que pedir).
 
-Un detalle a vigilar: ese servidor es del gobierno, no nuestro, y no sabemos todavía si
-permite que el navegador lo consulte directamente desde atlas.planoexactocr.com (un
-tema técnico llamado CORS). Si al probar el visor esa capa no carga (sale el aviso
-amarillo de "No se pudo cargar"), no es un error nuestro — simplemente ese servidor no
-deja que paginas de otros sitios le pidan datos directamente. `scripts/build_atlas.py`
-no tiene ese problema (ahí quien pide los datos es el script, no el navegador), así que
-el atlas en PDF/GeoPackage por cantón de todas formas va a incluir estas dos capas sin
-problema. Si el visor en vivo falla, la solución sería una copia propia como la que ya
-se usa para las capas que exigen cuenta (ver sección siguiente), pero no hay que
-adelantarse: hay que probarlo primero.
+Mismo origen de datos (SNIT) para las 4 capas de amenazas de la Comisión Nacional de
+Emergencias (CNE) en el eje de geoaptitud: coronas de deslizamientos, deslizamientos,
+fallas del cuaternario y áreas con potencial a inundación. A diferencia de las del
+SINAC, el metadato de estas dice "Derechos de autor (Copyright)" en vez de uso libre;
+el uso de este atlas se revisó con abogado y es con fines científicos/no comerciales,
+no reventa directa del dato — ver la nota de cada capa en `capas.json`. Además, el
+servidor de la CNE (`mapas.cne.go.cr`) solo responde por `http`, no `https`, así que es
+probable que el visor en vivo no pueda cargarla (un navegador en una página seguro
+normalmente bloquea pedir datos a una dirección insegura). Eso no afecta el atlas en
+PDF/GeoPackage, que sí las va a incluir sin problema.
+
+Nota legal general del SNIT: su geoportal permite uso de entidades privadas con o sin
+fines de lucro, pero prohíbe el uso **comercial** de la información (directa o
+derivada). Ya se revisó con abogado que este proyecto no cae ahí por ser de fines
+científicos, pero si el propósito del atlas cambia más adelante (por ejemplo a reventa
+directa de mapas), hay que volver a revisar esto antes de seguir usando capas del SNIT.
+
+Un detalle técnico a vigilar en general con las capas del SNIT: esos servidores son del
+gobierno, no nuestros, y no sabemos de antemano si dejan que el navegador los consulte
+directamente desde atlas.planoexactocr.com (un tema técnico llamado CORS). Si al probar
+el visor una capa no carga (sale el aviso amarillo de "No se pudo cargar"), no es un
+error nuestro — simplemente ese servidor no deja que páginas de otros sitios le pidan
+datos directamente. `scripts/build_atlas.py` no tiene ese problema (ahí quien pide los
+datos es el script, no el navegador), así que el atlas en PDF/GeoPackage por cantón de
+todas formas va a incluir la capa sin problema. Si el visor en vivo falla, la solución
+sería una copia propia como la que ya se usa para las capas que exigen cuenta (ver
+sección siguiente).
 
 ## Capas que exigen cuenta: copia propia, sitios separados
 
