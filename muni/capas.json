@@ -44,10 +44,20 @@
           "nota": "mismo puente del sitio público; se consulta por plano o finca, no se descarga completo"
         },
         {
-          "nombre": "Uso de suelo detallado",
-          "archivo": null,
-          "fuente": "por definir",
-          "estado": "pendiente"
+          "nombre": "Uso urbano 1:5mil",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=urbano_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "capa nacional, se recorta al cantón; uso no comercial/científico (copyright, confirmado con abogado); el visor en vivo puede no cargarla si el servidor del SNIT no permite CORS, el atlas en PDF sí"
+        },
+        {
+          "nombre": "Cultivos 1:5mil",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=cultivos2017_5k&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "capa nacional, se recorta al cantón; uso no comercial/científico (copyright, confirmado con abogado); CORS igual que arriba"
         }
       ]
     },
@@ -103,10 +113,12 @@
       "eje": "Edafoaptitud",
       "capas": [
         {
-          "nombre": "Suelos y capacidad de uso de la tierra",
-          "archivo": null,
-          "fuente": "MAG / INTA",
-          "estado": "pendiente"
+          "nombre": "Capacidad de uso de la tierra",
+          "archivo": "https://geoserver.mag.go.cr/geoserver/inta/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=inta:INTA-MAG_capUso_50&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "INTA (MAG)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "cobertura solo península de Nicoya y algunos cantones (Guanacaste, Alvarado, Naranjo, Los Santos); decreto 41960; el servidor de INTA es intermitente y a veces no responde"
         }
       ]
     },
@@ -142,10 +154,19 @@
           "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
         },
         {
-          "nombre": "Geología y pendientes",
+          "nombre": "Curvas de nivel 10m",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=curvas_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "de aquí se calcula la pendiente del terreno; capa nacional, se recorta al cantón; copyright/científico; alternativa: DEM descargable del IGN (ver FUENTES_SNIT.md)"
+        },
+        {
+          "nombre": "Geología",
           "archivo": null,
-          "fuente": "IGN / modelo de elevación",
-          "estado": "pendiente"
+          "fuente": "DGM (tramites.geologia.go.cr/Investigacion)",
+          "estado": "pendiente",
+          "nota": "servidor DGM identificado; falta confirmar nombre de capa"
         }
       ]
     },
@@ -180,9 +201,11 @@
         },
         {
           "nombre": "Red vial cantonal",
-          "archivo": null,
-          "fuente": "MOPT / municipalidad",
-          "estado": "pendiente"
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=vias_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "incluye red municipal, nacional, autopistas y línea férrea; capa nacional (989 mil tramos), se recorta al cantón; copyright/científico; CORS puede impedir el visor en vivo, el PDF sí"
         }
       ]
     },

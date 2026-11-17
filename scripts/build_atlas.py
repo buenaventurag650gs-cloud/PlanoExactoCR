@@ -242,6 +242,11 @@ def main() -> None:
         raise SystemExit(f"No encontré el cantón '{args.canton}'. Algunos nombres válidos: {opciones}, …")
     poligono_canton = coincidencias
 
+    # Recuadro del cantón en lon/lat, para pedir las capas nacionales (IGN, INTA) ya
+    # recortadas por bbox y no bajar cientos de miles de geometrías de todo el país.
+    minx, miny, maxx, maxy = poligono_canton.to_crs(CRS_GEOGRAFICO).total_bounds
+    bbox_canton = f"{minx},{miny},{maxx},{maxy},EPSG:4326"  # GeoServer: forma corta = orden lon,lat
+
     salida = pathlib.Path(args.salida)
     salida.parent.mkdir(parents=True, exist_ok=True)
     ruta_gpkg = salida.with_suffix(".gpkg")
@@ -253,7 +258,13 @@ def main() -> None:
     for capa in descargables:
         print(f"  - {capa['nombre']} ({capa['fuente']})", end=" ")
         try:
-            data = leer_json(capa["archivo"], args.local, args.cookie)
+            if capa.get("filtrar_canton") and str(capa["archivo"]).startswith("http"):
+                # Capa nacional: se pide en vivo con el bbox del cantón (no hay copia local).
+                sep = "&" if "?" in capa["archivo"] else "?"
+                url = f"{capa['archivo']}{sep}bbox={bbox_canton}&count=200000"
+                data = leer_json(url, None, args.cookie)
+            else:
+                data = leer_json(capa["archivo"], args.local, args.cookie)
         except Exception as e:
             print(f"ERROR al leer: {e}", file=sys.stderr)
             continue

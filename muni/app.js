@@ -15,6 +15,29 @@
   const layerLookup = {}; // nombre -> { leafletLayer, meta }
   let cantonesFC = null;
   let cantonLayer = null;
+  let cantonSel = null;              // feature del cantón elegido en el selector
+  const nacionalesOn = new Map();    // capas nacionales encendidas (nombre -> c), se recargan al cambiar de cantón
+
+  // Recuadro [minLon, minLat, maxLon, maxLat] de un feature (Polygon o MultiPolygon).
+  function bboxDe(feat) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    (function walk(co) {
+      if (typeof co[0] === 'number') {
+        if (co[0] < minX) minX = co[0];
+        if (co[1] < minY) minY = co[1];
+        if (co[0] > maxX) maxX = co[0];
+        if (co[1] > maxY) maxY = co[1];
+      } else co.forEach(walk);
+    })(feat.geometry.coordinates);
+    return [minX, minY, maxX, maxY];
+  }
+
+  // Las capas nacionales (IGN, INTA) son enormes; se piden recortadas al cantón con bbox.
+  // GeoServer con el SRS en forma corta "EPSG:4326" usa orden lon,lat (longitud primero).
+  function urlConBbox(url, bbox) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}bbox=${bbox.join(',')},EPSG:4326&count=150000`;
+  }
 
   function avisar(mensaje) {
     const el = $('avisos');
@@ -72,33 +95,50 @@
     'Sedes de salud': '#f85149'
   };
 
+  // Baja un GeoJSON de `url` y lo dibuja como la capa `c` (reemplaza la anterior si la hubiera).
+  async function cargarCapaUrl(c, url) {
+    const data = await fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      })
+      .catch(() => {
+        avisar(`No se pudo cargar "${c.nombre}".`);
+        return null;
+      });
+    if (!data) return;
+    if (c.nombre === 'Límites cantonales') cantonesFC = data;
+    const color = COLORES[c.nombre] || '#4f8cff';
+    const layer = L.geoJSON(data, {
+      style: () => ({ color, weight: 1.2, fillOpacity: data.features && data.features[0]?.geometry?.type?.includes('Polygon') ? 0.06 : 0 }),
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 3, color, weight: 1, fillOpacity: 0.8 })
+    }).addTo(map);
+    if (layerLookup[c.nombre]) map.removeLayer(layerLookup[c.nombre]); // evita duplicar al recargar por cantón
+    layerLookup[c.nombre] = layer;
+  }
+
   async function toggleCapa(c, on) {
     if (!on) {
       if (layerLookup[c.nombre]) { map.removeLayer(layerLookup[c.nombre]); delete layerLookup[c.nombre]; }
+      nacionalesOn.delete(c.nombre);
       return;
     }
     marcarFuente(c);
+    if (c.filtrar_canton) {
+      // Capa nacional (IGN/INTA): se carga solo el recorte del cantón elegido.
+      nacionalesOn.set(c.nombre, c);
+      if (!cantonSel) {
+        avisar(`"${c.nombre}" es una capa nacional; elegí un cantón y se carga recortada a ese cantón.`);
+        return;
+      }
+      await cargarCapaUrl(c, urlConBbox(c.archivo, bboxDe(cantonSel)));
+      return;
+    }
     if (c.archivo && !c.archivo.startsWith('api:')) {
       // c.archivo puede ser una URL completa (capas realmente públicas, directo del sitio
       // público) o una ruta relativa como "data/zonasvida.geojson" (copia propia que vive
       // en este mismo Worker, sincronizada aparte — ver scripts/sync_cuenta.py).
-      const data = await fetch(c.archivo)
-        .then((r) => {
-          if (!r.ok) throw new Error('http ' + r.status);
-          return r.json();
-        })
-        .catch(() => {
-          avisar(`No se pudo cargar "${c.nombre}".`);
-          return null;
-        });
-      if (!data) return;
-      if (c.nombre === 'Límites cantonales') cantonesFC = data;
-      const color = COLORES[c.nombre] || '#4f8cff';
-      const layer = L.geoJSON(data, {
-        style: () => ({ color, weight: 1.2, fillOpacity: data.features[0]?.geometry?.type?.includes('Polygon') ? 0.06 : 0 }),
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 3, color, weight: 1, fillOpacity: 0.8 })
-      }).addTo(map);
-      layerLookup[c.nombre] = layer;
+      await cargarCapaUrl(c, c.archivo);
     } else {
       // api:/api/plano, /api/finca y /api/cobertura — se consultan por lote, no se cargan de una
     }
@@ -117,9 +157,13 @@
       if (!sel.value) return;
       const feat = baseCantones.features.find((f) => f.properties.k === sel.value);
       if (!feat) return;
+      cantonSel = feat;
       if (cantonLayer) map.removeLayer(cantonLayer);
       cantonLayer = L.geoJSON(feat, { style: { color: '#4f8cff', weight: 2, fillOpacity: 0.04 } }).addTo(map);
       map.fitBounds(cantonLayer.getBounds(), { padding: [20, 20] });
+      // Recarga cada capa nacional encendida, recortada al nuevo cantón.
+      const bbox = bboxDe(feat);
+      nacionalesOn.forEach((c) => cargarCapaUrl(c, urlConBbox(c.archivo, bbox)));
     });
   }
 
