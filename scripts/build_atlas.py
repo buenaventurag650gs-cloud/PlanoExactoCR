@@ -8,6 +8,24 @@ Uso:
     # (útil en este entorno, donde no hay salida a planoexactocr.com):
     python3 scripts/build_atlas.py --canton "Pérez Zeledón" --salida salida/perez_zeledon --local .
 
+Cuenta gratis y capas "requiere_cuenta":
+    Varias capas (zmt, planes_reguladores, zonasvida, infra, salud) exigen una
+    sesión de cuenta gratis en planoexactocr.com (así está hecho el sitio
+    público: SOLO_CUENTA_DATOS en worker.js). Sin eso, este script las salta
+    con un aviso "(requiere cuenta, se omite)".
+
+    Para incluirlas: entre a planoexactocr.com en el navegador con una cuenta
+    (gratis), abra las herramientas de desarrollador → Application/Storage →
+    Cookies → copie el valor de la cookie "pecr_u", y páselo así:
+
+        python3 scripts/build_atlas.py --canton "Pérez Zeledón" \
+            --salida salida/perez_zeledon --cookie "pecr_u=<el valor copiado>"
+
+    (o con la variable de entorno PX_COOKIE en vez de --cookie). Esa cookie
+    dura 60 días. Esto es aparte del visor en el navegador (muni/app.js), que
+    no puede usar esa misma cookie porque no se comparte entre
+    planoexactocr.com y atlas.planoexactocr.com — ver la nota en capas.json.
+
 Qué hace:
   1. Lee muni/capas.json y toma las capas marcadas "disponible".
   2. Cada capa puede venir en tres formas (las tres existen hoy en el sitio):
@@ -35,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 import unicodedata
@@ -80,12 +99,13 @@ def capas_descargables(catalogo: dict) -> list[dict]:
     return resultado
 
 
-def leer_json(url: str, local_root: pathlib.Path | None) -> dict | list:
+def leer_json(url: str, local_root: pathlib.Path | None, cookie: str | None) -> dict | list:
     if local_root is not None:
         nombre_archivo = url.rsplit("/", 1)[-1]
         ruta = local_root / "data" / nombre_archivo
         return json.loads(ruta.read_text(encoding="utf-8"))
-    resp = requests.get(url, timeout=30)
+    headers = {"Cookie": cookie} if cookie else {}
+    resp = requests.get(url, timeout=30, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
@@ -186,16 +206,25 @@ def main() -> None:
     parser.add_argument("--salida", required=True, help="Ruta de salida sin extensión (se escriben .gpkg y .pdf)")
     parser.add_argument("--local", type=pathlib.Path, default=None,
                          help="Carpeta raíz del repo con datos locales en data/, en vez de bajarlos de internet")
+    parser.add_argument("--cookie", default=os.environ.get("PX_COOKIE"),
+                         help='Cookie de sesión de una cuenta gratis en planoexactocr.com (p. ej. "pecr_u=..."), '
+                              "para incluir las capas que exigen cuenta. También se puede dar con PX_COOKIE.")
     args = parser.parse_args()
 
     catalogo = cargar_catalogo()
     descargables = capas_descargables(catalogo)
+    sin_cookie_omitidas = [c for c in descargables if c.get("requiere_cuenta") and not args.cookie and not args.local]
+    if sin_cookie_omitidas:
+        print("Se omiten por requerir cuenta (sin --cookie / PX_COOKIE):")
+        for c in sin_cookie_omitidas:
+            print(f"  - {c['nombre']}")
+        descargables = [c for c in descargables if c not in sin_cookie_omitidas]
 
     print(f"Cantón: {args.canton}")
     print(f"Capas disponibles para recortar: {len(descargables)}")
 
     url_cantones = "https://planoexactocr.com/data/cantones.geojson"
-    cantones = a_geodataframe(leer_json(url_cantones, args.local), "Límites cantonales")
+    cantones = a_geodataframe(leer_json(url_cantones, args.local, args.cookie), "Límites cantonales")
     if cantones is None:
         raise SystemExit("No pude leer cantones.geojson")
 
@@ -221,7 +250,7 @@ def main() -> None:
     for capa in descargables:
         print(f"  - {capa['nombre']} ({capa['fuente']})", end=" ")
         try:
-            data = leer_json(capa["archivo"], args.local)
+            data = leer_json(capa["archivo"], args.local, args.cookie)
         except Exception as e:
             print(f"ERROR al leer: {e}", file=sys.stderr)
             continue

@@ -21,6 +21,32 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
 - Patrimonio arqueológico (gestionar acceso con el Museo Nacional).
 - Red vial cantonal (MOPT / municipalidad).
 
+## Capas que exigen cuenta (`requiere_cuenta` en capas.json)
+
+Cinco capas (`zmt`, `planes_reguladores`, `zonasvida`, `infra`, `salud`) están detrás de
+`SOLO_CUENTA_DATOS` en el `worker.js` del sitio público: el visitante necesita una sesión
+de cuenta **gratis** en planoexactocr.com para verlas — es la táctica de registro del
+sitio, no un error de nuestro lado.
+
+Esto tiene una consecuencia importante: la cookie de sesión (`pecr_u`) se emite sin
+`Domain=.planoexactocr.com`, así que el navegador **no la comparte** entre
+`planoexactocr.com` y `atlas.planoexactocr.com` — son subdominios distintos. Por eso,
+hoy, el visor de `muni/` muestra esas capas con la etiqueta "requiere cuenta" y, si se
+intentan cargar, avisa en pantalla en vez de fallar en silencio.
+
+Dos caminos, sin tocar nada del sitio público:
+
+1. **Para el PDF/GeoPackage** (`scripts/build_atlas.py`): sí funciona hoy. Entre a
+   planoexactocr.com con cualquier cuenta gratis, copie la cookie `pecr_u` de las
+   herramientas de desarrollador del navegador, y páselo con `--cookie` o `PX_COOKIE`
+   (ver el encabezado del script para el detalle). Esa cookie dura 60 días.
+2. **Para que el visor del navegador también las cargue directamente**, haría falta un
+   cambio de una línea en el `worker.js` del sitio público: agregar
+   `Domain=.planoexactocr.com` a la cookie de sesión, para que la compartan todos los
+   subdominios. Es un cambio seguro (la cookie sigue siendo `HttpOnly`, `Secure` y
+   `SameSite=Lax`, solo se amplía a quién la ve), pero toca el sitio público en
+   producción, así que no lo hice sin avisar — decídalo usted.
+
 ## Desplegar (ya probado, pasos manuales en Cloudflare)
 
 1. `npx wrangler login` y luego `npx wrangler deploy` desde esta carpeta (`muni/`) crea

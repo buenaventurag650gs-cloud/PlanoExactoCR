@@ -14,6 +14,16 @@
   let cantonesFC = null;
   let cantonLayer = null;
 
+  function avisar(mensaje) {
+    const el = $('avisos');
+    if (!el) { console.warn(mensaje); return; }
+    const d = document.createElement('div');
+    d.className = 'aviso';
+    d.textContent = mensaje;
+    el.appendChild(d);
+    setTimeout(() => d.remove(), 8000);
+  }
+
   // ---------- panel de capas ----------
   const gruposEl = $('grupos');
   cap.grupos.forEach((g) => {
@@ -23,9 +33,12 @@
       const disponible = c.estado === 'disponible';
       const lbl = document.createElement('label');
       lbl.className = 'capa' + (disponible ? '' : ' pendiente');
+      const notaCuenta = c.requiere_cuenta
+        ? ' — exige cuenta en planoexactocr.com; hoy no carga aquí (ver muni/README.md)'
+        : '';
       lbl.innerHTML = `<input type="checkbox" ${disponible ? '' : 'disabled'} data-nombre="${c.nombre}">
-        <span>${c.nombre}<br><small style="color:var(--muted)">${c.fuente}${c.nota ? ' — ' + c.nota : ''}</small></span>
-        <span class="tag ${c.estado}">${c.estado === 'disponible' ? 'lista' : 'pendiente'}</span>`;
+        <span>${c.nombre}<br><small style="color:var(--muted)">${c.fuente}${c.nota ? ' — ' + c.nota : ''}${notaCuenta}</small></span>
+        <span class="tag ${c.requiere_cuenta ? 'pendiente' : c.estado}">${c.requiere_cuenta ? 'requiere cuenta' : (c.estado === 'disponible' ? 'lista' : 'pendiente')}</span>`;
       fs.appendChild(lbl);
       if (disponible) {
         lbl.querySelector('input').addEventListener('change', (e) => toggleCapa(c, e.target.checked));
@@ -64,7 +77,18 @@
     }
     marcarFuente(c);
     if (c.archivo && c.archivo.startsWith('http')) {
-      const data = await fetch(c.archivo).then((r) => r.json()).catch(() => null);
+      const data = await fetch(c.archivo)
+        .then((r) => {
+          if (r.status === 401) throw new Error('cuenta');
+          if (!r.ok) throw new Error('http ' + r.status);
+          return r.json();
+        })
+        .catch((err) => {
+          avisar(err && err.message === 'cuenta'
+            ? `"${c.nombre}" exige una cuenta en planoexactocr.com y esta página no comparte esa sesión. Use scripts/build_atlas.py con --cookie para incluirla en el PDF/GeoPackage.`
+            : `No se pudo cargar "${c.nombre}".`);
+          return null;
+        });
       if (!data) return;
       if (c.nombre === 'Límites cantonales') cantonesFC = data;
       const color = COLORES[c.nombre] || '#4f8cff';
