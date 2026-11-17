@@ -87,9 +87,15 @@ uso especial), sitios culturales y arqueológicos, áreas de desarrollo a corto 
 plazo, y categorías de paisaje. Insumo: uso urbano del IGN, planes reguladores (INVU),
 sitios arqueológicos (Museo, pendiente).
 
-## Orden de construcción propuesto
+## Orden de construcción
 
-1. Mapa de pendientes (de curvas/DEM del IGN) → insumo de geoaptitud (GE + AD).
-2. Mapa de uso actual del suelo (IGN cobertura + urbano) → pedido directo del MAPRIOT.
-3. IFA Bioaptitud (datos del SINAC completos) → primer eje IFA calificado de punta a punta.
-4. Resto de ejes y el IFA integrado, una vez confirmadas las tablas del Anexo 1 del 44710.
+1. ✅ Mapa de pendientes (de curvas/DEM del IGN) → insumo de geoaptitud (GE + AD).
+   Implementado en `scripts/pendientes.py`, integrado en `build_atlas.py --dem`.
+2. ✅ Mapa de uso actual del suelo (IGN urbano + cultivos) → pedido directo del MAPRIOT.
+   Implementado como `lamina_uso_suelo()` en `build_atlas.py` — combina urbano_5000,
+   cultivos2017_5k y cobertura forestal en un solo mapa con leyenda.
+3. ✅ IFA Bioaptitud (datos del SINAC completos) → primer eje de información ambiental.
+   Implementado como `lamina_bioaptitud()` en `build_atlas.py` — combina zonas de vida,
+   ASP, corredores biológicos, PNE, humedales y áreas de conservación con leyenda.
+4. Pendiente: resto de ejes (calificación 1-5 por variable) y el IFA integrado, una vez
+   confirmadas las tablas del Anexo 1 del 44710.
