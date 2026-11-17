@@ -195,6 +195,89 @@ def generar_pendientes(dem_path: str, poligono_canton: gpd.GeoDataFrame, salida_
     return cat, transform, ruta_tif, P
 
 
+def lamina_uso_suelo(pdf, canton, poligono_canton, capas_por_nombre: dict) -> bool:
+    """Lámina compuesta de uso actual del suelo: urbano + cultivos + cobertura.
+    Devuelve True si dibujó algo."""
+    # Mapeo nombre → (color, etiqueta corta, zorder)
+    CAPAS_USO = {
+        "Cultivos 1:5mil":          ("#8fbc8f", "Cultivos",    2),
+        "Uso urbano 1:5mil":        ("#d9534f", "Urbano",      3),
+        "Cobertura forestal 2020":  ("#2d6a4f", "Cobertura forestal", 1),
+        "Zonas de vida":            ("#e8e8cc", "Zonas de vida (fondo)", 0),
+    }
+    presentes = []
+    for nombre, (color, etiq, z) in CAPAS_USO.items():
+        if nombre in capas_por_nombre and not capas_por_nombre[nombre].empty:
+            presentes.append((nombre, color, etiq, z))
+    if not presentes:
+        return False
+
+    presentes.sort(key=lambda x: x[3])  # por zorder
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1.2, zorder=10)
+
+    for nombre, color, etiq, z in presentes:
+        gdf = capas_por_nombre[nombre]
+        es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
+        if es_punto:
+            gdf.plot(ax=ax, markersize=6, color=color, label=etiq, zorder=z)
+        else:
+            gdf.plot(ax=ax, color=color, alpha=0.6, edgecolor=color,
+                     linewidth=0.3, label=etiq, zorder=z)
+
+    ax.set_title(f"{canton} — Uso actual del suelo", fontsize=13)
+    ax.set_axis_off()
+    ax.legend(loc="lower left", fontsize=7, framealpha=0.9)
+    ax.text(0.99, 0.01, "Fuente: IGN / MINAE (SNIT)", transform=ax.transAxes,
+            fontsize=7, ha="right")
+    pdf.savefig(fig)
+    plt.close(fig)
+    return True
+
+
+def lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre: dict) -> bool:
+    """Lámina compuesta de bioaptitud: zonas de vida + ASP + corredores + PNE + humedales.
+    Devuelve True si dibujó algo."""
+    # Capas ordenadas de fondo a frente (zorder bajo = se dibuja primero)
+    CAPAS_BIO = {
+        "Zonas de vida":                 ("#d4edda", "Zonas de vida (fondo)",     1, 0.4),
+        "Áreas de Conservación":         ("#b2dfdb", "Áreas de conservación",     2, 0.3),
+        "Corredores biológicos":         ("#81c784", "Corredores biológicos",     3, 0.5),
+        "Patrimonio Natural del Estado": ("#388e3c", "Patrimonio Natural",        4, 0.5),
+        "Áreas silvestres protegidas":   ("#1b5e20", "Áreas silvestres proteg.",  5, 0.6),
+        "Registro Nacional de Humedales":("#4fc3f7", "Humedales",                 6, 0.6),
+        "Cobertura forestal 2020":       ("#2d6a4f", "Cobertura forestal",        2, 0.35),
+    }
+    presentes = []
+    for nombre, (color, etiq, z, alpha) in CAPAS_BIO.items():
+        if nombre in capas_por_nombre and not capas_por_nombre[nombre].empty:
+            presentes.append((nombre, color, etiq, z, alpha))
+    if not presentes:
+        return False
+
+    presentes.sort(key=lambda x: x[3])
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1.2, zorder=10)
+
+    for nombre, color, etiq, z, alpha in presentes:
+        gdf = capas_por_nombre[nombre]
+        es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
+        if es_punto:
+            gdf.plot(ax=ax, markersize=6, color=color, label=etiq, zorder=z)
+        else:
+            gdf.plot(ax=ax, color=color, alpha=alpha, edgecolor=color,
+                     linewidth=0.3, label=etiq, zorder=z)
+
+    ax.set_title(f"{canton} — IFA Bioaptitud", fontsize=13)
+    ax.set_axis_off()
+    ax.legend(loc="lower left", fontsize=7, framealpha=0.9)
+    ax.text(0.99, 0.01, "Fuente: SINAC / MINAE-CENIGA (SNIT)", transform=ax.transAxes,
+            fontsize=7, ha="right")
+    pdf.savefig(fig)
+    plt.close(fig)
+    return True
+
+
 def lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P) -> None:
     from matplotlib.colors import BoundaryNorm, ListedColormap
 
@@ -226,22 +309,48 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
               pendientes=None) -> None:
     from matplotlib.backends.backend_pdf import PdfPages
 
+    # Diccionario nombre→gdf para las láminas compuestas.
+    capas_por_nombre: dict[str, gpd.GeoDataFrame] = {}
+    for capa, gdf in capas_recortadas:
+        capas_por_nombre[capa["nombre"]] = gdf
+
     with PdfPages(ruta_pdf) as pdf:
         # Portada: cantón, fecha, y de dónde sale cada capa.
         fig, ax = plt.subplots(figsize=(8.5, 11))
         ax.axis("off")
-        lineas = [f"Atlas municipal — {canton}", f"Generado: {generado}", "", "Capas incluidas:"]
+        lineas = [f"Atlas municipal — {canton}", f"Generado: {generado}", "",
+                  "Decreto 44710-MINAE / MAPRIOT", "", "Capas incluidas:"]
         for capa, gdf in capas_recortadas:
-            lineas.append(f"  • {capa['nombre']} — {capa['fuente']} ({len(gdf)} elementos en el cantón)")
+            lineas.append(f"  • {capa['nombre']} — {capa['fuente']} ({len(gdf)} elementos)")
         if pendientes is not None:
             lineas.append("  • Pendientes del terreno — DEM / IGN (Decreto 23214)")
+        lineas.append("")
+        lineas.append("Mapas temáticos:")
+        lineas.append("  • Uso actual del suelo (IGN)")
+        lineas.append("  • IFA Bioaptitud (SINAC / MINAE)")
+        if pendientes is not None:
+            lineas.append("  • Pendientes del terreno (Decreto 23214)")
         if not capas_recortadas and pendientes is None:
             lineas.append("  (ninguna capa tenía elementos dentro de este cantón)")
-        ax.text(0.05, 0.95, "\n".join(lineas), va="top", ha="left", fontsize=11, wrap=True)
+        ax.text(0.05, 0.95, "\n".join(lineas), va="top", ha="left", fontsize=10,
+                family="monospace", wrap=True)
         pdf.savefig(fig)
         plt.close(fig)
 
-        # Una lámina por capa, con el límite del cantón de fondo.
+        # --- MAPAS TEMÁTICOS COMPUESTOS (lo que pide el decreto 44710 / MAPRIOT) ---
+
+        # 1. Uso actual del suelo
+        lamina_uso_suelo(pdf, canton, poligono_canton, capas_por_nombre)
+
+        # 2. IFA Bioaptitud
+        lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre)
+
+        # 3. Pendientes (si se pasó un DEM con --dem).
+        if pendientes is not None:
+            cat, transform, _, P = pendientes
+            lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P)
+
+        # --- LÁMINAS INDIVIDUALES (una por capa, para referencia detallada) ---
         for capa, gdf in capas_recortadas:
             fig, ax = plt.subplots(figsize=(8.5, 11))
             poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1)
@@ -256,11 +365,6 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
             ax.text(0.01, 0.01, f"Fuente: {capa['fuente']}", transform=ax.transAxes, fontsize=8)
             pdf.savefig(fig)
             plt.close(fig)
-
-        # Lámina de pendientes (si se pasó un DEM con --dem).
-        if pendientes is not None:
-            cat, transform, _, P = pendientes
-            lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P)
 
 
 def main() -> None:
