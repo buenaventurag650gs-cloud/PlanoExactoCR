@@ -5,55 +5,158 @@
     {
       "eje": "Base cartográfica",
       "capas": [
-        { "nombre": "Límites cantonales", "archivo": "https://planoexactocr.com/data/cantones.geojson", "fuente": "IGN (SNIT)", "estado": "disponible" },
-        { "nombre": "Límites distritales", "archivo": "https://planoexactocr.com/data/distritos.geojson", "fuente": "IGN (SNIT)", "estado": "disponible" },
-        { "nombre": "Zona marítimo terrestre", "archivo": "https://planoexactocr.com/data/zmt.geojson", "fuente": "ICT / Registro Inmobiliario", "estado": "disponible", "requiere_cuenta": true }
+        {
+          "nombre": "Límites cantonales",
+          "archivo": "https://planoexactocr.com/data/cantones.geojson",
+          "fuente": "IGN (SNIT)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Límites distritales",
+          "archivo": "https://planoexactocr.com/data/distritos.geojson",
+          "fuente": "IGN (SNIT)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Zona marítimo terrestre",
+          "archivo": "data/zmt.geojson",
+          "fuente": "ICT / Registro Inmobiliario",
+          "estado": "disponible",
+          "copia_local": "2026-11-17"
+        }
       ]
     },
     {
       "eje": "Antropoaptitud (uso y planificación)",
       "capas": [
-        { "nombre": "Estado del plan regulador por cantón", "archivo": "https://planoexactocr.com/data/planes_reguladores.geojson", "fuente": "INVU (SNIT)", "estado": "disponible", "requiere_cuenta": true },
-        { "nombre": "Catastro (plano y finca)", "archivo": "api:/api/plano, /api/finca", "fuente": "Registro Inmobiliario (SNIT)", "estado": "disponible", "nota": "mismo puente del sitio público; se consulta por plano o finca, no se descarga completo" },
-        { "nombre": "Uso de suelo detallado", "archivo": null, "fuente": "por definir", "estado": "pendiente" }
+        {
+          "nombre": "Estado del plan regulador por cantón",
+          "archivo": "data/planes_reguladores.geojson",
+          "fuente": "INVU (SNIT)",
+          "estado": "disponible",
+          "copia_local": "2026-11-17"
+        },
+        {
+          "nombre": "Catastro (plano y finca)",
+          "archivo": "api:/api/plano, /api/finca",
+          "fuente": "Registro Inmobiliario (SNIT)",
+          "estado": "disponible",
+          "nota": "mismo puente del sitio público; se consulta por plano o finca, no se descarga completo"
+        },
+        {
+          "nombre": "Uso de suelo detallado",
+          "archivo": null,
+          "fuente": "por definir",
+          "estado": "pendiente"
+        }
       ]
     },
     {
       "eje": "Bioaptitud",
       "capas": [
-        { "nombre": "Zonas de vida", "archivo": "https://planoexactocr.com/data/zonasvida.geojson", "fuente": "MINAE-CENIGA", "estado": "disponible", "requiere_cuenta": true },
-        { "nombre": "Cobertura forestal 2020", "archivo": "api:/api/cobertura", "fuente": "MINAE", "estado": "disponible" },
-        { "nombre": "Áreas silvestres protegidas", "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_silvestres_protegidas&outputFormat=application/json&srsName=EPSG:4326", "fuente": "SINAC (SNIT, capa oficial, uso libre)", "estado": "disponible" },
-        { "nombre": "Corredores biológicos", "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=corredoresbiologicos&outputFormat=application/json&srsName=EPSG:4326", "fuente": "SINAC (SNIT, capa oficial, uso libre)", "estado": "disponible" }
+        {
+          "nombre": "Zonas de vida",
+          "archivo": "data/zonasvida.geojson",
+          "fuente": "MINAE-CENIGA",
+          "estado": "disponible",
+          "copia_local": "2026-11-17"
+        },
+        {
+          "nombre": "Cobertura forestal 2020",
+          "archivo": "api:/api/cobertura",
+          "fuente": "MINAE",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Áreas silvestres protegidas",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_silvestres_protegidas&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Corredores biológicos",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=corredoresbiologicos&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        }
       ]
     },
     {
       "eje": "Edafoaptitud",
       "capas": [
-        { "nombre": "Suelos y capacidad de uso de la tierra", "archivo": null, "fuente": "MAG / INTA", "estado": "pendiente" }
+        {
+          "nombre": "Suelos y capacidad de uso de la tierra",
+          "archivo": null,
+          "fuente": "MAG / INTA",
+          "estado": "pendiente"
+        }
       ]
     },
     {
       "eje": "Geoaptitud (amenazas y geología)",
       "capas": [
-        { "nombre": "Amenazas naturales por cantón", "archivo": null, "fuente": "CNE", "estado": "pendiente", "nota": "hoy en PDF por cantón; hace falta digitalizar a GeoJSON" },
-        { "nombre": "Geología y pendientes", "archivo": null, "fuente": "IGN / modelo de elevación", "estado": "pendiente" }
+        {
+          "nombre": "Amenazas naturales por cantón",
+          "archivo": null,
+          "fuente": "CNE",
+          "estado": "pendiente",
+          "nota": "hoy en PDF por cantón; hace falta digitalizar a GeoJSON"
+        },
+        {
+          "nombre": "Geología y pendientes",
+          "archivo": null,
+          "fuente": "IGN / modelo de elevación",
+          "estado": "pendiente"
+        }
       ]
     },
     {
       "eje": "Infraestructura y servicios",
       "capas": [
-        { "nombre": "Infraestructura general", "archivo": "https://planoexactocr.com/data/infra.geojson", "fuente": "varios", "estado": "disponible", "requiere_cuenta": true },
-        { "nombre": "Red eléctrica", "archivo": "https://planoexactocr.com/data/electricidad.geojson", "fuente": "ICE / CNFL / concesionarias", "estado": "disponible" },
-        { "nombre": "ASADAS y abastecimiento de agua", "archivo": "https://planoexactocr.com/data/asadas.json", "fuente": "AyA / ARESEP", "estado": "disponible" },
-        { "nombre": "Sedes de salud", "archivo": "https://planoexactocr.com/data/salud.json", "fuente": "CCSS", "estado": "disponible", "requiere_cuenta": true },
-        { "nombre": "Red vial cantonal", "archivo": null, "fuente": "MOPT / municipalidad", "estado": "pendiente" }
+        {
+          "nombre": "Infraestructura general",
+          "archivo": "data/infra.geojson",
+          "fuente": "varios",
+          "estado": "disponible",
+          "copia_local": "2026-11-17"
+        },
+        {
+          "nombre": "Red eléctrica",
+          "archivo": "https://planoexactocr.com/data/electricidad.geojson",
+          "fuente": "ICE / CNFL / concesionarias",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "ASADAS y abastecimiento de agua",
+          "archivo": "https://planoexactocr.com/data/asadas.json",
+          "fuente": "AyA / ARESEP",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Sedes de salud",
+          "archivo": "data/salud.json",
+          "fuente": "CCSS",
+          "estado": "disponible",
+          "copia_local": "2026-11-17"
+        },
+        {
+          "nombre": "Red vial cantonal",
+          "archivo": null,
+          "fuente": "MOPT / municipalidad",
+          "estado": "pendiente"
+        }
       ]
     },
     {
       "eje": "Patrimonio",
       "capas": [
-        { "nombre": "Sitios arqueológicos registrados", "archivo": null, "fuente": "Museo Nacional", "estado": "pendiente", "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas" }
+        {
+          "nombre": "Sitios arqueológicos registrados",
+          "archivo": null,
+          "fuente": "Museo Nacional",
+          "estado": "pendiente",
+          "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas"
+        }
       ]
     }
   ]
