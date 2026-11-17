@@ -194,11 +194,13 @@
   // ---------- generar atlas (MVP: recorte visual + impresión del navegador a PDF) ----------
   $('btnAtlas').addEventListener('click', () => {
     const nombre = $('selCanton').value;
-    if (!nombre) return;
+    if (!nombre || !cantonSel) { avisar('Elegí un cantón primero (paso 1).'); return; }
     document.title = `Atlas — ${nombre}`;
-    window.print();
-    // Siguiente paso (fuera de este MVP): recorte real de cada capa al polígono del
-    // cantón con turf.bboxClip / turf.intersect, y exportación a GeoPackage en el
-    // servidor (scripts/build_atlas.py) en vez de solo imprimir el mapa visible.
+    // El PDF es del cantón, no de la vista actual: reencuadra al polígono del cantón
+    // antes de imprimir (aunque el usuario haya hecho zoom o paneo a otra parte).
+    if (cantonLayer) map.fitBounds(cantonLayer.getBounds(), { padding: [20, 20] });
+    setTimeout(() => window.print(), 450); // deja que el mapa reencuadre antes de imprimir
+    // Atlas completo (una lámina por capa/eje, recorte real y GeoPackage): scripts/build_atlas.py,
+    // que ya trabaja por cantón.
   });
 })();
