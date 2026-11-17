@@ -68,16 +68,10 @@
           "estado": "disponible"
         },
         {
-          "nombre": "Áreas silvestres protegidas",
-          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_silvestres_protegidas&outputFormat=application/json&srsName=EPSG:4326",
-          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
-          "estado": "disponible"
-        },
-        {
-          "nombre": "Corredores biológicos",
-          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=corredoresbiologicos&outputFormat=application/json&srsName=EPSG:4326",
-          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
-          "estado": "disponible"
+          "nombre": "Áreas silvestres protegidas y corredores biológicos",
+          "archivo": null,
+          "fuente": "SINAC",
+          "estado": "pendiente"
         }
       ]
     },
@@ -96,32 +90,11 @@
       "eje": "Geoaptitud (amenazas y geología)",
       "capas": [
         {
-          "nombre": "Coronas de deslizamientos",
-          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=coronas_de_deslizamientos&outputFormat=application/json&srsName=EPSG:4326",
-          "fuente": "CNE (SNIT)",
-          "estado": "disponible",
-          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
-        },
-        {
-          "nombre": "Deslizamientos",
-          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=deslizamientos&outputFormat=application/json&srsName=EPSG:4326",
-          "fuente": "CNE (SNIT)",
-          "estado": "disponible",
-          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
-        },
-        {
-          "nombre": "Fallas del cuaternario",
-          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=fallas_del_cuaternario&outputFormat=application/json&srsName=EPSG:4326",
-          "fuente": "CNE (SNIT)",
-          "estado": "disponible",
-          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
-        },
-        {
-          "nombre": "Áreas con potencial a inundación",
-          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=inundaciones&outputFormat=application/json&srsName=EPSG:4326",
-          "fuente": "CNE (SNIT)",
-          "estado": "disponible",
-          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
+          "nombre": "Amenazas naturales por cantón",
+          "archivo": null,
+          "fuente": "CNE",
+          "estado": "pendiente",
+          "nota": "hoy en PDF por cantón; hace falta digitalizar a GeoJSON"
         },
         {
           "nombre": "Geología y pendientes",
