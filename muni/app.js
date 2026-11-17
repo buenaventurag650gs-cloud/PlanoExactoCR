@@ -5,8 +5,10 @@
   const $ = (id) => document.getElementById(id);
 
   const map = L.map('map', { zoomControl: true }).setView([9.9, -84.1], 8);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap, © CARTO', maxZoom: 19
+  // CartoDB retiró su mosaico gratis sin llave (pedía API key); usamos el de OpenStreetMap,
+  // que sigue siendo gratis para uso interno de bajo volumen como este.
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
   }).addTo(map);
 
   const cap = await fetch('capas.json').then((r) => r.json());
@@ -34,7 +36,7 @@
       const lbl = document.createElement('label');
       lbl.className = 'capa' + (disponible ? '' : ' pendiente');
       const notaCuenta = c.requiere_cuenta
-        ? ' — exige cuenta en planoexactocr.com; hoy no carga aquí (ver muni/README.md)'
+        ? ' — exige una cuenta gratis en planoexactocr.com (entre ahí primero)'
         : '';
       lbl.innerHTML = `<input type="checkbox" ${disponible ? '' : 'disabled'} data-nombre="${c.nombre}">
         <span>${c.nombre}<br><small style="color:var(--muted)">${c.fuente}${c.nota ? ' — ' + c.nota : ''}${notaCuenta}</small></span>
@@ -77,7 +79,7 @@
     }
     marcarFuente(c);
     if (c.archivo && c.archivo.startsWith('http')) {
-      const data = await fetch(c.archivo)
+      const data = await fetch(c.archivo, { credentials: 'include' })
         .then((r) => {
           if (r.status === 401) throw new Error('cuenta');
           if (!r.ok) throw new Error('http ' + r.status);
@@ -85,7 +87,7 @@
         })
         .catch((err) => {
           avisar(err && err.message === 'cuenta'
-            ? `"${c.nombre}" exige una cuenta en planoexactocr.com y esta página no comparte esa sesión. Use scripts/build_atlas.py con --cookie para incluirla en el PDF/GeoPackage.`
+            ? `"${c.nombre}" exige una cuenta gratis. Abra planoexactocr.com en una pestaña, entre con su cuenta, y vuelva a intentar aquí.`
             : `No se pudo cargar "${c.nombre}".`);
           return null;
         });
@@ -104,7 +106,7 @@
 
   // ---------- selector de cantón ----------
   // Carga silenciosa de límites cantonales para el selector, aunque la capa no esté encendida.
-  const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson').then((r) => r.json()).catch(() => null);
+  const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson', { credentials: 'include' }).then((r) => r.json()).catch(() => null);
   if (baseCantones) {
     cantonesFC = baseCantones;
     const nombres = [...new Set(baseCantones.features.map((f) => f.properties.k))].sort();

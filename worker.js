@@ -22,7 +22,7 @@ function leerCookie(request, n) {
   const m = c.match(new RegExp("(?:^|;\\s*)" + n + "=([^;]+)"));
   return m ? m[1] : null;
 }
-const galleta = (n, v, edad) => `${n}=${v}; Path=/; Max-Age=${edad}; HttpOnly; Secure; SameSite=Lax`;
+const galleta = (n, v, edad, extra) => `${n}=${v}; Path=/; Max-Age=${edad}; HttpOnly; Secure; SameSite=Lax${extra || ""}`;
 async function hmac(clave, msg) {
   const k = await crypto.subtle.importKey("raw", enc.encode(clave), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(msg)));
@@ -94,7 +94,11 @@ async function hashClave(clave, salB64) {
 const COOKIE_USER = "pecr_u", DURACION = 60 * 60 * 24 * 60;   // 60 días
 async function crearSesion(env, u) {
   const p = `${u.id}.${u.ver}.${Math.floor(Date.now() / 1000) + DURACION}`;
-  return galleta(COOKIE_USER, p + "." + b64u(await hmac(await secreto(env), "u:" + p)), DURACION);
+  // Domain=.dominio para que el visor municipal (atlas.<dominio>), en otro subdominio,
+  // pueda leer esta misma sesión al pedir las capas que exigen cuenta. Solo esta cookie
+  // se amplía así — el estado de OAuth y la cookie de admin se quedan como estaban.
+  const dominio = env.DOMINIO ? `; Domain=.${env.DOMINIO}` : "";
+  return galleta(COOKIE_USER, p + "." + b64u(await hmac(await secreto(env), "u:" + p)), DURACION, dominio);
 }
 async function leerSesion(request, env) {
   const ck = leerCookie(request, COOKIE_USER);
@@ -1263,6 +1267,15 @@ const VISIBLES = ["id", "prov", "base", "mon", "f", "area", "tipo", "ll", "loc",
 const redondear = (ll) => Array.isArray(ll) ? ll.map((v) => Math.round(v * 1000) / 1000) : ll;
 // Archivos que solo se entregan con cuenta (datos de capas y lógica de la guía, el expediente y la lámina)
 const SOLO_CUENTA_DATOS = new Set(["/data/planes_reguladores.geojson", "/data/salud.json", "/data/zonasvida.geojson", "/data/infra.geojson", "/data/zmt.geojson"]);
+// CORS para que el visor municipal (atlas.<dominio>, otro Worker en otro subdominio)
+// pueda leer /data/* con la cookie de sesión (fetch con credentials:"include"). Solo se
+// habilita para ese subdominio puntual, nunca con "*", porque la petición lleva cookie.
+function corsDatos(request, env) {
+  const origen = request.headers.get("origin") || "";
+  const dominio = env.DOMINIO || "planoexactocr.com";
+  if (origen !== `https://atlas.${dominio}`) return {};
+  return { "Access-Control-Allow-Origin": origen, "Access-Control-Allow-Credentials": "true", "Vary": "Origin" };
+}
 const SOLO_CUENTA_JS = { "/assets/guia.js": "window.PX_GUIA = null;", "/assets/expediente.js": "", "/assets/lamina.js": "" };
 let LITE = { etag: null, body: null };
 async function rematesLibres(u, env) {
@@ -2369,7 +2382,7 @@ async function manejarPeticion(request, env) {
     if (p === "/index.html") return Response.redirect(new URL("/mapa" + u.search, u).toString(), 301);
     if (p === "/inicio.html") return Response.redirect(new URL("/" + u.search, u).toString(), 301);
     if ((p === "/expediente" || p === "/expediente.html") && !dentro) return Response.redirect(new URL("/mapa?entrar=1", u).toString(), 302);
-    if (!dentro && SOLO_CUENTA_DATOS.has(p)) return json({ error: "Entra con tu cuenta para ver esta información." }, 401, 0);
+    if (!dentro && SOLO_CUENTA_DATOS.has(p)) return json({ error: "Entra con tu cuenta para ver esta información." }, 401, 0, corsDatos(request, env));
     if (!dentro && p in SOLO_CUENTA_JS) return new Response(`/* PlanoExactoCR: contenido para cuentas */\n${SOLO_CUENTA_JS[p]}\n`, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "private, no-store", "vary": "Cookie", "X-Robots-Tag": "noindex" } });
     if (p === "/api/apoyo-legal") {
       if (!dentro) return json({ error: "Entra con tu cuenta." }, 401, 0);
@@ -2407,7 +2420,11 @@ async function manejarPeticion(request, env) {
     if (!(env.DOMINIO && u.hostname === env.DOMINIO && esIndexable(p))) out.headers.set("X-Robots-Tag", "noindex, nofollow");
     out.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     out.headers.set("X-Content-Type-Options", "nosniff");
-    if (p.startsWith("/data/")) out.headers.set("Cache-Control", dentro && p === "/data/remates.json" ? "private, max-age=0, must-revalidate" : "public, max-age=0, must-revalidate");
+    if (p.startsWith("/data/")) {
+      out.headers.set("Cache-Control", dentro && p === "/data/remates.json" ? "private, max-age=0, must-revalidate" : "public, max-age=0, must-revalidate");
+      const cd = corsDatos(request, env);
+      for (const k in cd) out.headers.set(k, cd[k]);
+    }
     if (p === "/data/remates.json") out.headers.set("Vary", "Cookie");
     if (SOLO_CUENTA_DATOS.has(p) || p in SOLO_CUENTA_JS) { out.headers.set("Cache-Control", "private, max-age=0, must-revalidate"); out.headers.set("Vary", "Cookie"); }
     if (p === "/" || p === "/mapa" || p.endsWith(".html")) out.headers.set("Cache-Control", "no-cache");
