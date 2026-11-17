@@ -41,14 +41,29 @@ Suma algebraica de cinco factores, cada uno con sus variables calificadas 1-5:
 Zonificación de geoaptitud (Tabla N°3, pendiente de confirmar los conteos exactos): la
 categoría de cada zona depende del número de factores en categoría "Muy Baja" y su nivel.
 
-### Pendiente (clave para el primer mapa)
+### Pendiente (primer mapa — ya implementado)
 
-La categoría de pendiente sigue los rangos del método de capacidad de uso de la tierra
-del MAG/MINAE (Decreto 23214). Umbral citado explícitamente: **15%** dispara el factor de
-estabilidad de laderas. Los rangos de porcentaje exactos y su puntaje hay que tomarlos
-del Decreto 23214 / metodología MAG antes de calcular el mapa de pendientes.
-Insumo de datos: curvas de nivel del IGN (`curvas_5000`, `curvas_1000`, 1:25mil) o el DEM
-descargable del IGN (ver FUENTES_SNIT.md).
+Categorías de pendiente del Decreto 23214 (sección 6.1.1.1), ya codificadas en
+`scripts/pendientes.py`:
+
+| Cat | Nombre | Rango |
+|-----|--------|-------|
+| 1 | Plano o casi plano | 0–3 % |
+| 2 | Ligeramente ondulado | 3–8 % |
+| 3 | Moderadamente ondulado | 8–15 % |
+| 4 | Ondulado | 15–30 % |
+| 5 | Fuertemente ondulado | 30–60 % |
+| 6 | Escarpado | 60–75 % |
+| 7 | Fuertemente escarpado | > 75 % |
+
+Pendiente máxima por clase de capacidad de uso (Cuadro 1): I <3%, II <8%, III <15%,
+IV <30%, VI <50%, VII <75%, VIII cualquiera. Umbral 15% = dispara el factor de
+estabilidad de laderas. (Conviene verificar los valores contra el PDF oficial de La Gaceta.)
+
+Insumo de datos: el DEM del IGN (descargable por hoja 1:25mil desde el SNIT, ver
+FUENTES_SNIT.md) en CRS métrico. Se calcula con:
+`python3 scripts/build_atlas.py --canton "<cantón>" --salida salida/<x> --dem ruta/al/dem.tif`
+→ agrega un GeoTIFF de categorías 1-7 recortado al cantón y una lámina al PDF.
 
 ## Eje Edafoaptitud
 

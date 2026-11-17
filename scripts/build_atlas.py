@@ -58,6 +58,7 @@ import unicodedata
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import requests
 from shapely.geometry import Point
@@ -169,8 +170,60 @@ def recortar_al_canton(gdf: gpd.GeoDataFrame, poligono_canton: gpd.GeoDataFrame)
     return recortado.to_crs(CRS_GEOGRAFICO)
 
 
+def generar_pendientes(dem_path: str, poligono_canton: gpd.GeoDataFrame, salida_base: pathlib.Path):
+    """Calcula el mapa de pendientes (Decreto 23214) desde un DEM, recortado al cantón.
+    Escribe un GeoTIFF de categorías 1..7 y devuelve (categorias, transform, ruta_tif, modulo)."""
+    import rasterio
+    from rasterio.features import rasterize
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    import pendientes as P
+
+    _, cat, perfil = P.pendiente_desde_dem(dem_path)
+    with rasterio.open(dem_path) as src:
+        crs, transform, shape = src.crs, src.transform, (src.height, src.width)
+    # Deja la pendiente solo dentro del cantón.
+    poly = poligono_canton.to_crs(crs)
+    mascara = rasterize([(g, 1) for g in poly.geometry], out_shape=shape,
+                        transform=transform, fill=0, dtype="uint8")
+    cat = np.where(mascara == 1, cat, 0).astype("uint8")
+
+    perfil.update(dtype="uint8", count=1, nodata=0)
+    ruta_tif = pathlib.Path(str(salida_base) + "_pendientes.tif")
+    with rasterio.open(ruta_tif, "w", **perfil) as dst:
+        dst.write(cat, 1)
+    return cat, transform, ruta_tif, P
+
+
+def lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P) -> None:
+    from matplotlib.colors import BoundaryNorm, ListedColormap
+
+    colores = [P.COLORES_PENDIENTE[c] for _, _, c, _ in P.CATEGORIAS_23214]
+    cmap = ListedColormap(colores)
+    norm = BoundaryNorm(list(range(1, 9)), cmap.N)
+    h, w = cat.shape
+    izq, arr = transform.c, transform.f
+    extent = [izq, izq + w * transform.a, arr + h * transform.e, arr]
+
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    datos = np.ma.masked_where(cat == 0, cat)
+    ax.imshow(datos, extent=extent, cmap=cmap, norm=norm, interpolation="nearest")
+    try:
+        poligono_canton.to_crs("EPSG:5367").boundary.plot(ax=ax, color="black", linewidth=1)
+    except Exception:
+        pass
+    ax.set_title(f"{canton} — Pendientes (Decreto 23214)", fontsize=13)
+    ax.set_axis_off()
+    etiquetas = [f"{c}: {lbl} ({lo:g}-{'∞' if hi == float('inf') else int(hi)}%)"
+                 for lo, hi, c, lbl in P.CATEGORIAS_23214]
+    ax.text(0.01, 0.01, "  |  ".join(etiquetas), transform=ax.transAxes, fontsize=6, wrap=True)
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
 def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataFrame,
-              capas_recortadas: list[tuple[dict, gpd.GeoDataFrame]], generado: str) -> None:
+              capas_recortadas: list[tuple[dict, gpd.GeoDataFrame]], generado: str,
+              pendientes=None) -> None:
     from matplotlib.backends.backend_pdf import PdfPages
 
     with PdfPages(ruta_pdf) as pdf:
@@ -180,7 +233,9 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
         lineas = [f"Atlas municipal — {canton}", f"Generado: {generado}", "", "Capas incluidas:"]
         for capa, gdf in capas_recortadas:
             lineas.append(f"  • {capa['nombre']} — {capa['fuente']} ({len(gdf)} elementos en el cantón)")
-        if not capas_recortadas:
+        if pendientes is not None:
+            lineas.append("  • Pendientes del terreno — DEM / IGN (Decreto 23214)")
+        if not capas_recortadas and pendientes is None:
             lineas.append("  (ninguna capa tenía elementos dentro de este cantón)")
         ax.text(0.05, 0.95, "\n".join(lineas), va="top", ha="left", fontsize=11, wrap=True)
         pdf.savefig(fig)
@@ -202,6 +257,11 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
             pdf.savefig(fig)
             plt.close(fig)
 
+        # Lámina de pendientes (si se pasó un DEM con --dem).
+        if pendientes is not None:
+            cat, transform, _, P = pendientes
+            lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -212,6 +272,9 @@ def main() -> None:
     parser.add_argument("--cookie", default=os.environ.get("PX_COOKIE"),
                          help='Cookie de sesión de una cuenta gratis en planoexactocr.com (p. ej. "pecr_u=..."), '
                               "para incluir las capas que exigen cuenta. También se puede dar con PX_COOKIE.")
+    parser.add_argument("--dem", default=None,
+                         help="Ruta a un DEM (GeoTIFF, en CRS métrico como EPSG:5367) que cubra el cantón. "
+                              "Si se da, agrega el mapa de pendientes clasificado según el Decreto 23214.")
     args = parser.parse_args()
 
     catalogo = cargar_catalogo()
@@ -282,11 +345,25 @@ def main() -> None:
     # El polígono del cantón también va en el GeoPackage, de referencia.
     poligono_canton.to_file(ruta_gpkg, layer="limite_canton", driver="GPKG")
 
+    # Mapa de pendientes (Decreto 23214) si se pasó un DEM.
+    pendientes = None
+    if args.dem:
+        print(f"  - Pendientes del terreno (DEM: {args.dem})", end=" ")
+        try:
+            cat, transform, ruta_tif, Pmod = generar_pendientes(args.dem, poligono_canton, salida)
+            pendientes = (cat, transform, ruta_tif, Pmod)
+            print(f"→ {ruta_tif.name}")
+        except Exception as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            pendientes = None
+
     generado = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-    armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado)
+    armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado, pendientes)
 
     print(f"\nListo: {ruta_gpkg}")
     print(f"       {ruta_pdf}")
+    if pendientes is not None:
+        print(f"       {pendientes[2]}")
 
 
 if __name__ == "__main__":
