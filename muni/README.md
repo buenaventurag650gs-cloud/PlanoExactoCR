@@ -30,13 +30,42 @@ Desde noviembre 2026, el Worker `planoexacto-muni` está conectado a GitHub (ram
 cambio a esa rama, Cloudflare lo despliega solo — ya no hace falta correr
 `npx wrangler deploy` a mano salvo que se quiera probar algo localmente antes de subirlo.
 
-## Sin capas en vivo del SNIT por ahora
+## Áreas silvestres protegidas y corredores biológicos (SINAC)
 
-Se probaron capas leídas directo de geoservidores publicados en el catálogo del
-gobierno (SNIT): áreas silvestres protegidas y corredores biológicos del SINAC, y
-amenazas naturales (deslizamientos, fallas, inundación) de la CNE. Se quitaron del
-catálogo (quedan `pendiente` otra vez en `capas.json`) — no usar el SNIT como fuente
-para este atlas mientras no se decida lo contrario.
+Estas dos capas de bioaptitud ya están `disponible`. Vienen directo del geoservidor
+oficial del SINAC publicado en el SNIT (el catálogo nacional de mapas del gobierno,
+`snitcr.go.cr`), no de una copia nuestra: `archivo` apunta a una URL de tipo WFS
+(`https://geos1pne.sirefor.go.cr/wfs?...`) que entrega el GeoJSON directo, en el mismo
+sistema de coordenadas que el resto del catálogo. Son capas oficiales y de uso libre
+(sin cuenta, sin permiso que pedir).
+
+Mismo origen de datos (SNIT) para las 4 capas de amenazas de la Comisión Nacional de
+Emergencias (CNE) en el eje de geoaptitud: coronas de deslizamientos, deslizamientos,
+fallas del cuaternario y áreas con potencial a inundación. A diferencia de las del
+SINAC, el metadato de estas dice "Derechos de autor (Copyright)" en vez de uso libre;
+el uso de este atlas se revisó con abogado y es con fines científicos/no comerciales,
+no reventa directa del dato — ver la nota de cada capa en `capas.json`. Además, el
+servidor de la CNE (`mapas.cne.go.cr`) solo responde por `http`, no `https`, así que es
+probable que el visor en vivo no pueda cargarla (un navegador en una página seguro
+normalmente bloquea pedir datos a una dirección insegura). Eso no afecta el atlas en
+PDF/GeoPackage, que sí las va a incluir sin problema.
+
+Nota legal general del SNIT: su geoportal permite uso de entidades privadas con o sin
+fines de lucro, pero prohíbe el uso **comercial** de la información (directa o
+derivada). Ya se revisó con abogado que este proyecto no cae ahí por ser de fines
+científicos, pero si el propósito del atlas cambia más adelante (por ejemplo a reventa
+directa de mapas), hay que volver a revisar esto antes de seguir usando capas del SNIT.
+
+Un detalle técnico a vigilar en general con las capas del SNIT: esos servidores son del
+gobierno, no nuestros, y no sabemos de antemano si dejan que el navegador los consulte
+directamente desde atlas.planoexactocr.com (un tema técnico llamado CORS). Si al probar
+el visor una capa no carga (sale el aviso amarillo de "No se pudo cargar"), no es un
+error nuestro — simplemente ese servidor no deja que páginas de otros sitios le pidan
+datos directamente. `scripts/build_atlas.py` no tiene ese problema (ahí quien pide los
+datos es el script, no el navegador), así que el atlas en PDF/GeoPackage por cantón de
+todas formas va a incluir la capa sin problema. Si el visor en vivo falla, la solución
+sería una copia propia como la que ya se usa para las capas que exigen cuenta (ver
+sección siguiente).
 
 ## Capas que exigen cuenta: copia propia, sitios separados
 
