@@ -6,10 +6,10 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
 ## Qué es hoy (MVP)
 
 - `index.html` + `app.js`: mapa Leaflet con el catálogo de `capas.json`. Las capas
-  marcadas `disponible` se leen en vivo de `planoexactocr.com/data/…` (son capas base
-  —límites, plan regulador por cantón, zonas de vida, infraestructura, ASADAS, salud—
-  que el sitio público ya expone para el visor de remates; nada de esto es información
-  de remates).
+  marcadas `disponible` se leen o bien en vivo de `planoexactocr.com/data/…` (capas
+  realmente públicas: límites, red eléctrica, ASADAS), o de una copia propia dentro de
+  `muni/data/` para las que exigen cuenta (ver la sección de abajo). Nada de esto es
+  información de remates.
 - Selector de cantón + botón **Generar atlas**: por ahora recorta visualmente el mapa
   al cantón elegido e imprime a PDF con el diálogo del navegador. Sirve para probar el
   flujo con un cantón piloto antes de automatizar el recorte real.
@@ -21,31 +21,35 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
 - Patrimonio arqueológico (gestionar acceso con el Museo Nacional).
 - Red vial cantonal (MOPT / municipalidad).
 
-## Capas que exigen cuenta (`requiere_cuenta` en capas.json)
+## Capas que exigen cuenta: copia propia, sitios separados
 
 Cinco capas (`zmt`, `planes_reguladores`, `zonasvida`, `infra`, `salud`) están detrás de
 `SOLO_CUENTA_DATOS` en el `worker.js` del sitio público: el visitante necesita una sesión
 de cuenta **gratis** en planoexactocr.com para verlas — es la táctica de registro del
 sitio, no un error de nuestro lado.
 
-Esto tiene una consecuencia importante: la cookie de sesión (`pecr_u`) se emite sin
-`Domain=.planoexactocr.com`, así que el navegador **no la comparte** entre
-`planoexactocr.com` y `atlas.planoexactocr.com` — son subdominios distintos. Por eso,
-hoy, el visor de `muni/` muestra esas capas con la etiqueta "requiere cuenta" y, si se
-intentan cargar, avisa en pantalla en vez de fallar en silencio.
+Decisión de diseño: este atlas se mantiene **separado** del sitio público — no comparte
+cuentas, cookies ni sesiones con él, ni se le pide a nadie que inicie sesión ahí para ver
+el atlas. En vez de eso, comparten la misma información por otro lado: una copia propia.
 
-Dos caminos, sin tocar nada del sitio público:
+`scripts/sync_cuenta.py` baja esas 5 capas una sola vez (con una cookie que usted pega a
+mano, nunca en el navegador de quien use el atlas) y las guarda como archivos normales
+dentro de `muni/data/`. Desde ahí las lee el visor y `build_atlas.py`, sin pedir cuenta a
+nadie. Para refrescarlas (no hace falta seguido — no cambian a diario):
 
-1. **Para el PDF/GeoPackage** (`scripts/build_atlas.py`): sí funciona hoy. Entre a
-   planoexactocr.com con cualquier cuenta gratis, copie la cookie `pecr_u` de las
-   herramientas de desarrollador del navegador, y páselo con `--cookie` o `PX_COOKIE`
-   (ver el encabezado del script para el detalle). Esa cookie dura 60 días.
-2. **Para que el visor del navegador también las cargue directamente**, haría falta un
-   cambio de una línea en el `worker.js` del sitio público: agregar
-   `Domain=.planoexactocr.com` a la cookie de sesión, para que la compartan todos los
-   subdominios. Es un cambio seguro (la cookie sigue siendo `HttpOnly`, `Secure` y
-   `SameSite=Lax`, solo se amplía a quién la ve), pero toca el sitio público en
-   producción, así que no lo hice sin avisar — decídalo usted.
+```
+python3 ../scripts/sync_cuenta.py --cookie "pecr_u=<valor copiado del navegador>"
+```
+
+Cómo conseguir esa cookie: entre a planoexactocr.com con cualquier cuenta gratis, abra
+las herramientas de desarrollador del navegador → Application (o Storage) → Cookies →
+copie el valor de `pecr_u`. El script actualiza `capas.json` solo (le quita la marca
+`requiere_cuenta` y anota la fecha de la copia); después hay que subir los archivos
+nuevos de `muni/data/` y el `capas.json` actualizado con git, y volver a desplegar.
+
+**Nota de tamaño:** `zmt.geojson` pesa cerca de 1.3 MB; las demás son más chicas. Si en
+algún momento esto crece mucho, conviene revisar si conviene comprimir o filtrar antes de
+subirlo al repositorio.
 
 ## Desplegar (ya probado, pasos manuales en Cloudflare)
 

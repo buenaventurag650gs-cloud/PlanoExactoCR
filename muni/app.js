@@ -35,12 +35,12 @@
       const disponible = c.estado === 'disponible';
       const lbl = document.createElement('label');
       lbl.className = 'capa' + (disponible ? '' : ' pendiente');
-      const notaCuenta = c.requiere_cuenta
-        ? ' — exige una cuenta gratis en planoexactocr.com (entre ahí primero)'
+      const notaCopia = c.copia_local
+        ? ` — copia propia, actualizada ${c.copia_local}`
         : '';
       lbl.innerHTML = `<input type="checkbox" ${disponible ? '' : 'disabled'} data-nombre="${c.nombre}">
-        <span>${c.nombre}<br><small style="color:var(--muted)">${c.fuente}${c.nota ? ' — ' + c.nota : ''}${notaCuenta}</small></span>
-        <span class="tag ${c.requiere_cuenta ? 'pendiente' : c.estado}">${c.requiere_cuenta ? 'requiere cuenta' : (c.estado === 'disponible' ? 'lista' : 'pendiente')}</span>`;
+        <span>${c.nombre}<br><small style="color:var(--muted)">${c.fuente}${c.nota ? ' — ' + c.nota : ''}${notaCopia}</small></span>
+        <span class="tag ${c.estado}">${c.estado === 'disponible' ? 'lista' : 'pendiente'}</span>`;
       fs.appendChild(lbl);
       if (disponible) {
         lbl.querySelector('input').addEventListener('change', (e) => toggleCapa(c, e.target.checked));
@@ -78,17 +78,17 @@
       return;
     }
     marcarFuente(c);
-    if (c.archivo && c.archivo.startsWith('http')) {
-      const data = await fetch(c.archivo, { credentials: 'include' })
+    if (c.archivo && !c.archivo.startsWith('api:')) {
+      // c.archivo puede ser una URL completa (capas realmente públicas, directo del sitio
+      // público) o una ruta relativa como "data/zonasvida.geojson" (copia propia que vive
+      // en este mismo Worker, sincronizada aparte — ver scripts/sync_cuenta.py).
+      const data = await fetch(c.archivo)
         .then((r) => {
-          if (r.status === 401) throw new Error('cuenta');
           if (!r.ok) throw new Error('http ' + r.status);
           return r.json();
         })
-        .catch((err) => {
-          avisar(err && err.message === 'cuenta'
-            ? `"${c.nombre}" exige una cuenta gratis. Abra planoexactocr.com en una pestaña, entre con su cuenta, y vuelva a intentar aquí.`
-            : `No se pudo cargar "${c.nombre}".`);
+        .catch(() => {
+          avisar(`No se pudo cargar "${c.nombre}".`);
           return null;
         });
       if (!data) return;
@@ -106,7 +106,7 @@
 
   // ---------- selector de cantón ----------
   // Carga silenciosa de límites cantonales para el selector, aunque la capa no esté encendida.
-  const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson', { credentials: 'include' }).then((r) => r.json()).catch(() => null);
+  const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson').then((r) => r.json()).catch(() => null);
   if (baseCantones) {
     cantonesFC = baseCantones;
     const nombres = [...new Set(baseCantones.features.map((f) => f.properties.k))].sort();

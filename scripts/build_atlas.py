@@ -8,23 +8,21 @@ Uso:
     # (útil en este entorno, donde no hay salida a planoexactocr.com):
     python3 scripts/build_atlas.py --canton "Pérez Zeledón" --salida salida/perez_zeledon --local .
 
-Cuenta gratis y capas "requiere_cuenta":
+Capas que exigen cuenta gratis:
     Varias capas (zmt, planes_reguladores, zonasvida, infra, salud) exigen una
     sesión de cuenta gratis en planoexactocr.com (así está hecho el sitio
-    público: SOLO_CUENTA_DATOS en worker.js). Sin eso, este script las salta
-    con un aviso "(requiere cuenta, se omite)".
+    público: SOLO_CUENTA_DATOS en worker.js). En vez de iniciar sesión cada
+    vez, usamos una copia propia: scripts/sync_cuenta.py las baja una sola
+    vez y las guarda en muni/data/, y actualiza capas.json para que apunten
+    ahí ("archivo": "data/zonasvida.geojson" en vez de la URL del sitio
+    público). Este script lee esas copias igual que cualquier otra capa —
+    no necesita cookie para ellas.
 
-    Para incluirlas: entre a planoexactocr.com en el navegador con una cuenta
-    (gratis), abra las herramientas de desarrollador → Application/Storage →
-    Cookies → copie el valor de la cookie "pecr_u", y páselo así:
-
-        python3 scripts/build_atlas.py --canton "Pérez Zeledón" \
-            --salida salida/perez_zeledon --cookie "pecr_u=<el valor copiado>"
-
-    (o con la variable de entorno PX_COOKIE en vez de --cookie). Esa cookie
-    dura 60 días. Esto es aparte del visor en el navegador (muni/app.js), que
-    no puede usar esa misma cookie porque no se comparte entre
-    planoexactocr.com y atlas.planoexactocr.com — ver la nota en capas.json.
+    Si alguna capa todavía no se ha sincronizado (sigue con "requiere_cuenta"
+    en capas.json), este script la salta con un aviso. Para incluirla sin
+    sincronizarla primero, puede pasar --cookie "pecr_u=<valor>" (o la
+    variable de entorno PX_COOKIE) y la baja directo del sitio público, solo
+    para esta corrida.
 
 Qué hace:
   1. Lee muni/capas.json y toma las capas marcadas "disponible".
@@ -82,7 +80,9 @@ def cargar_catalogo() -> dict:
 
 
 def capas_descargables(catalogo: dict) -> list[dict]:
-    """Capas 'disponible' que son un archivo (no las 'api:/...', que se consultan por lote)."""
+    """Capas 'disponible' que son un archivo: URL absoluta del sitio público, o ruta
+    relativa (copia propia en muni/, p. ej. "data/zonasvida.geojson"). Las 'api:/...'
+    se consultan por lote, no se descargan completas, así que se excluyen aquí."""
     vistas = set()
     resultado = []
     for grupo in catalogo["grupos"]:
@@ -90,7 +90,7 @@ def capas_descargables(catalogo: dict) -> list[dict]:
             if capa["estado"] != "disponible":
                 continue
             archivo = capa.get("archivo")
-            if not archivo or not archivo.startswith("http"):
+            if not archivo or archivo.startswith("api:"):
                 continue
             if capa["nombre"] in vistas:
                 continue
@@ -99,13 +99,16 @@ def capas_descargables(catalogo: dict) -> list[dict]:
     return resultado
 
 
-def leer_json(url: str, local_root: pathlib.Path | None, cookie: str | None) -> dict | list:
+def leer_json(archivo: str, local_root: pathlib.Path | None, cookie: str | None) -> dict | list:
+    if not archivo.startswith("http"):
+        # Ruta relativa: copia propia dentro de muni/ (ver scripts/sync_cuenta.py).
+        return json.loads((MUNI_DIR / archivo).read_text(encoding="utf-8"))
     if local_root is not None:
-        nombre_archivo = url.rsplit("/", 1)[-1]
+        nombre_archivo = archivo.rsplit("/", 1)[-1]
         ruta = local_root / "data" / nombre_archivo
         return json.loads(ruta.read_text(encoding="utf-8"))
     headers = {"Cookie": cookie} if cookie else {}
-    resp = requests.get(url, timeout=30, headers=headers)
+    resp = requests.get(archivo, timeout=30, headers=headers)
     resp.raise_for_status()
     return resp.json()
 

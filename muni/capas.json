@@ -1,6 +1,6 @@
 {
   "generado": "2026-11-17",
-  "nota": "Catálogo de capas para el visor municipal. Las disponibles se leen en vivo del sitio público (planoexactocr.com/data/…), que ya las publica para el visor de remates; nada de esto es información de remates. Las marcadas requiere_cuenta exigen sesión de cuenta gratis en planoexactocr.com (SOLO_CUENTA_DATOS en worker.js) — hoy esa sesión no se comparte con atlas.planoexactocr.com (son subdominios distintos), así que en el visor del navegador dan 401; scripts/build_atlas.py sí puede usarlas pasando la cookie de sesión a mano. Las pendientes son el trabajo que falta por eje IFA.",
+  "nota": "Catálogo de capas para el visor municipal. La mayoría se lee en vivo del sitio público (planoexactocr.com/data/…), que ya las publica para el visor de remates; nada de esto es información de remates. Las marcadas requiere_cuenta exigen sesión de cuenta gratis en planoexactocr.com (SOLO_CUENTA_DATOS en worker.js); este sitio se mantiene aparte, sin compartir sesión ni cuentas con el público, así que esas capas se sincronizan por separado con scripts/sync_cuenta.py, que guarda una copia propia en muni/data/ y le quita la marca requiere_cuenta cuando ya están sincronizadas (quedan con \"archivo\": \"data/…\" y \"copia_local\": \"<fecha>\"). Las pendientes son el trabajo que falta por eje IFA.",
   "grupos": [
     {
       "eje": "Base cartográfica",
