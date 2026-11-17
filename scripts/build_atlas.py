@@ -1,60 +1,249 @@
-"""Atlas de cantón — stub.
+"""Atlas de cantón — recorta las capas del catálogo municipal al polígono de un
+cantón y exporta un GeoPackage (para abrir en QGIS) más un PDF de láminas rápidas.
 
-Recorta las capas del catálogo municipal al polígono de un cantón y exporta:
-- un GeoPackage (una capa por tabla) para abrir en QGIS
-- una serie de láminas PDF con leyenda y escala uniforme (CRTM05)
+Uso:
+    python3 scripts/build_atlas.py --canton "Pérez Zeledón" --salida salida/perez_zeledon
 
-No implementado todavía: requiere geopandas (no está en el entorno de este repo).
-Instalar con `pip install geopandas` antes de completar las funciones.
+    # Para probar con los archivos de datos del repo en vez de bajarlos de internet
+    # (útil en este entorno, donde no hay salida a planoexactocr.com):
+    python3 scripts/build_atlas.py --canton "Pérez Zeledón" --salida salida/perez_zeledon --local .
 
-Uso previsto:
-    python scripts/build_atlas.py --canton "Pérez Zeledón" --salida salida/perez_zeledon
+Qué hace:
+  1. Lee muni/capas.json y toma las capas marcadas "disponible".
+  2. Cada capa puede venir en tres formas (las tres existen hoy en el sitio):
+       - GeoJSON (FeatureCollection) normal.
+       - una lista de registros con coordenadas en la clave "ll": [lon, lat]
+         (p. ej. data/salud.json).
+       - un objeto con una lista de registros adentro, con la misma clave "ll"
+         (p. ej. data/asadas.json → clave "asadas").
+     Las capas marcadas como "api:/..." se saltan: esas se consultan una por
+     una (plano o finca), no se descargan completas.
+  3. Recorta cada capa al polígono del cantón elegido (de cantones.geojson).
+  4. Escribe todo en un GeoPackage, una capa por tabla, nombrada por el eje
+     IFA al que pertenece.
+  5. Genera un PDF con una portada (cantón, fecha, fuentes) y una lámina por
+     capa recortada, para repasar rápido sin abrir QGIS.
 
-Pendiente:
-- Cargar capas.json y resolver cada capa `disponible` a su GeoDataFrame.
-- Recortar con geopandas.clip() al polígono del cantón (data/cantones.geojson).
-- Escribir el GeoPackage con una capa por grupo de capas.json.
-- Armar las láminas PDF (matplotlib o QGIS en modo batch) con leyenda y escala.
+Falta para la versión completa (lo que no hace todavía):
+  - Las capas IFA marcadas "pendiente" en capas.json (no hay de dónde
+    bajarlas todavía: ver ese archivo para el detalle por eje).
+  - Leyenda y escala gráfica cartográficamente correctas en el PDF (hoy es
+    una vista rápida, no una lámina para imprimir y presentar).
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import pathlib
+import sys
+import unicodedata
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import pandas as pd
+import requests
+from shapely.geometry import Point
 
 MUNI_DIR = pathlib.Path(__file__).resolve().parent.parent / "muni"
+CRS_GEOGRAFICO = "EPSG:4326"
+CRS_METRICO = "EPSG:5367"  # CRTM05, el oficial de Costa Rica — para áreas/recortes correctos
+
+
+def normalizar(texto: str) -> str:
+    """Quita acentos y pasa a minúsculas, para comparar nombres de cantón sin pelear con tildes."""
+    sin_acentos = "".join(
+        c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c)
+    )
+    return sin_acentos.strip().lower()
 
 
 def cargar_catalogo() -> dict:
     return json.loads((MUNI_DIR / "capas.json").read_text(encoding="utf-8"))
 
 
-def capas_disponibles(catalogo: dict) -> list[dict]:
-    return [
-        capa
-        for grupo in catalogo["grupos"]
-        for capa in grupo["capas"]
-        if capa["estado"] == "disponible" and capa.get("archivo", "").startswith("http")
-    ]
+def capas_descargables(catalogo: dict) -> list[dict]:
+    """Capas 'disponible' que son un archivo (no las 'api:/...', que se consultan por lote)."""
+    vistas = set()
+    resultado = []
+    for grupo in catalogo["grupos"]:
+        for capa in grupo["capas"]:
+            if capa["estado"] != "disponible":
+                continue
+            archivo = capa.get("archivo")
+            if not archivo or not archivo.startswith("http"):
+                continue
+            if capa["nombre"] in vistas:
+                continue
+            vistas.add(capa["nombre"])
+            resultado.append({**capa, "eje": grupo["eje"]})
+    return resultado
+
+
+def leer_json(url: str, local_root: pathlib.Path | None) -> dict | list:
+    if local_root is not None:
+        nombre_archivo = url.rsplit("/", 1)[-1]
+        ruta = local_root / "data" / nombre_archivo
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def a_geodataframe(data: dict | list, nombre_capa: str) -> gpd.GeoDataFrame | None:
+    """Convierte lo que venga (FeatureCollection, lista de puntos, o dict con una lista
+    de puntos adentro) a un GeoDataFrame en WGS84. Devuelve None si no reconoce la forma."""
+    if isinstance(data, dict) and data.get("type") == "FeatureCollection":
+        gdf = gpd.GeoDataFrame.from_features(data["features"])
+        gdf = gdf.set_crs(CRS_GEOGRAFICO, allow_override=True)
+        return gdf
+
+    registros = None
+    if isinstance(data, list):
+        registros = data
+    elif isinstance(data, dict):
+        # Objetos tipo asadas.json: la lista de puntos vive bajo alguna clave.
+        for valor in data.values():
+            if isinstance(valor, list) and valor and isinstance(valor[0], dict) and "ll" in valor[0]:
+                registros = valor
+                break
+
+    if registros is None:
+        print(f"  (!) no reconozco la forma de '{nombre_capa}', se omite", file=sys.stderr)
+        return None
+
+    filas = [r for r in registros if isinstance(r, dict) and "ll" in r and r["ll"]]
+    if not filas:
+        print(f"  (!) '{nombre_capa}' no trae coordenadas 'll', se omite", file=sys.stderr)
+        return None
+
+    geometria = [Point(r["ll"][0], r["ll"][1]) for r in filas]
+    df = pd.DataFrame(filas)
+    return gpd.GeoDataFrame(df, geometry=geometria, crs=CRS_GEOGRAFICO)
+
+
+def nombre_tabla(nombre_capa: str) -> str:
+    """Nombre de tabla válido para GeoPackage: sin acentos, sin espacios raros, máx 63 car."""
+    base = normalizar(nombre_capa).replace(" ", "_")
+    limpio = "".join(c if c.isalnum() or c == "_" else "" for c in base)
+    return limpio[:63] or "capa"
+
+
+def sanear_geometrias(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Algunas capas (sobre todo la de zona marítimo terrestre) traen polígonos
+    con auto-intersecciones; buffer(0) los repara sin cambiar la forma visible."""
+    invalidas = ~gdf.geometry.is_valid
+    if invalidas.any():
+        gdf = gdf.copy()
+        gdf.loc[invalidas, "geometry"] = gdf.loc[invalidas, "geometry"].buffer(0)
+    return gdf
+
+
+def recortar_al_canton(gdf: gpd.GeoDataFrame, poligono_canton: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    gdf_m = sanear_geometrias(gdf.to_crs(CRS_METRICO))
+    poligono_m = sanear_geometrias(poligono_canton.to_crs(CRS_METRICO))
+    recortado = gpd.clip(gdf_m, poligono_m)
+    return recortado.to_crs(CRS_GEOGRAFICO)
+
+
+def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataFrame,
+              capas_recortadas: list[tuple[dict, gpd.GeoDataFrame]], generado: str) -> None:
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    with PdfPages(ruta_pdf) as pdf:
+        # Portada: cantón, fecha, y de dónde sale cada capa.
+        fig, ax = plt.subplots(figsize=(8.5, 11))
+        ax.axis("off")
+        lineas = [f"Atlas municipal — {canton}", f"Generado: {generado}", "", "Capas incluidas:"]
+        for capa, gdf in capas_recortadas:
+            lineas.append(f"  • {capa['nombre']} — {capa['fuente']} ({len(gdf)} elementos en el cantón)")
+        if not capas_recortadas:
+            lineas.append("  (ninguna capa tenía elementos dentro de este cantón)")
+        ax.text(0.05, 0.95, "\n".join(lineas), va="top", ha="left", fontsize=11, wrap=True)
+        pdf.savefig(fig)
+        plt.close(fig)
+
+        # Una lámina por capa, con el límite del cantón de fondo.
+        for capa, gdf in capas_recortadas:
+            fig, ax = plt.subplots(figsize=(8.5, 11))
+            poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1)
+            if not gdf.empty:
+                es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
+                if es_punto:
+                    gdf.plot(ax=ax, markersize=8, color="#d9480f")
+                else:
+                    gdf.plot(ax=ax, color="#1971c2", alpha=0.5, edgecolor="#1971c2")
+            ax.set_title(f"{canton} — {capa['nombre']}", fontsize=13)
+            ax.set_axis_off()
+            ax.text(0.01, 0.01, f"Fuente: {capa['fuente']}", transform=ax.transAxes, fontsize=8)
+            pdf.savefig(fig)
+            plt.close(fig)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--canton", required=True, help="Nombre del cantón, como aparece en data/cantones.geojson")
-    parser.add_argument("--salida", required=True, help="Carpeta de salida (sin extensión)")
+    parser.add_argument("--salida", required=True, help="Ruta de salida sin extensión (se escriben .gpkg y .pdf)")
+    parser.add_argument("--local", type=pathlib.Path, default=None,
+                         help="Carpeta raíz del repo con datos locales en data/, en vez de bajarlos de internet")
     args = parser.parse_args()
 
     catalogo = cargar_catalogo()
-    disponibles = capas_disponibles(catalogo)
-    print(f"Cantón: {args.canton}")
-    print(f"Capas disponibles para recortar: {len(disponibles)}")
-    for c in disponibles:
-        print(f"  - {c['nombre']} ({c['fuente']})")
+    descargables = capas_descargables(catalogo)
 
-    raise SystemExit(
-        "Pendiente de implementar: recorte con geopandas y exportación a "
-        f"{args.salida}.gpkg + láminas PDF. Por ahora, usa el botón "
-        "'Generar atlas' del visor (muni/) para un PDF rápido del mapa visible."
-    )
+    print(f"Cantón: {args.canton}")
+    print(f"Capas disponibles para recortar: {len(descargables)}")
+
+    url_cantones = "https://planoexactocr.com/data/cantones.geojson"
+    cantones = a_geodataframe(leer_json(url_cantones, args.local), "Límites cantonales")
+    if cantones is None:
+        raise SystemExit("No pude leer cantones.geojson")
+
+    columna_nombre = "k" if "k" in cantones.columns else None
+    if columna_nombre is None:
+        raise SystemExit("cantones.geojson no tiene la columna de nombre esperada ('k')")
+
+    objetivo = normalizar(args.canton)
+    coincidencias = cantones[cantones[columna_nombre].apply(lambda v: normalizar(str(v)) == objetivo)]
+    if coincidencias.empty:
+        opciones = ", ".join(sorted(cantones[columna_nombre].unique())[:15])
+        raise SystemExit(f"No encontré el cantón '{args.canton}'. Algunos nombres válidos: {opciones}, …")
+    poligono_canton = coincidencias
+
+    salida = pathlib.Path(args.salida)
+    salida.parent.mkdir(parents=True, exist_ok=True)
+    ruta_gpkg = salida.with_suffix(".gpkg")
+    ruta_pdf = salida.with_suffix(".pdf")
+    if ruta_gpkg.exists():
+        ruta_gpkg.unlink()
+
+    capas_recortadas: list[tuple[dict, gpd.GeoDataFrame]] = []
+    for capa in descargables:
+        print(f"  - {capa['nombre']} ({capa['fuente']})", end=" ")
+        try:
+            data = leer_json(capa["archivo"], args.local)
+        except Exception as e:
+            print(f"ERROR al leer: {e}", file=sys.stderr)
+            continue
+        gdf = a_geodataframe(data, capa["nombre"])
+        if gdf is None:
+            continue
+        recortado = recortar_al_canton(gdf, poligono_canton)
+        print(f"→ {len(recortado)} elementos en el cantón")
+        if recortado.empty:
+            continue
+        tabla = nombre_tabla(capa["nombre"])
+        recortado.to_file(ruta_gpkg, layer=tabla, driver="GPKG")
+        capas_recortadas.append((capa, recortado))
+
+    # El polígono del cantón también va en el GeoPackage, de referencia.
+    poligono_canton.to_file(ruta_gpkg, layer="limite_canton", driver="GPKG")
+
+    generado = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+    armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado)
+
+    print(f"\nListo: {ruta_gpkg}")
+    print(f"       {ruta_pdf}")
 
 
 if __name__ == "__main__":

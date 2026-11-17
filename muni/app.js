@@ -83,13 +83,13 @@
   const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson').then((r) => r.json()).catch(() => null);
   if (baseCantones) {
     cantonesFC = baseCantones;
-    const nombres = [...new Set(baseCantones.features.map((f) => f.properties.c))].sort();
+    const nombres = [...new Set(baseCantones.features.map((f) => f.properties.k))].sort();
     const sel = $('selCanton');
     nombres.forEach((n) => sel.insertAdjacentHTML('beforeend', `<option value="${n}">${n}</option>`));
     sel.addEventListener('change', () => {
       $('btnAtlas').disabled = !sel.value;
       if (!sel.value) return;
-      const feat = baseCantones.features.find((f) => f.properties.c === sel.value);
+      const feat = baseCantones.features.find((f) => f.properties.k === sel.value);
       if (!feat) return;
       if (cantonLayer) map.removeLayer(cantonLayer);
       cantonLayer = L.geoJSON(feat, { style: { color: '#4f8cff', weight: 2, fillOpacity: 0.04 } }).addTo(map);

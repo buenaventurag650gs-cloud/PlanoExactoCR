@@ -7,3 +7,6 @@ __pycache__/
 node_modules/
 ck
 *.cookies
+
+# Salidas de scripts/build_atlas.py
+salida/
