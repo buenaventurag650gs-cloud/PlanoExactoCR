@@ -23,7 +23,8 @@
       "capas": [
         { "nombre": "Zonas de vida", "archivo": "https://planoexactocr.com/data/zonasvida.geojson", "fuente": "MINAE-CENIGA", "estado": "disponible", "requiere_cuenta": true },
         { "nombre": "Cobertura forestal 2020", "archivo": "api:/api/cobertura", "fuente": "MINAE", "estado": "disponible" },
-        { "nombre": "Áreas silvestres protegidas y corredores biológicos", "archivo": null, "fuente": "SINAC", "estado": "pendiente" }
+        { "nombre": "Áreas silvestres protegidas", "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_silvestres_protegidas&outputFormat=application/json&srsName=EPSG:4326", "fuente": "SINAC (SNIT, capa oficial, uso libre)", "estado": "disponible" },
+        { "nombre": "Corredores biológicos", "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=corredoresbiologicos&outputFormat=application/json&srsName=EPSG:4326", "fuente": "SINAC (SNIT, capa oficial, uso libre)", "estado": "disponible" }
       ]
     },
     {

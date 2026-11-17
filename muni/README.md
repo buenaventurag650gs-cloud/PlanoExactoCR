@@ -17,9 +17,29 @@ Worker distinto, sin cuentas, sin pagos, sin datos de remates.
 ## Qué falta (ver capas.json, estado `pendiente`)
 
 - Capas IFA: geoaptitud (amenazas CNE, geología, pendientes), edafoaptitud (MAG/INTA),
-  bioaptitud (SINAC: ASP y corredores), antropoaptitud (uso de suelo detallado).
+  antropoaptitud (uso de suelo detallado).
 - Patrimonio arqueológico (gestionar acceso con el Museo Nacional).
 - Red vial cantonal (MOPT / municipalidad).
+
+## Áreas silvestres protegidas y corredores biológicos (SINAC)
+
+Estas dos capas de bioaptitud ya están `disponible`. Vienen directo del geoservidor
+oficial del SINAC publicado en el SNIT (el catálogo nacional de mapas del gobierno,
+`snitcr.go.cr`), no de una copia nuestra: `archivo` apunta a una URL de tipo WFS
+(`https://geos1pne.sirefor.go.cr/wfs?...`) que entrega el GeoJSON directo, en el mismo
+sistema de coordenadas que el resto del catálogo. Son capas oficiales y de uso libre
+(sin cuenta, sin permiso que pedir).
+
+Un detalle a vigilar: ese servidor es del gobierno, no nuestro, y no sabemos todavía si
+permite que el navegador lo consulte directamente desde atlas.planoexactocr.com (un
+tema técnico llamado CORS). Si al probar el visor esa capa no carga (sale el aviso
+amarillo de "No se pudo cargar"), no es un error nuestro — simplemente ese servidor no
+deja que paginas de otros sitios le pidan datos directamente. `scripts/build_atlas.py`
+no tiene ese problema (ahí quien pide los datos es el script, no el navegador), así que
+el atlas en PDF/GeoPackage por cantón de todas formas va a incluir estas dos capas sin
+problema. Si el visor en vivo falla, la solución sería una copia propia como la que ya
+se usa para las capas que exigen cuenta (ver sección siguiente), pero no hay que
+adelantarse: hay que probarlo primero.
 
 ## Capas que exigen cuenta: copia propia, sitios separados
 
