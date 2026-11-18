@@ -699,20 +699,21 @@ def main() -> None:
                 hechos = 0
                 # Mapa integrado (el principal del eje).
                 if cat_int is not None:
-                    arch = salida.parent / f"{i}. Mapa IFA Bioaptitud {args.canton} Carta.pdf"
+                    arch = salida.parent / f"{mdef.get('numero','')} Mapa IFA Bioaptitud {args.canton} Carta.pdf"
                     plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Bioaptitud",
                         mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones,
-                        raster=raster_dict(cat_int, tr_int))
+                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
+                        cantones_full=cantones, raster=raster_dict(cat_int, tr_int))
                     planchas_hechas.append(arch); hechos += 1
                     print(f"  ✓ {arch.name}")
-                # Sub-mapas (biodiversidad/biotopos, categorías de manejo, cobertura vegetal).
+                # Sub-mapas (biotopos, categorías de manejo, cobertura vegetal).
                 for s in subs:
-                    arch = salida.parent / f"{i}.{hechos}. Mapa {s['titulo']} {args.canton} Carta.pdf"
+                    num = mapas_oficiales.get(s["id"], {}).get("numero", "")
+                    arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} Carta.pdf"
                     plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
                         mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones,
-                        raster=raster_dict(s["cat"], s["transform"]))
+                        fecha=fecha_corta, lamina_num=i, total=total, numero=num,
+                        cantones_full=cantones, raster=raster_dict(s["cat"], s["transform"]))
                     planchas_hechas.append(arch); hechos += 1
                     print(f"  ✓ {arch.name}")
                 if hechos == 0:
@@ -735,13 +736,13 @@ def main() -> None:
             if not insumos and raster_ifa is None:
                 print(f"  (sin insumos para «{mdef['nombre']}», se omite)")
                 continue
-            arch = salida.parent / f"{i}. Mapa {mdef['nombre']} {args.canton} Carta.pdf"
+            arch = salida.parent / f"{mdef.get('numero','')} Mapa {mdef['nombre']} {args.canton} Carta.pdf"
             try:
                 plancha.dibujar_plancha(
                     arch, args.canton, poligono_canton, insumos, mdef["nombre"],
                     mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                    fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones,
-                    raster=raster_ifa)
+                    fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
+                    cantones_full=cantones, raster=raster_ifa)
                 planchas_hechas.append(arch)
                 print(f"  ✓ {arch.name}")
             except Exception as e:

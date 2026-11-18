@@ -1,118 +1,95 @@
 {
-  "generado": "2026-11-17",
-  "nota": "Catálogo de los MAPAS oficiales que el tablero permite configurar y exportar. No es una lista de capas, sino de los productos cartográficos que piden las instituciones: la serie IFA del decreto 44710 (SETENA) y la cartografía de plan regulador del MAPRIOT (INVU). Cada mapa declara qué insumos (capas de capas.json y/o análisis) necesita y su estado real. El tablero arma el PDF con los mapas que el usuario marque; build_atlas.py los produce.",
-  "proyeccion": "CRTM05 (EPSG:5367) — exigida por el INVU para la cartografía de planes reguladores",
+  "generado": "2026-11-18",
+  "nota": "Catálogo numerado de los mapas del plan regulador / EsIVA. Ejes 1-4 del IFA (SETENA, decreto 44710), 5 el IFA integrado, y 6-8 las dimensiones del diagnóstico territorial del MAPRIOT (INVU). Cada mapa declara su número, estado e insumos. El estado es: disponible / parcial / pendiente.",
+  "proyeccion": "CRTM05 (EPSG:5367)",
   "instituciones": [
     {
-      "id": "setena",
-      "nombre": "SETENA — Decreto 44710 (modalidad IFA)",
-      "descripcion": "Índices de Fragilidad Ambiental para el EsIVA. Cuatro ejes (Geoaptitud, Edafoaptitud, Bioaptitud, Antropoaptitud) calificados 1-5 (1 = muy alta fragilidad) y el IFA integrado zonificado en 5 zonas.",
+      "numero": "1",
+      "id": "geoaptitud",
+      "nombre": "1. Geoaptitud",
+      "descripcion": "Aptitud del medio geológico-geomorfológico. Cinco factores que se integran en el IFA Geoaptitud.",
       "mapas": [
-        {
-          "id": "ifa_geoaptitud_pendiente",
-          "nombre": "IFA Geoaptitud — pendiente",
-          "descripcion": "Calificación de la pendiente del terreno en la escala IFA 1-5 (Tabla 8). Insumo del factor geodinámico externo y de estabilidad de laderas.",
-          "estado": "disponible",
-          "requiere_dem": true,
-          "insumos": ["Curvas de nivel 10m", "DEM del IGN"]
-        },
-        {
-          "id": "ifa_geoaptitud",
-          "nombre": "IFA Geoaptitud integrado",
-          "descripcion": "Suma de los cinco factores: litopetrofísico, geodinámico externo, hidrogeológico, estabilidad de laderas y amenazas naturales.",
-          "estado": "parcial",
-          "faltante": "litopetrofísico e hidrogeológico necesitan la geología (DGM, pendiente); amenazas ya disponibles de la CNE",
-          "insumos": ["IFA Geoaptitud — pendiente", "Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación", "Geología"]
-        },
-        {
-          "id": "ifa_edafoaptitud",
-          "nombre": "IFA Edafoaptitud",
-          "descripcion": "Calificación según la capacidad de uso de la tierra (clases I-VIII, Decreto 23214).",
-          "estado": "parcial",
-          "faltante": "el INTA solo cubre algunos cantones; donde no hay, se complementa con uso actual",
-          "insumos": ["Capacidad de uso de la tierra"]
-        },
-        {
-          "id": "ifa_bioaptitud",
-          "nombre": "IFA Bioaptitud",
-          "descripcion": "Calificación por grado de protección y sensibilidad biológica: áreas silvestres protegidas, corredores, humedales, patrimonio natural.",
-          "estado": "disponible",
-          "insumos": ["Áreas silvestres protegidas", "Corredores biológicos", "Patrimonio Natural del Estado", "Registro Nacional de Humedales", "Áreas de Conservación", "Zonas de vida"]
-        },
-        {
-          "id": "ifa_antropoaptitud",
-          "nombre": "IFA Antropoaptitud",
-          "descripcion": "Calificación por uso antrópico: uso urbano, vialidad, planes reguladores vigentes, sitios de interés cultural.",
-          "estado": "parcial",
-          "faltante": "sitios arqueológicos (Museo Nacional, pendiente)",
-          "insumos": ["Uso urbano 1:5mil", "Cultivos 1:5mil", "Red vial cantonal", "Estado del plan regulador por cantón", "Sitios arqueológicos registrados"]
-        },
-        {
-          "id": "ifa_integrado",
-          "nombre": "IFA Integrado — Zonificación ambiental",
-          "descripcion": "Suma algebraica de los cuatro ejes, zonificada en 5 zonas (I muy alta fragilidad … V muy baja). Es el mapa final que resume el EsIVA.",
-          "estado": "pendiente",
-          "faltante": "requiere los cuatro ejes calificados sobre una grilla común",
-          "insumos": ["ifa_geoaptitud", "ifa_edafoaptitud", "ifa_bioaptitud", "ifa_antropoaptitud"]
-        }
+        {"numero": "1.1", "id": "geo_litopetrofisico", "nombre": "Factor litopetrofísico", "estado": "pendiente", "faltante": "geología, geomorfología, dureza, cohesión, meteorización, arcilla, permeabilidad (DGM)", "descripcion": "Resistencia del material: geología, geomorfología, dureza, cohesión, meteorización, espesor de suelo, arcilla, permeabilidad.", "insumos": ["Geología"]},
+        {"numero": "1.2", "id": "ifa_geoaptitud_pendiente", "nombre": "Factor geodinámica externa", "estado": "disponible", "requiere_dem": true, "descripcion": "Pendiente, relieve relativo, densidad de drenaje, erosión y sedimentación. La pendiente se calcula del DEM (Tabla 8).", "insumos": ["Curvas de nivel 10m", "DEM del IGN"]},
+        {"numero": "1.3", "id": "geo_hidrogeologico", "nombre": "Factor hidrogeológico", "estado": "pendiente", "faltante": "hidrogeología, perfil, infiltración, índice GOD", "descripcion": "Hidrogeología, perfil hidrogeológico, potencial de infiltración, precipitación, índice GOD.", "insumos": []},
+        {"numero": "1.4", "id": "geo_estabilidad", "nombre": "Factor estabilidad de laderas", "estado": "parcial", "faltante": "IFA tres meses más lluviosos", "descripcion": "Dirección de talud (del DEM) e índice de los tres meses más lluviosos.", "insumos": []},
+        {"numero": "1.5", "id": "geo_amenazas", "nombre": "Factor amenazas naturales", "estado": "parcial", "faltante": "sismicidad, volcánica, licuefacción, tsunami", "descripcion": "Deslizamientos, fallas activas, inundación, sismicidad, amenaza volcánica, licuefacción, tsunami.", "insumos": ["Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación"]},
+        {"numero": "1.6", "id": "geo_integrado", "nombre": "IFA Geoaptitud integrado", "estado": "pendiente", "faltante": "requiere los cinco factores", "descripcion": "Integración de los cinco factores de geoaptitud.", "insumos": []}
       ]
     },
     {
-      "id": "invu",
-      "nombre": "INVU — Plan Regulador (MAPRIOT)",
-      "descripcion": "Cartografía del plan regulador según el Manual de Planes Reguladores (MAPRIOT 2025) y su Guía de Cartografía: mapas temáticos, de resultados del diagnóstico por eje, mapa unificado del diagnóstico y mapa de zonificación.",
+      "numero": "2",
+      "id": "bioaptitud",
+      "nombre": "2. Bioaptitud",
+      "descripcion": "Aptitud del medio biológico (IFA Biológico). Sub-mapas que se integran en el IFA Bioaptitud.",
       "mapas": [
-        {
-          "id": "base_cartografica",
-          "nombre": "Mapa base cartográfico",
-          "descripcion": "Límites cantonales y distritales, red vial, hidrografía y zona marítimo terrestre como referencia de todos los demás mapas.",
-          "estado": "disponible",
-          "insumos": ["Límites cantonales", "Límites distritales", "Red vial cantonal", "Zona marítimo terrestre"]
-        },
-        {
-          "id": "uso_actual_suelo",
-          "nombre": "Uso actual del suelo",
-          "descripcion": "Cobertura y uso del suelo: urbano, cultivos y cobertura forestal.",
-          "estado": "disponible",
-          "insumos": ["Uso urbano 1:5mil", "Cultivos 1:5mil", "Cobertura forestal 2020"]
-        },
-        {
-          "id": "amenazas_condicionantes",
-          "nombre": "Amenazas y condicionantes",
-          "descripcion": "Deslizamientos, fallas, inundación y demás condicionantes ambientales del territorio.",
-          "estado": "disponible",
-          "insumos": ["Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación"]
-        },
-        {
-          "id": "vialidad",
-          "nombre": "Red vial",
-          "descripcion": "Red vial cantonal, nacional y demás infraestructura de movilidad.",
-          "estado": "disponible",
-          "insumos": ["Red vial cantonal"]
-        },
-        {
-          "id": "servicios",
-          "nombre": "Infraestructura y servicios",
-          "descripcion": "Red eléctrica, ASADAS y abastecimiento de agua, y sedes de salud.",
-          "estado": "disponible",
-          "insumos": ["Red eléctrica", "ASADAS y abastecimiento de agua", "Sedes de salud", "Infraestructura general"]
-        },
-        {
-          "id": "diagnostico_unificado",
-          "nombre": "Mapa unificado del diagnóstico territorial",
-          "descripcion": "Síntesis de los resultados del diagnóstico por eje en un solo mapa, base de la zonificación.",
-          "estado": "pendiente",
-          "faltante": "requiere definir la síntesis de ejes del diagnóstico",
-          "insumos": ["ifa_integrado"]
-        },
-        {
-          "id": "zonificacion",
-          "nombre": "Mapa de zonificación propuesta",
-          "descripcion": "Propuesta de usos del suelo del plan regulador (el Atlas de Zonificación que firma el profesional responsable).",
-          "estado": "pendiente",
-          "faltante": "es la propuesta del equipo planificador; el tablero la dibuja a partir de la zonificación que se cargue",
-          "insumos": ["zonificación propuesta (a cargar)"]
-        }
+        {"numero": "2.1", "id": "bio_biotopos", "nombre": "IFA Biotopos sensibles", "estado": "disponible", "descripcion": "Manglares, bosque ripario, humedales.", "insumos": ["Registro Nacional de Humedales"]},
+        {"numero": "2.2", "id": "bio_categorias_manejo", "nombre": "IFA Categorías de manejo", "estado": "disponible", "descripcion": "Según la categoría de manejo de las áreas protegidas (Parque Nacional, Zona Protectora, etc.).", "insumos": ["Áreas silvestres protegidas"]},
+        {"numero": "2.3", "id": "bio_cobertura_vegetal", "nombre": "IFA Cobertura vegetal", "estado": "disponible", "descripcion": "Según el tipo de cobertura (bosque, charral, pasto, cultivo, urbano) del MAF2020.", "insumos": ["Cobertura MAF2020"]},
+        {"numero": "2.4", "id": "ifa_bioaptitud", "nombre": "IFA Bioaptitud integrado", "estado": "disponible", "descripcion": "Integración de los sub-mapas de bioaptitud.", "insumos": ["Zonas de vida", "Corredores biológicos", "Áreas de Conservación"]}
+      ]
+    },
+    {
+      "numero": "3",
+      "id": "edafoaptitud",
+      "nombre": "3. Edafoaptitud",
+      "descripcion": "Aptitud del suelo. Sub-mapas que se integran en el IFA Edafoaptitud.",
+      "mapas": [
+        {"numero": "3.1", "id": "eda_capacidad_uso", "nombre": "IFA Capacidad de uso de la tierra", "estado": "parcial", "faltante": "el INTA solo cubre algunos cantones", "descripcion": "Clases I-VIII de capacidad de uso (Decreto 23214).", "insumos": ["Capacidad de uso de la tierra"]},
+        {"numero": "3.2", "id": "eda_fertilidad", "nombre": "IFA Fertilidad del suelo", "estado": "pendiente", "faltante": "fertilidad del suelo", "descripcion": "Potencial agrícola por fertilidad del suelo.", "insumos": []},
+        {"numero": "3.3", "id": "eda_tipo_suelo", "nombre": "IFA Tipo de suelo", "estado": "pendiente", "faltante": "orden/tipo de suelo", "descripcion": "Clasificación por tipo de suelo.", "insumos": []},
+        {"numero": "3.4", "id": "eda_integrado", "nombre": "IFA Edafoaptitud integrado", "estado": "pendiente", "faltante": "requiere los sub-mapas", "descripcion": "Integración de los sub-mapas de edafoaptitud.", "insumos": []}
+      ]
+    },
+    {
+      "numero": "4",
+      "id": "antropoaptitud",
+      "nombre": "4. Antropoaptitud",
+      "descripcion": "Aptitud por uso antrópico y paisaje. Se integra en el IFA Antropoaptitud.",
+      "mapas": [
+        {"numero": "4.1", "id": "ant_uso_antropico", "nombre": "IFA Uso antrópico", "estado": "parcial", "faltante": "sitios arqueológicos (Museo)", "descripcion": "Áreas de desarrollo futuro, red vial, áreas protegidas, uso del suelo antrópico, patrimonio y sitios arqueológicos.", "insumos": ["Uso urbano 1:5mil", "Red vial cantonal", "Áreas silvestres protegidas", "Sitios arqueológicos registrados"]},
+        {"numero": "4.2", "id": "ant_paisajismo", "nombre": "IFA Paisajismo", "estado": "pendiente", "faltante": "tipologías de paisaje, calidad visual, hitos", "descripcion": "Tipologías del paisaje, calidad visual, hitos observables.", "insumos": []},
+        {"numero": "4.3", "id": "ant_integrado", "nombre": "IFA Antropoaptitud integrado", "estado": "pendiente", "faltante": "requiere los sub-mapas", "descripcion": "Integración de los sub-mapas de antropoaptitud.", "insumos": []}
+      ]
+    },
+    {
+      "numero": "5",
+      "id": "ifa_integrado",
+      "nombre": "5. IFA Integrado",
+      "descripcion": "Integración de los cuatro ejes, zonificada en 5 zonas (muy alta … muy baja fragilidad).",
+      "mapas": [
+        {"numero": "5.1", "id": "ifa_integrado", "nombre": "IFA Integrado — Zonificación ambiental", "estado": "pendiente", "faltante": "requiere los cuatro ejes calificados", "descripcion": "Suma de Geoaptitud + Edafoaptitud + Bioaptitud + Antropoaptitud.", "insumos": []}
+      ]
+    },
+    {
+      "numero": "6",
+      "id": "fisico_espacial",
+      "nombre": "6. Diagnóstico físico-espacial",
+      "descripcion": "Cartografía base del territorio (MAPRIOT / INVU): base, uso del suelo, amenazas, vialidad, servicios.",
+      "mapas": [
+        {"numero": "6.1", "id": "base_cartografica", "nombre": "Mapa base cartográfico", "estado": "disponible", "descripcion": "Límites cantonal y distrital, red vial, hidrografía y ZMT.", "insumos": ["Límites cantonales", "Límites distritales", "Red vial cantonal", "Zona marítimo terrestre"]},
+        {"numero": "6.2", "id": "uso_actual_suelo", "nombre": "Uso actual del suelo", "estado": "disponible", "descripcion": "Urbano, cultivos y cobertura.", "insumos": ["Uso urbano 1:5mil", "Cultivos 1:5mil", "Cobertura MAF2020"]},
+        {"numero": "6.3", "id": "amenazas_condicionantes", "nombre": "Amenazas y condicionantes", "estado": "disponible", "descripcion": "Deslizamientos, fallas, inundación.", "insumos": ["Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación"]},
+        {"numero": "6.4", "id": "vialidad", "nombre": "Red vial", "estado": "disponible", "descripcion": "Red vial cantonal y nacional.", "insumos": ["Red vial cantonal"]},
+        {"numero": "6.5", "id": "servicios", "nombre": "Infraestructura y servicios", "estado": "disponible", "descripcion": "Red eléctrica, ASADAS y agua, sedes de salud.", "insumos": ["Red eléctrica", "ASADAS y abastecimiento de agua", "Sedes de salud", "Infraestructura general"]}
+      ]
+    },
+    {
+      "numero": "7",
+      "id": "economico",
+      "nombre": "7. Diagnóstico económico",
+      "descripcion": "Actividades productivas, empleo y dinámica económica del cantón (MAPRIOT).",
+      "mapas": [
+        {"numero": "7.1", "id": "eco_actividades", "nombre": "Actividades económicas", "estado": "pendiente", "faltante": "fuente de actividades/empleo", "descripcion": "Distribución de las actividades productivas.", "insumos": []}
+      ]
+    },
+    {
+      "numero": "8",
+      "id": "social",
+      "nombre": "8. Diagnóstico social",
+      "descripcion": "Población, equipamientos y servicios sociales del cantón (MAPRIOT).",
+      "mapas": [
+        {"numero": "8.1", "id": "soc_poblacion", "nombre": "Población y equipamientos", "estado": "pendiente", "faltante": "datos de población (INEC) y equipamientos", "descripcion": "Distribución de población y equipamientos sociales.", "insumos": []}
       ]
     }
   ]

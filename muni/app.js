@@ -235,7 +235,7 @@
       card.innerHTML = `
         <input type="checkbox" data-id="${m.id}" ${seleccionable ? '' : 'disabled'}>
         <div class="cuerpo">
-          <div class="titulo">${m.nombre} <span class="badge ${m.estado}">${m.estado}</span></div>
+          <div class="titulo"><b>${m.numero || ''}</b> ${m.nombre} <span class="badge ${m.estado}">${m.estado}</span></div>
           <div class="desc">${m.descripcion}</div>
           ${m.faltante ? `<div class="falta">Falta: ${m.faltante}</div>` : ''}
         </div>`;
@@ -379,7 +379,7 @@
       lam.innerHTML = `
         <div class="lam-cab">
           <div class="lam-tit-wrap">
-            <div class="lam-titulo">${m.nombre}</div>
+            <div class="lam-titulo">${m.numero ? m.numero + ' ' : ''}${m.nombre}</div>
             <div class="lam-subtit">Plan de Ordenamiento Territorial del cantón de ${canton}</div>
           </div>
           <span class="lam-inst">${m.institucion}</span>

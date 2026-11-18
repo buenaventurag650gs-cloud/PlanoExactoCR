@@ -106,6 +106,14 @@
           "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_conservacion&outputFormat=application/json&srsName=EPSG:4326",
           "fuente": "SINAC (SNIT, capa oficial, uso libre)",
           "estado": "disponible"
+        },
+        {
+          "nombre": "Cobertura MAF2020",
+          "archivo": "https://geodatos.sinia.go.cr/geoserver/MAF2020/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=MAF2020:MAF2020&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "MINAE / SINIA (Mapa Agropecuario y Forestal 2020)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Cobertura de la tierra por categoría (campo CATEGORIA). Insumo de la Cobertura vegetal del eje Bioaptitud."
         }
       ]
     },

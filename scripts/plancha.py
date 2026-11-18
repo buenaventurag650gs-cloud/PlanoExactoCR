@@ -65,7 +65,7 @@ def _flecha_norte(ax, x, y):
 def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataFrame,
                     capas: list[tuple[str, gpd.GeoDataFrame]], titulo_mapa: str, institucion: str,
                     *, municipalidad: str | None = None, escudo=None, fecha: str = "",
-                    lamina_num: int = 1, total: int = 1,
+                    lamina_num: int = 1, total: int = 1, numero: str = "",
                     cantones_full: gpd.GeoDataFrame | None = None, raster=None) -> None:
     """raster (opcional): dict con cat (arreglo de categorías 1..N en EPSG:5367), transform
     (Affine), colores ({valor: hex}) y leyenda ([(etiqueta, hex), ...]). Se usa para los mapas
@@ -79,8 +79,11 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
     ext = (minx - margen, miny - margen, maxx + margen, maxy + margen)
 
     fig = plt.figure(figsize=(8.5, 11))
-    # Mapa principal arriba, cajetín abajo.
-    ax = fig.add_axes([0.07, 0.30, 0.88, 0.64])
+    # Título grande y visible arriba (número + nombre), como en la lámina de referencia.
+    titulo_grande = (f"{numero}  {titulo_mapa}" if numero else titulo_mapa).upper()
+    fig.text(0.5, 0.965, titulo_grande, ha="center", va="top", fontsize=17, fontweight="bold")
+    # Mapa principal (más grande), cajetín abajo.
+    ax = fig.add_axes([0.06, 0.27, 0.90, 0.66])
     ax.set_xlim(ext[0], ext[2]); ax.set_ylim(ext[1], ext[3])
     ax.set_aspect("equal")
 
