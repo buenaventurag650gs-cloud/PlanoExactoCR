@@ -103,12 +103,44 @@ Decreto 23214, clases I a VIII — las clases bajas = tierras aptas para agricul
 las altas = solo protección). Insumo: INTA (capacidad de uso) donde hay cobertura; uso
 actual del IGN como complemento.
 
-## Eje Bioaptitud
+## Rampa de colores oficial del IFA (confirmada con láminas reales)
 
-Variables: cobertura de la tierra, áreas silvestres protegidas, corredores biológicos,
-cuerpos de agua y sus áreas de protección, biotopos sensibles (manglares, bosque ripario,
-humedales) y zonas de vida. Las variables de clima y biología se mapean como información,
-no se califican en el IFA. Insumo: capas del SINAC + zonas de vida (ya disponibles).
+De las láminas del plan regulador de Abangares (Ecoplan, 2026), la rampa de las clases de
+fragilidad es:
+
+| Clase | Color |
+|-------|-------|
+| Muy alta | rosado `#f09cba` |
+| Alta | naranja `#f5a623` |
+| Moderada | amarillo `#eedb5d` |
+| Baja | verde claro `#aecf8a` |
+| Muy baja | verde oscuro `#5e9150` |
+
+(Está codificada así en `scripts/calificacion_ifa.py`. Ojo: es lo contrario de lo que decía
+el Manual viejo; mandan las láminas reales.)
+
+## Eje Bioaptitud — se arma de sub-variables (IFA Biológico)
+
+Las láminas reales muestran que la Bioaptitud ("IFA Biológico") es la **integración de tres
+sub-mapas**, cada uno calificado 1-5 con la rampa de arriba:
+
+1. **IFA Biodiversidad** — índice de biodiversidad (riqueza/sensibilidad de especies).
+2. **IFA Categorías de manejo** — según la categoría de manejo de las áreas protegidas
+   (y figuras como zonas protectoras); lo más protegido = fragilidad más alta.
+3. **IFA Cobertura vegetal** — según el tipo y densidad de cobertura (bosque, charral,
+   pasto, cultivo, suelo desnudo); más cobertura natural = fragilidad más alta.
+
+`IFA Biológico (Bioaptitud) = integración de Biodiversidad + Categorías de manejo + Cobertura vegetal`
+
+Cada lámina lleva, además de la clase IFA, la red hídrica (ríos, quebradas, canales), las
+localidades (cabeceras y poblados), la red vial (nacional por tipo y cantonal), la división
+cantonal y distrital, el área de planificación, las áreas silvestres protegidas y los cuerpos
+de agua. Insumo: capas del SINAC + cobertura MAF2020 + zonas de vida.
+
+Variables completas del eje: cobertura de la tierra, áreas silvestres protegidas, corredores
+biológicos, cuerpos de agua y sus áreas de protección, biotopos sensibles (manglares, bosque
+ripario, humedales) y zonas de vida. Las variables de clima y biología se mapean como
+información, no se califican.
 
 ## Eje Antropoaptitud
 
