@@ -278,6 +278,51 @@ def lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre: dict) -> b
     return True
 
 
+def lamina_bioaptitud_calificada(pdf, canton, poligono_canton, capas_por_nombre: dict) -> bool:
+    """Bioaptitud calificada: cada capa del SINAC coloreada por su valor de fragilidad IFA
+    (1-5), no por su tipo. Las áreas sin capa de protección quedan en blanco (menor fragilidad
+    biológica). Devuelve True si dibujó algo."""
+    import calificacion_ifa as C
+    from matplotlib.patches import Patch
+
+    # Qué valor IFA tiene cada capa presente (las informativas devuelven 0 y se omiten).
+    presentes = []
+    for nombre, gdf in capas_por_nombre.items():
+        v = C.calificar_bioaptitud(nombre)
+        if v and not gdf.empty:
+            presentes.append((nombre, v, gdf))
+    if not presentes:
+        return False
+
+    # Dibuja de menor a mayor fragilidad, para que lo más frágil (IFA 1) quede encima.
+    presentes.sort(key=lambda x: -x[1])
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1.2, zorder=10)
+
+    niveles_usados = set()
+    for nombre, v, gdf in presentes:
+        color = C.COLORES_IFA[v]
+        niveles_usados.add(v)
+        es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
+        if es_punto:
+            gdf.plot(ax=ax, markersize=7, color=color, zorder=v)
+        else:
+            gdf.plot(ax=ax, color=color, alpha=0.65, edgecolor=color, linewidth=0.3, zorder=v)
+
+    ax.set_title(f"{canton} — IFA Bioaptitud (calificada 1-5)", fontsize=13)
+    ax.set_axis_off()
+    # Leyenda por nivel de fragilidad.
+    handles = [Patch(facecolor=C.COLORES_IFA[v], label=C.etiqueta_ifa(v))
+               for v in sorted(niveles_usados)]
+    ax.legend(handles=handles, loc="lower left", fontsize=7, framealpha=0.9)
+    ax.text(0.99, 0.015, "Fuente: SINAC (SNIT)", transform=ax.transAxes, fontsize=7, ha="right")
+    ax.text(0.99, 0.0, "Calificación [VERIFICAR] contra Anexo 1 del 44710",
+            transform=ax.transAxes, fontsize=5, style="italic", ha="right")
+    pdf.savefig(fig)
+    plt.close(fig)
+    return True
+
+
 def lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P) -> None:
     from matplotlib.colors import BoundaryNorm, ListedColormap
 
@@ -374,8 +419,9 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
         # 1. Uso actual del suelo
         lamina_uso_suelo(pdf, canton, poligono_canton, capas_por_nombre)
 
-        # 2. IFA Bioaptitud
+        # 2. IFA Bioaptitud (descriptiva + calificada)
         lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre)
+        lamina_bioaptitud_calificada(pdf, canton, poligono_canton, capas_por_nombre)
 
         # 3. Pendientes (si se pasó un DEM con --dem) + su calificación IFA.
         if pendientes is not None:
