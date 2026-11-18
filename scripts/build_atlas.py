@@ -777,6 +777,34 @@ def main() -> None:
                     print(f"  (sin datos de edafoaptitud para {args.canton}; el INTA puede no cubrirlo)")
                 continue
 
+            # Eje Antropoaptitud: uso antrópico + accesibilidad vial + integrado.
+            if mid == "ant_integrado":
+                import antropoaptitud
+                canton_m = poligono_canton.to_crs("EPSG:5367")
+                subs = antropoaptitud.submapas(capas_por_nombre, canton_m)
+                cat_int, tr_int = antropoaptitud.integrado(subs)
+                hechos = 0
+                if cat_int is not None:
+                    arch = salida.parent / f"{mdef.get('numero','')} Mapa IFA Antropoaptitud {args.canton} {papel}.pdf"
+                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Antropoaptitud",
+                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
+                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
+                        cantones_full=cantones, raster=raster_dict(cat_int, tr_int), papel=papel)
+                    planchas_hechas.append(arch); hechos += 1
+                    print(f"  ✓ {arch.name}")
+                for s in subs:
+                    num = mapas_oficiales.get(s["id"], {}).get("numero", "")
+                    arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} {papel}.pdf"
+                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
+                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
+                        fecha=fecha_corta, lamina_num=i, total=total, numero=num,
+                        cantones_full=cantones, raster=raster_dict(s["cat"], s["transform"]), papel=papel)
+                    planchas_hechas.append(arch); hechos += 1
+                    print(f"  ✓ {arch.name}")
+                if hechos == 0:
+                    print(f"  (sin insumos de antropoaptitud para {args.canton})")
+                continue
+
             # Mapa IFA de pendiente: ráster clasificado 1-5 (necesita --dem).
             raster_ifa = None
             if mid == "ifa_geoaptitud_pendiente" and pendientes is not None:

@@ -183,6 +183,28 @@ ANTROPOAPTITUD_IFA = {
     # Sitios arqueológicos (pendiente, Museo) → 1 (Muy Alta) cuando se incorpore.
 }
 
+# [VERIFICAR] Uso del suelo antrópico según la cobertura del MAF2020. Ojo: es casi el inverso
+# de COBERTURA_MAF_IFA, porque acá se califica qué tan intervenido está el terreno (lo ya
+# intervenido es menos frágil para recibir desarrollo nuevo), no qué tan valioso es el bosque.
+USO_ANTROPICO_MAF_IFA = {
+    "Zona urbana": 5, "Infraestructura": 5, "Red vial": 5, "Suelo desnudo": 5,
+    "Café": 4, "Palma": 4, "Caña": 4, "Cultivo": 4, "Pasto": 4,
+    "Charral": 3, "Tacotal": 3,
+    "Cobertura forestal": 1, "Bosque": 1, "Manglar": 1,
+}
+
+# [VERIFICAR] Accesibilidad por red vial: (distancia máxima en metros, IFA). Lo que ya está
+# servido por una vía está intervenido y es menos frágil para desarrollar; lo alejado conserva
+# más fragilidad. Se evalúa de la distancia mayor a la menor, así la más cercana manda.
+VIAL_DISTANCIA_IFA = [(100.0, 5), (300.0, 4), (1000.0, 3)]
+
+# Restricciones legales al desarrollo: califican Muy Alta fragilidad (1).
+ANTROPO_RESTRICCION_IFA = 1
+
+# Valor de fondo de cada sub-capa de antropoaptitud donde no hay dato más específico:
+# terreno sin intervenir, con fragilidad alta.
+ANTROPO_BASE = {"uso": 2, "vial": 2}
+
 
 # ------------------------------------------------------------------------------------------
 # Funciones de calificación

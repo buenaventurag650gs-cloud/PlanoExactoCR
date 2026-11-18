@@ -32,6 +32,6 @@
     "Infraestructura general":          {"color": "#edc400", "trazo": "solido",   "peso": 0.6,  "relleno": 0.8,  "geom": "punto"},
     "Estado del plan regulador por cantón": {"color": "#f0883e", "trazo": "solido", "peso": 0.6, "relleno": 0.3, "geom": "poligono"},
     "Geología":                         {"color": "#5d4037", "trazo": "solido",   "peso": 0.4,  "relleno": 0.45, "geom": "poligono"},
-    "Sitios arqueológicos registrados": {"color": "#ffd400", "trazo": "solido",   "peso": 0.6,  "relleno": 0.85, "geom": "punto"}
+    "Sitios arqueológicos registrados": {"color": "#4a148c", "trazo": "solido",   "peso": 0.6,  "relleno": 0.85, "geom": "punto"}
   }
 }

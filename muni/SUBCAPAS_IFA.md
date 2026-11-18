@@ -75,17 +75,26 @@ nombres. Cada consultor agrupa un poco distinto.
 
 ## 4. IFA ANTROPOAPTITUD
 
-### 4.1 IFA uso antrópico
-- Áreas de desarrollo futuro 🟡 (planes reguladores) · Red vial 🟢 (IGN)
-- Áreas silvestres protegidas 🟢 (SINAC) · Uso del suelo antrópico 🟢 (IGN/MAF)
-- Patrimonio arquitectónico y sitios arqueológicos 🔴 (Museo, falta)
+Criterio, al revés que en bioaptitud: lo que ya está intervenido (urbano, servido por vías)
+tiene BAJA fragilidad para recibir desarrollo nuevo (IFA 5); lo sin intervenir o con una
+restricción legal encima tiene ALTA fragilidad (IFA 1). Implementado en `scripts/antropoaptitud.py`.
+
+### 4.1 IFA uso antrópico ✅
+- Uso del suelo antrópico 🟢 (IGN urbano/cultivos + cobertura MAF2020)
+- Áreas silvestres protegidas 🟢 (SINAC), como restricción encima de todo
+- Áreas de desarrollo futuro 🟡 (planes reguladores, aún no incorporado)
+- Patrimonio arquitectónico y sitios arqueológicos 🔴 (Museo, falta; ya hay el lugar donde entra)
 - → IFA Uso antrópico
 
-### 4.2 Paisajismo
+### 4.2 IFA accesibilidad vial ✅
+- Red vial 🟢 (IGN), por anillos de distancia: ≤100 m → 5, ≤300 m → 4, ≤1 km → 3, resto → 2
+- → IFA Accesibilidad vial
+
+### 4.3 Paisajismo
 - Tipologías del paisaje 🔴 · Calidad visual 🔴 · Hitos observables 🔴
 - → IFA Paisajismo
 
-### 4.3 IFA Antropoaptitud integrado
+### 4.4 IFA Antropoaptitud integrado ✅ (parcial: falta el paisajismo)
 
 ---
 

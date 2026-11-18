@@ -96,7 +96,11 @@ def submapas(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, res: float = 10
                         "cat": cat, "transform": tr})
 
     # 2. Cobertura vegetal: de la cobertura MAF2020 (clasificada por categoría de cobertura).
-    cob = capas_por_nombre.get("Cobertura MAF2020") or capas_por_nombre.get("Cobertura forestal 2020")
+    # Ojo: no se puede usar `a or b` con GeoDataFrames (pandas no sabe si un cuadro de datos
+    # es verdadero o falso y revienta), así que se elige a mano.
+    cob = capas_por_nombre.get("Cobertura MAF2020")
+    if cob is None or cob.empty:
+        cob = capas_por_nombre.get("Cobertura forestal 2020")
     if cob is not None and not cob.empty:
         g = clasificar(cob, C.COBERTURA_MAF_IFA,
                        ["categoria", "categoría", "cobertura", "clase", "tipo", "descripcio"],
