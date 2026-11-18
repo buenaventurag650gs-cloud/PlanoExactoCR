@@ -22,9 +22,18 @@
     return url;
   }
 
+  // Paneles para controlar qué se dibuja encima de qué: datos < máscara < encima.
+  function configurarPanes(m) {
+    m.createPane('datos'); m.getPane('datos').style.zIndex = 400;
+    m.createPane('mascara'); m.getPane('mascara').style.zIndex = 450;
+    m.createPane('encima'); m.getPane('encima').style.zIndex = 500;
+  }
+
   const map = L.map('map', { zoomControl: true }).setView([9.9, -84.1], 8);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap', maxZoom: 19
+  configurarPanes(map);
+  // Foto satelital (Esri World Imagery), la misma que usa PlanoExactoCR.
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 21, maxNativeZoom: 19, attribution: 'Imagen © Esri, Maxar, Earthstar Geographics'
   }).addTo(map);
 
   const [cap, catalogo] = await Promise.all([
@@ -40,6 +49,7 @@
   const datosCapa = new Map();        // nombre -> FeatureCollection recortada al cantón (cache)
   let cantonSel = null;
   let cantonLayer = null;
+  let maskPreview = null;            // máscara gris de la vista previa
   let muniLogo = null;
   let cantonesTodos = null;          // todos los cantones, para dibujar los vecinos
 
@@ -90,6 +100,12 @@
     return Object.assign({}, fc, { features: dentro });
   }
 
+  // Máscara: polígono que cubre todo MENOS el cantón, para recortar visualmente las capas al
+  // límite cantonal (lo de afuera queda tapado en gris). Devuelve un GeoJSON o null.
+  function geoMascara(feat) {
+    try { return turf.mask(feat); } catch (e) { return null; }
+  }
+
   // Cantones vecinos: los que tocan el recuadro ampliado del cantón elegido (menos él mismo).
   function vecinosDe(feat) {
     if (!cantonesTodos || !feat) return [];
@@ -132,10 +148,20 @@
   function capaGeoJSON(nombre, fc, opts) {
     const color = colorDe(nombre);
     const esPol = fc.features && fc.features[0]?.geometry?.type?.includes('Polygon');
+    const pane = (opts && opts.pane) || 'datos';
     return L.geoJSON(fc, Object.assign({
+      pane,
       style: () => ({ color, weight: 1.2, fillOpacity: esPol ? 0.12 : 0 }),
-      pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 3, color, weight: 1, fillOpacity: 0.85 })
+      pointToLayer: (f, ll) => L.circleMarker(ll, { pane, radius: 3, color, weight: 1, fillOpacity: 0.85 })
     }, opts || {}));
+  }
+
+  // Dibuja la máscara gris (todo menos el cantón) en el panel 'mascara' del mapa dado.
+  function ponerMascara(m, feat, relleno) {
+    const g = geoMascara(feat);
+    if (!g) return null;
+    return L.geoJSON(g, { pane: 'mascara', interactive: false,
+      style: { stroke: false, fillColor: relleno, fillOpacity: 1 } }).addTo(m);
   }
 
   // ---------- identidad municipal ----------
@@ -292,8 +318,13 @@
       Object.keys(layerLookup).forEach((n) => { map.removeLayer(layerLookup[n]); delete layerLookup[n]; });
       habilitarCatalogo(true);
       if (cantonLayer) map.removeLayer(cantonLayer);
-      cantonLayer = L.geoJSON(cantonSel, { style: { color: '#4f8cff', weight: 2, fillOpacity: 0.04 } }).addTo(map);
-      map.fitBounds(cantonLayer.getBounds(), { padding: [20, 20] });
+      if (maskPreview) { map.removeLayer(maskPreview); maskPreview = null; }
+      // Máscara: tapa en gris claro todo lo que esté fuera del cantón (sobre el satélite y las capas).
+      maskPreview = ponerMascara(map, cantonSel, '#dfe3e8');
+      // Límite cantonal rojo, por encima de la máscara.
+      cantonLayer = L.geoJSON(cantonSel, { pane: 'encima', interactive: false,
+        style: { color: '#d11a1a', weight: 2, dashArray: '6 3', fill: false } }).addTo(map);
+      map.fitBounds(L.geoJSON(cantonSel).getBounds(), { padding: [20, 20] });
       actualizarExport();
       refrescarPreview();                      // muestra la info base del cantón
     });
@@ -384,11 +415,23 @@
       const lm = L.map(idMapa, { zoomControl: false, attributionControl: false, dragging: false,
                                  scrollWheelZoom: false, doubleClickZoom: false });
       laminasMapas.push(lm);
-      // Sin tiles: fondo blanco, solo las capas vectoriales (cartografía de plan regulador).
-      // Cantones vecinos de contexto (gris + rótulo), como en la lámina de referencia.
+      configurarPanes(lm);
+      // Fondo blanco, capas vectoriales recortadas al cantón con máscara.
+      const leyenda = [['Límite cantonal', '#d11a1a']];
+      const nombres = insumosReales(ids[i]);
+      for (const nombre of nombres) {
+        const fc = await obtenerDatos(nombre);
+        if (fc && fc.features && fc.features.length) {
+          capaGeoJSON(nombre, fc).addTo(lm);               // panel 'datos'
+          leyenda.push([nombre, colorDe(nombre)]);
+        }
+      }
+      // Máscara: tapa en gris lo que se sale del cantón.
+      ponerMascara(lm, cantonSel, '#ececec');
+      // Cantones vecinos: solo el contorno y el rótulo, sobre el gris.
       vecinosDe(cantonSel).forEach((v) => {
-        L.geoJSON(v, { style: { color: '#c2c2c2', weight: 0.6, fillColor: '#ececec', fillOpacity: 0.75 },
-                       interactive: false }).addTo(lm);
+        L.geoJSON(v, { pane: 'encima', interactive: false,
+                       style: { color: '#bcbcbc', weight: 0.5, fill: false } }).addTo(lm);
         try {
           const ctr = turf.centroid(v).geometry.coordinates;
           L.marker([ctr[1], ctr[0]], { interactive: false, icon: L.divIcon({
@@ -396,16 +439,9 @@
             iconSize: [80, 12], iconAnchor: [40, 6] }) }).addTo(lm);
         } catch (e) { /* sin rótulo */ }
       });
-      cantonLayer && L.geoJSON(cantonSel, { style: { color: '#222', weight: 1.5, fill: false }, interactive: false }).addTo(lm);
-      const leyenda = [['Límite cantonal', '#222']];
-      const nombres = insumosReales(ids[i]);
-      for (const nombre of nombres) {
-        const fc = await obtenerDatos(nombre);
-        if (fc && fc.features && fc.features.length) {
-          capaGeoJSON(nombre, fc).addTo(lm);
-          leyenda.push([nombre, colorDe(nombre)]);
-        }
-      }
+      // Límite cantonal rojo punteado, encima de todo.
+      L.geoJSON(cantonSel, { pane: 'encima', interactive: false,
+        style: { color: '#d11a1a', weight: 1.5, dashArray: '6 3', fill: false } }).addTo(lm);
       // Dibuja la leyenda (simbología) de este mapa.
       $(`ley-${i}`).innerHTML = leyenda.map(([n, c]) =>
         `<div class="ley-item"><span class="ley-color" style="background:${c}"></span>${n}</div>`).join('');
