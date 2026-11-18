@@ -143,6 +143,33 @@ BIOAPTITUD_IFA = {
     # Cobertura forestal y zonas de vida: información, sin calificación directa.
 }
 
+# --- Sub-capas de Bioaptitud (ver SUBCAPAS_IFA.md). Cada tabla: categoría del dato → IFA 1-5.
+
+# [VERIFICAR] Categorías de manejo de áreas protegidas → IFA. Lo más protegido, más frágil.
+CATEGORIA_MANEJO_IFA = {
+    "Parque Nacional": 1, "Reserva Biológica": 1, "Reserva Natural Absoluta": 1,
+    "Humedal": 1, "Monumento Natural": 1,
+    "Refugio Nacional de Vida Silvestre": 2, "Reserva Forestal": 2, "Zona Protectora": 2,
+    "Monumento Nacional": 2,
+    # otras figuras / sin categoría → 3 (por defecto)
+}
+
+# [VERIFICAR] Cobertura de la tierra (categorías del MAF2020) → IFA. Más natural, más frágil.
+COBERTURA_MAF_IFA = {
+    "Cobertura forestal": 1, "Bosque": 1, "Manglar": 1,
+    "Café": 3, "Palma": 3, "Charral": 2, "Tacotal": 2,
+    "Caña": 4, "Cultivo": 4, "Pasto": 4,
+    "Suelo desnudo": 5, "Zona urbana": 5, "Red vial": 5,
+}
+
+# [VERIFICAR] Biotopos sensibles → IFA. Todos muy frágiles.
+BIOTOPO_IFA = {
+    "Manglar": 1, "Humedal": 1, "Bosque ripario": 1, "Yolillal": 1, "Turbera": 1,
+}
+
+# Valor por defecto de cada sub-capa cuando la categoría no se reconoce.
+BIO_DEFAULT = {"manejo": 3, "cobertura": 3, "biotopo": 1}
+
 # ------------------------------------------------------------------------------------------
 # ANTROPOAPTITUD — por uso antrópico del suelo
 # ------------------------------------------------------------------------------------------

@@ -679,9 +679,45 @@ def main() -> None:
         import plancha
         orden = [mid for mid in mapas_oficiales if mid in seleccion]
         total = len(orden)
+        import calificacion_ifa as C
+
+        def raster_dict(cat, transform):
+            return {"cat": cat, "transform": transform,
+                    "colores": {v: C.COLORES_IFA[v] for v in range(1, 6)},
+                    "leyenda": [(C.NIVELES_IFA[v], C.COLORES_IFA[v]) for v in range(1, 6)]}
+
         for i, mid in enumerate(orden, 1):
             mdef = mapas_oficiales[mid]
             insumos = [(n, capas_por_nombre[n]) for n in mdef.get("insumos", []) if n in capas_por_nombre]
+
+            # Eje Bioaptitud: sub-mapas clasificados + integrado (IFA Biológico).
+            if mid == "ifa_bioaptitud":
+                import bioaptitud
+                canton_m = poligono_canton.to_crs("EPSG:5367")
+                subs = bioaptitud.submapas(capas_por_nombre, canton_m)
+                cat_int, tr_int = bioaptitud.integrado(subs)
+                hechos = 0
+                # Mapa integrado (el principal del eje).
+                if cat_int is not None:
+                    arch = salida.parent / f"{i}. Mapa IFA Bioaptitud {args.canton} Carta.pdf"
+                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Bioaptitud",
+                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
+                        fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones,
+                        raster=raster_dict(cat_int, tr_int))
+                    planchas_hechas.append(arch); hechos += 1
+                    print(f"  ✓ {arch.name}")
+                # Sub-mapas (biodiversidad/biotopos, categorías de manejo, cobertura vegetal).
+                for s in subs:
+                    arch = salida.parent / f"{i}.{hechos}. Mapa {s['titulo']} {args.canton} Carta.pdf"
+                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
+                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
+                        fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones,
+                        raster=raster_dict(s["cat"], s["transform"]))
+                    planchas_hechas.append(arch); hechos += 1
+                    print(f"  ✓ {arch.name}")
+                if hechos == 0:
+                    print(f"  (sin datos de bioaptitud para {args.canton})")
+                continue
 
             # Mapa IFA de pendiente: ráster clasificado 1-5 (necesita --dem).
             raster_ifa = None
