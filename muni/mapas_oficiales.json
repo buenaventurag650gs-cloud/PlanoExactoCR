@@ -1,0 +1,119 @@
+{
+  "generado": "2026-11-17",
+  "nota": "Catálogo de los MAPAS oficiales que el tablero permite configurar y exportar. No es una lista de capas, sino de los productos cartográficos que piden las instituciones: la serie IFA del decreto 44710 (SETENA) y la cartografía de plan regulador del MAPRIOT (INVU). Cada mapa declara qué insumos (capas de capas.json y/o análisis) necesita y su estado real. El tablero arma el PDF con los mapas que el usuario marque; build_atlas.py los produce.",
+  "proyeccion": "CRTM05 (EPSG:5367) — exigida por el INVU para la cartografía de planes reguladores",
+  "instituciones": [
+    {
+      "id": "setena",
+      "nombre": "SETENA — Decreto 44710 (modalidad IFA)",
+      "descripcion": "Índices de Fragilidad Ambiental para el EsIVA. Cuatro ejes (Geoaptitud, Edafoaptitud, Bioaptitud, Antropoaptitud) calificados 1-5 (1 = muy alta fragilidad) y el IFA integrado zonificado en 5 zonas.",
+      "mapas": [
+        {
+          "id": "ifa_geoaptitud_pendiente",
+          "nombre": "IFA Geoaptitud — pendiente",
+          "descripcion": "Calificación de la pendiente del terreno en la escala IFA 1-5 (Tabla 8). Insumo del factor geodinámico externo y de estabilidad de laderas.",
+          "estado": "disponible",
+          "requiere_dem": true,
+          "insumos": ["Curvas de nivel 10m", "DEM del IGN"]
+        },
+        {
+          "id": "ifa_geoaptitud",
+          "nombre": "IFA Geoaptitud integrado",
+          "descripcion": "Suma de los cinco factores: litopetrofísico, geodinámico externo, hidrogeológico, estabilidad de laderas y amenazas naturales.",
+          "estado": "parcial",
+          "faltante": "litopetrofísico e hidrogeológico necesitan la geología (DGM, pendiente); amenazas ya disponibles de la CNE",
+          "insumos": ["IFA Geoaptitud — pendiente", "Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación", "Geología"]
+        },
+        {
+          "id": "ifa_edafoaptitud",
+          "nombre": "IFA Edafoaptitud",
+          "descripcion": "Calificación según la capacidad de uso de la tierra (clases I-VIII, Decreto 23214).",
+          "estado": "parcial",
+          "faltante": "el INTA solo cubre algunos cantones; donde no hay, se complementa con uso actual",
+          "insumos": ["Capacidad de uso de la tierra"]
+        },
+        {
+          "id": "ifa_bioaptitud",
+          "nombre": "IFA Bioaptitud",
+          "descripcion": "Calificación por grado de protección y sensibilidad biológica: áreas silvestres protegidas, corredores, humedales, patrimonio natural.",
+          "estado": "disponible",
+          "insumos": ["Áreas silvestres protegidas", "Corredores biológicos", "Patrimonio Natural del Estado", "Registro Nacional de Humedales", "Áreas de Conservación", "Zonas de vida"]
+        },
+        {
+          "id": "ifa_antropoaptitud",
+          "nombre": "IFA Antropoaptitud",
+          "descripcion": "Calificación por uso antrópico: uso urbano, vialidad, planes reguladores vigentes, sitios de interés cultural.",
+          "estado": "parcial",
+          "faltante": "sitios arqueológicos (Museo Nacional, pendiente)",
+          "insumos": ["Uso urbano 1:5mil", "Cultivos 1:5mil", "Red vial cantonal", "Estado del plan regulador por cantón", "Sitios arqueológicos registrados"]
+        },
+        {
+          "id": "ifa_integrado",
+          "nombre": "IFA Integrado — Zonificación ambiental",
+          "descripcion": "Suma algebraica de los cuatro ejes, zonificada en 5 zonas (I muy alta fragilidad … V muy baja). Es el mapa final que resume el EsIVA.",
+          "estado": "pendiente",
+          "faltante": "requiere los cuatro ejes calificados sobre una grilla común",
+          "insumos": ["ifa_geoaptitud", "ifa_edafoaptitud", "ifa_bioaptitud", "ifa_antropoaptitud"]
+        }
+      ]
+    },
+    {
+      "id": "invu",
+      "nombre": "INVU — Plan Regulador (MAPRIOT)",
+      "descripcion": "Cartografía del plan regulador según el Manual de Planes Reguladores (MAPRIOT 2025) y su Guía de Cartografía: mapas temáticos, de resultados del diagnóstico por eje, mapa unificado del diagnóstico y mapa de zonificación.",
+      "mapas": [
+        {
+          "id": "base_cartografica",
+          "nombre": "Mapa base cartográfico",
+          "descripcion": "Límites cantonales y distritales, red vial, hidrografía y zona marítimo terrestre como referencia de todos los demás mapas.",
+          "estado": "disponible",
+          "insumos": ["Límites cantonales", "Límites distritales", "Red vial cantonal", "Zona marítimo terrestre"]
+        },
+        {
+          "id": "uso_actual_suelo",
+          "nombre": "Uso actual del suelo",
+          "descripcion": "Cobertura y uso del suelo: urbano, cultivos y cobertura forestal.",
+          "estado": "disponible",
+          "insumos": ["Uso urbano 1:5mil", "Cultivos 1:5mil", "Cobertura forestal 2020"]
+        },
+        {
+          "id": "amenazas_condicionantes",
+          "nombre": "Amenazas y condicionantes",
+          "descripcion": "Deslizamientos, fallas, inundación y demás condicionantes ambientales del territorio.",
+          "estado": "disponible",
+          "insumos": ["Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación"]
+        },
+        {
+          "id": "vialidad",
+          "nombre": "Red vial",
+          "descripcion": "Red vial cantonal, nacional y demás infraestructura de movilidad.",
+          "estado": "disponible",
+          "insumos": ["Red vial cantonal"]
+        },
+        {
+          "id": "servicios",
+          "nombre": "Infraestructura y servicios",
+          "descripcion": "Red eléctrica, ASADAS y abastecimiento de agua, y sedes de salud.",
+          "estado": "disponible",
+          "insumos": ["Red eléctrica", "ASADAS y abastecimiento de agua", "Sedes de salud", "Infraestructura general"]
+        },
+        {
+          "id": "diagnostico_unificado",
+          "nombre": "Mapa unificado del diagnóstico territorial",
+          "descripcion": "Síntesis de los resultados del diagnóstico por eje en un solo mapa, base de la zonificación.",
+          "estado": "pendiente",
+          "faltante": "requiere definir la síntesis de ejes del diagnóstico",
+          "insumos": ["ifa_integrado"]
+        },
+        {
+          "id": "zonificacion",
+          "nombre": "Mapa de zonificación propuesta",
+          "descripcion": "Propuesta de usos del suelo del plan regulador (el Atlas de Zonificación que firma el profesional responsable).",
+          "estado": "pendiente",
+          "faltante": "es la propuesta del equipo planificador; el tablero la dibuja a partir de la zonificación que se cargue",
+          "insumos": ["zonificación propuesta (a cargar)"]
+        }
+      ]
+    }
+  ]
+}

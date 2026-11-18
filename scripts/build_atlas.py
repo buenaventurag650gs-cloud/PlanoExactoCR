@@ -80,6 +80,24 @@ def cargar_catalogo() -> dict:
     return json.loads((MUNI_DIR / "capas.json").read_text(encoding="utf-8"))
 
 
+def cargar_mapas_oficiales() -> dict[str, dict]:
+    """Devuelve {id_mapa: definición} del catálogo de mapas oficiales (INVU + SETENA)."""
+    ruta = MUNI_DIR / "mapas_oficiales.json"
+    if not ruta.exists():
+        return {}
+    data = json.loads(ruta.read_text(encoding="utf-8"))
+    por_id = {}
+    for inst in data.get("instituciones", []):
+        for m in inst.get("mapas", []):
+            por_id[m["id"]] = {**m, "institucion": inst["nombre"]}
+    return por_id
+
+
+def leer_config(ruta: str) -> dict:
+    """Lee la configuración que exporta el tablero web (cantón, municipalidad, logo, mapas)."""
+    return json.loads(pathlib.Path(ruta).read_text(encoding="utf-8"))
+
+
 def capas_descargables(catalogo: dict) -> list[dict]:
     """Capas 'disponible' que son un archivo: URL absoluta del sitio público, o ruta
     relativa (copia propia en muni/, p. ej. "data/zonasvida.geojson"). Las 'api:/...'
@@ -323,6 +341,57 @@ def lamina_bioaptitud_calificada(pdf, canton, poligono_canton, capas_por_nombre:
     return True
 
 
+def lamina_mapa_generico(pdf, canton, poligono_canton, mapa_def: dict,
+                         capas_por_nombre: dict) -> bool:
+    """Arma un mapa oficial a partir de sus capas de insumo (las que existan recortadas al
+    cantón), cada una de un color, con leyenda y el nombre del mapa de título. Sirve para los
+    mapas del INVU (base, amenazas, vialidad, servicios) y otros compuestos. True si dibujó."""
+    from matplotlib.patches import Patch
+
+    paleta = ["#1971c2", "#d9480f", "#2f9e44", "#e8963f", "#9c36b5", "#0c8599",
+              "#e03131", "#5c940d", "#1098ad", "#862e9c"]
+    insumos = [n for n in mapa_def.get("insumos", [])
+               if n in capas_por_nombre and not capas_por_nombre[n].empty]
+    if not insumos:
+        return False
+
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1.2, zorder=10)
+    handles = []
+    for i, nombre in enumerate(insumos):
+        color = paleta[i % len(paleta)]
+        gdf = capas_por_nombre[nombre]
+        es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
+        if es_punto:
+            gdf.plot(ax=ax, markersize=6, color=color, zorder=i + 1)
+        else:
+            gdf.plot(ax=ax, color=color, alpha=0.5, edgecolor=color, linewidth=0.3, zorder=i + 1)
+        handles.append(Patch(facecolor=color, label=nombre))
+
+    ax.set_title(f"{canton} — {mapa_def['nombre']}", fontsize=13)
+    ax.set_axis_off()
+    ax.legend(handles=handles, loc="lower left", fontsize=7, framealpha=0.9)
+    ax.text(0.99, 0.01, mapa_def.get("institucion", ""), transform=ax.transAxes,
+            fontsize=7, ha="right", style="italic")
+    pdf.savefig(fig)
+    plt.close(fig)
+    return True
+
+
+def _logo_desde_data_url(logo: str):
+    """Convierte un data URL (data:image/...;base64,XXXX) en un arreglo de imagen, o None."""
+    if not logo or not isinstance(logo, str) or "," not in logo:
+        return None
+    try:
+        import base64
+        import io
+        cabecera, b64 = logo.split(",", 1)
+        datos = base64.b64decode(b64)
+        return plt.imread(io.BytesIO(datos))
+    except Exception:
+        return None
+
+
 def lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P) -> None:
     from matplotlib.colors import BoundaryNorm, ListedColormap
 
@@ -380,76 +449,118 @@ def lamina_ifa_pendiente(pdf, canton, poligono_canton, cat, transform) -> None:
     plt.close(fig)
 
 
+def _portada(pdf, canton, generado, municipalidad, logo, titulos_mapas) -> None:
+    """Portada del atlas con identidad municipal y la lista de mapas incluidos."""
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    ax.axis("off")
+
+    img = _logo_desde_data_url(logo)
+    if img is not None:
+        eje_logo = fig.add_axes([0.05, 0.86, 0.14, 0.10])
+        eje_logo.imshow(img)
+        eje_logo.axis("off")
+        x_titulo = 0.22
+    else:
+        x_titulo = 0.05
+
+    encabezado = municipalidad or "Atlas municipal"
+    ax.text(x_titulo, 0.93, encabezado, va="top", ha="left", fontsize=16, weight="bold",
+            transform=ax.transAxes)
+    ax.text(x_titulo, 0.885, f"Cantón de {canton}", va="top", ha="left", fontsize=12,
+            transform=ax.transAxes)
+
+    lineas = [f"Generado: {generado}", "Decreto 44710-MINAE (IFA) / MAPRIOT (INVU)",
+              "Proyección: CRTM05 (EPSG:5367)", "", "Mapas incluidos:"]
+    lineas += [f"  • {t}" for t in titulos_mapas] or ["  (ninguno)"]
+    ax.text(0.05, 0.78, "\n".join(lineas), va="top", ha="left", fontsize=10,
+            family="monospace", transform=ax.transAxes, wrap=True)
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
 def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataFrame,
               capas_recortadas: list[tuple[dict, gpd.GeoDataFrame]], generado: str,
-              pendientes=None) -> None:
+              pendientes=None, seleccion: set | None = None, municipalidad: str | None = None,
+              logo: str | None = None, mapas_oficiales: dict | None = None) -> None:
+    """Arma el PDF del atlas. Si `seleccion` trae ids de mapa (del tablero), dibuja solo esos
+    mapas oficiales; si es None, dibuja todos los mapas temáticos y una lámina por capa."""
     from matplotlib.backends.backend_pdf import PdfPages
 
-    # Diccionario nombre→gdf para las láminas compuestas.
+    mapas_oficiales = mapas_oficiales or {}
     capas_por_nombre: dict[str, gpd.GeoDataFrame] = {}
     for capa, gdf in capas_recortadas:
         capas_por_nombre[capa["nombre"]] = gdf
 
-    with PdfPages(ruta_pdf) as pdf:
-        # Portada: cantón, fecha, y de dónde sale cada capa.
-        fig, ax = plt.subplots(figsize=(8.5, 11))
-        ax.axis("off")
-        lineas = [f"Atlas municipal — {canton}", f"Generado: {generado}", "",
-                  "Decreto 44710-MINAE / MAPRIOT", "", "Capas incluidas:"]
-        for capa, gdf in capas_recortadas:
-            lineas.append(f"  • {capa['nombre']} — {capa['fuente']} ({len(gdf)} elementos)")
-        if pendientes is not None:
-            lineas.append("  • Pendientes del terreno — DEM / IGN (Decreto 23214)")
-        lineas.append("")
-        lineas.append("Mapas temáticos:")
-        lineas.append("  • Uso actual del suelo (IGN)")
-        lineas.append("  • IFA Bioaptitud (SINAC / MINAE)")
-        if pendientes is not None:
-            lineas.append("  • Pendientes del terreno (Decreto 23214)")
-            lineas.append("  • IFA Geoaptitud por pendiente (escala 1-5)")
-        if not capas_recortadas and pendientes is None:
-            lineas.append("  (ninguna capa tenía elementos dentro de este cantón)")
-        ax.text(0.05, 0.95, "\n".join(lineas), va="top", ha="left", fontsize=10,
-                family="monospace", wrap=True)
-        pdf.savefig(fig)
-        plt.close(fig)
+    def quiere(id_mapa: str) -> bool:
+        return seleccion is None or id_mapa in seleccion
 
-        # --- MAPAS TEMÁTICOS COMPUESTOS (lo que pide el decreto 44710 / MAPRIOT) ---
-
-        # 1. Uso actual del suelo
-        lamina_uso_suelo(pdf, canton, poligono_canton, capas_por_nombre)
-
-        # 2. IFA Bioaptitud (descriptiva + calificada)
-        lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre)
-        lamina_bioaptitud_calificada(pdf, canton, poligono_canton, capas_por_nombre)
-
-        # 3. Pendientes (si se pasó un DEM con --dem) + su calificación IFA.
-        if pendientes is not None:
+    # Funciones dedicadas por id de mapa (las que tienen lámina propia). El resto usa la genérica.
+    def dibujar_mapa(pdf, id_mapa: str) -> str | None:
+        """Dibuja el mapa oficial y devuelve su título si dibujó algo, o None."""
+        nombre = mapas_oficiales.get(id_mapa, {}).get("nombre", id_mapa)
+        if id_mapa == "uso_actual_suelo":
+            ok = lamina_uso_suelo(pdf, canton, poligono_canton, capas_por_nombre)
+        elif id_mapa == "ifa_bioaptitud":
+            lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre)
+            ok = lamina_bioaptitud_calificada(pdf, canton, poligono_canton, capas_por_nombre)
+        elif id_mapa == "ifa_geoaptitud_pendiente":
+            if pendientes is None:
+                return None
             cat, transform, _, P = pendientes
             lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P)
             lamina_ifa_pendiente(pdf, canton, poligono_canton, cat, transform)
+            ok = True
+        elif id_mapa in mapas_oficiales:
+            ok = lamina_mapa_generico(pdf, canton, poligono_canton, mapas_oficiales[id_mapa],
+                                      capas_por_nombre)
+        else:
+            ok = False
+        return nombre if ok else None
 
-        # --- LÁMINAS INDIVIDUALES (una por capa, para referencia detallada) ---
-        for capa, gdf in capas_recortadas:
-            fig, ax = plt.subplots(figsize=(8.5, 11))
-            poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1)
-            if not gdf.empty:
-                es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
-                if es_punto:
-                    gdf.plot(ax=ax, markersize=8, color="#d9480f")
-                else:
-                    gdf.plot(ax=ax, color="#1971c2", alpha=0.5, edgecolor="#1971c2")
-            ax.set_title(f"{canton} — {capa['nombre']}", fontsize=13)
-            ax.set_axis_off()
-            ax.text(0.01, 0.01, f"Fuente: {capa['fuente']}", transform=ax.transAxes, fontsize=8)
-            pdf.savefig(fig)
-            plt.close(fig)
+    # Qué mapas intentar: los elegidos, en el orden del catálogo; o un set por defecto.
+    if seleccion is not None:
+        orden = [mid for mid in mapas_oficiales if mid in seleccion]
+    else:
+        orden = ["uso_actual_suelo", "ifa_bioaptitud", "ifa_geoaptitud_pendiente"]
+
+    with PdfPages(ruta_pdf) as pdf:
+        pdf_titulos: list[str] = []
+        # Reservamos la portada: primero dibujamos los mapas, juntando sus títulos, luego la
+        # ponemos al frente reescribiendo el PDF no es trivial, así que dibujamos la portada
+        # con la lista de mapas pedidos (no la de los que salieron) — es la intención del usuario.
+        titulos_pedidos = [mapas_oficiales.get(mid, {}).get("nombre", mid) for mid in orden]
+        _portada(pdf, canton, generado, municipalidad, logo, titulos_pedidos)
+
+        for id_mapa in orden:
+            t = dibujar_mapa(pdf, id_mapa)
+            if t:
+                pdf_titulos.append(t)
+
+        # En modo completo (sin selección), agrega también una lámina por capa de referencia.
+        if seleccion is None:
+            for capa, gdf in capas_recortadas:
+                fig, ax = plt.subplots(figsize=(8.5, 11))
+                poligono_canton.boundary.plot(ax=ax, color="black", linewidth=1)
+                if not gdf.empty:
+                    es_punto = gdf.geometry.geom_type.isin(["Point", "MultiPoint"]).all()
+                    if es_punto:
+                        gdf.plot(ax=ax, markersize=8, color="#d9480f")
+                    else:
+                        gdf.plot(ax=ax, color="#1971c2", alpha=0.5, edgecolor="#1971c2")
+                ax.set_title(f"{canton} — {capa['nombre']}", fontsize=13)
+                ax.set_axis_off()
+                ax.text(0.01, 0.01, f"Fuente: {capa['fuente']}", transform=ax.transAxes, fontsize=8)
+                pdf.savefig(fig)
+                plt.close(fig)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--canton", required=True, help="Nombre del cantón, como aparece en data/cantones.geojson")
-    parser.add_argument("--salida", required=True, help="Ruta de salida sin extensión (se escriben .gpkg y .pdf)")
+    parser.add_argument("--config", default=None,
+                         help="Configuración exportada por el tablero web (.json con cantón, "
+                              "municipalidad, logo y los mapas elegidos). Si se da, manda sobre --canton.")
+    parser.add_argument("--canton", help="Nombre del cantón, como aparece en data/cantones.geojson")
+    parser.add_argument("--salida", help="Ruta de salida sin extensión (se escriben .gpkg y .pdf)")
     parser.add_argument("--local", type=pathlib.Path, default=None,
                          help="Carpeta raíz del repo con datos locales en data/, en vez de bajarlos de internet")
     parser.add_argument("--cookie", default=os.environ.get("PX_COOKIE"),
@@ -459,6 +570,20 @@ def main() -> None:
                          help="Ruta a un DEM (GeoTIFF, en CRS métrico como EPSG:5367) que cubra el cantón. "
                               "Si se da, agrega el mapa de pendientes clasificado según el Decreto 23214.")
     args = parser.parse_args()
+
+    # Configuración del tablero: fija cantón, municipalidad, logo y los mapas a generar.
+    config = leer_config(args.config) if args.config else {}
+    seleccion = set(config["mapas"]) if config.get("mapas") else None
+    municipalidad = config.get("municipalidad")
+    logo = config.get("logo")
+    canton_nombre = config.get("canton") or args.canton
+    if not canton_nombre:
+        raise SystemExit("Falta el cantón: pasá --canton o un --config que lo traiga.")
+    args.canton = canton_nombre
+    if not args.salida:
+        base = normalizar(canton_nombre).replace(" ", "_")
+        args.salida = f"salida/{base}"
+    mapas_oficiales = cargar_mapas_oficiales()
 
     catalogo = cargar_catalogo()
     descargables = capas_descargables(catalogo)
@@ -541,7 +666,9 @@ def main() -> None:
             pendientes = None
 
     generado = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-    armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado, pendientes)
+    armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado, pendientes,
+              seleccion=seleccion, municipalidad=municipalidad, logo=logo,
+              mapas_oficiales=mapas_oficiales)
 
     print(f"\nListo: {ruta_gpkg}")
     print(f"       {ruta_pdf}")
