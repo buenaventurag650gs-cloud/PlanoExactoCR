@@ -565,6 +565,7 @@
       if (!sel.value) { cantonSel = null; habilitarCatalogo(false); actualizarExport(); actualizarLeyenda(); return; }
       cantonSel = baseCantones.features.find((f) => f.properties.k === sel.value) || null;
       if (!cantonSel) return;
+      aplicarPapel();                          // la hoja se acuesta o se para según el cantón
       aplicarIdentidadCanton(sel.value);
       datosCapa.clear();                       // el cache es por cantón
       Object.keys(layerLookup).forEach((n) => { map.removeLayer(layerLookup[n]); delete layerLookup[n]; });
@@ -592,28 +593,69 @@
   }
 
   // ---------- tamaño de papel ----------
-  // Carta 8.5×11in; A3 297×420mm; A2 420×594mm. k = ancho / ancho de Carta: con él crecen
-  // tipografías, cajetín y grosores de línea, y el mapa se dibuja más grande (más nitidez).
+  // Las medidas van en milímetros y en apaisado (ancho × alto), que es como se arma una
+  // lámina de Plan Regulador.
+  //
+  // OJO, acá estaba el error que recortaba el PDF: la regla @page de CSS solo entiende los
+  // nombres de papel hasta A3. "size: A2" no existe en el estándar, el navegador la ignora,
+  // se va al tamaño por omisión (Carta) y la lámina sale cortada —o encogida, si el diálogo
+  // trae puesto "ajustar a la página", que es lo que se veía como mala resolución—. Por eso
+  // ahora se escribe la medida exacta ("size: 594mm 420mm"), que sí respeta en cualquier
+  // tamaño, A1 incluido.
   const PAPELES = {
-    'Carta': { w: 8.5, h: 11, css: 'letter' },
-    'A3': { w: 11.69, h: 16.54, css: 'A3' },
-    'A2': { w: 16.54, h: 23.39, css: 'A2' }
+    'A1': { w: 841, h: 594 },
+    'A2': { w: 594, h: 420 },
+    'A3': { w: 420, h: 297 },
+    'Carta': { w: 279.4, h: 215.9 }
   };
+  const ANCHO_BASE = 279.4;   // ancho de una Carta apaisada; es la referencia de --k
+
+  // Proporción ancho/alto del cantón elegido. Sirve para acostar o parar la hoja sola.
+  function formaCanton() {
+    if (!cantonSel) return 1.3;
+    try {
+      const b = cajaMerc([cantonSel]);
+      const alto = b[3] - b[1];
+      return alto > 0 ? (b[2] - b[0]) / alto : 1.3;
+    } catch (e) { return 1.3; }
+  }
+
   function papelActual() {
     const nombre = $('selPapel').value;
-    const p = PAPELES[nombre] || PAPELES['Carta'];
-    return Object.assign({ nombre, k: p.w / 8.5 }, p);
+    const p = PAPELES[nombre] || PAPELES['A2'];
+    const modo = ($('selOrient') && $('selOrient').value) || 'auto';
+    // El mapa ocupa ~78 % del ancho de la hoja (el resto es el cajetín), así que la hoja
+    // acostada le queda bien a un cantón ancho y la parada a uno alargado.
+    const vertical = modo === 'vertical' || (modo === 'auto' && formaCanton() < 0.82);
+    const w = vertical ? p.h : p.w;
+    const h = vertical ? p.w : p.h;
+    return { nombre, w, h, vertical, k: w / ANCHO_BASE };
   }
+
   function aplicarPapel() {
     const p = papelActual();
     const l = $('laminas');
-    l.style.setProperty('--pw', p.w + 'in');
-    l.style.setProperty('--ph', p.h + 'in');
+    l.style.setProperty('--pw', p.w + 'mm');
+    l.style.setProperty('--ph', p.h + 'mm');
     l.style.setProperty('--k', p.k.toFixed(4));
-    $('estiloPapel').textContent = `@page { size: ${p.css}; margin: 0; }`;
+    $('estiloPapel').textContent = `@page { size: ${p.w}mm ${p.h}mm; margin: 0; }`;
   }
   $('selPapel').addEventListener('change', aplicarPapel);
+  $('selOrient').addEventListener('change', aplicarPapel);
   aplicarPapel();
+
+  // ---------- firma de la lámina (quién la elaboró y quién la firma) ----------
+  // Se guardan en el navegador para no volver a escribirlas en cada sesión.
+  const FIRMA = { elabora: 'inpElabora', profesional: 'inpProfesional' };
+  Object.entries(FIRMA).forEach(([clave, id]) => {
+    const campo = $(id);
+    if (!campo) return;
+    try { campo.value = localStorage.getItem('px_' + clave) || ''; } catch (e) { /* sin memoria */ }
+    campo.addEventListener('input', () => {
+      try { localStorage.setItem('px_' + clave, campo.value); } catch (e) { /* sin memoria */ }
+    });
+  });
+  const firmaDe = (clave) => (($(FIRMA[clave]) || {}).value || '').trim();
 
   // ---------- exportar configuración ----------
   function configActual() {
@@ -623,6 +665,9 @@
       canton: $('selCanton').value || null,
       proyeccion: catalogo.proyeccion,
       papel: papelActual().nombre,
+      orientacion: papelActual().vertical ? 'vertical' : 'apaisado',
+      elaborado_por: firmaDe('elabora') || null,
+      profesional_responsable: firmaDe('profesional') || null,
       capas_base: [...baseVisibles],
       mapas: [...seleccion],
       generado: new Date().toISOString().slice(0, 10)
@@ -768,6 +813,198 @@
     return { pct: (bonito / metros) * 100, etiqueta: km >= 1 ? `${+km.toFixed(1)} km` : `${Math.round(bonito)} m` };
   }
 
+  /* ---------- CRTM05 (EPSG:5367): el sistema de coordenadas oficial de Costa Rica ----------
+     Es una Transversa de Mercator sobre el elipsoide GRS80, con meridiano central en -84°,
+     factor de escala 0,9999, falso este 500 000 m y falso norte 0. Va escrita acá, y no con
+     una biblioteca, porque son dos fórmulas y así la lámina no depende de nada más.
+     Sirve para dibujar la grilla de coordenadas con sus rótulos en metros, como manda la
+     cartografía de un Plan Regulador. */
+  const CR05 = { a: 6378137.0, f: 1 / 298.257222101, lon0: -84 * Math.PI / 180, k0: 0.9999, FE: 500000, FN: 0 };
+
+  function aCRTM05(lon, lat) {
+    const { a, f, lon0, k0, FE, FN } = CR05;
+    const e2 = f * (2 - f), ep2 = e2 / (1 - e2);
+    const p = lat * Math.PI / 180, l = lon * Math.PI / 180;
+    const sp = Math.sin(p), cp = Math.cos(p), tp = Math.tan(p);
+    const N = a / Math.sqrt(1 - e2 * sp * sp);
+    const T = tp * tp, C = ep2 * cp * cp, A = (l - lon0) * cp;
+    const M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256) * p
+      - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * p)
+      + (15 * e2 * e2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * p)
+      - (35 * e2 ** 3 / 3072) * Math.sin(6 * p));
+    const E = FE + k0 * N * (A + (1 - T + C) * A ** 3 / 6
+      + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
+    const Nn = FN + k0 * (M + N * tp * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24
+      + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+    return [E, Nn];
+  }
+
+  function deCRTM05(E, Nn) {
+    const { a, f, lon0, k0, FE, FN } = CR05;
+    const e2 = f * (2 - f), ep2 = e2 / (1 - e2);
+    const raiz = Math.sqrt(1 - e2), e1 = (1 - raiz) / (1 + raiz);
+    const M = (Nn - FN) / k0;
+    const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256));
+    const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu)
+      + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+    const sp1 = Math.sin(p1), cp1 = Math.cos(p1), tp1 = Math.tan(p1);
+    const C1 = ep2 * cp1 * cp1, T1 = tp1 * tp1;
+    const N1 = a / Math.sqrt(1 - e2 * sp1 * sp1);
+    const R1 = a * (1 - e2) / Math.pow(1 - e2 * sp1 * sp1, 1.5);
+    const D = (E - FE) / (N1 * k0);
+    const lat = p1 - (N1 * tp1 / R1) * (D * D / 2
+      - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+    const lon = lon0 + (D - (1 + 2 * T1 + C1) * D ** 3 / 6
+      + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / cp1;
+    return [lon * 180 / Math.PI, lat * 180 / Math.PI];
+  }
+
+  // Un paso de grilla "redondo" (1, 2, 2.5 o 5 × 10^n) cercano a span/objetivo.
+  function pasoBonito(span, objetivo) {
+    const crudo = span / Math.max(objetivo, 1);
+    const exp = Math.floor(Math.log10(crudo));
+    const base = crudo / Math.pow(10, exp);
+    const b = base < 1.5 ? 1 : base < 3 ? 2 : base < 4 ? 2.5 : base < 7.5 ? 5 : 10;
+    return b * Math.pow(10, exp);
+  }
+
+  /* Grilla de coordenadas CRTM05 sobre el recuadro del mapa.
+     Devuelve las líneas (SVG) y los rótulos (HTML) para los cuatro lados del marco.
+     Las líneas de E y N constantes en CRTM05 salen apenas curvas en Mercator, pero en el
+     ancho de un cantón la diferencia es menor que el grosor del trazo, así que se dibujan
+     rectas tomando la posición en el centro del mapa. */
+  function grillaCRTM05(bb, UV, H, k) {
+    const desMerc = (my) => (Math.atan(Math.exp(my * Math.PI / 180)) * 360 / Math.PI) - 90;
+    const esquinas = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]]
+      .map(([x, y]) => aCRTM05(x, desMerc(y)));
+    const Es = esquinas.map((c) => c[0]), Ns = esquinas.map((c) => c[1]);
+    const E0 = Math.min(...Es), E1 = Math.max(...Es);
+    const N0 = Math.min(...Ns), N1 = Math.max(...Ns);
+    const paso = pasoBonito(Math.max(E1 - E0, N1 - N0), 5);
+    const Ec = (E0 + E1) / 2, Nc = (N0 + N1) / 2;
+    const px = proyector(bb, UV, H);
+    let lineas = '', rotulos = '';
+    const trazo = `stroke="#8d8d8d" stroke-width="${0.35 * k}" vector-effect="non-scaling-stroke"`;
+    for (let E = Math.ceil(E0 / paso) * paso; E < E1; E += paso) {
+      const q = px(deCRTM05(E, Nc));
+      if (q[0] < 1 || q[0] > UV - 1) continue;
+      const pct = (q[0] / UV * 100).toFixed(3);
+      lineas += `<path d="M${q[0].toFixed(2)} 0L${q[0].toFixed(2)} ${H.toFixed(2)}" ${trazo}/>`;
+      rotulos += `<span class="rej sup" style="left:${pct}%">${Math.round(E)}</span>` +
+                 `<span class="rej inf" style="left:${pct}%">${Math.round(E)}</span>`;
+    }
+    for (let N = Math.ceil(N0 / paso) * paso; N < N1; N += paso) {
+      const q = px(deCRTM05(Ec, N));
+      if (q[1] < 1 || q[1] > H - 1) continue;
+      const pct = (q[1] / H * 100).toFixed(3);
+      lineas += `<path d="M0 ${q[1].toFixed(2)}L${UV} ${q[1].toFixed(2)}" ${trazo}/>`;
+      rotulos += `<span class="rej izq" style="top:${pct}%">${Math.round(N)}</span>` +
+                 `<span class="rej der" style="top:${pct}%">${Math.round(N)}</span>`;
+    }
+    return { lineas, rotulos, paso };
+  }
+
+  /* ---------- relieve sombreado de fondo ----------
+     El mapa base se arma con la topografía por debajo, para que se vean las sombras del
+     terreno. El relieve viene en teselas (las mismas que usa QGIS con el "World Hillshade"),
+     se pegan en un lienzo y el resultado se mete como una sola imagen dentro del SVG de la
+     lámina. Van por /geoproxy porque el servidor de teselas no habilita CORS y, sin eso, el
+     lienzo queda "manchado" y no se puede exportar.
+
+     Las teselas están en Mercator, igual que la lámina, así que calzan sin reproyectar: en
+     este espacio la coordenada de tesela es una cuenta lineal.
+
+     Si no se pueden traer (sin red, servicio caído), la lámina sale igual, sin sombras. */
+  const RELIEVE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile';
+  const relieveCache = new Map();
+
+  function cargarTesela(z, x, y) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      // Siempre se responde, pase lo que pase: una tesela que no llega no puede dejar
+      // colgada la exportación de la lámina.
+      const reloj = setTimeout(() => resolve(null), 8000);
+      const listo = (v) => { clearTimeout(reloj); resolve(v); };
+      img.onload = () => listo(img);
+      img.onerror = () => listo(null);
+      // El orden del ArcGIS es /z/y/x, no /z/x/y.
+      img.src = '/geoproxy?url=' + encodeURIComponent(`${RELIEVE_URL}/${z}/${y}/${x}`);
+    });
+  }
+
+  async function relieveDe(bb, maxTeselas) {
+    const clave = bb.map((v) => v.toFixed(4)).join(',') + '|' + maxTeselas;
+    if (relieveCache.has(clave)) return relieveCache.get(clave);
+    const tarea = (async () => {
+      // Se elige el zoom más alto que quepa en el presupuesto de teselas.
+      const aTx = (lon, z) => (lon + 180) / 360 * Math.pow(2, z);
+      const aTy = (my, z) => (1 - my / 180) / 2 * Math.pow(2, z);
+      let z = 0;
+      for (let pruebe = 16; pruebe >= 6; pruebe--) {
+        const nx = Math.ceil(aTx(bb[2], pruebe)) - Math.floor(aTx(bb[0], pruebe));
+        const ny = Math.ceil(aTy(bb[1], pruebe)) - Math.floor(aTy(bb[3], pruebe));
+        if (nx * ny <= maxTeselas) { z = pruebe; break; }
+      }
+      if (!z) return null;
+      const x0 = Math.floor(aTx(bb[0], z)), x1 = Math.ceil(aTx(bb[2], z));
+      const y0 = Math.floor(aTy(bb[3], z)), y1 = Math.ceil(aTy(bb[1], z));
+      const nx = x1 - x0, ny = y1 - y0;
+      const lienzo = document.createElement('canvas');
+      lienzo.width = nx * 256; lienzo.height = ny * 256;
+      const ctx = lienzo.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = '#f2f2f2';
+      ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+      // De a ocho para no abrir cien conexiones de golpe.
+      const pedidos = [];
+      for (let x = x0; x < x1; x++) for (let y = y0; y < y1; y++) pedidos.push([x, y]);
+      let trajo = 0;
+      for (let i = 0; i < pedidos.length; i += 8) {
+        const lote = await Promise.all(pedidos.slice(i, i + 8).map(([x, y]) => cargarTesela(z, x, y)));
+        lote.forEach((img, j) => {
+          if (!img) return;
+          const [x, y] = pedidos[i + j];
+          ctx.drawImage(img, (x - x0) * 256, (y - y0) * 256, 256, 256);
+          trajo++;
+        });
+        // Si el primer lote no trajo nada, el servicio no está: no se piden cien más.
+        if (i === 0 && !trajo) return null;
+      }
+      if (!trajo) return null;
+      // El recuadro que cubre el lienzo, en las mismas unidades Mercator de la lámina.
+      const lonDe = (tx) => tx / Math.pow(2, z) * 360 - 180;
+      const myDe = (ty) => (1 - 2 * ty / Math.pow(2, z)) * 180;
+      try {
+        return { url: lienzo.toDataURL('image/jpeg', 0.86), z, teselas: trajo,
+                 caja: [lonDe(x0), myDe(y1), lonDe(x1), myDe(y0)] };
+      } catch (e) {
+        return null;      // lienzo manchado: se sigue sin relieve
+      }
+    })();
+    relieveCache.set(clave, tarea);
+    return tarea;
+  }
+
+  // Escalas "de plano": se sube a la siguiente escala redonda, nunca se baja, para que la
+  // escala numérica que se imprime sea exacta y no un número cualquiera.
+  function escalaBonita(minima) {
+    const pasos = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 8, 10];
+    const exp = Math.floor(Math.log10(Math.max(minima, 1)));
+    for (let e = exp; e <= exp + 2; e++) {
+      for (const p of pasos) {
+        const v = p * Math.pow(10, e);
+        if (v >= minima) return v;
+      }
+    }
+    return Math.ceil(minima);
+  }
+  const milesCon = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+  // Cuántas teselas de relieve se piden según la hoja: más papel, más detalle.
+  const TESELAS_POR_PAPEL = { 'Carta': 60, 'A3': 100, 'A2': 160, 'A1': 260 };
+
   // ---------- imprimir: una lámina por mapa marcado ----------
   async function construirLaminas(soloEstos) {
     const cont = $('laminas');
@@ -778,77 +1015,119 @@
     const muni = muniNombreVal || ('Municipalidad de ' + $('selCanton').value);
     const canton = $('selCanton').value;
     const hoy = new Date().toLocaleDateString('es-CR');
+    const mesAnio = new Date().toLocaleDateString('es-CR', { month: 'long', year: 'numeric' });
     // En el orden del catálogo, no en el orden en que se fueron marcando.
     // `soloEstos` lo usa el botón "Descargar" de la estructura, para una lámina sola.
     const pedidos = soloEstos ? new Set(soloEstos) : seleccion;
     const ids = [];
     catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => { if (pedidos.has(m.id)) ids.push(m.id); }));
-    const total = ids.length;
 
     const partesCanton = partesDe(cantonSel.geometry);
     const cajaCanton = cajaMerc([cantonSel]);
     const [, latMin, , latMax] = bboxDe(cantonSel);
     const latMedia = (latMin + latMax) / 2;
     const vecinos = vecinosDe(cantonSel);
+    const elabora = firmaDe('elabora');
+    const profesional = firmaDe('profesional');
+    const conRelieve = !$('chkRelieve') || $('chkRelieve').checked;
 
-    // 1) Se arma el esqueleto de todas las láminas, para poder medir el área del mapa.
+    // 1) Se arma el esqueleto de todas las láminas, para poder medir el recuadro del mapa.
+    const hojas = [];
     for (let i = 0; i < ids.length; i++) {
       const m = defMapa(ids[i]);
       if (!m) continue;
+      hojas.push({ i, m });
+    }
+    const total = hojas.length;
+    hojas.forEach(({ i, m }, n) => {
       const lam = document.createElement('div');
       lam.className = 'lamina';
       lam.innerHTML = `
-        <div class="lam-cab">
-          <div class="lam-tit-wrap">
-            <div class="lam-titulo">${codigoDe(m) ? codigoDe(m) + ' ' : ''}${esc(m.nombre)}</div>
-            <div class="lam-subtit">Plan de Ordenamiento Territorial del cantón de ${esc(canton)}</div>
-          </div>
-          <span class="lam-inst">${esc(m.institucion)}</span>
-        </div>
-        <div class="lam-mapa-wrap" id="wrap-${i}">
-          <div class="lam-inset" id="ins-${i}"><div class="lam-inset-tit">Ubicación del cantón</div></div>
-        </div>
-        <div class="lam-caj">
-          <div class="caj-simb">
-            <div class="caj-rot">Simbología</div>
-            <div class="caj-leyenda" id="ley-${i}"></div>
-          </div>
-          <div class="caj-ident">
-            <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}">` : ''}</div>
-            <div>
-              <div class="caj-muni">${esc(muni)}</div>
-              <div class="caj-mapa">${esc(m.nombre)}</div>
-              <div class="caj-elab"><span>Elaborado por</span><img src="planoexacto.png" class="caj-pe"></div>
+        <div class="lam-hoja">
+          <div class="lam-izq">
+            <div class="lam-cab">
+              <div class="lam-titulo">${esc(m.nombre)}</div>
+              <div class="lam-subtit">${codigoDe(m) ? esc(codigoDe(m)) + ' · ' : ''}${esc(m.institucion)}</div>
+            </div>
+            <div class="lam-mapa-zona" id="zona-${i}">
+              <div class="lam-mapa-wrap" id="wrap-${i}">
+                <div class="lam-norte"><div class="flecha">▲</div>N</div>
+              </div>
             </div>
           </div>
-          <div class="caj-norte"><div class="flecha">▲</div><div>N</div></div>
-          <div class="caj-tabla">
-            <div><b>Proyección</b><br>CRTM05 (EPSG:5367)</div>
-            <div><b>Fuente</b><br>SNIT · CNE · SINAC · IGN</div>
-            <div class="caj-fila">
-              <span><b>Escala</b><br>gráfica</span>
-              <span><b>Fecha</b><br>${hoy}</span>
-              <span><b>Lámina</b><br>${i + 1} / ${total}</span>
+          <div class="lam-caj">
+            <div class="caj-tit"><span>Plan Regulador Territorial</span><b>Cantón ${esc(canton)}</b></div>
+            <div class="caj-logos">
+              <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}" alt="">` : ''}</div>
+              <div class="caj-elab">Elaborado por:${elabora
+                ? `<div class="firma">${esc(elabora)}</div>`
+                : '<img src="planoexacto.png" alt="">'}</div>
             </div>
-            <div><b>Papel</b> ${papel.nombre}</div>
+            <div class="caj-simb">
+              <div class="caj-rot">Simbología</div>
+              <div class="caj-leyenda" id="ley-${i}"></div>
+            </div>
+            <div class="caj-datos">
+              <div id="esc-${i}"><b>Escala numérica</b></div>
+              ${profesional ? `<div>Profesional responsable:<br>${esc(profesional)}</div>` : ''}
+              <div>Sistema de coordenadas<br>CRSIRGAS / CRTM05 (EPSG:5367)</div>
+              <div class="fuentes" id="fuentes-${i}"><b>Fuentes:</b> Sistema Nacional de
+                Información Territorial (SNIT).</div>
+              <div>Fecha de elaboración:<br>${esc(mesAnio)}</div>
+              <div>${esc(muni)}<br>Lámina ${n + 1} / ${total} · ${papel.nombre} ${papel.vertical ? 'vertical' : 'apaisado'} · ${hoy}</div>
+            </div>
+            <div class="lam-inset" id="ins-${i}"><div class="lam-inset-tit">Área de estudio</div></div>
           </div>
         </div>`;
       cont.appendChild(lam);
-    }
+      hojas[n].lam = lam;
+    });
 
-    // 2) Se dibuja el mapa de cada lámina, ya sabiendo su tamaño real.
-    for (let i = 0; i < ids.length; i++) {
+    // 2) Se dibuja el mapa de cada lámina, ya sabiendo su tamaño real en el papel.
+    for (const { i, lam } of hojas) {
       const wrap = $(`wrap-${i}`);
+      const zona = $(`zona-${i}`);
       if (!wrap) continue;
-      const aspecto = (wrap.offsetWidth || 800) / (wrap.offsetHeight || 1000);
+
+      /* Tamaño impreso del recuadro del mapa, en milímetros. La proporción entre el recuadro
+         y la hoja es la misma en píxeles que en milímetros, así que basta una regla de tres
+         contra el ancho de la hoja (que sí se conoce en mm). Si el navegador todavía no midió
+         nada, se usa una estimación a partir de la propia maqueta. */
+      const anchoLam = lam.offsetWidth || 0, altoLam = lam.offsetHeight || 0;
+      const wPx = wrap.offsetWidth || 0, hPx = wrap.offsetHeight || 0;
+      const medido = anchoLam > 0 && altoLam > 0 && wPx > 0 && hPx > 0;
+      const mapaW = medido ? papel.w * wPx / anchoLam : papel.w * 0.72;
+      const mapaH = medido ? papel.h * hPx / altoLam : papel.h * 0.78;
+      const aspecto = mapaW / mapaH;
+
+      /* Escala exacta: se calcula la escala mínima que hace caber el cantón con un respiro,
+         se sube a la siguiente escala redonda y el recuadro del mapa se arma a esa escala.
+         Así la lámina se imprime a 1:10 000 o 1:25 000 de verdad, y se puede medir encima. */
+      const mPorGrado = 111320 * Math.cos(latMedia * Math.PI / 180);
+      const anchoM = (cajaCanton[2] - cajaCanton[0]) * mPorGrado * 1.08;
+      const altoM = (cajaCanton[3] - cajaCanton[1]) * mPorGrado * 1.08;
+      const escala = escalaBonita(Math.max(anchoM / (mapaW / 1000), altoM / (mapaH / 1000)));
+      const gW = (mapaW / 1000) * escala / mPorGrado;
+      const gH = (mapaH / 1000) * escala / mPorGrado;
+      const cx = (cajaCanton[0] + cajaCanton[2]) / 2, cy = (cajaCanton[1] + cajaCanton[3]) / 2;
+      const bb = [cx - gW / 2, cy - gH / 2, cx + gW / 2, cy + gH / 2];
       const H = UV / aspecto;
-      const bb = ajustarCaja([
-        cajaCanton[0] - (cajaCanton[2] - cajaCanton[0]) * 0.04,
-        cajaCanton[1] - (cajaCanton[3] - cajaCanton[1]) * 0.04,
-        cajaCanton[2] + (cajaCanton[2] - cajaCanton[0]) * 0.04,
-        cajaCanton[3] + (cajaCanton[3] - cajaCanton[1]) * 0.04
-      ], aspecto);
       const px = proyector(bb, UV, H);
+      const escEl = $(`esc-${i}`);
+      if (escEl) escEl.innerHTML = `<b>Escala numérica</b><br>1: ${milesCon(escala)}`;
+
+      // Relieve sombreado de fondo (si se pudo traer).
+      const relieve = conRelieve ? await relieveDe(bb, TESELAS_POR_PAPEL[papel.nombre] || 120) : null;
+      let fondo = '';
+      if (relieve) {
+        const sx = UV / (bb[2] - bb[0]), sy = H / (bb[3] - bb[1]);
+        const x = (relieve.caja[0] - bb[0]) * sx, y = (bb[3] - relieve.caja[3]) * sy;
+        const w = (relieve.caja[2] - relieve.caja[0]) * sx;
+        const h = (relieve.caja[3] - relieve.caja[1]) * sy;
+        fondo = `<image href="${relieve.url}" xlink:href="${relieve.url}" x="${x.toFixed(2)}" ` +
+                `y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ` +
+                `preserveAspectRatio="none"/>`;
+      }
 
       // Capas: las base prendidas + las del mapa, con la misma simbología de la pantalla.
       const leyenda = [['Límite cantonal', 'Límites cantonales']];
@@ -856,32 +1135,59 @@
       baseVisibles.forEach((n) => { if (capaPorNombre[n]) nombres.push(n); });
       insumosReales(ids[i]).forEach((n) => { if (!nombres.includes(n)) nombres.push(n); });
       let capasSVG = '';
+      const fuentes = new Set();
       for (const nombre of nombres) {
         const fc = await obtenerDatos(nombre);
         if (fc && fc.features && fc.features.length) {
           capasSVG += capaSVG(nombre, fc, px, k);
           leyenda.push([nombre, nombre]);
+          const f = (capaPorNombre[nombre] || {}).fuente;
+          if (f) fuentes.add(String(f).trim().replace(/\.$/, ''));
         }
       }
+      // Las fuentes del cajetín son las de las capas que se dibujaron de verdad, no una
+      // lista fija: así la lámina declara exactamente de dónde salió lo que muestra.
+      const fuenteEl = $(`fuentes-${i}`);
+      if (fuenteEl) {
+        fuenteEl.innerHTML = '<b>Fuentes:</b> ' +
+          ([...fuentes].sort().join('. ') || 'Sistema Nacional de Información Territorial (SNIT)') +
+          '.' + (relieve ? ' Relieve sombreado: Esri World Hillshade.' : '') +
+          ' Elaboración propia con PlanoExactoCR.';
+      }
 
-      // Máscara: rectángulo del viewBox con el cantón como hueco (regla par-impar).
+      /* Velos: adentro del cantón uno blanco, para que el relieve quede de fondo suave y las
+         capas se lean; afuera uno gris, que apaga el relieve y deja claro dónde termina el
+         área de planificación. Sin relieve, el de afuera es gris liso como antes. */
       const dCanton = dDe(partesCanton.anillos, px, true);
-      const mascara = `<path d="M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z${dCanton}" ` +
-                      `fill="#ececec" fill-rule="evenodd"/>`;
+      const veloDentro = relieve
+        ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="evenodd"/>` : '';
+      const marco = `M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z`;
+      const mascara = relieve
+        ? `<path d="${marco}${dCanton}" fill="#8d8d8d" fill-opacity="0.33" fill-rule="evenodd"/>`
+        : `<path d="${marco}${dCanton}" fill="#ececec" fill-rule="evenodd"/>`;
+      // Las capas se recortan al cantón: el área de planificación es la que se analiza, y
+      // dejar que las vías o los distritos sigan de largo por fuera confunde la lectura.
+      const recorte = `recorte-${i}`;
+      const capasRecortadas = capasSVG
+        ? `<clipPath id="${recorte}"><path d="${dCanton}" clip-rule="evenodd"/></clipPath>` +
+          `<g clip-path="url(#${recorte})">${capasSVG}</g>`
+        : '';
       // Vecinos: solo el contorno, sobre el gris.
       let svgVecinos = '';
       vecinos.forEach((v) => {
         const pv = partesDe(v.geometry);
-        svgVecinos += `<path d="${dDe(pv.anillos, px, true)}" fill="none" stroke="#bcbcbc" ` +
+        svgVecinos += `<path d="${dDe(pv.anillos, px, true)}" fill="none" stroke="#9a9a9a" ` +
                       `stroke-width="${0.5 * k}" vector-effect="non-scaling-stroke"/>`;
       });
       const eC = estiloDe('Límites cantonales');
       const limite = `<path d="${dCanton}" fill="none" stroke="${eC.color}" stroke-width="${1.5 * k}" ` +
                      `stroke-dasharray="${dashDe('guion', k)}" vector-effect="non-scaling-stroke"/>`;
+      const grilla = grillaCRTM05(bb, UV, H, k);
 
       const svg = `<svg class="lam-svg" viewBox="0 0 ${UV} ${H.toFixed(2)}" preserveAspectRatio="none" ` +
-                  `xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision">` +
-                  capasSVG + mascara + svgVecinos + limite + '</svg>';
+                  `xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
+                  `shape-rendering="geometricPrecision">` +
+                  fondo + veloDentro + capasRecortadas + mascara + svgVecinos + grilla.lineas + limite + '</svg>';
 
       // Rótulos de los cantones vecinos, como HTML (así la letra no se deforma).
       let rotulos = '';
@@ -895,26 +1201,42 @@
         } catch (e) { /* sin rótulo */ }
       });
 
-      const e = calcularEscala(bb, latMedia);
-      const escala = `<div class="lam-escala" style="width:${e.pct.toFixed(2)}%">` +
-                     `<div class="barra"><i></i><i></i></div>` +
-                     `<div class="rot"><span>0</span><span>${e.etiqueta}</span></div></div>`;
+      // Barra de escala: el largo "redondo" en km, medido sobre el ancho real del mapa.
+      const metrosMapa = (mapaW / 1000) * escala;
+      const largo = pasoBonito(metrosMapa * 0.3, 1);
+      const rotula = (m) => (largo >= 1000 ? +(m / 1000).toFixed(1) : Math.round(m));
+      const unidad = largo >= 1000 ? ' km' : ' m';
+      const escalaHTML = `<div class="lam-escala" style="width:${(largo / metrosMapa * 100).toFixed(2)}%">` +
+                         '<div class="barra"><i></i><i></i></div>' +
+                         `<div class="rot"><span>0</span><span>${rotula(largo / 2)}</span>` +
+                         `<span>${rotula(largo)}${unidad}</span></div></div>`;
 
-      wrap.insertAdjacentHTML('afterbegin', svg + '<div class="lam-rotulos">' + rotulos + '</div>' + escala);
+      wrap.insertAdjacentHTML('afterbegin', svg + '<div class="lam-rotulos">' + rotulos + '</div>');
+      wrap.insertAdjacentHTML('beforeend', escalaHTML);
+      // Los rótulos de la grilla van por fuera del marco, en una capa calcada sobre él.
+      if (zona) zona.insertAdjacentHTML('beforeend', `<div class="lam-rej">${grilla.rotulos}</div>`);
 
-      // Simbología del cajetín, con la forma de cada geometría.
-      $(`ley-${i}`).innerHTML = leyenda.map(([etiqueta, capa]) =>
-        `<div class="ley-item">${muestraHTML(capa, 'ley-color')}${esc(etiqueta)}</div>`).join('');
+      // Simbología del cajetín, en dos columnas.
+      $(`ley-${i}`).innerHTML = leyenda.slice(0, 24).map(([etiqueta, capa]) =>
+        `<div class="ley-item">${muestraHTML(capa, 'ley-color')}<em>${esc(etiqueta)}</em></div>`).join('');
 
       // Recuadro de ubicación: el país en gris con el cantón en rojo.
       const ins = $(`ins-${i}`);
       if (cantonesTodos && ins) {
         const aIns = (ins.offsetWidth || 150) / (ins.offsetHeight || 115);
         const Hi = UV / aIns;
-        const bbi = ajustarCaja(cajaMerc(cantonesTodos.features), aIns);
+        // Solo el país continental: el cantón de Puntarenas incluye la Isla del Coco, a 500 km
+        // mar adentro, y si entra en la cuenta Costa Rica queda del tamaño de una estampilla.
+        const dentro = cantonesTodos.features.filter((f) => {
+          const b = bboxDe(f);
+          return b[0] > -86.5 && b[1] > 7.9;
+        });
+        const bbi = ajustarCaja(cajaMerc(dentro.length ? dentro : cantonesTodos.features), aIns);
         const pxi = proyector(bbi, UV, Hi);
         let dPais = '';
-        cantonesTodos.features.forEach((f) => { dPais += dDe(partesDe(f.geometry).anillos, pxi, true); });
+        (dentro.length ? dentro : cantonesTodos.features).forEach((f) => {
+          dPais += dDe(partesDe(f.geometry).anillos, pxi, true);
+        });
         ins.insertAdjacentHTML('afterbegin',
           `<svg class="lam-svg" viewBox="0 0 ${UV} ${Hi.toFixed(2)}" preserveAspectRatio="none" ` +
           `xmlns="http://www.w3.org/2000/svg"><path d="${dPais}" fill="#ededed" stroke="#c4c4c4" ` +

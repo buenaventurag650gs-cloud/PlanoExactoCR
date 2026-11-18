@@ -183,16 +183,35 @@ const swatches = todos('#leyenda .sw');
 afirmar(swatches.some((s) => s.classList.contains('linea')), 'la leyenda usa cuadrito de línea para capas lineales');
 
 // ---------- 9. Tamaño de papel ----------
+// La regla @page de CSS solo conoce nombres de papel hasta A3: "size: A2" no existe y el
+// navegador la ignora, se va a Carta y recorta la lámina. Por eso tiene que salir la medida
+// exacta en milímetros, nunca el nombre.
 const lam = $('laminas');
-afirmar(lam.style.getPropertyValue('--pw') === '16.54in', `papel por defecto A2 (--pw = ${lam.style.getPropertyValue('--pw')})`);
-afirmar($('estiloPapel').textContent.includes('size: A2'), '@page queda en A2');
+afirmar(lam.style.getPropertyValue('--pw') === '594mm', `papel por defecto A2 apaisado (--pw = ${lam.style.getPropertyValue('--pw')})`);
+afirmar(lam.style.getPropertyValue('--ph') === '420mm', `alto de A2 apaisado (--ph = ${lam.style.getPropertyValue('--ph')})`);
+const reglaPagina = $('estiloPapel').textContent;
+afirmar(reglaPagina.includes('size: 594mm 420mm'), `@page lleva la medida exacta (${reglaPagina.trim()})`);
+afirmar(!/size:\s*A\d/.test(reglaPagina), '@page no usa el nombre del papel, que el navegador ignoraría');
+afirmar(reglaPagina.includes('margin: 0'), '@page va sin márgenes');
+$('selPapel').value = 'A1';
+$('selPapel').dispatchEvent(new window.Event('change'));
+afirmar(lam.style.getPropertyValue('--pw') === '841mm' && $('estiloPapel').textContent.includes('841mm 594mm'),
+  `se puede imprimir en A1 (${lam.style.getPropertyValue('--pw')})`);
 $('selPapel').value = 'Carta';
 $('selPapel').dispatchEvent(new window.Event('change'));
-afirmar(lam.style.getPropertyValue('--pw') === '8.5in', 'al cambiar a Carta, la lámina mide 8.5in');
-afirmar(Math.abs(parseFloat(lam.style.getPropertyValue('--k')) - 1) < 0.001, 'k vuelve a 1 en Carta');
+afirmar(lam.style.getPropertyValue('--pw') === '279.4mm', `al cambiar a Carta, la hoja mide 279,4 mm (${lam.style.getPropertyValue('--pw')})`);
+afirmar(Math.abs(parseFloat(lam.style.getPropertyValue('--k')) - 1) < 0.001, 'k vuelve a 1 en Carta apaisada');
 $('selPapel').value = 'A2';
 $('selPapel').dispatchEvent(new window.Event('change'));
-afirmar(Math.abs(parseFloat(lam.style.getPropertyValue('--k')) - 1.9459) < 0.01, `k ≈ 1.95 en A2 (es ${lam.style.getPropertyValue('--k')})`);
+afirmar(Math.abs(parseFloat(lam.style.getPropertyValue('--k')) - 2.126) < 0.01, `k ≈ 2.13 en A2 (es ${lam.style.getPropertyValue('--k')})`);
+// Orientación: forzada vertical, la hoja se para; en automático la decide la forma del cantón.
+$('selOrient').value = 'vertical';
+$('selOrient').dispatchEvent(new window.Event('change'));
+afirmar(lam.style.getPropertyValue('--pw') === '420mm' && lam.style.getPropertyValue('--ph') === '594mm',
+  'la orientación vertical para la hoja');
+$('selOrient').value = 'auto';
+$('selOrient').dispatchEvent(new window.Event('change'));
+afirmar(lam.style.getPropertyValue('--pw') === '594mm', 'en automático vuelve a apaisada para este cantón');
 
 // ---------- 10. Botones de exportar ----------
 afirmar(!$('btnAtlas').disabled, 'el botón de imprimir se habilita con cantón + mapas');
@@ -224,6 +243,51 @@ afirmar(paths.every((p) => !p.getAttribute('stroke') || p.getAttribute('stroke')
 afirmar(!!laminas[0].querySelector('.lam-escala .barra'), 'la lámina trae barra de escala');
 afirmar(!!laminas[0].querySelector('.lam-inset svg'), 'la lámina trae el recuadro de ubicación');
 afirmar(laminas[0].querySelectorAll('.caj-leyenda .ley-item').length >= 4, 'el cajetín trae la simbología');
+
+// ---------- 11b. La lámina sigue la cartografía de un Plan Regulador ----------
+// Cajetín en columna a la derecha, no una franja abajo.
+const hoja0 = laminas[0].querySelector('.lam-hoja');
+afirmar(!!hoja0 && !!hoja0.querySelector(':scope > .lam-izq') && !!hoja0.querySelector(':scope > .lam-caj'),
+  'la hoja se parte en mapa (izquierda) y cajetín (columna derecha)');
+afirmar(hoja0.querySelector('.lam-caj').contains(laminas[0].querySelector('.lam-inset')),
+  'el recuadro de ubicación vive dentro del cajetín');
+const cajTexto = hoja0.querySelector('.lam-caj').textContent;
+afirmar(cajTexto.includes('Plan Regulador Territorial'), 'el cajetín encabeza con el Plan Regulador Territorial');
+afirmar(cajTexto.includes('CRTM05'), 'el cajetín declara el sistema de coordenadas');
+afirmar(cajTexto.includes('Fuentes:'), 'el cajetín declara las fuentes');
+afirmar(cajTexto.includes('Fecha de elaboración'), 'el cajetín trae la fecha de elaboración');
+afirmar(/Lámina 1 \/ 3/.test(cajTexto), `el cajetín numera la lámina (${(cajTexto.match(/Lámina[^·]*/) || [''])[0].trim()})`);
+
+// Escala numérica: redonda, para que se pueda medir sobre el papel impreso.
+const escTxt = (laminas[0].querySelector('[id^="esc-"]') || {}).textContent || '';
+const escNum = parseInt((escTxt.match(/1:\s*([\d ]+)/) || [0, ''])[1].replace(/\s/g, ''), 10);
+afirmar(escNum > 0, `la lámina declara su escala numérica (${escTxt.replace(/\s+/g, ' ').trim()})`);
+const redonda = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 8, 10]
+  .some((b) => [100, 1000, 10000, 100000].some((e) => Math.abs(escNum - b * e) < 1));
+afirmar(redonda, `la escala es una escala redonda de plano, no un número cualquiera (1:${escNum})`);
+
+// Grilla de coordenadas CRTM05, con rótulos por fuera del marco en los cuatro lados.
+const rej = laminas[0].querySelector('.lam-rej');
+afirmar(!!rej, 'la lámina trae la capa de rótulos de la grilla');
+const lados = ['sup', 'inf', 'izq', 'der'].filter((c) => rej.querySelector('.rej.' + c));
+afirmar(lados.length === 4, `la grilla se rotula en los cuatro lados (${lados.join(', ')})`);
+const esteTxt = [...rej.querySelectorAll('.rej.sup')].map((e) => +e.textContent);
+const norteTxt = [...rej.querySelectorAll('.rej.izq')].map((e) => +e.textContent);
+// Costa Rica entera cae entre ~300 000 y ~660 000 de este, y ~880 000 a ~1 250 000 de norte.
+afirmar(esteTxt.length >= 2 && esteTxt.every((v) => v > 300000 && v < 660000),
+  `los rótulos de este son metros CRTM05 creíbles (${esteTxt.join(', ')})`);
+afirmar(norteTxt.length >= 2 && norteTxt.every((v) => v > 880000 && v < 1250000),
+  `los rótulos de norte son metros CRTM05 creíbles (${norteTxt.join(', ')})`);
+const pasoE = esteTxt.length > 1 ? Math.abs(esteTxt[1] - esteTxt[0]) : 0;
+afirmar(pasoE > 0 && /^[125]0*$|^25 *0*$/.test(String(pasoE).replace(/0+$/, (c) => '0'.repeat(c.length))) || pasoE > 0,
+  `la grilla avanza a paso constante (${pasoE} m)`);
+afirmar(esteTxt.every((v, n, a) => n === 0 || Math.abs((v - a[n - 1]) - pasoE) < 1),
+  'todos los intervalos de la grilla miden lo mismo');
+const lineasGrilla = [...svg0.querySelectorAll('path')].filter((p) => p.getAttribute('stroke') === '#8d8d8d');
+afirmar(lineasGrilla.length >= 4, `la grilla también se dibuja sobre el mapa (${lineasGrilla.length} líneas)`);
+
+// Sin relieve (acá no hay red) la lámina igual se arma: el fondo es opcional.
+afirmar(svg0.querySelectorAll('image').length === 0, 'sin teselas de relieve la lámina sale igual, sin sombras');
 
 // ---------- 12. Capas compartidas con el mundo público de PlanoExactoCR ----------
 const capasDoc = JSON.parse(lee('capas.json'));

@@ -164,58 +164,91 @@
   #cajetinPreview .cp-nota { font-size:9px; color:#888; margin-top:2px; }
 
   /* ---------- láminas de impresión ----------
-     Una página por mapa. El tamaño de papel lo pone app.js en --pw/--ph y --k (factor de
-     escala respecto a Carta), así todo crece proporcionalmente y en A2/A3 el mapa se dibuja
-     con mucho más detalle (más nitidez) sin que el cajetín se vea desproporcionado. */
-  #laminas { position:absolute; left:-30000px; top:0; --pw:8.5in; --ph:11in; --k:1; }
+     Una página por mapa, a la medida exacta del papel. app.js pone --pw/--ph (el tamaño de
+     la hoja, en milímetros) y --k (cuánto crece la tipografía respecto a una Carta apaisada).
+     El cajetín va en una columna a la derecha, de alto completo, y el mapa ocupa el resto:
+     es la disposición de la cartografía de un Plan Regulador. Las medidas van en milímetros
+     para que lo que se ve en pantalla sea exactamente lo que sale impreso. */
+  #laminas { position:absolute; left:-30000px; top:0; --pw:594mm; --ph:420mm; --k:2.13; }
   .lamina { width:var(--pw); height:var(--ph); background:#fff; color:#111; box-sizing:border-box;
-            padding:calc(0.3in * var(--k)); display:flex; flex-direction:column;
-            font:calc(12px * var(--k))/1.3 system-ui, sans-serif; }
-  .lam-cab { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:calc(2px * var(--k)) solid #111; padding-bottom:calc(5px * var(--k)); margin-bottom:calc(5px * var(--k)); }
-  .lam-titulo { font-size:calc(21px * var(--k)); font-weight:800; line-height:1.1; text-transform:uppercase; }
-  .lam-subtit { font-size:calc(10px * var(--k)); color:#555; margin-top:1px; }
-  .lam-inst { font-size:calc(10px * var(--k)); color:#555; text-align:right; max-width:calc(2.6in * var(--k)); padding-top:2px; }
-  /* El mapa de la lámina es un SVG dibujado por app.js con las coordenadas completas
-     (no un mapa de Leaflet), para que el PDF aguante zoom sin deformar las geometrías. */
-  .lam-mapa-wrap { flex:1; border:1px solid #111; position:relative; overflow:hidden; background:#fff; }
+            padding:calc(3mm * var(--k)); overflow:hidden;
+            font:calc(2.3mm * var(--k))/1.3 system-ui, sans-serif; }
+  .lam-hoja { width:100%; height:100%; box-sizing:border-box; display:grid;
+              grid-template-columns:1fr 22%; border:calc(0.3mm * var(--k)) solid #111; }
+  .lam-izq { display:flex; flex-direction:column; min-width:0; min-height:0; box-sizing:border-box;
+             padding:calc(1.5mm * var(--k)); }
+  .lam-cab { text-align:center; padding-bottom:calc(1.2mm * var(--k)); flex:0 0 auto; }
+  .lam-titulo { font-size:calc(5.2mm * var(--k)); font-weight:800; line-height:1.05;
+                text-transform:uppercase; letter-spacing:0.02em; }
+  .lam-subtit { font-size:calc(2.1mm * var(--k)); color:#555; margin-top:calc(0.6mm * var(--k)); }
+
+  /* Zona del mapa: el marco va adentro y alrededor queda el aire para los rótulos de la
+     grilla de coordenadas, como en una lámina de QGIS. */
+  .lam-mapa-zona { flex:1 1 auto; position:relative; min-height:0; }
+  .lam-mapa-wrap { position:absolute; top:calc(3.6mm * var(--k)); bottom:calc(3.6mm * var(--k));
+                   left:calc(4.8mm * var(--k)); right:calc(4.8mm * var(--k));
+                   border:calc(0.3mm * var(--k)) solid #111; overflow:hidden; background:#fff; }
   .lam-svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
   .lam-rotulos { position:absolute; inset:0; pointer-events:none; }
-  .rot-vecino { position:absolute; transform:translate(-50%, -50%); color:#9a9a9a;
-                font-size:calc(8px * var(--k)); font-weight:600; white-space:nowrap; text-shadow:0 0 2px #fff; }
-  /* Escala gráfica, abajo a la izquierda del mapa. */
-  .lam-escala { position:absolute; left:calc(10px * var(--k)); bottom:calc(10px * var(--k)); z-index:600;
-                font-size:calc(7px * var(--k)); color:#111; max-width:45%; }
-  .lam-escala .barra { height:calc(4px * var(--k)); border:0.5px solid #111; display:flex; background:#fff; }
+  .rot-vecino { position:absolute; transform:translate(-50%,-50%); color:#6b6b6b;
+                font-size:calc(2.5mm * var(--k)); font-weight:700; white-space:nowrap;
+                text-shadow:0 0 2px #fff, 0 0 2px #fff; }
+  /* Rótulos de la grilla CRTM05: van por fuera del marco, en los cuatro lados. */
+  .lam-rej { position:absolute; top:calc(3.6mm * var(--k)); bottom:calc(3.6mm * var(--k));
+             left:calc(4.8mm * var(--k)); right:calc(4.8mm * var(--k)); pointer-events:none; }
+  .rej { position:absolute; font-size:calc(1.9mm * var(--k)); color:#222; white-space:nowrap;
+         font-variant-numeric:tabular-nums; }
+  .rej.sup { top:calc(-2.1mm * var(--k)); transform:translate(-50%,-50%); }
+  .rej.inf { top:calc(100% + 2.1mm * var(--k)); transform:translate(-50%,-50%); }
+  .rej.izq { left:calc(-2.6mm * var(--k)); transform:translate(-50%,-50%) rotate(-90deg); }
+  .rej.der { left:calc(100% + 2.6mm * var(--k)); transform:translate(-50%,-50%) rotate(-90deg); }
+
+  .lam-norte { position:absolute; top:calc(2mm * var(--k)); left:calc(2mm * var(--k)); z-index:600;
+               text-align:center; font-weight:800; font-size:calc(3.2mm * var(--k)); line-height:1; }
+  .lam-norte .flecha { font-size:calc(7mm * var(--k)); line-height:0.75; }
+  .lam-escala { position:absolute; right:calc(3mm * var(--k)); bottom:calc(2.6mm * var(--k)); z-index:600;
+                font-size:calc(2.1mm * var(--k)); color:#111; }
+  .lam-escala .barra { height:calc(1.3mm * var(--k)); border:0.5px solid #111; display:flex; background:#fff; }
   .lam-escala .barra i { flex:1; }
   .lam-escala .barra i:first-child { background:#111; }
-  .lam-escala .rot { margin-top:1px; display:flex; justify-content:space-between; text-shadow:0 0 2px #fff; }
-  /* Recuadro de ubicación del cantón en el país, arriba a la izquierda. */
-  .lam-inset { position:absolute; top:calc(8px * var(--k)); left:calc(8px * var(--k)); width:calc(1.5in * var(--k)); height:calc(1.15in * var(--k)); border:1.3px solid #333; background:#fff; z-index:500; overflow:hidden; }
-  .lam-inset-tit { position:absolute; top:1px; left:3px; font-size:calc(7px * var(--k)); font-weight:600; color:#333; z-index:501; background:#fffd; padding:0 2px; }
-  .lam-caj { height:calc(1.35in * var(--k)); border:1px solid #111; border-top:none; display:grid;
-             grid-template-columns: calc(2.4in * var(--k)) 1fr calc(0.6in * var(--k)) calc(2.1in * var(--k)); }
-  .lam-caj > div { border-left:1px solid #111; padding:calc(5px * var(--k)) calc(7px * var(--k)); overflow:hidden; }
-  .caj-simb { border-left:none !important; }
-  .caj-rot { font-weight:700; font-size:calc(11px * var(--k)); margin-bottom:calc(3px * var(--k)); }
-  .caj-leyenda { font-size:calc(8.5px * var(--k)); display:flex; flex-direction:column; gap:calc(1.5px * var(--k)); }
-  .ley-item { display:flex; align-items:center; gap:calc(5px * var(--k)); }
-  .ley-color { width:calc(14px * var(--k)); height:calc(9px * var(--k)); flex:0 0 auto; border:0.5px solid #999; }
-  .ley-color.linea { height:0; border:none; border-top:calc(3px * var(--k)) solid; }
-  .ley-color.punto { width:calc(9px * var(--k)); border-radius:50%; }
-  .caj-ident { display:flex; gap:calc(7px * var(--k)); align-items:center; }
-  .caj-escudo { width:calc(0.9in * var(--k)); height:calc(0.9in * var(--k)); flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
-  .caj-escudo img { max-width:100%; max-height:calc(0.9in * var(--k)); object-fit:contain; }
-  .caj-muni { font-weight:700; font-size:calc(12px * var(--k)); }
-  .caj-canton { font-size:calc(11px * var(--k)); }
-  .caj-mapa { font-size:calc(9px * var(--k)); color:#555; margin-top:calc(3px * var(--k)); }
-  .caj-elab { font-size:calc(9px * var(--k)); color:#444; margin-top:calc(6px * var(--k)); display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
-  .caj-elab span { font-weight:600; }
-  .caj-pe { height:calc(22px * var(--k)); width:auto; object-fit:contain; align-self:flex-start; }
-  .caj-norte { display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; }
-  .caj-norte .flecha { font-size:calc(20px * var(--k)); line-height:1; }
-  .caj-tabla { font-size:calc(9px * var(--k)); display:flex; flex-direction:column; justify-content:center; gap:calc(4px * var(--k)); }
-  .caj-fila { display:flex; gap:calc(6px * var(--k)); }
-  .caj-fila > span { flex:1; }
+  .lam-escala .rot { margin-top:calc(0.5mm * var(--k)); display:flex; justify-content:space-between;
+                     text-shadow:0 0 2px #fff, 0 0 2px #fff; }
+
+  /* ---------- cajetín (columna derecha) ---------- */
+  .lam-caj { border-left:calc(0.3mm * var(--k)) solid #111; display:flex; flex-direction:column;
+             box-sizing:border-box; min-width:0; min-height:0;
+             overflow:hidden; padding:calc(3mm * var(--k)); gap:calc(2.2mm * var(--k)); }
+  .caj-tit { text-align:center; line-height:1.3; flex:0 0 auto; }
+  .caj-tit span { font-size:calc(2.9mm * var(--k)); font-weight:700; }
+  .caj-tit b { display:block; font-size:calc(3.4mm * var(--k)); margin-top:calc(1mm * var(--k)); }
+  .caj-logos { display:flex; align-items:center; justify-content:space-around;
+               gap:calc(2mm * var(--k)); flex:0 0 auto; }
+  .caj-escudo img { max-width:calc(17mm * var(--k)); max-height:calc(17mm * var(--k));
+                    object-fit:contain; display:block; }
+  .caj-elab { text-align:center; font-size:calc(2.1mm * var(--k)); color:#333; }
+  .caj-elab img { max-width:calc(26mm * var(--k)); max-height:calc(8mm * var(--k)); object-fit:contain;
+                  display:block; margin:calc(1.2mm * var(--k)) auto 0; }
+  .caj-elab .firma { font-weight:700; font-size:calc(2.5mm * var(--k)); color:#111;
+                     margin-top:calc(1.2mm * var(--k)); }
+  .caj-simb { flex:0 1 auto; min-height:0; overflow:hidden; }
+  .caj-rot { font-weight:700; font-size:calc(2.7mm * var(--k)); text-align:center;
+             border-bottom:calc(0.2mm * var(--k)) solid #111; padding-bottom:calc(0.8mm * var(--k));
+             margin-bottom:calc(1.4mm * var(--k)); }
+  .caj-leyenda { display:grid; grid-template-columns:1fr 1fr;
+                 gap:calc(0.7mm * var(--k)) calc(2mm * var(--k)); font-size:calc(1.95mm * var(--k)); }
+  .ley-item { display:flex; align-items:flex-start; gap:calc(1.3mm * var(--k)); min-width:0; line-height:1.2; }
+  .ley-item em { font-style:normal; min-width:0; }
+  .ley-color { width:calc(4.2mm * var(--k)); height:calc(2.6mm * var(--k)); flex:0 0 auto; border:0.5px solid #999;
+               margin-top:calc(0.25mm * var(--k)); }
+  .ley-color.linea { height:0; border:none; border-top:calc(0.8mm * var(--k)) solid; }
+  .ley-color.punto { width:calc(2.6mm * var(--k)); border-radius:50%; }
+  .caj-datos { font-size:calc(2.05mm * var(--k)); line-height:1.35; text-align:center;
+               display:flex; flex-direction:column; gap:calc(1.8mm * var(--k)); flex:0 0 auto; }
+  .caj-datos .fuentes { text-align:left; font-size:calc(1.85mm * var(--k)); }
+  .lam-inset { position:relative; height:calc(32mm * var(--k)); flex:0 0 auto; margin-top:auto;
+               border:calc(0.3mm * var(--k)) solid #333; overflow:hidden; background:#fff; }
+  .lam-inset-tit { position:absolute; top:1px; left:3px; font-size:calc(1.8mm * var(--k));
+                   font-weight:600; color:#333; z-index:2; background:#fffd; padding:0 2px; }
 
   /* Sin esto, el navegador borra los colores de fondo al imprimir (cuadritos de leyenda en blanco). */
   .lamina, .lamina * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -255,16 +288,30 @@
       <div class="paso"><span class="n">4</span> Exportar</div>
       <label class="sub" style="display:block;margin-bottom:3px">Tamaño de página</label>
       <select id="selPapel">
-        <option value="A2" selected>A2 — 42 × 59,4 cm (más nitidez)</option>
+        <option value="A1">A1 — 59,4 × 84,1 cm (lámina de pared)</option>
+        <option value="A2" selected>A2 — 42 × 59,4 cm</option>
         <option value="A3">A3 — 29,7 × 42 cm</option>
         <option value="Carta">Carta — 21,6 × 27,9 cm</option>
       </select>
+      <label class="sub" style="display:block;margin:6px 0 3px">Orientación</label>
+      <select id="selOrient">
+        <option value="auto" selected>Automática (según la forma del cantón)</option>
+        <option value="apaisado">Apaisada</option>
+        <option value="vertical">Vertical</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:7px;margin:8px 0 4px;font-size:12px;color:var(--sub,#9aa)">
+        <input type="checkbox" id="chkRelieve" checked style="width:auto;margin:0"> Relieve sombreado de fondo
+      </label>
+      <label class="sub" style="display:block;margin:6px 0 3px">Elaborado por</label>
+      <input id="inpElabora" type="text" placeholder="Nombre de la empresa o equipo">
+      <label class="sub" style="display:block;margin:6px 0 3px">Profesional responsable</label>
+      <input id="inpProfesional" type="text" placeholder="Nombre y número de colegiado">
       <button id="btnAtlas" disabled>Imprimir mapas (PDF)</button>
       <div class="fila-botones">
         <button id="btnConfig" class="sec" disabled>Configuración (.json)</button>
         <button id="btnReset" class="sec">Reiniciar</button>
       </div>
-      <p class="sub" style="margin-top:8px">Cada mapa marcado con 🖨 sale en su propia lámina con título y cajetín. En el diálogo de impresión elegí <b>Guardar como PDF</b>, el mismo tamaño de página y <b>márgenes: ninguno</b>. La configuración sirve para generar el atlas con <code>build_atlas.py</code>.</p>
+      <p class="sub" style="margin-top:8px">Cada mapa marcado con 🖨 sale en su propia lámina con su cajetín. En el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>; el tamaño de la hoja ya va fijado en la lámina, así que no hay que tocar el selector de papel ni activar «ajustar a la página». La configuración sirve para generar el atlas con <code>build_atlas.py</code>.</p>
     </div>
   </div>
 

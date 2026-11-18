@@ -166,6 +166,50 @@ subirlo al repositorio.
    correos del equipo. Esto reemplaza cualquier contraseña propia — no hay
    `SITE_PASSWORD` en este Worker.
 
+## La lámina de impresión
+
+Cada mapa marcado con 🖨 sale en su propia lámina, con la disposición de la cartografía de
+un Plan Regulador: hoja apaisada, el mapa a la izquierda y el cajetín en una columna a la
+derecha, de alto completo.
+
+Qué lleva la lámina:
+
+- **Hoja a medida exacta**, en Carta, A3, A2 o A1, apaisada o vertical. En automático la
+  hoja se acuesta o se para según la forma del cantón.
+- **Grilla de coordenadas CRTM05** con los rótulos en metros por fuera del marco, en los
+  cuatro lados. La conversión a CRTM05 (EPSG:5367) está escrita en `app.js`; coincide con
+  `pyproj` dentro de 0,2 m en todo el país.
+- **Escala exacta y redonda.** Se calcula la escala mínima que hace caber el cantón, se sube
+  a la siguiente escala de plano (1:10 000, 1:25 000, 1:125 000…) y el recuadro del mapa se
+  arma a esa escala. Por eso la escala numérica del cajetín es cierta y se puede medir
+  encima del papel impreso.
+- **Relieve sombreado de fondo** (teselas de Esri World Hillshade, por `/geoproxy`), con un
+  velo blanco adentro del cantón para que las capas se lean y uno gris afuera. Si el
+  servicio no responde, la lámina sale igual, sin sombras.
+- **Capas recortadas al cantón**: fuera del área de planificación solo quedan el relieve, el
+  contorno de los vecinos y su nombre.
+- **Cajetín** con el Plan Regulador Territorial y el cantón, el escudo municipal, quién la
+  elaboró, la simbología en dos columnas, la escala numérica, el profesional responsable, el
+  sistema de coordenadas, las fuentes (armadas con las capas que de verdad se dibujaron) y
+  el recuadro de ubicación del cantón en el país.
+
+### Por qué el PDF salía cortado
+
+La regla `@page` de CSS solo conoce los nombres de papel hasta A3: `size: A2` no existe en
+el estándar, el navegador la ignoraba, se iba al tamaño por omisión (Carta) y recortaba la
+lámina —o la encogía, si el diálogo traía puesto «ajustar a la página», que es lo que se veía
+como mala resolución—. Ahora se escribe siempre la medida exacta, `size: 594mm 420mm`, que sí
+respeta en cualquier tamaño. En el diálogo de impresión basta elegir **Guardar como PDF** y
+**márgenes: ninguno**; el selector de papel no hay que tocarlo.
+
+### Revisar la maqueta sin abrir el navegador
+
+    node scripts/previsualizar_lamina.mjs --canton Abangares --papel A2 --mapa base
+
+Levanta el tablero en un Chrome sin ventana, arma la lámina y guarda un PNG. Las capas del
+SNIT salen vacías y el relieve es simulado (acá no hay salida a esos servidores), pero la
+geometría del cantón, la grilla, la escala y toda la maqueta son las de verdad.
+
 ## Recorte real a GeoPackage + PDF
 
 `scripts/build_atlas.py` ya hace el recorte real (no es un stub): toma el polígono del

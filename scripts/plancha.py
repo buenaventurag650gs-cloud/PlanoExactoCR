@@ -26,8 +26,15 @@ _simb = json.loads(_SIMB_JSON.read_text(encoding="utf-8"))
 SIMBOLOGIA = _simb["capas"]
 ESTILO_DEF = {"color": "#1971c2", "trazo": "solido", "peso": 0.7, "relleno": 0.4, "geom": "poligono"}
 # Tamaños de papel: la plancha se diseña en proporción Carta y todo (tipografías, líneas,
-# cajetín) se multiplica por k, así A3/A2 salen iguales pero con mucho más detalle.
-PAPELES = {"Carta": (8.5, 11.0), "A3": (11.69, 16.54), "A2": (16.54, 23.39)}
+# cajetín) se multiplica por k, así A3/A2/A1 salen iguales pero con mucho más detalle.
+#
+# OJO: estas planchas de matplotlib siguen siendo verticales y con el cajetín abajo. Las
+# láminas que arma el tablero (muni/app.js) ya usan la disposición nueva —hoja apaisada,
+# cajetín en columna a la derecha, grilla CRTM05 rotulada y relieve sombreado de fondo—, que
+# es la de la cartografía de un Plan Regulador. Pasar esta a esa disposición es trabajo
+# aparte; mientras tanto, el PDF bueno para imprimir es el del tablero y este sirve para
+# repasar rápido lo que se exportó al GeoPackage.
+PAPELES = {"Carta": (8.5, 11.0), "A3": (11.69, 16.54), "A2": (16.54, 23.39), "A1": (23.39, 33.11)}
 
 
 def estilo_de(nombre: str) -> dict:

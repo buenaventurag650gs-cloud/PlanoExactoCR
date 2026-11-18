@@ -16,6 +16,8 @@ const HOSTS_PERMITIDOS = new Set([
   "www.snitcr.go.cr",
   "snitcr.go.cr",
   "images.squarespace-cdn.com",   // escudos municipales (munis.cr)
+  "server.arcgisonline.com",      // relieve sombreado de fondo (World Hillshade)
+  "services.arcgisonline.com",    // el mismo servicio, por su otro nombre
 ]);
 
 const CORS = {
@@ -67,12 +69,15 @@ async function geoproxy(url, request) {
 
   const tipo = upstream.headers.get("content-type") || "application/json";
   const cuerpo = await upstream.arrayBuffer();
+  // El relieve sombreado no cambia nunca: se guarda un mes, así la segunda lámina del mismo
+  // cantón sale al instante. Las capas del SNIT sí se revisan cada hora.
+  const vida = u.hostname.endsWith("arcgisonline.com") ? 2592000 : 3600;
   const resp = new Response(cuerpo, {
     status: upstream.status,
     headers: {
       ...CORS,
       "content-type": tipo,
-      "cache-control": "public, max-age=3600",
+      "cache-control": `public, max-age=${vida}`,
     },
   });
   if (upstream.ok) {
