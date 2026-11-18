@@ -120,15 +120,60 @@
   }
 
   // ---------- identidad municipal ----------
-  $('muniNombre').addEventListener('input', actualizarExport);
+  let muniEditado = false;   // si el usuario escribió el nombre a mano, no lo pisamos
+  let escudoManual = false;  // si subió un logo a mano, no lo pisamos con el del cantón
+
+  function slug(txt) {
+    return txt.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().trim().replace(/\s+/g, '-');
+  }
+
+  $('muniNombre').addEventListener('input', () => { muniEditado = true; actualizarExport(); actualizarCajetinPreview(); });
   $('logoBox').addEventListener('click', () => $('logoFile').click());
   $('logoFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
     const lector = new FileReader();
-    lector.onload = () => { muniLogo = lector.result; $('logoBox').innerHTML = `<img src="${muniLogo}" alt="logo">`; };
+    lector.onload = () => {
+      muniLogo = lector.result; escudoManual = true;
+      $('logoBox').innerHTML = `<img src="${muniLogo}" alt="logo">`;
+      actualizarCajetinPreview();
+    };
     lector.readAsDataURL(f);
   });
+
+  // Al elegir cantón: nombre "Municipalidad de X" y escudo escudos/<x>.png si existe.
+  function aplicarIdentidadCanton(canton) {
+    if (!muniEditado) $('muniNombre').value = 'Municipalidad de ' + canton;
+    if (!escudoManual) {
+      const img = new Image();
+      img.onload = () => {
+        // Pasa la imagen a data URL para que entre en el PDF y la vista.
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          muniLogo = c.toDataURL('image/png');
+        } catch (e) { muniLogo = img.src; }
+        $('logoBox').innerHTML = `<img src="${muniLogo}" alt="escudo">`;
+        actualizarCajetinPreview();
+      };
+      img.onerror = () => { muniLogo = null; $('logoBox').innerHTML = '<span id="logoTxt">logo</span>'; actualizarCajetinPreview(); };
+      img.src = `escudos/${slug(canton)}.png`;
+    }
+    actualizarCajetinPreview();
+  }
+
+  // Muestra el cajetín (escudo + muni + cantón) sobre el mapa, como se verá en las láminas.
+  function actualizarCajetinPreview() {
+    const canton = $('selCanton').value;
+    const cp = $('cajetinPreview');
+    if (!canton) { cp.hidden = true; return; }
+    cp.hidden = false;
+    $('cpEscudo').innerHTML = muniLogo ? `<img src="${muniLogo}">` : '<div class="ph">escudo</div>';
+    $('cpMuni').textContent = $('muniNombre').value.trim() || ('Municipalidad de ' + canton);
+    $('cpCanton').textContent = 'Cantón de ' + canton;
+  }
 
   // ---------- catálogo de mapas ----------
   const catEl = $('catalogo');
@@ -222,6 +267,7 @@
       if (!sel.value) { cantonSel = null; habilitarCatalogo(false); actualizarExport(); return; }
       cantonSel = baseCantones.features.find((f) => f.properties.k === sel.value) || null;
       if (!cantonSel) return;
+      aplicarIdentidadCanton(sel.value);       // nombre + escudo de la muni, visibles en el mapa
       datosCapa.clear();                       // el cache es por cantón
       Object.keys(layerLookup).forEach((n) => { map.removeLayer(layerLookup[n]); delete layerLookup[n]; });
       habilitarCatalogo(true);
@@ -263,10 +309,11 @@
     laminasMapas.forEach((m) => m.remove());
     laminasMapas = [];
 
-    const muni = $('muniNombre').value.trim() || 'Municipalidad';
+    const muni = $('muniNombre').value.trim() || ('Municipalidad de ' + $('selCanton').value);
     const canton = $('selCanton').value;
     const hoy = new Date().toLocaleDateString('es-CR');
     const ids = [...seleccion];
+    const total = ids.length;
 
     for (let i = 0; i < ids.length; i++) {
       const m = defMapa(ids[i]);
@@ -276,23 +323,35 @@
       const idMapa = `lam-mapa-${i}`;
       lam.innerHTML = `
         <div class="lam-cab">
-          <span class="lam-titulo">${m.nombre}</span>
+          <div class="lam-tit-wrap">
+            <div class="lam-titulo">${m.nombre}</div>
+            <div class="lam-subtit">Plan de Ordenamiento Territorial del cantón de ${canton}</div>
+          </div>
           <span class="lam-inst">${m.institucion}</span>
         </div>
         <div class="lam-mapa" id="${idMapa}"></div>
         <div class="lam-caj">
-          <div class="caj-logo">${muniLogo ? `<img src="${muniLogo}">` : ''}</div>
+          <div class="caj-simb">
+            <div class="caj-rot">Simbología</div>
+            <div class="caj-leyenda" id="ley-${i}"></div>
+          </div>
           <div class="caj-ident">
-            <div class="caj-muni">${muni}</div>
-            <div class="caj-canton">Cantón de ${canton}</div>
-            <div class="caj-mapa">${m.nombre}</div>
+            <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}">` : ''}</div>
+            <div>
+              <div class="caj-muni">${muni}</div>
+              <div class="caj-canton">Cantón de ${canton}</div>
+              <div class="caj-mapa">${m.nombre}</div>
+            </div>
           </div>
           <div class="caj-norte"><div class="flecha">▲</div><div>N</div></div>
-          <div class="caj-meta">
-            <div><b>Fecha:</b> ${hoy}</div>
-            <div><b>Proyección:</b> CRTM05 (EPSG:5367)</div>
-            <div><b>Fuente:</b> SNIT, CNE, SINAC, IGN</div>
-            <div class="caj-escala" id="esc-${i}"></div>
+          <div class="caj-tabla">
+            <div><b>Proyección</b><br>CRTM05 (EPSG:5367)</div>
+            <div><b>Fuente</b><br>SNIT · CNE · SINAC · IGN</div>
+            <div class="caj-fila">
+              <span><b>Escala</b><br><span class="caj-escala" id="esc-${i}">gráfica</span></span>
+              <span><b>Fecha</b><br>${hoy}</span>
+              <span><b>Lámina</b><br>${i + 1} / ${total}</span>
+            </div>
           </div>
         </div>`;
       cont.appendChild(lam);
@@ -302,12 +361,19 @@
       laminasMapas.push(lm);
       // Sin tiles: fondo blanco, solo las capas vectoriales (cartografía de plan regulador).
       cantonLayer && L.geoJSON(cantonSel, { style: { color: '#222', weight: 1.5, fill: false } }).addTo(lm);
+      const leyenda = [['Límite cantonal', '#222']];
       const nombres = insumosReales(ids[i]);
       for (const nombre of nombres) {
         const fc = await obtenerDatos(nombre);
-        if (fc && fc.features && fc.features.length) capaGeoJSON(nombre, fc).addTo(lm);
+        if (fc && fc.features && fc.features.length) {
+          capaGeoJSON(nombre, fc).addTo(lm);
+          leyenda.push([nombre, colorDe(nombre)]);
+        }
       }
-      L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(lm);
+      // Dibuja la leyenda (simbología) de este mapa.
+      $(`ley-${i}`).innerHTML = leyenda.map(([n, c]) =>
+        `<div class="ley-item"><span class="ley-color" style="background:${c}"></span>${n}</div>`).join('');
+      L.control.scale({ imperial: false, position: 'bottomright', maxWidth: 140 }).addTo(lm);
       const b = L.geoJSON(cantonSel).getBounds();
       lm.fitBounds(b, { padding: [10, 10] });
     }
@@ -327,7 +393,14 @@
 
   $('btnAtlas').addEventListener('click', async () => {
     if (!cantonSel || !seleccion.size) { avisar('Elegí un cantón y al menos un mapa.'); return; }
-    document.title = `Atlas — ${$('selCanton').value}`;
+    // Nombre del archivo PDF (sale como título del documento en el diálogo de impresión).
+    const canton = $('selCanton').value;
+    if (seleccion.size === 1) {
+      const m = defMapa([...seleccion][0]);
+      document.title = `1. Mapa ${m ? m.nombre : 'canton'} ${canton} Carta`;
+    } else {
+      document.title = `Atlas ${canton} — ${seleccion.size} mapas Carta`;
+    }
     $('btnAtlas').disabled = true;
     avisar('Preparando las láminas…');
     await construirLaminas();
