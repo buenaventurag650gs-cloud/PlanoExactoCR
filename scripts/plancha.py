@@ -239,7 +239,7 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
     caj.text(0.905, 0.10, fecha, fontsize=5.5)
     caj.text(0.957, 0.10, f"{lamina_num}/{total}", fontsize=5.5)
 
-    fig.savefig(ruta_pdf, dpi=200)
+    fig.savefig(ruta_pdf, dpi=300)
     plt.close(fig)
 
 

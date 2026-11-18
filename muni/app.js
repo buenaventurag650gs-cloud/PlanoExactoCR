@@ -157,14 +157,27 @@
     return fc;
   }
 
+  // Grosor de línea por capa: las densas (curvas, edificaciones) muy finas para que no se
+  // conviertan en una masa al imprimir; las demás delgadas.
+  const PESOS = {
+    'Curvas de nivel 10m': 0.25, 'Red hídrica': 0.5, 'Hidrografía': 0.5,
+    'Red vial cantonal': 0.4, 'Edificaciones': 0.15, 'Límites distritales': 0.6,
+    'Áreas silvestres protegidas': 0.5, 'Zona marítimo terrestre': 0.5,
+    'Deslizamientos': 0.6, 'Fallas del cuaternario': 0.6, 'Coronas de deslizamientos': 0.6
+  };
+  const pesoDe = (n) => PESOS[n] != null ? PESOS[n] : 0.7;
+
   function capaGeoJSON(nombre, fc, opts) {
     const color = colorDe(nombre);
     const esPol = fc.features && fc.features[0]?.geometry?.type?.includes('Polygon');
     const pane = (opts && opts.pane) || 'datos';
+    const w = pesoDe(nombre);
+    // Relleno: edificaciones y áreas protegidas con algo de relleno; curvas y demás solo línea.
+    const relleno = esPol ? (nombre === 'Edificaciones' ? 0.9 : nombre === 'Áreas silvestres protegidas' ? 0.18 : 0.1) : 0;
     return L.geoJSON(fc, Object.assign({
       pane,
-      style: () => ({ color, weight: 1.2, fillOpacity: esPol ? 0.12 : 0 }),
-      pointToLayer: (f, ll) => L.circleMarker(ll, { pane, radius: 3, color, weight: 1, fillOpacity: 0.85 })
+      style: () => ({ color, weight: w, fillColor: color, fillOpacity: relleno }),
+      pointToLayer: (f, ll) => L.circleMarker(ll, { pane, radius: 2, color, weight: 0.6, fillOpacity: 0.85 })
     }, opts || {}));
   }
 
