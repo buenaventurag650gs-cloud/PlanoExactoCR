@@ -2409,10 +2409,19 @@ async function manejarPeticion(request, env) {
     out.headers.set("X-Content-Type-Options", "nosniff");
     if (p.startsWith("/data/")) out.headers.set("Cache-Control", dentro && p === "/data/remates.json" ? "private, max-age=0, must-revalidate" : "public, max-age=0, must-revalidate");
     if (p === "/data/remates.json") out.headers.set("Vary", "Cookie");
-    // Permite que atlas.planoexactocr.com (sitio aparte, sin cuenta ni sesión compartida)
-    // lea estos archivos públicos desde el navegador. No da acceso a nada que ya no sea
+    // Permite que los sitios del mundo privado (atlas, calibrador y los que vengan, todos
+    // bajo planoexactocr.com, sin cuenta ni sesión compartida con el sitio público) lean
+    // estos archivos públicos desde el navegador. No da acceso a nada que ya no sea
     // público: los que exigen cuenta (SOLO_CUENTA_DATOS) igual responden 401 sin sesión.
-    if (p.startsWith("/data/") && p !== "/data/remates.json" && !(p in SOLO_CUENTA_JS)) out.headers.set("Access-Control-Allow-Origin", "https://atlas.planoexactocr.com");
+    // Se devuelve el origen que pidió, no "*", y se agrega Vary: Origin para que una
+    // respuesta guardada para un subdominio no se sirva a otro.
+    if (p.startsWith("/data/") && p !== "/data/remates.json" && !(p in SOLO_CUENTA_JS)) {
+      const origen = request.headers.get("Origin") || "";
+      if (/^https:\/\/([a-z0-9-]+\.)?planoexactocr\.com$/.test(origen)) {
+        out.headers.set("Access-Control-Allow-Origin", origen);
+        out.headers.append("Vary", "Origin");
+      }
+    }
     if (SOLO_CUENTA_DATOS.has(p) || p in SOLO_CUENTA_JS) { out.headers.set("Cache-Control", "private, max-age=0, must-revalidate"); out.headers.set("Vary", "Cookie"); }
     if (p === "/" || p === "/mapa" || p.endsWith(".html")) out.headers.set("Cache-Control", "no-cache");
     return out;
