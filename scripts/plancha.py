@@ -66,7 +66,10 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
                     capas: list[tuple[str, gpd.GeoDataFrame]], titulo_mapa: str, institucion: str,
                     *, municipalidad: str | None = None, escudo=None, fecha: str = "",
                     lamina_num: int = 1, total: int = 1,
-                    cantones_full: gpd.GeoDataFrame | None = None) -> None:
+                    cantones_full: gpd.GeoDataFrame | None = None, raster=None) -> None:
+    """raster (opcional): dict con cat (arreglo de categorías 1..N en EPSG:5367), transform
+    (Affine), colores ({valor: hex}) y leyenda ([(etiqueta, hex), ...]). Se usa para los mapas
+    IFA que son ráster, como la pendiente clasificada."""
     municipalidad = municipalidad or f"Municipalidad de {canton}"
 
     # Todo a CRTM05 (metros).
@@ -102,8 +105,23 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
             except Exception:
                 pass
 
+    # Ráster (p. ej. pendiente clasificada IFA), de fondo bajo las capas vectoriales.
+    handles = [plt.Line2D([], [], color=COLOR_CANTON, linestyle=(0, (6, 3)), label="Límite cantonal")]
+    if raster is not None:
+        from matplotlib.colors import BoundaryNorm, ListedColormap
+        cat = np.asarray(raster["cat"])
+        tr = raster["transform"]
+        valores = sorted(raster["colores"].keys())
+        cmap = ListedColormap([raster["colores"][v] for v in valores])
+        norm = BoundaryNorm(valores + [valores[-1] + 1], cmap.N)
+        h, w = cat.shape
+        extent_r = [tr.c, tr.c + w * tr.a, tr.f + h * tr.e, tr.f]
+        datos = np.ma.masked_where(cat == 0, cat)
+        ax.imshow(datos, extent=extent_r, cmap=cmap, norm=norm, interpolation="nearest", zorder=2)
+        for etiqueta, color in raster.get("leyenda", []):
+            handles.append(Patch(facecolor=color, label=etiqueta))
+
     # Capas del mapa.
-    handles = [Patch(facecolor="none", edgecolor=COLOR_CANTON, label="Límite cantonal")]
     for nombre, gdf in capas:
         if gdf is None or gdf.empty:
             continue
@@ -122,8 +140,8 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
             g.plot(ax=ax, color=color, alpha=0.5, edgecolor=color, linewidth=0.4, zorder=3)
             handles.append(Patch(facecolor=color, alpha=0.5, edgecolor=color, label=nombre))
 
-    # Límite cantonal (rojo), encima.
-    canton_m.boundary.plot(ax=ax, color=COLOR_CANTON, linewidth=1.3, zorder=6)
+    # Límite cantonal (rojo punteado, como la referencia), encima.
+    canton_m.boundary.plot(ax=ax, color=COLOR_CANTON, linewidth=1.4, linestyle=(0, (6, 3)), zorder=6)
 
     # Grilla de coordenadas CRTM05.
     paso = _paso_bonito(max(ext[2] - ext[0], ext[3] - ext[1]), 5)
@@ -144,27 +162,28 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
     _barra_escala(ax, ext[0] + span_x * 0.03, ext[1] + (ext[3] - ext[1]) * 0.03, largo, largo / 1000)
     _flecha_norte(ax, 0.96, 0.96)
 
-    # Mapa de ubicación (cantón en el país).
+    # Mapa de ubicación (cantón en el país), dentro del marco, arriba a la izquierda.
     if cantones_full is not None:
-        ins = fig.add_axes([0.085, 0.80, 0.17, 0.13])
+        ins = fig.add_axes([0.095, 0.745, 0.185, 0.155], zorder=12)
+        ins.set_facecolor("white")
         pais = cantones_full.to_crs(CRS_METRICO)
         try:
-            pais.plot(ax=ins, color="#eeeeee", edgecolor="#bbbbbb", linewidth=0.2)
+            pais.plot(ax=ins, color="#ededed", edgecolor="#b8b8b8", linewidth=0.2)
         except Exception:
             pass
         canton_m.plot(ax=ins, color=COLOR_CANTON, edgecolor=COLOR_CANTON, linewidth=0.3)
         ins.set_xticks([]); ins.set_yticks([])
         ins.set_xlabel(""); ins.set_ylabel("")
-        ins.set_title("Ubicación del cantón", fontsize=6)
+        ins.set_title("Ubicación del cantón", fontsize=6, pad=2)
         for lado in ins.spines.values():
-            lado.set_linewidth(0.6)
+            lado.set_linewidth(0.8); lado.set_edgecolor("#333")
 
     # ---------------- Cajetín ----------------
     caj = fig.add_axes([0.07, 0.04, 0.88, 0.22]); caj.axis("off")
     caj.set_xlim(0, 1); caj.set_ylim(0, 1)
     caj.add_patch(Rectangle((0, 0), 1, 1, fill=False, edgecolor="black", linewidth=1.2))
     # Columnas del cajetín.
-    cols = [0.0, 0.40, 0.70, 0.82, 1.0]
+    cols = [0.0, 0.40, 0.66, 0.84, 1.0]
     for x in cols[1:-1]:
         caj.plot([x, x], [0, 1], color="black", linewidth=0.8)
 
@@ -185,33 +204,35 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
         y -= 0.052
 
     # Celda 2: título del mapa + fuente.
-    caj.text(0.41, 0.90, titulo_mapa, fontsize=12, fontweight="bold", va="top")
-    caj.text(0.41, 0.66, institucion, fontsize=7, style="italic", va="top", color="#555")
-    caj.text(0.41, 0.50, "Fuente:\nCoberturas cartográficas del SNIT (IGN, MOPT),\nCNE, SINAC, INTA-MAG. "
-                         "Elaboración propia.", fontsize=6.5, va="top")
+    tit = titulo_mapa if len(titulo_mapa) <= 20 else titulo_mapa.replace(" — ", "\n", 1)
+    caj.text(0.415, 0.92, tit, fontsize=11, fontweight="bold", va="top")
+    caj.text(0.415, 0.60, institucion, fontsize=6.5, style="italic", va="top", color="#555")
+    caj.text(0.415, 0.44, "Fuente:\nCoberturas cartográficas del SNIT (IGN,\nMOPT), CNE, SINAC, INTA-MAG.\n"
+                          "Elaboración propia.", fontsize=6, va="top")
 
-    # Celda 3: escudo + municipalidad.
-    caj.text(0.71, 0.90, municipalidad, fontsize=7.5, fontweight="bold", va="top")
+    # Celda 3: municipalidad (ajustada) + escudo.
+    muni_txt = municipalidad.replace("Municipalidad de ", "Municipalidad\nde ")
+    caj.text(0.675, 0.94, muni_txt, fontsize=7.5, fontweight="bold", va="top")
     img = _cargar_escudo(escudo)
     if img is not None:
-        ejes_esc = fig.add_axes([0.07 + 0.88 * 0.71 + 0.005, 0.07, 0.09, 0.11])
+        ejes_esc = fig.add_axes([0.07 + 0.88 * 0.675, 0.055, 0.10, 0.11])
         ejes_esc.imshow(img); ejes_esc.axis("off")
 
     # Celda 4: norte + proyección + tabla.
-    caj.annotate("N", xy=(0.91, 0.78), xytext=(0.91, 0.64), xycoords="axes fraction",
+    caj.annotate("N", xy=(0.92, 0.80), xytext=(0.92, 0.66), xycoords="axes fraction",
                  textcoords="axes fraction", ha="center", fontsize=8, fontweight="bold",
                  arrowprops=dict(arrowstyle="-|>", color="black", lw=1.1))
-    caj.text(0.835, 0.52, "Proyección: CRTM05 (EPSG:5367)\nDatum Costa Rica 2005", fontsize=6, va="top")
+    caj.text(0.852, 0.52, "Proyección:\nCRTM05 (EPSG:5367)\nDatum Costa Rica 2005", fontsize=6, va="top")
     # Mini tabla escala/fecha/lámina.
-    caj.plot([0.82, 1.0], [0.30, 0.30], color="black", linewidth=0.6)
-    caj.plot([0.88, 0.88], [0.0, 0.30], color="black", linewidth=0.6)
-    caj.plot([0.94, 0.94], [0.0, 0.30], color="black", linewidth=0.6)
-    caj.text(0.835, 0.24, "ESCALA", fontsize=5.5, fontweight="bold")
-    caj.text(0.885, 0.24, "FECHA", fontsize=5.5, fontweight="bold")
-    caj.text(0.945, 0.24, "LÁMINA", fontsize=5.5, fontweight="bold")
-    caj.text(0.835, 0.10, "gráfica", fontsize=6)
-    caj.text(0.885, 0.10, fecha, fontsize=6)
-    caj.text(0.945, 0.10, f"{lamina_num}/{total}", fontsize=6)
+    caj.plot([0.84, 1.0], [0.30, 0.30], color="black", linewidth=0.6)
+    caj.plot([0.895, 0.895], [0.0, 0.30], color="black", linewidth=0.6)
+    caj.plot([0.95, 0.95], [0.0, 0.30], color="black", linewidth=0.6)
+    caj.text(0.852, 0.23, "ESCALA", fontsize=5, fontweight="bold")
+    caj.text(0.905, 0.23, "FECHA", fontsize=5, fontweight="bold")
+    caj.text(0.957, 0.23, "LÁMINA", fontsize=5, fontweight="bold")
+    caj.text(0.852, 0.10, "gráfica", fontsize=5.5)
+    caj.text(0.905, 0.10, fecha, fontsize=5.5)
+    caj.text(0.957, 0.10, f"{lamina_num}/{total}", fontsize=5.5)
 
     fig.savefig(ruta_pdf, dpi=200)
     plt.close(fig)

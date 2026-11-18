@@ -682,15 +682,30 @@ def main() -> None:
         for i, mid in enumerate(orden, 1):
             mdef = mapas_oficiales[mid]
             insumos = [(n, capas_por_nombre[n]) for n in mdef.get("insumos", []) if n in capas_por_nombre]
-            if not insumos:
-                print(f"  (sin insumos vectoriales para «{mdef['nombre']}», se omite)")
+
+            # Mapa IFA de pendiente: ráster clasificado 1-5 (necesita --dem).
+            raster_ifa = None
+            if mid == "ifa_geoaptitud_pendiente" and pendientes is not None:
+                import calificacion_ifa as C
+                cat, transform, _, _ = pendientes
+                ifa = C.calificar_cat_pendiente_ifa(cat)
+                raster_ifa = {
+                    "cat": ifa, "transform": transform,
+                    "colores": {v: C.COLORES_IFA[v] for v in range(1, 6)},
+                    "leyenda": [(C.etiqueta_ifa(v), C.COLORES_IFA[v]) for v in range(1, 6)],
+                }
+                insumos = []  # el ráster domina; no mezclamos las curvas encima
+
+            if not insumos and raster_ifa is None:
+                print(f"  (sin insumos para «{mdef['nombre']}», se omite)")
                 continue
             arch = salida.parent / f"{i}. Mapa {mdef['nombre']} {args.canton} Carta.pdf"
             try:
                 plancha.dibujar_plancha(
                     arch, args.canton, poligono_canton, insumos, mdef["nombre"],
                     mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                    fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones)
+                    fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones,
+                    raster=raster_ifa)
                 planchas_hechas.append(arch)
                 print(f"  ✓ {arch.name}")
             except Exception as e:
