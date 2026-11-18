@@ -93,6 +93,8 @@
   .caj-muni { font-weight:700; font-size:12px; }
   .caj-canton { font-size:11px; }
   .caj-mapa { font-size:9px; color:#555; margin-top:3px; }
+  .caj-elab { font-size:8px; color:#666; margin-top:5px; display:flex; align-items:center; gap:3px; }
+  .caj-pe { height:12px; width:auto; }
   .caj-norte { display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; }
   .caj-norte .flecha { font-size:20px; line-height:1; }
   .caj-tabla { font-size:9px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
@@ -116,29 +118,19 @@
     <h1>Tablero de mapas</h1>
     <p class="sub">Configurá los mapas que piden SETENA (decreto 44710 / IFA) y el INVU (MAPRIOT) y exportalos en PDF. Uso interno del equipo.</p>
 
-    <div class="paso"><span class="n">1</span> Municipalidad</div>
-    <div class="identidad">
-      <label class="logo-box" id="logoBox" title="Subir logo">
-        <span id="logoTxt">logo</span>
-        <input type="file" id="logoFile" accept="image/*" hidden>
-      </label>
-      <input type="text" id="muniNombre" placeholder="Nombre de la municipalidad" style="margin-bottom:0">
-    </div>
+    <div class="paso"><span class="n">1</span> Cantón</div>
+    <select id="selCanton"><option value="">Elegí el cantón…</option></select>
+    <p class="sub" style="margin-top:2px">La municipalidad y su escudo se completan solos según el cantón.</p>
 
     <div class="seccion">
-      <div class="paso"><span class="n">2</span> Cantón</div>
-      <select id="selCanton"><option value="">Elegí el cantón…</option></select>
-    </div>
-
-    <div class="seccion">
-      <div class="paso"><span class="n">3</span> Mapas a generar</div>
+      <div class="paso"><span class="n">2</span> Mapas a generar</div>
       <p id="hintCanton" class="sub">Elegí un cantón primero; los mapas se arman recortados a ese cantón.</p>
       <div class="resumen" id="resumen"></div>
       <div id="catalogo" class="bloqueado"></div>
     </div>
 
     <div class="seccion">
-      <div class="paso"><span class="n">4</span> Exportar</div>
+      <div class="paso"><span class="n">3</span> Exportar</div>
       <button id="btnAtlas" disabled>Imprimir mapas (PDF)</button>
       <button id="btnConfig" class="sec" disabled>Descargar configuración (.json)</button>
       <p class="sub" style="margin-top:4px">Imprimir arma cada mapa seleccionado en su propia lámina con título y cajetín (usá "Guardar como PDF" en el diálogo). La configuración sirve para generar el atlas con <code>build_atlas.py</code>.</p>

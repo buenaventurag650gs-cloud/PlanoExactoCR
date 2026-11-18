@@ -101,9 +101,18 @@
   }
 
   // Máscara: polígono que cubre todo MENOS el cantón, para recortar visualmente las capas al
-  // límite cantonal (lo de afuera queda tapado en gris). Devuelve un GeoJSON o null.
+  // límite cantonal (lo de afuera queda tapado en gris). Se arma a mano (anillo del mundo con
+  // el cantón como hueco) para no depender de turf.mask, que a veces no está en el bundle.
   function geoMascara(feat) {
-    try { return turf.mask(feat); } catch (e) { return null; }
+    try {
+      const mundo = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+      const g = feat.geometry;
+      let huecos = [];
+      if (g.type === 'Polygon') huecos = [g.coordinates[0]];
+      else if (g.type === 'MultiPolygon') huecos = g.coordinates.map((p) => p[0]);
+      else return null;
+      return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [mundo, ...huecos] } };
+    } catch (e) { return null; }
   }
 
   // Cantones vecinos: los que tocan el recuadro ampliado del cantón elegido (menos él mismo).
@@ -164,48 +173,29 @@
       style: { stroke: false, fillColor: relleno, fillOpacity: 1 } }).addTo(m);
   }
 
-  // ---------- identidad municipal ----------
-  let muniEditado = false;   // si el usuario escribió el nombre a mano, no lo pisamos
-  let escudoManual = false;  // si subió un logo a mano, no lo pisamos con el del cantón
+  // ---------- identidad municipal (se deriva del cantón) ----------
+  let muniNombreVal = '';    // "Municipalidad de X"
 
   function slug(txt) {
     return txt.normalize('NFKD').replace(/[̀-ͯ]/g, '')
       .toLowerCase().trim().replace(/\s+/g, '-');
   }
 
-  $('muniNombre').addEventListener('input', () => { muniEditado = true; actualizarExport(); actualizarCajetinPreview(); });
-  $('logoBox').addEventListener('click', () => $('logoFile').click());
-  $('logoFile').addEventListener('change', (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    const lector = new FileReader();
-    lector.onload = () => {
-      muniLogo = lector.result; escudoManual = true;
-      $('logoBox').innerHTML = `<img src="${muniLogo}" alt="logo">`;
+  // Al elegir cantón: nombre "Municipalidad de X" y escudo escudos/<x>.png de la base de datos.
+  function aplicarIdentidadCanton(canton) {
+    muniNombreVal = 'Municipalidad de ' + canton;
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        muniLogo = c.toDataURL('image/png');
+      } catch (e) { muniLogo = img.src; }
       actualizarCajetinPreview();
     };
-    lector.readAsDataURL(f);
-  });
-
-  // Al elegir cantón: nombre "Municipalidad de X" y escudo escudos/<x>.png si existe.
-  function aplicarIdentidadCanton(canton) {
-    if (!muniEditado) $('muniNombre').value = 'Municipalidad de ' + canton;
-    if (!escudoManual) {
-      const img = new Image();
-      img.onload = () => {
-        // Pasa la imagen a data URL para que entre en el PDF y la vista.
-        try {
-          const c = document.createElement('canvas');
-          c.width = img.naturalWidth; c.height = img.naturalHeight;
-          c.getContext('2d').drawImage(img, 0, 0);
-          muniLogo = c.toDataURL('image/png');
-        } catch (e) { muniLogo = img.src; }
-        $('logoBox').innerHTML = `<img src="${muniLogo}" alt="escudo">`;
-        actualizarCajetinPreview();
-      };
-      img.onerror = () => { muniLogo = null; $('logoBox').innerHTML = '<span id="logoTxt">logo</span>'; actualizarCajetinPreview(); };
-      img.src = `escudos/${slug(canton)}.png`;
-    }
+    img.onerror = () => { muniLogo = null; actualizarCajetinPreview(); };
+    img.src = `escudos/${slug(canton)}.png`;
     actualizarCajetinPreview();
   }
 
@@ -216,7 +206,7 @@
     if (!canton) { cp.hidden = true; return; }
     cp.hidden = false;
     $('cpEscudo').innerHTML = muniLogo ? `<img src="${muniLogo}">` : '<div class="ph">escudo</div>';
-    $('cpMuni').textContent = $('muniNombre').value.trim() || ('Municipalidad de ' + canton);
+    $('cpMuni').textContent = muniNombreVal || ('Municipalidad de ' + canton);
     $('cpCanton').textContent = 'Cantón de ' + canton;
   }
 
@@ -333,7 +323,7 @@
   // ---------- exportar configuración ----------
   function configActual() {
     return {
-      municipalidad: $('muniNombre').value.trim() || null,
+      municipalidad: muniNombreVal || null,
       logo: muniLogo,
       canton: $('selCanton').value || null,
       proyeccion: catalogo.proyeccion,
@@ -362,7 +352,7 @@
     laminasInsets.forEach((m) => m.remove());
     laminasMapas = []; laminasInsets = [];
 
-    const muni = $('muniNombre').value.trim() || ('Municipalidad de ' + $('selCanton').value);
+    const muni = muniNombreVal || ('Municipalidad de ' + $('selCanton').value);
     const canton = $('selCanton').value;
     const hoy = new Date().toLocaleDateString('es-CR');
     const ids = [...seleccion];
@@ -397,6 +387,7 @@
               <div class="caj-muni">${muni}</div>
               <div class="caj-canton">Cantón de ${canton}</div>
               <div class="caj-mapa">${m.nombre}</div>
+              <div class="caj-elab">Elaborado con <img src="planoexacto.png" class="caj-pe"> PlanoExacto</div>
             </div>
           </div>
           <div class="caj-norte"><div class="flecha">▲</div><div>N</div></div>
