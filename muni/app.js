@@ -36,10 +36,12 @@
     maxZoom: 21, maxNativeZoom: 19, attribution: 'Imagen © Esri, Maxar, Earthstar Geographics'
   }).addTo(map);
 
-  const [cap, catalogo] = await Promise.all([
+  const [cap, catalogo, escudosDoc] = await Promise.all([
     fetch('capas.json').then((r) => r.json()),
-    fetch('mapas_oficiales.json').then((r) => r.json())
+    fetch('mapas_oficiales.json').then((r) => r.json()),
+    fetch('escudos.json').then((r) => r.json()).catch(() => ({ escudos: {} }))
   ]);
+  const escudosDB = (escudosDoc && escudosDoc.escudos) || {};
 
   const capaPorNombre = {};
   cap.grupos.forEach((g) => g.capas.forEach((c) => { capaPorNombre[c.nombre] = c; }));
@@ -181,21 +183,28 @@
       .toLowerCase().trim().replace(/\s+/g, '-');
   }
 
-  // Al elegir cantón: nombre "Municipalidad de X" y escudo escudos/<x>.png de la base de datos.
+  // Al elegir cantón: nombre "Municipalidad de X" y escudo desde la base de datos (escudos.json)
+  // o, si no está, desde un archivo local escudos/<canton>.png.
   function aplicarIdentidadCanton(canton) {
     muniNombreVal = 'Municipalidad de ' + canton;
+    const url = escudosDB[canton] || `escudos/${slug(canton)}.png`;
     const img = new Image();
+    img.crossOrigin = 'anonymous';   // el CDN permite CORS; así el escudo entra al PDF como imagen
     img.onload = () => {
       try {
         const c = document.createElement('canvas');
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         c.getContext('2d').drawImage(img, 0, 0);
         muniLogo = c.toDataURL('image/png');
-      } catch (e) { muniLogo = img.src; }
+      } catch (e) { muniLogo = url; }   // si el canvas se "ensucia", usamos la URL directa
       actualizarCajetinPreview();
     };
-    img.onerror = () => { muniLogo = null; actualizarCajetinPreview(); };
-    img.src = `escudos/${slug(canton)}.png`;
+    img.onerror = () => {
+      // Si falló con CORS, reintentamos sin canvas (solo para mostrar/imprimir por URL).
+      muniLogo = url;
+      actualizarCajetinPreview();
+    };
+    img.src = url;
     actualizarCajetinPreview();
   }
 
