@@ -55,7 +55,36 @@
   #avisos { position:absolute; top:12px; right:12px; z-index:1000; display:flex; flex-direction:column; gap:6px; max-width:340px; }
   #avisos .aviso { background:#2d1b0e; border:1px solid #f0883e; color:#ffd8a8; font-size:12px; padding:8px 10px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
   #vistaPrevia { position:absolute; bottom:12px; left:12px; z-index:1000; background:#161b22cc; border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:11px; color:var(--muted); }
-  @media print { #panel, #avisos, #vistaPrevia, .leaflet-control-container { display:none; } #app { grid-template-columns: 1fr; } }
+
+  /* Láminas de impresión: una página por mapa, con cajetín. Fuera de pantalla hasta imprimir. */
+  #laminas { position:absolute; left:-20000px; top:0; }
+  .lamina { width:8.5in; height:11in; background:#fff; color:#111; box-sizing:border-box; padding:0.3in;
+            display:flex; flex-direction:column; font:12px/1.3 system-ui, sans-serif; }
+  .lam-cab { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid #111; padding-bottom:5px; margin-bottom:5px; }
+  .lam-titulo { font-size:17px; font-weight:700; }
+  .lam-inst { font-size:10px; color:#555; text-align:right; max-width:2.6in; }
+  .lam-mapa { flex:1; border:1px solid #111; }
+  .lam-mapa .leaflet-container { background:#fff; }
+  .lam-caj { height:1.1in; border:1px solid #111; border-top:none; display:grid; grid-template-columns:1in 1fr 0.65in 2in; }
+  .lam-caj > div { border-left:1px solid #111; padding:4px 7px; }
+  .caj-logo { border-left:none !important; display:flex; align-items:center; justify-content:center; }
+  .caj-logo img { max-width:100%; max-height:0.95in; object-fit:contain; }
+  .caj-ident { display:flex; flex-direction:column; justify-content:center; }
+  .caj-muni { font-weight:700; font-size:12px; }
+  .caj-canton { font-size:11px; }
+  .caj-mapa { font-size:10px; color:#555; margin-top:3px; }
+  .caj-norte { display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; }
+  .caj-norte .flecha { font-size:20px; line-height:1; }
+  .caj-meta { font-size:9px; display:flex; flex-direction:column; justify-content:center; gap:2px; }
+  .caj-escala { margin-top:3px; }
+
+  @page { size: letter; margin: 0; }
+  @media print {
+    #app, #avisos, #vistaPrevia { display:none !important; }
+    #laminas { position:static; left:0; }
+    .lamina { page-break-after: always; }
+    .lamina:last-child { page-break-after: auto; }
+  }
 </style>
 </head>
 <body>
@@ -87,9 +116,9 @@
 
     <div class="seccion">
       <div class="paso"><span class="n">4</span> Exportar</div>
+      <button id="btnAtlas" disabled>Imprimir mapas (PDF)</button>
       <button id="btnConfig" class="sec" disabled>Descargar configuración (.json)</button>
-      <button id="btnAtlas" disabled>Vista previa / Imprimir a PDF</button>
-      <p class="sub" style="margin-top:4px">La configuración se usa con <code>build_atlas.py</code> para el PDF final con cajetín y logo. La vista previa imprime lo que se ve en pantalla.</p>
+      <p class="sub" style="margin-top:4px">Imprimir arma cada mapa seleccionado en su propia lámina con título y cajetín (usá "Guardar como PDF" en el diálogo). La configuración sirve para generar el atlas con <code>build_atlas.py</code>.</p>
     </div>
   </div>
 
@@ -98,6 +127,9 @@
     <div id="vistaPrevia">Vista previa — elegí cantón y mapas</div>
   </div>
 </div>
+
+<!-- Contenedor de láminas de impresión (una por mapa seleccionado); se arma al imprimir. -->
+<div id="laminas"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>

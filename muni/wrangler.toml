@@ -5,6 +5,10 @@
 name = "planoexacto-muni"
 compatibility_date = "2026-10-01"
 
+# Script del Worker: sirve los assets y agrega /geoproxy para las capas del SNIT/CNE/SINAC
+# (que no habilitan CORS y algunas son solo http). Ver geoproxy.js.
+main = "geoproxy.js"
+
 # Subdominio propio bajo la misma zona planoexactocr.com; mientras no exista el
 # registro DNS, Cloudflare Access igual puede protegerlo en la dirección workers.dev.
 workers_dev = true
@@ -15,3 +19,4 @@ routes = [
 [assets]
 directory = "."
 not_found_handling = "none"
+binding = "ASSETS"
