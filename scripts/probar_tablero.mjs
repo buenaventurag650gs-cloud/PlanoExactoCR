@@ -242,6 +242,58 @@ afirmar(capasAgregadas.has('ASADAS y abastecimiento de agua'),
 afirmar(capasAgregadas.has('Cobertura del tendido eléctrico (100 m)'),
   'capas: las coberturas nuevas se dibujan en el mapa de servicios');
 
+// ---------- 13. Pestaña de estructura cartográfica ----------
+const pestanas = todos('.pest');
+afirmar(pestanas.length === 2, `estructura: hay dos pestañas (${pestanas.map((p) => p.dataset.vista)})`);
+afirmar(!$('map').hidden && $('estructura').hidden, 'estructura: arranca en el visor');
+
+pestanas[1].dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+afirmar($('map').hidden && !$('estructura').hidden, 'estructura: la pestaña cambia de vista');
+
+// La estructura lista TODOS los mapas del catálogo, no solo los disponibles.
+const mapasCatalogo = JSON.parse(lee('mapas_oficiales.json')).instituciones
+  .reduce((n, i) => n + i.mapas.length, 0);
+const filasEst = todos('#estCuerpo .est-tabla tbody tr');
+afirmar(filasEst.length === mapasCatalogo,
+  `estructura: lista los ${mapasCatalogo} mapas de la obra (hay ${filasEst.length})`);
+afirmar(todos('#estCuerpo .est-eje').length === 8, 'estructura: agrupa por los 8 ejes');
+afirmar($('estResumen').textContent.includes('mapas en la obra'), 'estructura: muestra el resumen de avance');
+
+// Cada insumo dice de dónde sale y si está.
+const insumos = todos('#estCuerpo .est-ins');
+afirmar(insumos.length > 20, `estructura: detalla los insumos de cada mapa (${insumos.length})`);
+afirmar(insumos.some((i) => i.textContent.includes('PlanoExacto')),
+  'estructura: marca cuáles capas son propias de PlanoExacto');
+afirmar(todos('#estCuerpo .est-ins .punto.ok').length > 0 && todos('#estCuerpo .est-ins .punto.falta').length > 0,
+  'estructura: distingue los insumos que están de los que faltan');
+// Los integrados del IFA no tienen insumos sueltos: se calculan del eje.
+afirmar(todos('#estCuerpo .est-calc').some((e) => e.textContent.includes('sumando los sub-mapas')),
+  'estructura: explica que los integrados del IFA se calculan, no se dibujan de capas');
+
+// Botón de descarga: compone ese mapa solo, en el momento.
+const btnDescargar = todos('#estCuerpo [data-descargar]');
+afirmar(btnDescargar.length > 0, `estructura: hay botón de descargar por mapa (${btnDescargar.length})`);
+const pendiente = todos('#estCuerpo .est-tabla tbody tr')
+  .find((r) => r.textContent.includes('pendiente'));
+afirmar(pendiente && !pendiente.querySelector('[data-descargar]'),
+  'estructura: un mapa pendiente no ofrece descarga');
+
+const antes = todos('#laminas .lamina').length;
+window.__imprimio = false;
+const btnBase = btnDescargar.find((b) => b.dataset.descargar === 'base_cartografica');
+btnBase.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await esperar(700);
+afirmar(todos('#laminas .lamina').length === 1,
+  `estructura: descargar genera UNA sola lámina, la de ese mapa (había ${antes}, quedó ${todos('#laminas .lamina').length})`);
+afirmar(window.__imprimio === true, 'estructura: descargar abre el diálogo de impresión');
+afirmar(window.document.title.includes('Mapa base cartográfico') && window.document.title.includes('Acosta'),
+  `estructura: el archivo sale con el nombre del mapa y el cantón ("${window.document.title}")`);
+afirmar(todos('#laminas .lam-mapa-wrap > svg.lam-svg').length === 1,
+  'estructura: la lámina descargada es el SVG vectorial, igual que el export normal');
+
+pestanas[0].dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+afirmar(!$('map').hidden && $('estructura').hidden, 'estructura: se puede volver al visor');
+
 // ---------- resultado ----------
 console.log('\n=== PRUEBAS DEL TABLERO ===');
 ok.forEach((m) => console.log('  ok  ' + m));

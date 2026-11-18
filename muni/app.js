@@ -563,6 +563,7 @@
       map.fitBounds(L.geoJSON(cantonSel).getBounds(), { padding: [20, 20] });
       actualizarExport();
       refrescarVista();
+      if (!$('estructura').hidden) construirEstructura();   // quita el aviso de "elegí cantón"
     });
   }
 
@@ -744,7 +745,7 @@
   }
 
   // ---------- imprimir: una lámina por mapa marcado ----------
-  async function construirLaminas() {
+  async function construirLaminas(soloEstos) {
     const cont = $('laminas');
     cont.innerHTML = '';
 
@@ -754,8 +755,10 @@
     const canton = $('selCanton').value;
     const hoy = new Date().toLocaleDateString('es-CR');
     // En el orden del catálogo, no en el orden en que se fueron marcando.
+    // `soloEstos` lo usa el botón "Descargar" de la estructura, para una lámina sola.
+    const pedidos = soloEstos ? new Set(soloEstos) : seleccion;
     const ids = [];
-    catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => { if (seleccion.has(m.id)) ids.push(m.id); }));
+    catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => { if (pedidos.has(m.id)) ids.push(m.id); }));
     const total = ids.length;
 
     const partesCanton = partesDe(cantonSel.geometry);
@@ -896,6 +899,122 @@
       }
     }
   }
+
+  /* ---------- pestaña de estructura cartográfica ----------
+     El atlas no es solo un visor: acá se ve toda la obra cartográfica de un vistazo —cada
+     mapa que pide la normativa, qué capas necesita, de dónde sale cada una y si está— y se
+     genera el que se quiera en el momento, con las capas que ese mapa necesite. */
+
+  // Estado de un insumo: si existe como capa, de dónde viene y si se puede dibujar.
+  function estadoInsumo(nombre) {
+    const c = capaPorNombre[nombre];
+    if (!c) return { nivel: 'falta', origen: 'no identificada' };
+    const a = String(c.archivo || '');
+    if (!a) return { nivel: 'falta', origen: c.fuente || 'sin fuente' };
+    if (a.startsWith('api:')) return { nivel: 'parcial', origen: 'consulta por plano' };
+    if (a.includes('planoexactocr.com/data/')) return { nivel: 'ok', origen: 'PlanoExacto', propio: true };
+    if (c.estado && c.estado !== 'disponible') return { nivel: 'parcial', origen: c.fuente || 'servicio nacional' };
+    return { nivel: 'ok', origen: c.fuente || 'servicio nacional' };
+  }
+
+  function construirEstructura() {
+    const cuerpo = $('estCuerpo');
+    let listos = 0, parciales = 0, pendientes = 0, totalMapas = 0;
+    let propias = 0, nacionales = 0;
+    const vistas = new Set();
+
+    let h = '';
+    catalogo.instituciones.forEach((inst) => {
+      h += `<div class="est-eje"><h3><span>${inst.icono || '🗺'}</span> ${inst.nombre}` +
+           `${inst.solo_pdf ? ' <span class="badge pdf">solo PDF</span>' : ''}</h3>` +
+           `<p class="desc">${inst.descripcion}</p>` +
+           '<table class="est-tabla"><thead><tr><th style="width:46px">#</th><th>Mapa</th>' +
+           '<th style="width:40%">Insumos y de dónde salen</th><th style="width:120px"></th></tr></thead><tbody>';
+      inst.mapas.forEach((raw) => {
+        const m = Object.assign({ institucion: inst.nombre, solo_pdf: !!inst.solo_pdf }, raw);
+        totalMapas++;
+        if (m.estado === 'disponible') listos++;
+        else if (m.estado === 'parcial') parciales++;
+        else pendientes++;
+
+        let insumos;
+        if (!m.insumos || !m.insumos.length) {
+          insumos = m.solo_pdf
+            ? '<div class="est-calc">Se calcula sumando los sub-mapas de este eje.</div>'
+            : '<div class="est-calc">Sin insumos definidos todavía.</div>';
+        } else {
+          insumos = '<div class="est-insumos">' + m.insumos.map((n) => {
+            const e = estadoInsumo(n);
+            if (!vistas.has(n)) { vistas.add(n); if (e.propio) propias++; else if (e.nivel === 'ok') nacionales++; }
+            return `<div class="est-ins"><span class="punto ${e.nivel}"></span>` +
+                   `<span>${n}</span><span class="origen${e.propio ? ' propio' : ''}">${e.origen}</span></div>`;
+          }).join('') + '</div>';
+        }
+
+        const puedeDescargar = m.estado !== 'pendiente';
+        h += `<tr><td class="est-num">${m.numero || ''}</td>` +
+             `<td><div class="est-nom">${m.nombre} <span class="badge ${m.estado}">${m.estado}</span></div>` +
+             `<div class="est-desc">${m.descripcion}</div>` +
+             `${m.faltante ? `<div class="est-falta">Falta: ${m.faltante}</div>` : ''}</td>` +
+             `<td>${insumos}</td>` +
+             `<td class="est-acc">${puedeDescargar
+               ? `<button data-descargar="${m.id}" title="Compone este mapa y abre el diálogo de impresión">Descargar</button>` +
+                 `<button class="sec" data-marcar="${m.id}" title="Agregarlo a la lista que se exporta junta">Marcar 🖨</button>`
+               : ''}</td></tr>`;
+      });
+      h += '</tbody></table></div>';
+    });
+
+    $('estResumen').innerHTML =
+      `<span class="est-chip"><b>${totalMapas}</b> mapas en la obra</span>` +
+      `<span class="est-chip"><b>${listos}</b> listos</span>` +
+      `<span class="est-chip"><b>${parciales}</b> parciales</span>` +
+      `<span class="est-chip"><b>${pendientes}</b> por datos</span>` +
+      `<span class="est-chip"><b>${propias}</b> capas propias de PlanoExacto</span>` +
+      `<span class="est-chip"><b>${nacionales}</b> capas de servicios nacionales</span>`;
+
+    cuerpo.innerHTML = (cantonSel ? '' :
+      '<div class="est-aviso">Elegí un cantón en el panel de la izquierda para poder descargar mapas. ' +
+      'La estructura se puede revisar sin cantón.</div>') + h;
+
+    cuerpo.querySelectorAll('[data-descargar]').forEach((b) => {
+      b.addEventListener('click', () => descargarMapa(b.dataset.descargar));
+    });
+    cuerpo.querySelectorAll('[data-marcar]').forEach((b) => {
+      b.addEventListener('click', () => {
+        marcarImprimir(b.dataset.marcar);
+        b.textContent = seleccion.has(b.dataset.marcar) ? 'Marcado 🖨' : 'Marcar 🖨';
+      });
+    });
+  }
+
+  // Genera un solo mapa, en el momento, con las capas que ese mapa necesita.
+  async function descargarMapa(id) {
+    if (!cantonSel) { avisar('Elegí primero un cantón en el panel de la izquierda.'); return; }
+    const m = defMapa(id);
+    if (!m) return;
+    const canton = $('selCanton').value;
+    const papel = papelActual().nombre;
+    const nom = /^mapa/i.test(m.nombre) ? m.nombre : 'Mapa ' + m.nombre;
+    document.title = `${m.numero ? m.numero + '. ' : ''}${nom} ${canton} ${papel}`;
+    avisar(`Componiendo "${m.nombre}"…`);
+    await construirLaminas([id]);
+    window.print();
+  }
+
+  // Cambio de pestaña. El mapa necesita que le avisen cuando vuelve a estar visible.
+  function mostrarVista(cual) {
+    $('map').hidden = cual !== 'visor';
+    $('estructura').hidden = cual !== 'estructura';
+    document.querySelectorAll('.pest').forEach((b) => b.classList.toggle('activa', b.dataset.vista === cual));
+    if (cual === 'visor') setTimeout(() => map.invalidateSize(), 60);
+    else construirEstructura();
+    $('pestNota').textContent = cual === 'estructura'
+      ? 'Los mapas se generan al momento, no están pre-hechos.' : '';
+  }
+  document.querySelectorAll('.pest').forEach((b) => {
+    b.addEventListener('click', () => mostrarVista(b.dataset.vista));
+  });
 
   function limpiarLaminas() { $('laminas').innerHTML = ''; }
   window.addEventListener('afterprint', limpiarLaminas);

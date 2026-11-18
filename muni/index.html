@@ -72,8 +72,56 @@
   .resumen { font-size:12px; color:var(--muted); margin:2px 0 10px; }
   .resumen b { color:var(--ink); }
 
+  /* ---------- lado derecho: pestañas de Visor / Estructura ---------- */
+  #derecha { display:grid; grid-template-rows:auto 1fr; min-width:0; height:100%; }
+  #pestanas { display:flex; align-items:center; gap:4px; background:var(--panel); border-bottom:1px solid var(--line); padding:0 10px; }
+  .pest { width:auto; margin:0; padding:9px 14px; background:none; border:none; border-bottom:2px solid transparent;
+          color:var(--muted); font-size:13px; font-weight:600; cursor:pointer; border-radius:0; }
+  .pest:hover { color:var(--ink); }
+  .pest.activa { color:var(--ink); border-bottom-color:var(--accent); }
+  .pest-nota { margin-left:auto; font-size:11px; color:var(--muted); padding-right:4px; }
+  #vistas { position:relative; min-height:0; }
+  #map, #estructura { position:absolute; inset:0; }
+  #map[hidden], #estructura[hidden] { display:none !important; }
+
+  /* ---------- estructura cartográfica ---------- */
+  #estructura { overflow-y:auto; padding:18px 20px 40px; background:var(--bg); }
+  #estructura[hidden] { display:none; }
+  .est-cab h2 { font-size:17px; margin:0 0 4px; }
+  .est-cab p { color:var(--muted); font-size:12.5px; margin:0 0 12px; max-width:70ch; }
+  .est-resumen { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .est-chip { font-size:11.5px; padding:4px 10px; border-radius:20px; border:1px solid var(--line); background:var(--panel); }
+  .est-chip b { color:var(--ink); }
+  .est-eje { margin-bottom:22px; }
+  .est-eje h3 { font-size:13px; margin:0 0 2px; display:flex; align-items:center; gap:7px; }
+  .est-eje .desc { font-size:11.5px; color:var(--muted); margin:0 0 9px; max-width:80ch; }
+  .est-tabla { width:100%; border-collapse:collapse; font-size:12px; background:var(--panel);
+               border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .est-tabla th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+                  color:var(--muted); padding:7px 10px; background:#0e1116; border-bottom:1px solid var(--line); font-weight:700; }
+  .est-tabla td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .est-tabla tr:last-child td { border-bottom:none; }
+  .est-tabla tr:hover td { background:#1b222c; }
+  .est-num { color:var(--accent); font-weight:700; white-space:nowrap; }
+  .est-nom { font-weight:600; }
+  .est-desc { color:var(--muted); font-size:10.5px; margin-top:2px; max-width:46ch; }
+  .est-falta { color:var(--warn); font-size:10.5px; margin-top:3px; }
+  .est-insumos { display:flex; flex-direction:column; gap:3px; min-width:230px; }
+  .est-ins { display:flex; align-items:center; gap:6px; font-size:11px; }
+  .est-ins .punto { flex:0 0 auto; width:7px; height:7px; border-radius:50%; }
+  .est-ins .punto.ok { background:var(--ok); }
+  .est-ins .punto.parcial { background:var(--warn); }
+  .est-ins .punto.falta { background:#f85149; }
+  .est-ins .origen { color:var(--muted); font-size:10px; margin-left:auto; padding-left:8px; white-space:nowrap; }
+  .est-ins .origen.propio { color:var(--accent); }
+  .est-calc { font-size:11px; color:var(--muted); font-style:italic; }
+  .est-acc { white-space:nowrap; text-align:right; }
+  .est-acc button { width:auto; margin:0 0 4px; padding:5px 11px; font-size:11.5px; display:block; margin-left:auto; }
+  .est-aviso { background:#1b2430; border:1px solid var(--line); border-radius:8px; padding:11px 13px;
+               font-size:12px; color:var(--muted); margin-bottom:16px; }
+
   /* ---------- mapa ---------- */
-  #map { height:100%; position:relative; }
+  #map { position:absolute; inset:0; }
   #avisos { position:absolute; top:12px; right:12px; z-index:1000; display:flex; flex-direction:column; gap:6px; max-width:340px; }
   #avisos .aviso { background:#2d1b0e; border:1px solid #f0883e; color:#ffd8a8; font-size:12px; padding:8px 10px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
 
@@ -204,6 +252,13 @@
     </div>
   </div>
 
+  <div id="derecha">
+    <div id="pestanas">
+      <button class="pest activa" data-vista="visor">🗺 Visor</button>
+      <button class="pest" data-vista="estructura">🧩 Estructura cartográfica</button>
+      <span class="pest-nota" id="pestNota"></span>
+    </div>
+    <div id="vistas">
   <div id="map">
     <div id="avisos"></div>
     <div id="leyenda"><h3>Simbología</h3><div class="vacia">Elegí un cantón para empezar.</div></div>
@@ -213,6 +268,19 @@
         <div class="cp-muni" id="cpMuni"></div>
         <div class="cp-canton" id="cpCanton"></div>
         <div class="cp-nota">Así aparecerá en el cajetín de cada lámina</div>
+      </div>
+    </div>
+  </div>
+
+      <!-- Estructura cartográfica: toda la obra de un vistazo. Cada mapa con las capas que
+           necesita, de dónde sale cada una, y un botón que lo genera en el momento. -->
+      <div id="estructura" hidden>
+        <div class="est-cab">
+          <h2>Estructura cartográfica</h2>
+          <p>Todos los mapas que pide la normativa, con los insumos de cada uno y de dónde salen. <b>Descargar</b> compone el mapa en el momento con las capas que necesita.</p>
+          <div id="estResumen" class="est-resumen"></div>
+        </div>
+        <div id="estCuerpo"></div>
       </div>
     </div>
   </div>
