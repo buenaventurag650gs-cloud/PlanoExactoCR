@@ -25,6 +25,7 @@ COLORES = {
     "Red eléctrica": "#db6d28", "ASADAS y abastecimiento de agua": "#39c5cf",
     "Sedes de salud": "#e03131", "Infraestructura general": "#d29922",
     "Red vial cantonal": "#8a8f98", "Red hídrica": "#3b82c4", "Curvas de nivel 10m": "#c79a6b",
+    "Edificaciones": "#3a3a3a",
     "Uso urbano 1:5mil": "#d9534f", "Cultivos 1:5mil": "#8fbc8f",
     "Áreas silvestres protegidas": "#1b5e20", "Corredores biológicos": "#66bb6a",
     "Patrimonio Natural del Estado": "#388e3c", "Registro Nacional de Humedales": "#4fc3f7",

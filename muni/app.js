@@ -69,6 +69,7 @@
     'Uso urbano 1:5mil': '#f2a7c4',            // áreas urbanas: rosado
     'Cultivos 1:5mil': '#cfe3b0',              // cultivos: verde claro
     'Hidrografía': '#3b82c4', 'Red hídrica': '#3b82c4', 'Cuerpos de agua': '#9ec9e8',
+    'Edificaciones': '#3a3a3a',
     'Áreas silvestres protegidas': '#1b5e20', 'Corredores biológicos': '#7cc47f',
     'Patrimonio Natural del Estado': '#388e3c', 'Registro Nacional de Humedales': '#4fc3f7',
     'Áreas de Conservación': '#b2dfdb', 'Cobertura forestal 2020': '#2d6a4f',
@@ -400,7 +401,6 @@
             <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}">` : ''}</div>
             <div>
               <div class="caj-muni">${muni}</div>
-              <div class="caj-canton">Cantón de ${canton}</div>
               <div class="caj-mapa">${m.nombre}</div>
               <div class="caj-elab"><span>Elaborado por</span><img src="planoexacto.png" class="caj-pe"></div>
             </div>

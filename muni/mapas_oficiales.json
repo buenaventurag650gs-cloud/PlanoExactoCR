@@ -67,7 +67,7 @@
       "nombre": "6. Diagnóstico físico-espacial",
       "descripcion": "Cartografía base del territorio (MAPRIOT / INVU): base, uso del suelo, amenazas, vialidad, servicios.",
       "mapas": [
-        {"numero": "6.1", "id": "base_cartografica", "nombre": "Mapa base cartográfico", "estado": "disponible", "descripcion": "Límites cantonal y distrital, red vial, red hídrica, curvas de nivel, áreas protegidas, cuerpos de agua y ZMT.", "insumos": ["Límites distritales", "Red hídrica", "Curvas de nivel 10m", "Áreas silvestres protegidas", "Red vial cantonal", "Zona marítimo terrestre"]},
+        {"numero": "6.1", "id": "base_cartografica", "nombre": "Mapa base cartográfico", "estado": "disponible", "descripcion": "Límites cantonal y distrital, red vial, red hídrica, curvas de nivel, áreas protegidas, cuerpos de agua y ZMT.", "insumos": ["Límites distritales", "Curvas de nivel 10m", "Red hídrica", "Áreas silvestres protegidas", "Red vial cantonal", "Edificaciones", "Zona marítimo terrestre"]},
         {"numero": "6.2", "id": "uso_actual_suelo", "nombre": "Uso actual del suelo", "estado": "disponible", "descripcion": "Urbano, cultivos y cobertura.", "insumos": ["Uso urbano 1:5mil", "Cultivos 1:5mil", "Cobertura MAF2020"]},
         {"numero": "6.3", "id": "amenazas_condicionantes", "nombre": "Amenazas y condicionantes", "estado": "disponible", "descripcion": "Deslizamientos, fallas, inundación.", "insumos": ["Coronas de deslizamientos", "Deslizamientos", "Fallas del cuaternario", "Áreas con potencial a inundación"]},
         {"numero": "6.4", "id": "vialidad", "nombre": "Red vial", "estado": "disponible", "descripcion": "Red vial cantonal y nacional.", "insumos": ["Red vial cantonal"]},
