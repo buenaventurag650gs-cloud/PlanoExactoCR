@@ -1,37 +1,253 @@
 {
   "generado": "2026-11-18",
   "nota": "Simbología única de todas las capas: color, tipo de trazo, grosor y relleno. La leen el tablero (app.js) y la plancha en PDF (plancha.py), así el mapa en pantalla y el PDF salen idénticos. Los colores están escogidos para que ninguna pareja de capas que se puede ver junta en un mismo mapa se parezca; scripts/revisar_paleta.py lo verifica (distancia perceptual CIE76 >= 22). Si se cambia un color, correr ese script antes de dar por bueno el cambio.",
-  "base_visible_siempre": ["Límites distritales", "Red vial cantonal", "Red hídrica", "Curvas de nivel 10m", "Edificaciones", "Áreas silvestres protegidas", "Zona marítimo terrestre"],
+  "base_visible_siempre": [
+    "Límites distritales",
+    "Red vial cantonal",
+    "Red hídrica",
+    "Curvas de nivel 10m",
+    "Edificaciones",
+    "Áreas silvestres protegidas",
+    "Zona marítimo terrestre"
+  ],
   "capas": {
-    "Límites cantonales":               {"color": "#d11a1a", "trazo": "guion",    "peso": 1.6,  "relleno": 0,    "geom": "linea"},
-    "Límites distritales":              {"color": "#111111", "trazo": "guion",    "peso": 0.7,  "relleno": 0,    "geom": "linea"},
-    "Zona marítimo terrestre":          {"color": "#00a0a8", "trazo": "solido",   "peso": 1.1,  "relleno": 0.12, "geom": "poligono"},
-    "Curvas de nivel 10m":              {"color": "#c08a3e", "trazo": "solido",   "peso": 0.22, "relleno": 0,    "geom": "linea"},
-    "Red hídrica":                      {"color": "#0b4f9c", "trazo": "solido",   "peso": 0.5,  "relleno": 0,    "geom": "linea"},
-    "Hidrografía":                      {"color": "#0b4f9c", "trazo": "solido",   "peso": 0.5,  "relleno": 0,    "geom": "linea"},
-    "Red vial cantonal":                {"color": "#737373", "trazo": "solido",   "peso": 0.45, "relleno": 0,    "geom": "linea"},
-    "Edificaciones":                    {"color": "#7a0025", "trazo": "solido",   "peso": 0.12, "relleno": 0.95, "geom": "poligono"},
-    "Áreas silvestres protegidas":      {"color": "#00662e", "trazo": "solido",   "peso": 0.8,  "relleno": 0.14, "geom": "poligono"},
-    "Patrimonio Natural del Estado":    {"color": "#7fbc41", "trazo": "solido",   "peso": 0.6,  "relleno": 0.3,  "geom": "poligono"},
-    "Corredores biológicos":            {"color": "#4d9221", "trazo": "punteado", "peso": 0.9,  "relleno": 0.12, "geom": "poligono"},
-    "Registro Nacional de Humedales":   {"color": "#7fd4e8", "trazo": "solido",   "peso": 0.6,  "relleno": 0.6,  "geom": "poligono"},
-    "Áreas de Conservación":            {"color": "#c2a5cf", "trazo": "guion",    "peso": 0.7,  "relleno": 0.18, "geom": "poligono"},
-    "Zonas de vida":                    {"color": "#a6dba0", "trazo": "solido",   "peso": 0.4,  "relleno": 0.5,  "geom": "poligono"},
-    "Cobertura forestal 2020":          {"color": "#2d6a4f", "trazo": "solido",   "peso": 0.4,  "relleno": 0.5,  "geom": "poligono"},
-    "Cobertura MAF2020":                {"color": "#8dd35f", "trazo": "solido",   "peso": 0.3,  "relleno": 0.5,  "geom": "poligono"},
-    "Uso urbano 1:5mil":                {"color": "#f29cba", "trazo": "solido",   "peso": 0.5,  "relleno": 0.6,  "geom": "poligono"},
-    "Cultivos 1:5mil":                  {"color": "#e3c53a", "trazo": "solido",   "peso": 0.3,  "relleno": 0.5,  "geom": "poligono"},
-    "Coronas de deslizamientos":        {"color": "#8c0b0b", "trazo": "solido",   "peso": 0.7,  "relleno": 0.25, "geom": "poligono"},
-    "Deslizamientos":                   {"color": "#f07818", "trazo": "solido",   "peso": 0.7,  "relleno": 0.3,  "geom": "poligono"},
-    "Fallas del cuaternario":           {"color": "#8419c4", "trazo": "guion",    "peso": 0.9,  "relleno": 0,    "geom": "linea"},
-    "Áreas con potencial a inundación": {"color": "#2b9fd8", "trazo": "solido",   "peso": 0.5,  "relleno": 0.35, "geom": "poligono"},
-    "Capacidad de uso de la tierra":    {"color": "#9e6ebd", "trazo": "solido",   "peso": 0.4,  "relleno": 0.45, "geom": "poligono"},
-    "Red eléctrica":                    {"color": "#e8761a", "trazo": "solido",   "peso": 0.7,  "relleno": 0,    "geom": "linea"},
-    "ASADAS y abastecimiento de agua":  {"color": "#6a3d9a", "trazo": "solido",   "peso": 0.6,  "relleno": 0.8,  "geom": "punto"},
-    "Sedes de salud":                   {"color": "#e7298a", "trazo": "solido",   "peso": 0.6,  "relleno": 0.9,  "geom": "punto"},
-    "Infraestructura general":          {"color": "#edc400", "trazo": "solido",   "peso": 0.6,  "relleno": 0.8,  "geom": "punto"},
-    "Estado del plan regulador por cantón": {"color": "#f0883e", "trazo": "solido", "peso": 0.6, "relleno": 0.3, "geom": "poligono"},
-    "Geología":                         {"color": "#5d4037", "trazo": "solido",   "peso": 0.4,  "relleno": 0.45, "geom": "poligono"},
-    "Sitios arqueológicos registrados": {"color": "#4a148c", "trazo": "solido",   "peso": 0.6,  "relleno": 0.85, "geom": "punto"}
+    "Límites cantonales": {
+      "color": "#d11a1a",
+      "trazo": "guion",
+      "peso": 1.6,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Límites distritales": {
+      "color": "#111111",
+      "trazo": "guion",
+      "peso": 0.7,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Zona marítimo terrestre": {
+      "color": "#00a0a8",
+      "trazo": "solido",
+      "peso": 1.1,
+      "relleno": 0.12,
+      "geom": "poligono"
+    },
+    "Curvas de nivel 10m": {
+      "color": "#c08a3e",
+      "trazo": "solido",
+      "peso": 0.22,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Red hídrica": {
+      "color": "#0b4f9c",
+      "trazo": "solido",
+      "peso": 0.5,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Hidrografía": {
+      "color": "#0b4f9c",
+      "trazo": "solido",
+      "peso": 0.5,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Red vial cantonal": {
+      "color": "#737373",
+      "trazo": "solido",
+      "peso": 0.45,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Edificaciones": {
+      "color": "#7a0025",
+      "trazo": "solido",
+      "peso": 0.12,
+      "relleno": 0.95,
+      "geom": "poligono"
+    },
+    "Áreas silvestres protegidas": {
+      "color": "#00662e",
+      "trazo": "solido",
+      "peso": 0.8,
+      "relleno": 0.14,
+      "geom": "poligono"
+    },
+    "Patrimonio Natural del Estado": {
+      "color": "#7fbc41",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.3,
+      "geom": "poligono"
+    },
+    "Corredores biológicos": {
+      "color": "#4d9221",
+      "trazo": "punteado",
+      "peso": 0.9,
+      "relleno": 0.12,
+      "geom": "poligono"
+    },
+    "Registro Nacional de Humedales": {
+      "color": "#7fd4e8",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.6,
+      "geom": "poligono"
+    },
+    "Áreas de Conservación": {
+      "color": "#c2a5cf",
+      "trazo": "guion",
+      "peso": 0.7,
+      "relleno": 0.18,
+      "geom": "poligono"
+    },
+    "Zonas de vida": {
+      "color": "#a6dba0",
+      "trazo": "solido",
+      "peso": 0.4,
+      "relleno": 0.5,
+      "geom": "poligono"
+    },
+    "Cobertura forestal 2020": {
+      "color": "#2d6a4f",
+      "trazo": "solido",
+      "peso": 0.4,
+      "relleno": 0.5,
+      "geom": "poligono"
+    },
+    "Cobertura MAF2020": {
+      "color": "#8dd35f",
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.5,
+      "geom": "poligono"
+    },
+    "Uso urbano 1:5mil": {
+      "color": "#f29cba",
+      "trazo": "solido",
+      "peso": 0.5,
+      "relleno": 0.6,
+      "geom": "poligono"
+    },
+    "Cultivos 1:5mil": {
+      "color": "#e3c53a",
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.5,
+      "geom": "poligono"
+    },
+    "Coronas de deslizamientos": {
+      "color": "#8c0b0b",
+      "trazo": "solido",
+      "peso": 0.7,
+      "relleno": 0.25,
+      "geom": "poligono"
+    },
+    "Deslizamientos": {
+      "color": "#f07818",
+      "trazo": "solido",
+      "peso": 0.7,
+      "relleno": 0.3,
+      "geom": "poligono"
+    },
+    "Fallas del cuaternario": {
+      "color": "#8419c4",
+      "trazo": "guion",
+      "peso": 0.9,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "Áreas con potencial a inundación": {
+      "color": "#2b9fd8",
+      "trazo": "solido",
+      "peso": 0.5,
+      "relleno": 0.35,
+      "geom": "poligono"
+    },
+    "Capacidad de uso de la tierra": {
+      "color": "#9e6ebd",
+      "trazo": "solido",
+      "peso": 0.4,
+      "relleno": 0.45,
+      "geom": "poligono"
+    },
+    "Red eléctrica": {
+      "color": "#e8761a",
+      "trazo": "solido",
+      "peso": 0.7,
+      "relleno": 0,
+      "geom": "linea"
+    },
+    "ASADAS y abastecimiento de agua": {
+      "color": "#6a3d9a",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.8,
+      "geom": "punto"
+    },
+    "Sedes de salud": {
+      "color": "#e7298a",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.9,
+      "geom": "punto"
+    },
+    "Infraestructura general": {
+      "color": "#edc400",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.8,
+      "geom": "punto"
+    },
+    "Estado del plan regulador por cantón": {
+      "color": "#f0883e",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.3,
+      "geom": "poligono"
+    },
+    "Geología": {
+      "color": "#5d4037",
+      "trazo": "solido",
+      "peso": 0.4,
+      "relleno": 0.45,
+      "geom": "poligono"
+    },
+    "Sitios arqueológicos registrados": {
+      "color": "#4a148c",
+      "trazo": "solido",
+      "peso": 0.6,
+      "relleno": 0.85,
+      "geom": "punto"
+    },
+    "Cobertura del tendido eléctrico (100 m)": {
+      "color": "#ffd1a3",
+      "trazo": "solido",
+      "peso": 0.2,
+      "relleno": 0.5,
+      "geom": "poligono"
+    },
+    "Cobertura del tendido eléctrico (40 m)": {
+      "color": "#8c4a00",
+      "trazo": "solido",
+      "peso": 0.4,
+      "relleno": 0,
+      "geom": "poligono"
+    },
+    "Cobertura implícita de agua (concesiones)": {
+      "color": "#a6cee3",
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.5,
+      "geom": "poligono"
+    },
+    "Tomas de agua registradas": {
+      "color": "#1f78b4",
+      "trazo": "solido",
+      "peso": 0.5,
+      "relleno": 0.85,
+      "geom": "punto"
+    }
   }
 }

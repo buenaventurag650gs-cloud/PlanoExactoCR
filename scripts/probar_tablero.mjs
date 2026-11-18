@@ -45,12 +45,18 @@ const cantones = { type: 'FeatureCollection', features: [
 const capaDemo = { type: 'FeatureCollection', features: [
   { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[-84.2, 9.8], [-84.1, 9.9]] } }
 ] };
+// Forma real de asadas.json en el sitio público, para probar el adaptador.
+const asadasCrudas = { fuente: 'ARESEP', n: 2, asadas: [
+  { id: '1', n: 'ASADA UNO', tipo: 'Bombeo', ll: [-84.2, 9.8] },
+  { id: '2', n: 'ASADA DOS', tipo: 'Gravedad', ll: [-84.15, 9.85] }] };
 const pedidos = [];
 window.fetch = async (url) => {
   pedidos.push(url);
   const local = ['capas.json', 'mapas_oficiales.json', 'escudos.json', 'simbologia.json'].find((f) => url.endsWith(f));
   if (local) return { ok: true, json: async () => JSON.parse(lee(local)) };
   if (url.includes('cantones.geojson')) return { ok: true, json: async () => cantones };
+  // asadas.json no es GeoJSON: es una lista de registros con las coordenadas en "ll".
+  if (url.includes('asadas.json')) return { ok: true, json: async () => asadasCrudas };
   return { ok: true, json: async () => capaDemo };
 };
 window.L = L; window.turf = turf;
@@ -204,6 +210,37 @@ afirmar(paths.every((p) => !p.getAttribute('stroke') || p.getAttribute('stroke')
 afirmar(!!laminas[0].querySelector('.lam-escala .barra'), 'la lámina trae barra de escala');
 afirmar(!!laminas[0].querySelector('.lam-inset svg'), 'la lámina trae el recuadro de ubicación');
 afirmar(laminas[0].querySelectorAll('.caj-leyenda .ley-item').length >= 4, 'el cajetín trae la simbología');
+
+// ---------- 12. Capas compartidas con el mundo público de PlanoExactoCR ----------
+const capasDoc = JSON.parse(lee('capas.json'));
+const todasCapas = capasDoc.grupos.flatMap((g) => g.capas);
+const copiasLocales = todasCapas.filter((c) => String(c.archivo || '').startsWith('data/'));
+afirmar(copiasLocales.length === 0,
+  `capas: ninguna es copia local, todas se leen del sitio público (${copiasLocales.map((c) => c.nombre)})`);
+const compartidas = todasCapas.filter((c) => String(c.archivo || '').includes('planoexactocr.com/data/'));
+afirmar(compartidas.length >= 12,
+  `capas: ${compartidas.length} capas se leen de planoexactocr.com/data (la misma infraestructura del visor)`);
+const conFormato = todasCapas.filter((c) => c.formato === 'puntos_ll');
+afirmar(conFormato.length >= 3,
+  `capas: las que no son GeoJSON declaran su formato (${conFormato.map((c) => c.nombre)})`);
+// Toda capa con simbología declarada y viceversa.
+const simbDoc = JSON.parse(lee('simbologia.json'));
+const sinSimb = todasCapas.filter((c) => c.archivo && !String(c.archivo).startsWith('api:')
+  && !simbDoc.capas[c.nombre]).map((c) => c.nombre);
+afirmar(sinSimb.length === 0, `capas: todas tienen simbología declarada (faltan: ${sinSimb})`);
+
+// El adaptador de listas "ll" tiene que producir puntos dibujables.
+const filaServicios = [...window.document.querySelectorAll('#catalogo .fila')]
+  .find((f) => f.textContent.includes('Infraestructura y servicios'));
+afirmar(!!filaServicios, 'capas: el mapa de servicios está en el catálogo');
+afirmar(filaServicios.textContent.includes('disponible'),
+  'capas: el mapa de servicios quedó disponible al sumarle las capas de cobertura');
+filaServicios.querySelector('.ojo').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await esperar(400);
+afirmar(capasAgregadas.has('ASADAS y abastecimiento de agua'),
+  `capas: una lista con coordenadas "ll" se convierte y se dibuja (${[...capasAgregadas]})`);
+afirmar(capasAgregadas.has('Cobertura del tendido eléctrico (100 m)'),
+  'capas: las coberturas nuevas se dibujan en el mapa de servicios');
 
 // ---------- resultado ----------
 console.log('\n=== PRUEBAS DEL TABLERO ===');

@@ -82,11 +82,77 @@ async function geoproxy(url, request) {
   return resp;
 }
 
+/* Base de datos de escudos municipales, abierta al resto de las apps de PlanoExactoCR.
+
+   Los 82 escudos se identifican una sola vez acá y los demás productos del mundo privado
+   (por ejemplo el calibrador de planes reguladores en calibrador.planoexactocr.com) los piden
+   a este endpoint en vez de volver a armar la lista. Así, cuando se corrige un escudo viejo,
+   se corrige para todos.
+
+   - GET /api/escudos                 → { escudos: { "<cantón>": "<url>" } }
+   - GET /api/escudos?canton=Mora     → { canton, url, imagen } ; `imagen` es el escudo ya
+     descargado y en base64, listo para meter en un PDF sin pelear con CORS ni hotlink.
+
+   Solo lectura y solo desde los dominios de PlanoExactoCR. */
+const ORIGENES_PERMITIDOS = /^https:\/\/([a-z0-9-]+\.)?planoexactocr\.com$/;
+
+function corsPara(request) {
+  const origen = request.headers.get("origin") || "";
+  if (ORIGENES_PERMITIDOS.test(origen)) {
+    return { ...CORS, "access-control-allow-origin": origen, vary: "Origin" };
+  }
+  return CORS;
+}
+
+async function apiEscudos(url, request, env) {
+  const cors = corsPara(request);
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (request.method !== "GET") return new Response("Solo GET", { status: 405, headers: cors });
+
+  const base = new URL("/escudos.json", url.origin);
+  const doc = await env.ASSETS.fetch(new Request(base)).then((r) => r.json()).catch(() => null);
+  const escudos = (doc && doc.escudos) || {};
+
+  const canton = url.searchParams.get("canton");
+  if (!canton) {
+    return new Response(JSON.stringify({ n: Object.keys(escudos).length, escudos }), {
+      headers: { ...cors, "content-type": "application/json", "cache-control": "public, max-age=86400" },
+    });
+  }
+
+  const directo = escudos[canton];
+  if (!directo) {
+    return new Response(JSON.stringify({ error: `Sin escudo para el cantón "${canton}"` }), {
+      status: 404, headers: { ...cors, "content-type": "application/json" },
+    });
+  }
+
+  // Se devuelve también la imagen en base64: quien arma un PDF la mete tal cual.
+  let imagen = null;
+  try {
+    const r = await fetch(directo, { cf: { cacheTtl: 86400, cacheEverything: true } });
+    if (r.ok) {
+      const bytes = new Uint8Array(await r.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const tipo = r.headers.get("content-type") || "image/png";
+      imagen = `data:${tipo};base64,${btoa(bin)}`;
+    }
+  } catch { /* se devuelve solo la url */ }
+
+  return new Response(JSON.stringify({ canton, url: directo, imagen }), {
+    headers: { ...cors, "content-type": "application/json", "cache-control": "public, max-age=86400" },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/geoproxy") {
       return geoproxy(url, request);
+    }
+    if (url.pathname === "/api/escudos") {
+      return apiEscudos(url, request, env);
     }
     return env.ASSETS.fetch(request);
   },

@@ -323,7 +323,11 @@
             "Red eléctrica",
             "ASADAS y abastecimiento de agua",
             "Sedes de salud",
-            "Infraestructura general"
+            "Infraestructura general",
+            "Cobertura del tendido eléctrico (100 m)",
+            "Cobertura del tendido eléctrico (40 m)",
+            "Cobertura implícita de agua (concesiones)",
+            "Tomas de agua registradas"
           ]
         }
       ]

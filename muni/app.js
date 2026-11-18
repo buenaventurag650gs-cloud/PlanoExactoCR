@@ -177,6 +177,35 @@
     setTimeout(() => d.remove(), 7000);
   }
 
+  /* Algunas capas del mundo público de PlanoExactoCR no vienen como GeoJSON sino como una
+     lista de registros con las coordenadas en la clave "ll" ([lon, lat]) — asadas.json,
+     salud.json, aprovechamientos.json. Se convierten a FeatureCollection para poder
+     dibujarlas igual que el resto. Es la misma conversión que hace a_geodataframe() en
+     scripts/build_atlas.py, para que el navegador y el PDF vean exactamente lo mismo. */
+  function aFeatureCollection(data) {
+    if (!data) return null;
+    if (data.type === 'FeatureCollection') return data;
+    let registros = Array.isArray(data) ? data : null;
+    if (!registros && typeof data === 'object') {
+      // Objetos tipo asadas.json: la lista vive bajo alguna clave ("asadas", "aprovech"...).
+      for (const v of Object.values(data)) {
+        if (Array.isArray(v) && v.length && v[0] && typeof v[0] === 'object' && 'll' in v[0]) {
+          registros = v; break;
+        }
+      }
+    }
+    if (!registros) return null;
+    const features = [];
+    for (const r of registros) {
+      if (!r || !Array.isArray(r.ll) || r.ll.length < 2) continue;
+      const props = Object.assign({}, r);
+      delete props.ll;
+      features.push({ type: 'Feature', properties: props,
+                      geometry: { type: 'Point', coordinates: [Number(r.ll[0]), Number(r.ll[1])] } });
+    }
+    return { type: 'FeatureCollection', features };
+  }
+
   // ---------- datos de una capa, recortados al cantón (con cache) ----------
   async function obtenerDatos(nombre) {
     if (datosCapa.has(nombre)) return datosCapa.get(nombre);
@@ -188,7 +217,8 @@
       else { url = c.archivo; recortar = true; }
       try {
         const data = await fetch(viaProxy(url)).then((r) => { if (!r.ok) throw 0; return r.json(); });
-        fc = recortar ? soloCanton(data) : data;
+        const bruto = aFeatureCollection(data);
+        fc = recortar ? soloCanton(bruto) : bruto;
       } catch (e) { fc = null; }
     }
     datosCapa.set(nombre, fc);

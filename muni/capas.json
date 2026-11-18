@@ -1,6 +1,6 @@
 {
   "generado": "2026-11-17",
-  "nota": "Catálogo de capas para el visor municipal. La mayoría se lee en vivo del sitio público (planoexactocr.com/data/…), que ya las publica para el visor de remates; nada de esto es información de remates. Las marcadas requiere_cuenta exigen sesión de cuenta gratis en planoexactocr.com (SOLO_CUENTA_DATOS en worker.js); este sitio se mantiene aparte, sin compartir sesión ni cuentas con el público, así que esas capas se sincronizan por separado con scripts/sync_cuenta.py, que guarda una copia propia en muni/data/ y le quita la marca requiere_cuenta cuando ya están sincronizadas (quedan con \"archivo\": \"data/…\" y \"copia_local\": \"<fecha>\"). Las pendientes son el trabajo que falta por eje IFA.",
+  "nota": "Catálogo de capas del atlas. Las capas del mundo público de PlanoExactoCR NO se copian acá: se leen desde https://planoexactocr.com/data/, que es la misma infraestructura que usa el visor de remates. Así hay una sola copia de cada dato y lo que se actualice allá llega solo al atlas. Las capas nacionales del SNIT/CNE/MAG se piden en vivo por /geoproxy con el recuadro del cantón (filtrar_canton). El campo 'formato' dice cómo viene el archivo: si falta, es GeoJSON; 'puntos_ll' es una lista de registros con coordenadas en la clave 'll'.",
   "grupos": [
     {
       "eje": "Base cartográfica",
@@ -19,10 +19,9 @@
         },
         {
           "nombre": "Zona marítimo terrestre",
-          "archivo": "data/zmt.geojson",
+          "archivo": "https://planoexactocr.com/data/zmt.geojson",
           "fuente": "ICT / Registro Inmobiliario",
-          "estado": "disponible",
-          "copia_local": "2026-11-17"
+          "estado": "disponible"
         }
       ]
     },
@@ -31,10 +30,9 @@
       "capas": [
         {
           "nombre": "Estado del plan regulador por cantón",
-          "archivo": "data/planes_reguladores.geojson",
+          "archivo": "https://planoexactocr.com/data/planes_reguladores.geojson",
           "fuente": "INVU (SNIT)",
-          "estado": "disponible",
-          "copia_local": "2026-11-17"
+          "estado": "disponible"
         },
         {
           "nombre": "Catastro (plano y finca)",
@@ -66,10 +64,9 @@
       "capas": [
         {
           "nombre": "Zonas de vida",
-          "archivo": "data/zonasvida.geojson",
+          "archivo": "https://planoexactocr.com/data/zonasvida.geojson",
           "fuente": "MINAE-CENIGA",
-          "estado": "disponible",
-          "copia_local": "2026-11-17"
+          "estado": "disponible"
         },
         {
           "nombre": "Cobertura forestal 2020",
@@ -204,10 +201,9 @@
       "capas": [
         {
           "nombre": "Infraestructura general",
-          "archivo": "data/infra.geojson",
+          "archivo": "https://planoexactocr.com/data/infra.geojson",
           "fuente": "varios",
-          "estado": "disponible",
-          "copia_local": "2026-11-17"
+          "estado": "disponible"
         },
         {
           "nombre": "Red eléctrica",
@@ -219,14 +215,15 @@
           "nombre": "ASADAS y abastecimiento de agua",
           "archivo": "https://planoexactocr.com/data/asadas.json",
           "fuente": "AyA / ARESEP",
-          "estado": "disponible"
+          "estado": "disponible",
+          "formato": "puntos_ll"
         },
         {
           "nombre": "Sedes de salud",
-          "archivo": "data/salud.json",
+          "archivo": "https://planoexactocr.com/data/salud.json",
           "fuente": "CCSS",
           "estado": "disponible",
-          "copia_local": "2026-11-17"
+          "formato": "puntos_ll"
         },
         {
           "nombre": "Red vial cantonal",
@@ -235,6 +232,35 @@
           "estado": "disponible",
           "filtrar_canton": true,
           "nota": "incluye red municipal, nacional, autopistas y línea férrea; capa nacional (989 mil tramos), se recorta al cantón; copyright/científico; CORS puede impedir el visor en vivo, el PDF sí"
+        },
+        {
+          "nombre": "Cobertura del tendido eléctrico (100 m)",
+          "archivo": "https://planoexactocr.com/data/postes_cov_100m.geojson",
+          "fuente": "ARESEP — derivada de ~484 000 postes",
+          "estado": "disponible",
+          "nota": "Área a menos de 100 m de un poste. Es la mejor aproximación que hay a dónde llega la red eléctrica. Pesa 4 MB: tarda en cargar."
+        },
+        {
+          "nombre": "Cobertura del tendido eléctrico (40 m)",
+          "archivo": "https://planoexactocr.com/data/postes_cov.geojson",
+          "fuente": "ARESEP — derivada de ~495 000 postes",
+          "estado": "disponible",
+          "nota": "Versión estricta de la anterior, a 40 m del poste."
+        },
+        {
+          "nombre": "Cobertura implícita de agua (concesiones)",
+          "archivo": "https://planoexactocr.com/data/cobertura_concesiones.geojson",
+          "fuente": "MINAE — Dirección de Agua",
+          "estado": "disponible",
+          "nota": "Área con tomas de agua registradas. Complementa la cobertura del AyA y las ASADAS."
+        },
+        {
+          "nombre": "Tomas de agua registradas",
+          "archivo": "https://planoexactocr.com/data/aprovechamientos.json",
+          "fuente": "MINAE — Dirección de Agua",
+          "estado": "disponible",
+          "formato": "puntos_ll",
+          "nota": "6 889 aprovechamientos con su caudal concesionado."
         }
       ]
     },
