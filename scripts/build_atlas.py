@@ -304,6 +304,37 @@ def lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P) -> None:
     plt.close(fig)
 
 
+def lamina_ifa_pendiente(pdf, canton, poligono_canton, cat, transform) -> None:
+    """Primer mapa IFA calificado: geoaptitud por pendiente, reclasificada a la escala
+    oficial 1-5 (Tabla 8). Usa las categorías 23214 ya calculadas."""
+    from matplotlib.colors import BoundaryNorm, ListedColormap
+    import calificacion_ifa as C
+
+    ifa = C.calificar_cat_pendiente_ifa(cat)  # 1..5 (0 = sin dato)
+    colores = [C.COLORES_IFA[v] for v in range(1, 6)]
+    cmap = ListedColormap(colores)
+    norm = BoundaryNorm(list(range(1, 7)), cmap.N)
+    h, w = ifa.shape
+    izq, arr = transform.c, transform.f
+    extent = [izq, izq + w * transform.a, arr + h * transform.e, arr]
+
+    fig, ax = plt.subplots(figsize=(8.5, 11))
+    datos = np.ma.masked_where(ifa == 0, ifa)
+    ax.imshow(datos, extent=extent, cmap=cmap, norm=norm, interpolation="nearest")
+    try:
+        poligono_canton.to_crs("EPSG:5367").boundary.plot(ax=ax, color="black", linewidth=1)
+    except Exception:
+        pass
+    ax.set_title(f"{canton} — IFA Geoaptitud por pendiente", fontsize=13)
+    ax.set_axis_off()
+    etiquetas = [C.etiqueta_ifa(v) for v in range(1, 6)]
+    ax.text(0.01, 0.015, "  |  ".join(etiquetas), transform=ax.transAxes, fontsize=6, wrap=True)
+    ax.text(0.01, 0.0, "Calificación Tabla 8 (Decreto 32967/23214) — verificar contra Anexo 1 del 44710",
+            transform=ax.transAxes, fontsize=5, style="italic")
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
 def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataFrame,
               capas_recortadas: list[tuple[dict, gpd.GeoDataFrame]], generado: str,
               pendientes=None) -> None:
@@ -330,6 +361,7 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
         lineas.append("  • IFA Bioaptitud (SINAC / MINAE)")
         if pendientes is not None:
             lineas.append("  • Pendientes del terreno (Decreto 23214)")
+            lineas.append("  • IFA Geoaptitud por pendiente (escala 1-5)")
         if not capas_recortadas and pendientes is None:
             lineas.append("  (ninguna capa tenía elementos dentro de este cantón)")
         ax.text(0.05, 0.95, "\n".join(lineas), va="top", ha="left", fontsize=10,
@@ -345,10 +377,11 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
         # 2. IFA Bioaptitud
         lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre)
 
-        # 3. Pendientes (si se pasó un DEM con --dem).
+        # 3. Pendientes (si se pasó un DEM con --dem) + su calificación IFA.
         if pendientes is not None:
             cat, transform, _, P = pendientes
             lamina_pendientes(pdf, canton, poligono_canton, cat, transform, P)
+            lamina_ifa_pendiente(pdf, canton, poligono_canton, cat, transform)
 
         # --- LÁMINAS INDIVIDUALES (una por capa, para referencia detallada) ---
         for capa, gdf in capas_recortadas:

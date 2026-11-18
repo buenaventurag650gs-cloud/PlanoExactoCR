@@ -41,6 +41,37 @@ Suma algebraica de cinco factores, cada uno con sus variables calificadas 1-5:
 Zonificación de geoaptitud (Tabla N°3, pendiente de confirmar los conteos exactos): la
 categoría de cada zona depende del número de factores en categoría "Muy Baja" y su nivel.
 
+### Tablas de calificación confirmadas (de informes IFA municipales reales)
+
+Todas las tablas de calificación viven en `scripts/calificacion_ifa.py` (fuente única,
+editable). Las siguientes se tomaron textualmente del **informe de geoaptitud del Plan
+Regulador de Heredia, 2024** (Tablas 8, 10-13), que aplica esta misma metodología, y del
+Manual oficial de Instrumentos Técnicos. Marcadas `[CONFIRMADO]` en el código.
+
+**Pendiente → IFA (Tabla 8):**
+
+| Pendiente % | IFA | Nivel |
+|-------------|-----|-------|
+| 0–8 | 5 | Muy Baja |
+| 8–15 | 4 | Baja |
+| 15–30 | 3 | Moderada |
+| 30–60 | 2 | Alta |
+| > 60 | 1 | Muy Alta |
+
+**Densidad de drenaje → IFA (Tabla 12, km/km²):** 0–2→5, 2–6→4, 6–10→3, 10–14→2, >14→1.
+**Relieve relativo (Tabla 11):** igual que pendiente.
+**Sumatoria geodinámica externa (Tabla 13):** 5–9→1, 9.1–13→2, 13.1–17→3, 17.1–21→4, 21.1–25→5.
+
+El método general: cada factor suma las calificaciones 1-5 de sus variables y divide el rango
+total de la suma en 5 clases iguales (amplitud / 5). Lo mismo se repite por eje y para el IFA
+integrado. Convención contraintuitiva: **1 = Muy Alta fragilidad, 5 = Muy Baja**. Colores
+oficiales (§5.3.5): 1 verde oscuro → 5 rojo oscuro.
+
+Las tablas de edafoaptitud (capacidad de uso I-VIII), bioaptitud (por protección) y
+antropoaptitud (por uso) están en `calificacion_ifa.py` marcadas `[VERIFICAR]`: usan el
+criterio de los estudios aprobados, pero sus cortes exactos hay que confirmarlos contra el
+Anexo 1 del 44710 (ese anexo está tras la sesión del SCIJ y no se pudo extraer completo).
+
 ### Pendiente (primer mapa — ya implementado)
 
 Categorías de pendiente del Decreto 23214 (sección 6.1.1.1), ya codificadas en
