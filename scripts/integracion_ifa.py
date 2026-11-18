@@ -14,10 +14,26 @@ QUÉ DICE LA NORMA
   IFA Geoaptitud + IFA Antropoaptitud".
 - O sea: SUMAR y luego RECLASIFICAR, y eso se hace en los dos niveles — al agrupar las
   variables dentro de un eje, y al agrupar los cuatro ejes en el IFA integrado.
-- La escala es de 5 niveles, donde 1 (Zona I) es la fragilidad MÁS ALTA y 5 (Zona V) la más
-  baja. Un valor bajo = terreno con más limitantes técnicas = más frágil.
 - El decreto 44710-MINAE (vigente desde agosto de 2025) derogó el 32967 y mantiene la
   metodología IFA como su Anexo 1 ("Metodología de los IFA para elaborar EsIVA").
+
+LOS CINCO NIVELES Y SU NUMERACIÓN
+
+La escala interna de este módulo tiene 5 niveles donde **1 es la fragilidad MÁS ALTA** y 5 la
+más baja, porque así puntúa la Tabla Nº 3: pocos puntos = terreno con más limitantes técnicas
+= más frágil. Ese entero es un código INTERNO del ráster, nada más; lo que sale impreso en la
+lámina es el nombre (NIVELES) y el color (COLORES), y esos dos sí son los oficiales.
+
+El numeral romano de la zona (Zona I a Zona V) NO se decide acá a propósito. Vive en la
+estructura compartida del Plan Regulador (data/estructura_pr.json), porque es el que citan la
+Matriz B, la Matriz C de compatibilidad y los reglamentos, y tiene que ser el mismo en el
+atlas y en el calibrador. Ahí la Zona I es la MENOS frágil y la Zona V la más frágil, que es
+la dirección opuesta a este entero interno.
+
+[VERIFICAR] Esa dirección sale del desglose de entregables, y la confirman sus Matrices C y D
+(tratan III-V y IV-V como el extremo restrictivo). Conviene cotejarla contra el texto del
+Anexo 1 del 44710 antes de cerrar unos TdR: si resultara al revés, lo que cambia es la
+estructura compartida y los reglamentos, no este archivo.
 
 CÓMO SE RECLASIFICA LA SUMA
 
@@ -43,11 +59,9 @@ from __future__ import annotations
 
 import numpy as np
 
-# Los cinco niveles, como los rotula la lámina oficial.
+# Los cinco niveles, como los rotula la lámina oficial. La clave es el código interno del
+# ráster (1 = más frágil); el numeral romano de la zona lo pone la estructura compartida.
 NIVELES = {1: "Muy Alta", 2: "Alta", 3: "Moderada", 4: "Baja", 5: "Muy Baja"}
-
-# Zona I..V del decreto, que es como se nombran en el texto normativo.
-ZONAS = {1: "Zona I", 2: "Zona II", 3: "Zona III", 4: "Zona IV", 5: "Zona V"}
 
 # Rampa de colores tomada píxel a píxel de una lámina IFA real aprobada
 # (Ecoplan, "Índices de Fragilidad Ambiental Cantón Liberia", lámina 53, 2025).
@@ -75,12 +89,6 @@ SIN_DATO = 0
 def etiqueta(valor: int) -> str:
     """'Muy Alta', 'Alta', ... como aparece en la leyenda de la lámina."""
     return NIVELES.get(int(valor), "?")
-
-
-def etiqueta_larga(valor: int) -> str:
-    """'Zona I — Muy Alta', para cuadros y reportes."""
-    v = int(valor)
-    return f"{ZONAS.get(v, '?')} — {NIVELES.get(v, '?')}"
 
 
 def leyenda() -> list[tuple[str, str]]:

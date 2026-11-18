@@ -80,16 +80,54 @@ def cargar_catalogo() -> dict:
     return json.loads((MUNI_DIR / "capas.json").read_text(encoding="utf-8"))
 
 
+def cargar_estructura_pr() -> dict:
+    """Lee la estructura del Plan Regulador compartida con el calibrador.
+
+    Es la que manda sobre los códigos de mapa (M1.1.90 y compañía). La guía exige que un
+    mapa lleve el MISMO código en el EsIVA, el Diagnóstico, la Propuesta y el expediente del
+    INVU, así que el código no se inventa acá: se lee de data/estructura_pr.json.
+    """
+    ruta = MUNI_DIR.parent / "data" / "estructura_pr.json"
+    if not ruta.exists():
+        return {}
+    try:
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def codigos_por_mapa(estructura: dict) -> dict[str, str]:
+    """{id del mapa en el atlas: código oficial}. Cuando varios códigos apuntan al mismo
+    mapa del atlas —porque el atlas resuelve con una sola lámina lo que el índice separa—
+    se rotula con el primero."""
+    codigos: dict[str, str] = {}
+    for m in estructura.get("mapas", []):
+        aid = m.get("atlas")
+        if aid and aid not in codigos:
+            codigos[aid] = m["codigo"]
+    return codigos
+
+
 def cargar_mapas_oficiales() -> dict[str, dict]:
-    """Devuelve {id_mapa: definición} del catálogo de mapas oficiales (INVU + SETENA)."""
+    """Devuelve {id_mapa: definición} del catálogo de mapas oficiales (INVU + SETENA).
+
+    A cada mapa se le pega su `codigo` del índice maestro, de modo que el resto del script
+    no tenga que saber de dónde salió: usa mdef["codigo"] y listo. Si no hay estructura
+    compartida se cae a la numeración propia del atlas, para no quedar sin rótulo.
+    """
     ruta = MUNI_DIR / "mapas_oficiales.json"
     if not ruta.exists():
         return {}
     data = json.loads(ruta.read_text(encoding="utf-8"))
+    codigos = codigos_por_mapa(cargar_estructura_pr())
     por_id = {}
     for inst in data.get("instituciones", []):
         for m in inst.get("mapas", []):
-            por_id[m["id"]] = {**m, "institucion": inst["nombre"]}
+            por_id[m["id"]] = {
+                **m,
+                "institucion": inst["nombre"],
+                "codigo": codigos.get(m["id"], m.get("numero", "")),
+            }
     return por_id
 
 
@@ -733,10 +771,10 @@ def main() -> None:
 
                 # Mapa integrado del eje (el principal).
                 if cat_int is not None:
-                    arch = salida.parent / f"{mdef.get('numero','')} Mapa {eje['titulo']} {args.canton} {papel}.pdf"
+                    arch = salida.parent / f"{mdef.get('codigo','')} Mapa {eje['titulo']} {args.canton} {papel}.pdf"
                     plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], eje["titulo"],
                         mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
+                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("codigo", ""),
                         cantones_full=cantones,
                         raster=raster_dict(cat_int, tr_int, eje["leyenda"]), papel=papel)
                     planchas_hechas.append(arch); hechos += 1
@@ -746,7 +784,7 @@ def main() -> None:
 
                 # Sub-mapas del eje, cada uno en su propia lámina y con la misma leyenda.
                 for s in subs:
-                    num = mapas_oficiales.get(s["id"], {}).get("numero", "")
+                    num = mapas_oficiales.get(s["id"], {}).get("codigo", "")
                     arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} {papel}.pdf"
                     plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
                         mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
@@ -775,12 +813,12 @@ def main() -> None:
             if not insumos and raster_ifa is None:
                 print(f"  (sin insumos para «{mdef['nombre']}», se omite)")
                 continue
-            arch = salida.parent / f"{mdef.get('numero','')} Mapa {mdef['nombre']} {args.canton} {papel}.pdf"
+            arch = salida.parent / f"{mdef.get('codigo','')} Mapa {mdef['nombre']} {args.canton} {papel}.pdf"
             try:
                 plancha.dibujar_plancha(
                     arch, args.canton, poligono_canton, insumos, mdef["nombre"],
                     mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                    fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
+                    fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("codigo", ""),
                     cantones_full=cantones, raster=raster_ifa, papel=papel)
                 planchas_hechas.append(arch)
                 print(f"  ✓ {arch.name}")

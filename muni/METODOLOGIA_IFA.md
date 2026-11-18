@@ -19,8 +19,9 @@ Colores de mapa: 1 verde oscuro, 2 verde claro, 3 amarillo, 4 naranja, 5 rojo os
 ## IFA integrado
 
 `IFA integrado = Geoaptitud + Edafoaptitud + Bioaptitud + Antropoaptitud`
-(suma algebraica de los mapas de cada eje; resultado zonificado en 5 categorías,
-Zona I Muy alto … Zona V Muy bajo, con sus tablas de limitantes y potencialidades técnicas).
+(suma algebraica de los mapas de cada eje; resultado zonificado en 5 categorías de
+fragilidad muy baja a muy alta, con sus tablas de limitantes y potencialidades técnicas.
+Sobre el numeral de cada zona, ver «Escala» más abajo).
 
 ## Eje Geoaptitud = L + GE + H + AD + AN
 
@@ -133,8 +134,19 @@ El procedimiento es el mismo en los dos niveles: **sumar y reclasificar**.
   §5.11.3, todos remiten al §5.3).
 - **Entre los ejes**: §5.12.2 — `IFA integrado = IFA Bioaptitud + IFA Edafoaptitud +
   IFA Geoaptitud + IFA Antropoaptitud`.
-- **Escala**: 5 niveles, donde **1 (Zona I) es la fragilidad más alta** y 5 (Zona V) la más
-  baja. Valor bajo = más limitantes técnicas = más frágil.
+- **Escala**: 5 niveles. El **código interno del ráster** numera con **1 = fragilidad más
+  alta**, porque sigue la escala de puntos de la Tabla Nº 3 (pocos puntos = más limitantes
+  técnicas = más frágil). Lo que sale impreso en la lámina es el nombre y el color, no ese
+  número.
+- **Numeral de la zona (Zona I … Zona V)**: lo define la estructura compartida del Plan
+  Regulador (`data/estructura_pr.json`), no este módulo, porque es el que citan la Matriz B,
+  la matriz de compatibilidad del AAA y los reglamentos, y tiene que ser el mismo en el atlas
+  y en el calibrador. Ahí **Zona I es la menos frágil y Zona V la más frágil**, o sea la
+  dirección opuesta al código interno. Lo que coincide en los dos lados es el par nombre +
+  color: «Muy alta» siempre es rojo.
+  [VERIFICAR] Esa dirección sale del desglose de entregables y la confirman sus matrices de
+  compatibilidad y de condicionantes (tratan III–V y IV–V como el extremo restrictivo).
+  Conviene cotejarla contra el texto del Anexo 1 del 44710 antes de cerrar unos TdR.
 
 Para pasar de la suma a la clase se usa la **Tabla Nº 3** del 32967 ("Criterio de
 Calificación para IFA - Geoaptitud integrado"), sobre una escala de 0 a 75 puntos:

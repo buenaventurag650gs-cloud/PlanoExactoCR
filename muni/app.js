@@ -63,11 +63,19 @@
   mapasBase['Satélite'].addTo(map);
   L.control.layers(mapasBase, null, { position: 'topright', collapsed: false }).addTo(map);
 
-  const [cap, catalogo, escudosDoc, simbDoc] = await Promise.all([
+  /* La estructura del Plan Regulador (etapas, entregables y el índice maestro de mapas con
+     sus códigos M) vive una sola vez, en el mundo público, y la leen tanto el atlas como el
+     calibrador. Así los códigos de mapa son los mismos en los dos sitios y en el expediente
+     que llega al INVU. Ver scripts/construir_estructura_pr.py.
+     Si no se puede leer, el atlas sigue funcionando con su propio catálogo. */
+  const ESTRUCTURA_URL = 'https://planoexactocr.com/data/estructura_pr.json';
+
+  const [cap, catalogo, escudosDoc, simbDoc, estructura] = await Promise.all([
     fetch('capas.json').then((r) => r.json()),
     fetch('mapas_oficiales.json').then((r) => r.json()),
     fetch('escudos.json').then((r) => r.json()).catch(() => ({ escudos: {} })),
-    fetch('simbologia.json').then((r) => r.json())
+    fetch('simbologia.json').then((r) => r.json()),
+    fetch(ESTRUCTURA_URL).then((r) => { if (!r.ok) throw 0; return r.json(); }).catch(() => null)
   ]);
   const escudosDB = (escudosDoc && escudosDoc.escudos) || {};
   const SIMB = simbDoc.capas || {};
@@ -311,6 +319,22 @@
     }
     return null;
   }
+
+  /* Código oficial de cada lámina. El índice maestro manda: la guía pide citar los mapas
+     por su código (M1.1.90) y que ese código sea el mismo en el EsIVA, el Diagnóstico, la
+     Propuesta y el expediente del INVU. Cuando varios códigos apuntan al mismo mapa del
+     atlas —porque el atlas resuelve con una sola lámina lo que el índice separa— se rotula
+     con el primero. Sin estructura compartida se cae a la numeración propia del atlas. */
+  const CODIGO_DE = {};
+  if (estructura && Array.isArray(estructura.mapas)) {
+    estructura.mapas.forEach((mp) => {
+      if (mp.atlas && !CODIGO_DE[mp.atlas]) CODIGO_DE[mp.atlas] = mp.codigo;
+    });
+  }
+  function codigoDe(m) {
+    if (!m) return '';
+    return CODIGO_DE[m.id] || m.numero || '';
+  }
   // Capas de insumo de un mapa que existen de verdad en capas.json y se pueden dibujar.
   function insumosReales(id) {
     const m = defMapa(id);
@@ -398,7 +422,7 @@
           <button class="ctrl ojo" ${verOk ? '' : 'disabled'} title="${verOk ? 'Ver este mapa en pantalla (apaga el anterior)' : m.solo_pdf ? 'Se calcula al exportar; no se dibuja en pantalla' : 'Sin datos para dibujar'}">${ICO.ojoNo}</button>
           <button class="ctrl imp" ${impOk ? '' : 'disabled'} title="${impOk ? 'Incluir en el PDF' : 'Todavía no se puede generar'}">${ICO.imp}</button>
           <div class="cuerpo">
-            <div class="titulo"><b>${m.numero || ''}</b> ${m.nombre}
+            <div class="titulo"><b>${codigoDe(m)}</b> ${m.nombre}
               <span class="badge ${m.estado}">${m.estado}</span>
               ${m.solo_pdf ? '<span class="badge pdf">solo PDF</span>' : ''}</div>
             <div class="desc">${m.descripcion}</div>
@@ -513,7 +537,7 @@
     });
     if (mapaVisto) {
       const m = defMapa(mapaVisto);
-      h += `<div class="tit-mapa">${m.numero} ${m.nombre}</div>`;
+      h += `<div class="tit-mapa">${codigoDe(m)} ${m.nombre}</div>`;
       insumosReales(mapaVisto).forEach((n) => {
         const cargada = !!layerLookup[n];
         h += `<div class="lg">${muestraHTML(n)}<span${cargada ? '' : ' class="vacia"'}>${n}${cargada ? '' : ' (cargando…)'}</span></div>`;
@@ -776,7 +800,7 @@
       lam.innerHTML = `
         <div class="lam-cab">
           <div class="lam-tit-wrap">
-            <div class="lam-titulo">${m.numero ? m.numero + ' ' : ''}${esc(m.nombre)}</div>
+            <div class="lam-titulo">${codigoDe(m) ? codigoDe(m) + ' ' : ''}${esc(m.nombre)}</div>
             <div class="lam-subtit">Plan de Ordenamiento Territorial del cantón de ${esc(canton)}</div>
           </div>
           <span class="lam-inst">${esc(m.institucion)}</span>
@@ -917,11 +941,124 @@
     return { nivel: 'ok', origen: c.fuente || 'servicio nacional' };
   }
 
-  function construirEstructura() {
-    const cuerpo = $('estCuerpo');
-    let listos = 0, parciales = 0, pendientes = 0, totalMapas = 0;
-    let propias = 0, nacionales = 0;
+  // Insumos de un mapa del catálogo, con el estado de cada capa.
+  function insumosHTML(m, vistas, cuenta) {
+    if (!m || !m.insumos || !m.insumos.length) {
+      return m && m.solo_pdf
+        ? '<div class="est-calc">Se calcula sumando los sub-mapas de este eje.</div>'
+        : '<div class="est-calc">Sin insumos definidos todavía.</div>';
+    }
+    return '<div class="est-insumos">' + m.insumos.map((n) => {
+      const e = estadoInsumo(n);
+      if (!vistas.has(n)) {
+        vistas.add(n);
+        if (e.propio) cuenta.propias++; else if (e.nivel === 'ok') cuenta.nacionales++;
+      }
+      return `<div class="est-ins"><span class="punto ${e.nivel}"></span>` +
+             `<span>${n}</span><span class="origen${e.propio ? ' propio' : ''}">${e.origen}</span></div>`;
+    }).join('') + '</div>';
+  }
+
+  // Botones de un mapa que el atlas sí puede componer.
+  function accionesHTML(id, estado) {
+    if (!id || estado === 'pendiente') return '';
+    return `<button data-descargar="${id}" title="Compone este mapa y abre el diálogo de impresión">Descargar</button>` +
+           `<button class="sec" data-marcar="${id}" title="Agregarlo a la lista que se exporta junta">Marcar 🖨</button>`;
+  }
+
+  /* Vista principal: el índice maestro del Plan Regulador, con los códigos M que comparten
+     el atlas y el calibrador. Cada fila dice quién resuelve ese mapa —el atlas, el
+     calibrador, o el equipo consultor a mano— y, cuando lo resuelve el atlas, en qué estado
+     está y con qué capas. */
+  function construirIndiceMaestro() {
+    const cuenta = { propias: 0, nacionales: 0 };
     const vistas = new Set();
+    let listos = 0, parciales = 0, porDatos = 0;
+    let conAtlas = 0, deCalibrador = 0, deEquipo = 0;
+
+    const porComponente = {};
+    estructura.mapas.forEach((mp) => {
+      (porComponente[mp.componente] = porComponente[mp.componente] || []).push(mp);
+    });
+    const nombreComp = {};
+    estructura.componentes.forEach((c) => { nombreComp[c.codigo] = c.nombre; });
+
+    let h = '';
+    estructura.bloques.forEach((blo) => {
+      const comps = estructura.componentes.filter((c) => c.bloque === blo.codigo
+        && (porComponente[c.codigo] || []).length);
+      if (!comps.length) return;
+      const etapa = (estructura.etapas.find((e) => e.numero === blo.etapa) || {}).nombre || '';
+
+      h += `<div class="est-eje"><h3><span>${blo.icono}</span> Bloque ${blo.codigo} · ${blo.nombre}` +
+           `<span class="badge etapa">Etapa ${blo.etapa}: ${etapa}</span></h3>` +
+           `<p class="desc">${blo.descripcion}</p>`;
+
+      comps.forEach((c) => {
+        const lista = porComponente[c.codigo];
+        h += `<div class="est-comp"><h4>${c.codigo} · ${nombreComp[c.codigo]}</h4>` +
+             '<table class="est-tabla"><thead><tr><th style="width:74px">Código</th><th>Mapa</th>' +
+             '<th style="width:36%">Insumos y de dónde salen</th>' +
+             '<th style="width:120px"></th></tr></thead><tbody>';
+
+        lista.forEach((mp) => {
+          const m = mp.atlas ? defMapa(mp.atlas) : null;
+          const estado = m ? m.estado : null;
+          if (mp.resuelve === 'atlas') {
+            if (estado === 'disponible') listos++;
+            else if (estado === 'parcial') parciales++;
+            else porDatos++;
+          }
+          if (mp.atlas) conAtlas++;
+          if (mp.resuelve === 'calibrador') deCalibrador++;
+          else if (mp.resuelve === 'equipo') deEquipo++;
+
+          const quien = mp.resuelve === 'atlas'
+            ? (mp.atlas ? '<span class="badge quien atlas">atlas</span>'
+                        : '<span class="badge quien espera">atlas, falta armarlo</span>')
+            : mp.resuelve === 'calibrador'
+              ? '<span class="badge quien calib">calibrador</span>'
+              : '<span class="badge quien equipo">equipo</span>';
+
+          const marcas = (mp.guia_invu ? '<span class="badge guia">Guía INVU</span>' : '')
+            + (mp.condicion ? `<span class="badge cond">${mp.condicion}</span>` : '')
+            + (mp.sintesis ? '<span class="badge sint">síntesis</span>' : '')
+            + (estado ? `<span class="badge ${estado}">${estado}</span>` : '');
+
+          h += `<tr><td class="est-cod">${mp.codigo}</td>` +
+               `<td><div class="est-nom">${mp.nombre} ${quien} ${marcas}</div>` +
+               `${m && m.descripcion ? `<div class="est-desc">${m.descripcion}</div>` : ''}` +
+               `${mp.observacion ? `<div class="est-obs">${mp.observacion}</div>` : ''}` +
+               `${m && m.faltante ? `<div class="est-falta">Falta: ${m.faltante}</div>` : ''}</td>` +
+               `<td>${mp.resuelve === 'atlas' ? insumosHTML(m, vistas, cuenta)
+                 : '<div class="est-calc">Lo resuelve ' +
+                   (mp.resuelve === 'calibrador' ? 'el calibrador' : 'el equipo consultor') +
+                   '.</div>'}</td>` +
+               `<td class="est-acc">${accionesHTML(mp.atlas, estado)}</td></tr>`;
+        });
+        h += '</tbody></table></div>';
+      });
+      h += '</div>';
+    });
+
+    $('estResumen').innerHTML =
+      `<span class="est-chip"><b>${estructura.mapas.length}</b> mapas en la obra</span>` +
+      `<span class="est-chip"><b>${conAtlas}</b> con lámina en el atlas</span>` +
+      `<span class="est-chip"><b>${listos}</b> listos</span>` +
+      `<span class="est-chip"><b>${parciales}</b> parciales</span>` +
+      `<span class="est-chip"><b>${porDatos}</b> por datos</span>` +
+      `<span class="est-chip"><b>${deCalibrador}</b> los resuelve el calibrador</span>` +
+      `<span class="est-chip"><b>${deEquipo}</b> el equipo consultor</span>` +
+      `<span class="est-chip"><b>${cuenta.propias}</b> capas propias de PlanoExacto</span>` +
+      `<span class="est-chip"><b>${cuenta.nacionales}</b> capas de servicios nacionales</span>`;
+    return h;
+  }
+
+  // Respaldo: si no se pudo leer la estructura compartida, se muestra el catálogo del atlas.
+  function construirCatalogoPropio() {
+    const cuenta = { propias: 0, nacionales: 0 };
+    const vistas = new Set();
+    let listos = 0, parciales = 0, pendientes = 0, totalMapas = 0;
 
     let h = '';
     catalogo.instituciones.forEach((inst) => {
@@ -937,30 +1074,12 @@
         else if (m.estado === 'parcial') parciales++;
         else pendientes++;
 
-        let insumos;
-        if (!m.insumos || !m.insumos.length) {
-          insumos = m.solo_pdf
-            ? '<div class="est-calc">Se calcula sumando los sub-mapas de este eje.</div>'
-            : '<div class="est-calc">Sin insumos definidos todavía.</div>';
-        } else {
-          insumos = '<div class="est-insumos">' + m.insumos.map((n) => {
-            const e = estadoInsumo(n);
-            if (!vistas.has(n)) { vistas.add(n); if (e.propio) propias++; else if (e.nivel === 'ok') nacionales++; }
-            return `<div class="est-ins"><span class="punto ${e.nivel}"></span>` +
-                   `<span>${n}</span><span class="origen${e.propio ? ' propio' : ''}">${e.origen}</span></div>`;
-          }).join('') + '</div>';
-        }
-
-        const puedeDescargar = m.estado !== 'pendiente';
         h += `<tr><td class="est-num">${m.numero || ''}</td>` +
              `<td><div class="est-nom">${m.nombre} <span class="badge ${m.estado}">${m.estado}</span></div>` +
              `<div class="est-desc">${m.descripcion}</div>` +
              `${m.faltante ? `<div class="est-falta">Falta: ${m.faltante}</div>` : ''}</td>` +
-             `<td>${insumos}</td>` +
-             `<td class="est-acc">${puedeDescargar
-               ? `<button data-descargar="${m.id}" title="Compone este mapa y abre el diálogo de impresión">Descargar</button>` +
-                 `<button class="sec" data-marcar="${m.id}" title="Agregarlo a la lista que se exporta junta">Marcar 🖨</button>`
-               : ''}</td></tr>`;
+             `<td>${insumosHTML(m, vistas, cuenta)}</td>` +
+             `<td class="est-acc">${accionesHTML(m.id, m.estado)}</td></tr>`;
       });
       h += '</tbody></table></div>';
     });
@@ -970,12 +1089,25 @@
       `<span class="est-chip"><b>${listos}</b> listos</span>` +
       `<span class="est-chip"><b>${parciales}</b> parciales</span>` +
       `<span class="est-chip"><b>${pendientes}</b> por datos</span>` +
-      `<span class="est-chip"><b>${propias}</b> capas propias de PlanoExacto</span>` +
-      `<span class="est-chip"><b>${nacionales}</b> capas de servicios nacionales</span>`;
+      `<span class="est-chip"><b>${cuenta.propias}</b> capas propias de PlanoExacto</span>` +
+      `<span class="est-chip"><b>${cuenta.nacionales}</b> capas de servicios nacionales</span>`;
+    return h;
+  }
 
-    cuerpo.innerHTML = (cantonSel ? '' :
+  function construirEstructura() {
+    const cuerpo = $('estCuerpo');
+    const hayEstructura = estructura && Array.isArray(estructura.mapas) && estructura.mapas.length;
+    const h = hayEstructura ? construirIndiceMaestro() : construirCatalogoPropio();
+
+    const avisos = (cantonSel ? '' :
       '<div class="est-aviso">Elegí un cantón en el panel de la izquierda para poder descargar mapas. ' +
-      'La estructura se puede revisar sin cantón.</div>') + h;
+      'La estructura se puede revisar sin cantón.</div>')
+      + (hayEstructura ? '' :
+      '<div class="est-aviso">No se pudo leer la estructura compartida del Plan Regulador, ' +
+      'así que se muestra el catálogo propio del atlas. Los códigos de mapa pueden no ' +
+      'coincidir con los del calibrador.</div>');
+
+    cuerpo.innerHTML = avisos + h;
 
     cuerpo.querySelectorAll('[data-descargar]').forEach((b) => {
       b.addEventListener('click', () => descargarMapa(b.dataset.descargar));
@@ -996,7 +1128,7 @@
     const canton = $('selCanton').value;
     const papel = papelActual().nombre;
     const nom = /^mapa/i.test(m.nombre) ? m.nombre : 'Mapa ' + m.nombre;
-    document.title = `${m.numero ? m.numero + '. ' : ''}${nom} ${canton} ${papel}`;
+    document.title = `${codigoDe(m) ? codigoDe(m) + '. ' : ''}${nom} ${canton} ${papel}`;
     avisar(`Componiendo "${m.nombre}"…`);
     await construirLaminas([id]);
     window.print();
@@ -1026,7 +1158,7 @@
     if (seleccion.size === 1) {
       const m = defMapa([...seleccion][0]);
       const nom = m ? (/^mapa/i.test(m.nombre) ? m.nombre : 'Mapa ' + m.nombre) : 'Mapa';
-      document.title = `${m && m.numero ? m.numero + '. ' : ''}${nom} ${canton} ${papel}`;
+      document.title = `${codigoDe(m) ? codigoDe(m) + '. ' : ''}${nom} ${canton} ${papel}`;
     } else {
       document.title = `Atlas ${canton} — ${seleccion.size} mapas ${papel}`;
     }

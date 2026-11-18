@@ -11,6 +11,9 @@ import { JSDOM } from 'jsdom';
 // Correr desde la raíz del repo:  node scripts/probar_tablero.mjs
 const MUNI = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'muni');
 const lee = (f) => fs.readFileSync(path.join(MUNI, f), 'utf8');
+// La estructura del Plan Regulador vive en el mundo público y la comparten atlas y
+// calibrador, así que se lee de data/, no de muni/.
+const leeRaiz = (f) => fs.readFileSync(path.join(MUNI, '..', f), 'utf8');
 
 const fallos = [];
 const ok = [];
@@ -34,9 +37,6 @@ const L = {
 // capaGeoJSON de app.js llama L.geoJSON sin nombre; se parchea para rastrear por el estilo.
 const turf = { booleanIntersects: () => true, bboxPolygon: () => ({}), centroid: () => ({ geometry: { coordinates: [0, 0] } }) };
 
-const dom = new JSDOM(lee('index.html'), { runScripts: 'outside-only', url: 'https://atlas.planoexactocr.com/' });
-const { window } = dom;
-
 // Datos locales + un cantón de prueba para el geojson remoto.
 const cantones = { type: 'FeatureCollection', features: [
   { type: 'Feature', properties: { k: 'Acosta' }, geometry: { type: 'Polygon', coordinates: [[[-84.3, 9.7], [-84.0, 9.7], [-84.0, 9.95], [-84.3, 9.95], [-84.3, 9.7]]] } },
@@ -50,21 +50,8 @@ const asadasCrudas = { fuente: 'ARESEP', n: 2, asadas: [
   { id: '1', n: 'ASADA UNO', tipo: 'Bombeo', ll: [-84.2, 9.8] },
   { id: '2', n: 'ASADA DOS', tipo: 'Gravedad', ll: [-84.15, 9.85] }] };
 const pedidos = [];
-window.fetch = async (url) => {
-  pedidos.push(url);
-  const local = ['capas.json', 'mapas_oficiales.json', 'escudos.json', 'simbologia.json'].find((f) => url.endsWith(f));
-  if (local) return { ok: true, json: async () => JSON.parse(lee(local)) };
-  if (url.includes('cantones.geojson')) return { ok: true, json: async () => cantones };
-  // asadas.json no es GeoJSON: es una lista de registros con las coordenadas en "ll".
-  if (url.includes('asadas.json')) return { ok: true, json: async () => asadasCrudas };
-  return { ok: true, json: async () => capaDemo };
-};
-window.L = L; window.turf = turf;
-window.Image = class { set src(v) { this._src = v; setTimeout(() => this.onerror && this.onerror(), 0); } };
-window.print = () => { window.__imprimio = true; };
 
 // capaGeoJSON construye con L.geoJSON(fc, opts); se envuelve para saber qué capa es.
-const origGeo = L.geoJSON;
 let nombreEnCurso = null;
 L.geoJSON = (fc, o) => capaFalsa(nombreEnCurso);
 
@@ -74,11 +61,38 @@ const codigoInstrumentado = codigo.replace(
   'return L.geoJSON(fc, Object.assign({',
   'globalThis.__marcar(nombre);\n    return L.geoJSON(fc, Object.assign({');
 globalThis.__marcar = (n) => { nombreEnCurso = n; };
-window.__marcar = globalThis.__marcar;
 
-window.eval(codigoInstrumentado.replace('globalThis.__marcar(nombre);', 'window.__marcar(nombre);'));
+/* Monta el tablero en una ventana simulada. Se usa dos veces: una con la estructura del
+   Plan Regulador disponible y otra sin ella, para probar que el atlas no se cae cuando el
+   mundo público no responde. */
+function montar({ sinEstructura = false } = {}) {
+  const dom = new JSDOM(lee('index.html'),
+    { runScripts: 'outside-only', url: 'https://atlas.planoexactocr.com/' });
+  const w = dom.window;
+  w.fetch = async (url) => {
+    pedidos.push(url);
+    const local = ['capas.json', 'mapas_oficiales.json', 'escudos.json', 'simbologia.json']
+      .find((f) => url.endsWith(f));
+    if (local) return { ok: true, json: async () => JSON.parse(lee(local)) };
+    if (url.endsWith('estructura_pr.json')) {
+      if (sinEstructura) return { ok: false, json: async () => null };
+      return { ok: true, json: async () => JSON.parse(leeRaiz('data/estructura_pr.json')) };
+    }
+    if (url.includes('cantones.geojson')) return { ok: true, json: async () => cantones };
+    // asadas.json no es GeoJSON: es una lista de registros con las coordenadas en "ll".
+    if (url.includes('asadas.json')) return { ok: true, json: async () => asadasCrudas };
+    return { ok: true, json: async () => capaDemo };
+  };
+  w.L = L; w.turf = turf;
+  w.Image = class { set src(v) { this._src = v; setTimeout(() => this.onerror && this.onerror(), 0); } };
+  w.print = () => { w.__imprimio = true; };
+  w.__marcar = globalThis.__marcar;
+  w.eval(codigoInstrumentado.replace('globalThis.__marcar(nombre);', 'window.__marcar(nombre);'));
+  return w;
+}
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const window = montar();
 const $ = (id) => window.document.getElementById(id);
 const todos = (s) => [...window.document.querySelectorAll(s)];
 
@@ -250,14 +264,44 @@ afirmar(!$('map').hidden && $('estructura').hidden, 'estructura: arranca en el v
 pestanas[1].dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 afirmar($('map').hidden && !$('estructura').hidden, 'estructura: la pestaña cambia de vista');
 
-// La estructura lista TODOS los mapas del catálogo, no solo los disponibles.
-const mapasCatalogo = JSON.parse(lee('mapas_oficiales.json')).instituciones
-  .reduce((n, i) => n + i.mapas.length, 0);
+/* La estructura lista el ÍNDICE MAESTRO completo del Plan Regulador, no solo lo que el
+   atlas puede dibujar: es la obra entera, con lo que falta a la vista. */
+const estrucDoc = JSON.parse(leeRaiz('data/estructura_pr.json'));
 const filasEst = todos('#estCuerpo .est-tabla tbody tr');
-afirmar(filasEst.length === mapasCatalogo,
-  `estructura: lista los ${mapasCatalogo} mapas de la obra (hay ${filasEst.length})`);
-afirmar(todos('#estCuerpo .est-eje').length === 8, 'estructura: agrupa por los 8 ejes');
+afirmar(filasEst.length === estrucDoc.mapas.length,
+  `estructura: lista los ${estrucDoc.mapas.length} mapas del índice maestro (hay ${filasEst.length})`);
+const bloquesConMapas = estrucDoc.bloques
+  .filter((b) => estrucDoc.mapas.some((m) => m.bloque === b.codigo)).length;
+afirmar(todos('#estCuerpo .est-eje').length === bloquesConMapas,
+  `estructura: agrupa por los ${bloquesConMapas} bloques cartográficos`);
+afirmar(todos('#estCuerpo .est-comp').length > 15,
+  `estructura: subdivide en componentes (${todos('#estCuerpo .est-comp').length})`);
 afirmar($('estResumen').textContent.includes('mapas en la obra'), 'estructura: muestra el resumen de avance');
+
+// Cada fila se identifica por su código M, que es el que pide la guía para citar mapas.
+const codigos = todos('#estCuerpo .est-cod').map((e) => e.textContent.trim());
+afirmar(codigos.length === estrucDoc.mapas.length && codigos.includes('M1.1.90')
+  && codigos.includes('M4.1.01'),
+  'estructura: cada mapa se rotula con su código M del índice maestro');
+afirmar(codigos.join() === estrucDoc.mapas.map((m) => m.codigo).join(),
+  'estructura: los códigos salen en el orden del índice maestro');
+
+// Dice quién resuelve cada mapa: el atlas, el calibrador o el equipo consultor.
+const texto = $('estCuerpo').textContent;
+['atlas', 'calibrador', 'equipo'].forEach((quien) => {
+  afirmar(todos(`#estCuerpo .badge.quien.${quien === 'calibrador' ? 'calib' : quien}`).length > 0,
+    `estructura: marca los mapas que resuelve ${quien === 'equipo' ? 'el equipo consultor' : 'el ' + quien}`);
+});
+afirmar(texto.includes('Lo resuelve el calibrador'),
+  'estructura: explica que los mapas propositivos los arma el calibrador');
+afirmar(todos('#estCuerpo .badge.guia').length > 0,
+  'estructura: señala los mapas mínimos de la Guía de Cartografía del INVU');
+afirmar(texto.includes('Etapa 3'), 'estructura: cada bloque dice a qué etapa del proceso pertenece');
+
+// Un mapa que resuelve el calibrador no ofrece descarga acá: no es del atlas.
+const filaCalib = filasEst.find((r) => r.querySelector('.badge.quien.calib'));
+afirmar(filaCalib && !filaCalib.querySelector('[data-descargar]'),
+  'estructura: un mapa del calibrador no ofrece descarga en el atlas');
 
 // Cada insumo dice de dónde sale y si está.
 const insumos = todos('#estCuerpo .est-ins');
@@ -293,6 +337,55 @@ afirmar(todos('#laminas .lam-mapa-wrap > svg.lam-svg').length === 1,
 
 pestanas[0].dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 afirmar(!$('map').hidden && $('estructura').hidden, 'estructura: se puede volver al visor');
+
+/* ---------- coherencia entre la estructura compartida y el catálogo del atlas ----------
+   Si la estructura apunta a un mapa que el atlas no tiene, la fila sale sin estado ni
+   descarga y nadie se entera. Esto lo pesca antes. */
+const idsCatalogo = new Set(JSON.parse(lee('mapas_oficiales.json')).instituciones
+  .flatMap((i) => i.mapas.map((m) => m.id)));
+const apuntanAlVacio = estrucDoc.mapas
+  .filter((m) => m.atlas && !idsCatalogo.has(m.atlas))
+  .map((m) => `${m.codigo}→${m.atlas}`);
+afirmar(apuntanAlVacio.length === 0,
+  `estructura: ningún código apunta a un mapa que el atlas no tenga (${apuntanAlVacio.join(', ')})`);
+
+const sinCodigo = [...idsCatalogo]
+  .filter((id) => !estrucDoc.mapas.some((m) => m.atlas === id));
+afirmar(sinCodigo.length === 0,
+  `estructura: todo mapa del atlas tiene su código en el índice maestro (sin código: ${sinCodigo.join(', ')})`);
+
+// Un mapa marcado "lo resuelve el atlas" debería tener su lámina, o decir que falta armarla.
+const atlasSinLamina = estrucDoc.mapas.filter((m) => m.resuelve === 'atlas' && !m.atlas).length;
+afirmar(todos('#estCuerpo .badge.quien.espera').length === atlasSinLamina,
+  `estructura: avisa cuáles le tocan al atlas pero aún no tienen lámina (${atlasSinLamina})`);
+
+// La rampa del IFA del tablero y la de la estructura compartida tienen que ser la misma.
+const rampaEstructura = estrucDoc.clases_ifa.map((c) => c.color.toLowerCase()).join();
+const rampaTablero = (codigo.match(/RAMPA_IFA\s*=\s*\[([\s\S]*?)\]\s*;/) || [])[1] || '';
+const coloresTablero = [...rampaTablero.matchAll(/#[0-9a-fA-F]{6}/g)].map((m) => m[0].toLowerCase());
+afirmar(coloresTablero.length === 5
+  && coloresTablero.slice().sort().join() === rampaEstructura.split(',').sort().join(),
+  `estructura: la rampa del IFA del tablero usa los mismos 5 colores que la estructura compartida`);
+
+/* ---------- respaldo: sin estructura compartida el atlas no se cae ----------
+   El atlas lee la estructura de otro origen. Si ese origen no responde, tiene que seguir
+   sirviendo su propio catálogo y decirlo, no quedarse en blanco. */
+{
+  const w2 = montar({ sinEstructura: true });
+  await esperar(500);
+  const $2 = (id) => w2.document.getElementById(id);
+  const pest2 = [...w2.document.querySelectorAll('.pest')];
+  pest2[1].dispatchEvent(new w2.MouseEvent('click', { bubbles: true }));
+  const filas2 = [...w2.document.querySelectorAll('#estCuerpo .est-tabla tbody tr')];
+  const mapasPropios = JSON.parse(lee('mapas_oficiales.json')).instituciones
+    .reduce((n, i) => n + i.mapas.length, 0);
+  afirmar(filas2.length === mapasPropios,
+    `respaldo: sin estructura compartida muestra el catálogo propio (${filas2.length} de ${mapasPropios})`);
+  afirmar($2('estCuerpo').textContent.includes('No se pudo leer la estructura compartida'),
+    'respaldo: avisa que los códigos pueden no coincidir con los del calibrador');
+  afirmar(filas2.some((r) => r.querySelector('[data-descargar]')),
+    'respaldo: se siguen pudiendo descargar los mapas del atlas');
+}
 
 // ---------- resultado ----------
 console.log('\n=== PRUEBAS DEL TABLERO ===');
