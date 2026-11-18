@@ -10,8 +10,12 @@ se califica de 1 a 5, con una convención CONTRAINTUITIVA que viene del método 
     4 = Baja
     5 = Muy Baja fragilidad   (menos limitaciones, más apto)
 
-Colores oficiales (Manual de Instrumentos Técnicos, §5.3.5 — ojo, también al revés de lo
-que uno esperaría): 1 verde oscuro, 2 verde claro, 3 amarillo, 4 naranja, 5 rojo oscuro.
+Sobre los colores: el texto del Manual (§5.3.5 del 32967) asigna 1 verde oscuro, 2 verde
+claro, 3 amarillo, 4 naranja y 5 rojo oscuro, o sea al revés de lo que uno esperaría. Pero
+TODAS las láminas IFA que se están aprobando hoy usan la rampa contraria — rojo para la
+fragilidad muy alta y verde oscuro para la muy baja. Se sigue la práctica, no la letra:
+la rampa está en integracion_ifa.py y salió píxel a píxel de una lámina real (Ecoplan,
+cantón Liberia, lámina 53, 2025).
 
 ------------------------------------------------------------------------------------------
 PROCEDENCIA DE LAS TABLAS
@@ -34,33 +38,21 @@ from __future__ import annotations
 
 import numpy as np
 
+import integracion_ifa
+
 # ------------------------------------------------------------------------------------------
 # Escala y colores comunes a todas las variables
 # ------------------------------------------------------------------------------------------
 
-NIVELES_IFA = {
-    1: "Muy Alta",
-    2: "Alta",
-    3: "Moderada",
-    4: "Baja",
-    5: "Muy Baja",
-}
-
-# Rampa de colores oficial del IFA, tomada de las láminas reales de un plan regulador
-# (Ecoplan, cantón Abangares): Muy Alta = rosado → Muy Baja = verde oscuro.
-# 1 = más frágil = rosado; 5 = menos frágil = verde oscuro.
-COLORES_IFA = {
-    1: "#f09cba",  # rosado        — Muy Alta fragilidad
-    2: "#f5a623",  # naranja       — Alta
-    3: "#eedb5d",  # amarillo      — Moderada
-    4: "#aecf8a",  # verde claro   — Baja
-    5: "#5e9150",  # verde oscuro  — Muy Baja fragilidad
-}
+# Los niveles y los colores viven en integracion_ifa.py, que es el único lugar donde se
+# define cómo se categoriza el IFA. Acá se re-exportan para no romper lo que ya los usa.
+NIVELES_IFA = integracion_ifa.NIVELES
+COLORES_IFA = integracion_ifa.COLORES
 
 
 def etiqueta_ifa(valor: int) -> str:
-    """'1 — Muy Alta fragilidad', etc. Para leyendas."""
-    return f"{valor} — {NIVELES_IFA.get(valor, '?')} fragilidad"
+    """'Muy Alta', 'Alta', ... como se rotula en la leyenda de la lámina."""
+    return integracion_ifa.etiqueta(valor)
 
 
 # ------------------------------------------------------------------------------------------

@@ -140,6 +140,8 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
         extent_r = [tr.c, tr.c + w * tr.a, tr.f + h * tr.e, tr.f]
         datos = np.ma.masked_where(cat == 0, cat)
         ax.imshow(datos, extent=extent_r, cmap=cmap, norm=norm, interpolation="nearest", zorder=2)
+        if raster.get("titulo_leyenda"):
+            simbolos.append((raster["titulo_leyenda"], None, "titulo", None))
         for etiqueta, color in raster.get("leyenda", []):
             handles.append(Patch(facecolor=color, label=etiqueta))
             simbolos.append((etiqueta, color, "poligono", "solido"))
@@ -220,7 +222,11 @@ def dibujar_plancha(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.Ge
              fontsize=9 * k, fontweight="bold", va="top")
     caj.text(0.02, 0.60, "Simbología", fontsize=8 * k, fontweight="bold", va="top")
     y = 0.50
-    for etiqueta, c, forma, trazo in simbolos[:9]:
+    for etiqueta, c, forma, trazo in simbolos[:10]:
+        if forma == "titulo":
+            caj.text(0.02, y, etiqueta, fontsize=7 * k, fontweight="bold", va="center")
+            y -= 0.052
+            continue
         if forma == "linea":
             caj.plot([0.02, 0.05], [y, y], color=c, linewidth=1.6 * k,
                      linestyle=_guion(trazo), solid_capstyle="butt")

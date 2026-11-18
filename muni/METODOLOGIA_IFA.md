@@ -103,21 +103,62 @@ Decreto 23214, clases I a VIII — las clases bajas = tierras aptas para agricul
 las altas = solo protección). Insumo: INTA (capacidad de uso) donde hay cobertura; uso
 actual del IGN como complemento.
 
-## Rampa de colores oficial del IFA (confirmada con láminas reales)
+## Rampa de colores del IFA (medida sobre una lámina real)
 
-De las láminas del plan regulador de Abangares (Ecoplan, 2026), la rampa de las clases de
-fragilidad es:
+Tomada píxel a píxel de **"Índices de Fragilidad Ambiental Cantón Liberia", lámina 53
+(IFA Bioaptitud), Ecoplan, abril 2025**:
 
 | Clase | Color |
 |-------|-------|
-| Muy alta | rosado `#f09cba` |
-| Alta | naranja `#f5a623` |
-| Moderada | amarillo `#eedb5d` |
-| Baja | verde claro `#aecf8a` |
-| Muy baja | verde oscuro `#5e9150` |
+| Muy Alta | rojo `#e41a1c` |
+| Alta | naranja `#ff7f00` |
+| Moderada | amarillo `#ffff33` |
+| Baja | verde claro `#94d180` |
+| Muy Baja | verde oscuro `#3d983a` |
 
-(Está codificada así en `scripts/calificacion_ifa.py`. Ojo: es lo contrario de lo que decía
-el Manual viejo; mandan las láminas reales.)
+Está codificada en `scripts/integracion_ifa.py`, que es el **único** lugar donde se define
+la categorización del IFA; `calificacion_ifa.py` y el tablero la toman de ahí.
+
+Ojo con el texto del decreto: el §5.3.5 del 32967 asigna los colores al revés (verde oscuro
+para Muy Alta, rojo oscuro para Muy Baja). Todas las láminas que se están aprobando hoy usan
+la rampa de arriba, así que se sigue la práctica, no la letra.
+
+## Cómo se integra y se categoriza (lo que pide SETENA)
+
+El procedimiento es el mismo en los dos niveles: **sumar y reclasificar**.
+
+- **Dentro de un eje**: decreto 32967, §5.8.2 — el IFA Geoaptitud integrado "se obtiene por
+  la suma algebraica simple de los cinco factores de geoaptitud previamente elaborados".
+  Bioaptitud, Edafoaptitud y Antropoaptitud siguen el mismo procedimiento (§5.9.5, §5.10.6,
+  §5.11.3, todos remiten al §5.3).
+- **Entre los ejes**: §5.12.2 — `IFA integrado = IFA Bioaptitud + IFA Edafoaptitud +
+  IFA Geoaptitud + IFA Antropoaptitud`.
+- **Escala**: 5 niveles, donde **1 (Zona I) es la fragilidad más alta** y 5 (Zona V) la más
+  baja. Valor bajo = más limitantes técnicas = más frágil.
+
+Para pasar de la suma a la clase se usa la **Tabla Nº 3** del 32967 ("Criterio de
+Calificación para IFA - Geoaptitud integrado"), sobre una escala de 0 a 75 puntos:
+
+| Clase | Rango | Como proporción del máximo |
+|-------|-------|----------------------------|
+| Muy Alta | 0 – 25 | < 0,333 |
+| Alta | 25 – 35 | < 0,467 |
+| Moderada | 35 – 50 | < 0,667 |
+| Baja | 50 – 65 | < 0,867 |
+| Muy Baja | 65 – 75 | ≥ 0,867 |
+
+Se aplican como **proporción** y no como puntos absolutos, para que la misma tabla sirva con
+tres sub-mapas o con cinco — que es la situación real mientras falten capas. En cada píxel,
+la suma se mide contra el máximo que podrían dar los sub-mapas que **sí** tienen dato ahí, de
+modo que a un píxel al que le falta una capa no le sale fragilidad inflada.
+
+**[VERIFICAR]** La Tabla Nº 3 además pide condiciones cualitativas para las dos clases más
+frágiles ("mínimo tres factores de categoría MB" para Muy Alta, "mínimo dos" para Alta). Hoy
+se aplica solo el criterio numérico; falta confirmar esa condición contra el anexo del 44710.
+
+El decreto **44710-MINAE** entró en vigor el 18 de agosto de 2025 y derogó el 32967, pero
+mantiene la metodología IFA como su **Anexo 1** ("Metodología de los IFA para elaborar
+EsIVA"), junto a la alternativa RIVAIOT.
 
 ## Eje Bioaptitud — se arma de sub-variables (IFA Biológico)
 

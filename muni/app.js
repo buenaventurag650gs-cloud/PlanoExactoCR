@@ -91,10 +91,11 @@
   // Capas base prendidas al elegir cantón (las livianas; las densas quedan apagadas).
   const BASE_POR_DEFECTO = ['Límites distritales', 'Red vial cantonal', 'Red hídrica'];
 
-  // Escala de fragilidad del IFA (decreto 44710), para mostrarla en la leyenda.
+  // Escala de fragilidad del IFA (decretos 32967 / 44710). Misma rampa que usan las láminas
+  // en PDF; se define en scripts/integracion_ifa.py y se repite acá solo para la vista previa.
   const RAMPA_IFA = [
-    ['1 · Muy alta fragilidad', '#f09cba'], ['2 · Alta', '#f5a623'], ['3 · Moderada', '#eedb5d'],
-    ['4 · Baja', '#aecf8a'], ['5 · Muy baja', '#5e9150']
+    ['Muy Alta', '#e41a1c'], ['Alta', '#ff7f00'], ['Moderada', '#ffff33'],
+    ['Baja', '#94d180'], ['Muy Baja', '#3d983a']
   ];
 
   // ---------- simbología ----------
@@ -490,7 +491,7 @@
     }
     const hayIFA = [...seleccion].some((id) => (defMapa(id) || {}).solo_pdf);
     if (hayIFA) {
-      h += '<div class="tit-mapa">Fragilidad ambiental (en el PDF)</div>';
+      h += '<div class="tit-mapa">Índice de Fragilidad Ambiental (sale en el PDF)</div>';
       RAMPA_IFA.forEach(([t, c]) => { h += `<div class="lg"><span class="sw" style="background:${c};border-color:#0004"></span>${t}</div>`; });
     }
     el.innerHTML = h;

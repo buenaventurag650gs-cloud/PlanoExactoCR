@@ -164,8 +164,126 @@ def probar_antropoaptitud():
             "antropo: sin insumos devuelve lista vacía sin fallar")
 
 
+# ------------------------------------------------- Categorización común a los cuatro ejes
+def probar_categorizacion():
+    """Lo que pide SETENA: que los cuatro ejes integren y categoricen EXACTAMENTE igual."""
+    import integracion_ifa as I
+
+    # 1) La rampa es la de la lámina oficial (Ecoplan, Liberia, lámina 53).
+    esperados = {1: "#e41a1c", 2: "#ff7f00", 3: "#ffff33", 4: "#94d180", 5: "#3d983a"}
+    afirmar(I.COLORES == esperados, f"ifa: la rampa es la de la lámina oficial ({I.COLORES})")
+    afirmar([e for e, _ in I.leyenda()] == ["Muy Alta", "Alta", "Moderada", "Baja", "Muy Baja"],
+            "ifa: la leyenda va de Muy Alta a Muy Baja, como la lámina")
+    afirmar(C.COLORES_IFA is I.COLORES and C.NIVELES_IFA is I.NIVELES,
+            "ifa: calificacion_ifa usa la misma rampa, no una copia")
+
+    # 2) La reclasificación sigue la Tabla Nº 3 del decreto 32967 (cortes 25/35/50/65 de 75).
+    #    Con 5 sub-mapas de 1-5, el máximo es 25 y los cortes caen en 8.33 / 11.67 / 16.67 / 21.67.
+    def nivel_de_suma(suma, n=5):
+        """Arma n sub-mapas de un píxel que sumen 'suma' y devuelve el nivel resultante."""
+        base, resto = divmod(suma, n)
+        valores = [base + (1 if k < resto else 0) for k in range(n)]
+        assert all(1 <= v <= 5 for v in valores), valores
+        return int(I.sumar_y_reclasificar([np.full((1, 1), v, dtype="uint8") for v in valores])[0, 0])
+
+    casos = [(5, 1), (8, 1), (9, 2), (11, 2), (12, 3), (16, 3), (17, 4), (21, 4), (22, 5), (25, 5)]
+    for suma, esperado in casos:
+        dio = nivel_de_suma(suma)
+        afirmar(dio == esperado,
+                f"ifa: suma {suma}/25 → nivel {esperado} según la Tabla Nº 3 (dio {dio})")
+
+    # 3) Todo muy frágil da 1 y todo poco frágil da 5, con cualquier cantidad de sub-mapas.
+    for n in (1, 2, 3, 4, 5):
+        unos = [np.full((1, 1), 1, dtype="uint8")] * n
+        cincos = [np.full((1, 1), 5, dtype="uint8")] * n
+        afirmar(int(I.sumar_y_reclasificar(unos)[0, 0]) == 1, f"ifa: con {n} sub-mapas, todo 1 → Muy Alta")
+        afirmar(int(I.sumar_y_reclasificar(cincos)[0, 0]) == 5, f"ifa: con {n} sub-mapas, todo 5 → Muy Baja")
+
+    # 4) Un píxel al que le falta una capa se mide contra lo que sí tiene, no sale más frágil.
+    completo = I.sumar_y_reclasificar([np.full((1, 1), 4, "uint8")] * 3)
+    parcial = I.sumar_y_reclasificar([np.full((1, 1), 4, "uint8"), np.full((1, 1), 4, "uint8"),
+                                      np.zeros((1, 1), "uint8")])
+    afirmar(int(completo[0, 0]) == int(parcial[0, 0]),
+            "ifa: faltar una capa no cambia el nivel (se normaliza por las que hay)")
+    afirmar(int(I.sumar_y_reclasificar([np.zeros((2, 2), "uint8")] * 2).max()) == 0,
+            "ifa: sin ningún dato queda en 0 (sin dato), no en un nivel inventado")
+
+    # 5) LO CENTRAL: los cuatro ejes, con los mismos sub-mapas, dan el mismo resultado.
+    rng = np.random.default_rng(7)
+    falsos = [{"id": f"s{k}", "titulo": f"s{k}", "transform": "tr",
+               "cat": rng.integers(0, 6, size=(40, 40), dtype="uint8")} for k in range(3)]
+    resultados = {}
+    for nombre, modulo in (("bioaptitud", bioaptitud), ("geoaptitud", geoaptitud),
+                           ("edafoaptitud", edafoaptitud), ("antropoaptitud", antropoaptitud)):
+        cat, _ = modulo.integrado(falsos)
+        resultados[nombre] = cat
+    primero = resultados["bioaptitud"]
+    iguales = all(np.array_equal(primero, v) for v in resultados.values())
+    afirmar(iguales, "ifa: LOS CUATRO EJES integran y categorizan idéntico con los mismos insumos")
+    afirmar(set(np.unique(primero)) <= {0, 1, 2, 3, 4, 5},
+            "ifa: el resultado solo trae niveles válidos 0-5")
+
+    # 6) El reparto porcentual suma 100 (es el cuadro que va en el informe).
+    rep = I.reparto(primero)
+    afirmar(abs(sum(rep.values()) - 100.0) < 0.5, f"ifa: el reparto por nivel suma 100% ({rep})")
+
+
+def probar_catalogo_y_exportacion():
+    """Que los cuatro ejes del catálogo tengan quién los exporte, y al revés."""
+    import json
+    import re
+    raiz = pathlib.Path(__file__).resolve().parent.parent
+    catalogo = json.loads((raiz / "muni" / "mapas_oficiales.json").read_text(encoding="utf-8"))
+    fuente = (raiz / "scripts" / "build_atlas.py").read_text(encoding="utf-8")
+
+    bloque = fuente[fuente.index("EJES_IFA = {"):fuente.index("EJES_IFA = {") + 1600]
+    exportables = set(re.findall(r'"(\w+)": \{"modulo"', bloque))
+    esperados = {"geo_integrado", "ifa_bioaptitud", "eda_integrado", "ant_integrado"}
+    afirmar(exportables == esperados,
+            f"export: build_atlas exporta los cuatro ejes del IFA ({sorted(exportables)})")
+
+    # El mapa integrado que declara cada eje del catálogo debe ser uno de los exportables.
+    declarados = {}
+    for inst in catalogo["instituciones"]:
+        if inst.get("integrado"):
+            declarados[inst["id"]] = inst["integrado"]
+    for eje in ("geoaptitud", "bioaptitud", "edafoaptitud", "antropoaptitud"):
+        afirmar(declarados.get(eje) in exportables,
+                f"export: el eje {eje} declara un integrado que sí se exporta ({declarados.get(eje)})")
+        # Y debe poder marcarse (si está "pendiente", el tablero no lo deja seleccionar).
+        estado = None
+        for inst in catalogo["instituciones"]:
+            for m in inst["mapas"]:
+                if m["id"] == declarados.get(eje):
+                    estado = m["estado"]
+        afirmar(estado in ("disponible", "parcial"),
+                f"export: el integrado del eje {eje} se puede marcar (estado: {estado})")
+
+    # Todos los sub-mapas que devuelven los módulos deben existir en el catálogo, para que la
+    # lámina salga con su número ("2.3 Mapa IFA Cobertura vegetal ...").
+    ids_catalogo = {m["id"] for inst in catalogo["instituciones"] for m in inst["mapas"]}
+    generados = {"bio_categorias_manejo", "bio_cobertura_vegetal", "bio_biotopos",
+                 "geo_geodinamica", "geo_estabilidad", "geo_amenazas",
+                 "eda_capacidad_uso", "ant_uso_antropico", "ant_vialidad"}
+    faltan = sorted(generados - ids_catalogo)
+    afirmar(not faltan, f"export: todo sub-mapa generado está numerado en el catálogo (faltan: {faltan})")
+
+
+def probar_geoaptitud_sin_dem():
+    """El eje 1 debe producir su mapa integrado aunque no haya DEM (solo con amenazas)."""
+    desl = capa([cuadro(X0 + 2000, Y0 + 2000, 2000)])
+    facs = geoaptitud.factores({"Deslizamientos": desl}, CANTON, None, RES)
+    afirmar(len(facs) == 1 and facs[0]["id"] == "geo_amenazas",
+            f"geo: sin DEM igual sale el factor de amenazas ({[f['id'] for f in facs]})")
+    cat, tr = geoaptitud.integrado(facs)
+    afirmar(cat is not None, "geo: sin DEM el eje igual produce su mapa integrado")
+    afirmar(valor(cat, tr, X0 + 3000, Y0 + 3000) == 1,
+            "geo: sin DEM, dentro del deslizamiento sigue dando Muy Alta")
+
+
 def main() -> int:
-    for prueba in (probar_bioaptitud, probar_geoaptitud, probar_edafoaptitud, probar_antropoaptitud):
+    for prueba in (probar_bioaptitud, probar_geoaptitud, probar_edafoaptitud, probar_antropoaptitud,
+                   probar_categorizacion, probar_catalogo_y_exportacion, probar_geoaptitud_sin_dem):
         try:
             prueba()
         except Exception as e:  # noqa: BLE001

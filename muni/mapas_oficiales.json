@@ -25,7 +25,7 @@
         },
         {
           "numero": "1.2",
-          "id": "ifa_geoaptitud_pendiente",
+          "id": "geo_geodinamica",
           "nombre": "Factor geodinámica externa",
           "estado": "disponible",
           "requiere_dem": true,

@@ -24,6 +24,7 @@ import pandas as pd
 
 import bioaptitud
 import calificacion_ifa as C
+import integracion_ifa
 
 CRS_METRICO = bioaptitud.CRS_METRICO
 
@@ -119,5 +120,6 @@ def submapas(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, res: float = 10
 
 
 def integrado(submapas_lista: list[dict]):
-    """Integra los sub-mapas en el IFA Antropoaptitud. Devuelve (cat, transform)."""
-    return bioaptitud.integrado(submapas_lista)
+    """Integra los sub-mapas en el IFA Antropoaptitud (suma algebraica + reclasificación,
+    igual que los otros tres ejes). Devuelve (cat, transform)."""
+    return integracion_ifa.integrar_submapas(submapas_lista)

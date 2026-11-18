@@ -15,6 +15,7 @@ import numpy as np
 from rasterio import features
 
 import calificacion_ifa as C
+import integracion_ifa
 
 CRS_METRICO = "EPSG:5367"
 
@@ -67,30 +68,39 @@ def factor_amenazas(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, transfor
     return base
 
 
-def factores(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, pendientes) -> list[dict]:
-    """Construye los factores disponibles. `pendientes` = (cat, transform, ruta_tif, Pmod) o None.
-    Devuelve lista de {id, titulo, cat, transform}."""
+def factores(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, pendientes=None,
+             res: float = 100.0) -> list[dict]:
+    """Construye los factores de geoaptitud disponibles.
+
+    `pendientes` = (cat, transform, ruta_tif, Pmod) del DEM, o None. Sin DEM no se pueden
+    calcular la geodinámica externa ni la estabilidad de laderas, pero el factor de amenazas
+    naturales sí sale, así que el eje igual produce su mapa integrado (parcial).
+    Devuelve lista de {id, titulo, cat, transform}.
+    """
     salidas = []
     if pendientes is not None:
         cat_p, tr, _, _ = pendientes
-        shape = cat_p.shape
+        forma = cat_p.shape
         salidas.append({"id": "geo_geodinamica", "titulo": "IFA Geodinámica externa",
                         "cat": factor_geodinamica(cat_p), "transform": tr})
         salidas.append({"id": "geo_estabilidad", "titulo": "IFA Estabilidad de laderas",
                         "cat": factor_estabilidad(cat_p), "transform": tr})
-        salidas.append({"id": "geo_amenazas", "titulo": "IFA Amenazas naturales",
-                        "cat": factor_amenazas(capas_por_nombre, canton_m, tr, shape), "transform": tr})
+    else:
+        # Sin DEM: se arma una grilla propia sobre el cantón solo para el factor de amenazas.
+        import bioaptitud
+        vacio = canton_m.copy()
+        vacio["ifa"] = 1
+        _, tr = bioaptitud.rasterizar(vacio, canton_m, res)
+        minx, miny, maxx, maxy = canton_m.total_bounds
+        forma = (max(1, int(np.ceil((maxy - miny) / res))),
+                 max(1, int(np.ceil((maxx - minx) / res))))
+
+    salidas.append({"id": "geo_amenazas", "titulo": "IFA Amenazas naturales",
+                    "cat": factor_amenazas(capas_por_nombre, canton_m, tr, forma), "transform": tr})
     return salidas
 
 
 def integrado(factores_lista: list[dict]):
-    """Integra los factores (promedio) en el IFA Geoaptitud. (cat, transform) o (None, None)."""
-    import bioaptitud
-    if not factores_lista:
-        return None, None
-    formas = {f["cat"].shape for f in factores_lista}
-    if len(formas) != 1:
-        f = factores_lista[0]
-        return f["cat"], f["transform"]
-    cat = bioaptitud.integrar([f["cat"] for f in factores_lista])
-    return cat, factores_lista[0]["transform"]
+    """Integra los factores en el IFA Geoaptitud (suma algebraica + reclasificación).
+    Devuelve (cat, transform) o (None, None)."""
+    return integracion_ifa.integrar_submapas(factores_lista)

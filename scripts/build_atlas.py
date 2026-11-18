@@ -503,7 +503,7 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
         elif id_mapa == "ifa_bioaptitud":
             lamina_bioaptitud(pdf, canton, poligono_canton, capas_por_nombre)
             ok = lamina_bioaptitud_calificada(pdf, canton, poligono_canton, capas_por_nombre)
-        elif id_mapa == "ifa_geoaptitud_pendiente":
+        elif id_mapa == "geo_geodinamica":
             if pendientes is None:
                 return None
             cat, transform, _, P = pendientes
@@ -521,7 +521,7 @@ def armar_pdf(ruta_pdf: pathlib.Path, canton: str, poligono_canton: gpd.GeoDataF
     if seleccion is not None:
         orden = [mid for mid in mapas_oficiales if mid in seleccion]
     else:
-        orden = ["uso_actual_suelo", "ifa_bioaptitud", "ifa_geoaptitud_pendiente"]
+        orden = ["uso_actual_suelo", "ifa_bioaptitud", "geo_geodinamica"]
 
     with PdfPages(ruta_pdf) as pdf:
         pdf_titulos: list[str] = []
@@ -677,137 +677,91 @@ def main() -> None:
     planchas_hechas = []
     if seleccion is not None and mapas_oficiales:
         # Salida final: una plancha profesional por mapa elegido (estilo POT).
+        import importlib
+
         import plancha
         orden = [mid for mid in mapas_oficiales if mid in seleccion]
         total = len(orden)
-        import calificacion_ifa as C
+        import calificacion_ifa as C  # noqa: F401  (lo usan los mapas no-IFA)
+        import integracion_ifa
 
-        def raster_dict(cat, transform):
-            return {"cat": cat, "transform": transform,
-                    "colores": {v: C.COLORES_IFA[v] for v in range(1, 6)},
-                    "leyenda": [(C.NIVELES_IFA[v], C.COLORES_IFA[v]) for v in range(1, 6)]}
+        # Los cuatro ejes del IFA, con el módulo que los calcula, el título de la lámina y
+        # el rótulo que lleva la leyenda (como en la lámina oficial: "IFA Aspectos Biológicos").
+        EJES_IFA = {
+            "geo_integrado": {"modulo": "geoaptitud", "titulo": "IFA Geoaptitud",
+                              "leyenda": "IFA Aspectos Geológicos",
+                              "pista": "; con --dem salen también la geodinámica y la estabilidad"},
+            "ifa_bioaptitud": {"modulo": "bioaptitud", "titulo": "IFA Bioaptitud",
+                               "leyenda": "IFA Aspectos Biológicos"},
+            "eda_integrado": {"modulo": "edafoaptitud", "titulo": "IFA Edafoaptitud",
+                              "leyenda": "IFA Aspectos Edafológicos",
+                              "pista": "; el INTA puede no cubrir este cantón"},
+            "ant_integrado": {"modulo": "antropoaptitud", "titulo": "IFA Antropoaptitud",
+                              "leyenda": "IFA Aspectos Antrópicos"},
+        }
+
+        def raster_dict(cat, transform, titulo_leyenda=None):
+            """Ráster IFA listo para la plancha: colores y leyenda vienen de integracion_ifa,
+            el único lugar donde se define la categorización, así los cuatro ejes salen igual."""
+            d = {"cat": cat, "transform": transform,
+                 "colores": integracion_ifa.paleta(),
+                 "leyenda": integracion_ifa.leyenda()}
+            if titulo_leyenda:
+                d["titulo_leyenda"] = titulo_leyenda
+            return d
 
         for i, mid in enumerate(orden, 1):
             mdef = mapas_oficiales[mid]
             insumos = [(n, capas_por_nombre[n]) for n in mdef.get("insumos", []) if n in capas_por_nombre]
 
-            # Eje Bioaptitud: sub-mapas clasificados + integrado (IFA Biológico).
-            if mid == "ifa_bioaptitud":
-                import bioaptitud
+            # ---------------------------------------------------------------------------
+            # Los cuatro ejes del IFA se exportan exactamente igual: se arman sus sub-mapas,
+            # se integran con la MISMA suma y reclasificación (integracion_ifa) y se dibujan
+            # con la MISMA rampa de colores y la misma leyenda. Un solo bloque para los
+            # cuatro, para que no puedan separarse con el tiempo.
+            # ---------------------------------------------------------------------------
+            if mid in EJES_IFA:
+                eje = EJES_IFA[mid]
+                modulo = importlib.import_module(eje["modulo"])
                 canton_m = poligono_canton.to_crs("EPSG:5367")
-                subs = bioaptitud.submapas(capas_por_nombre, canton_m)
-                cat_int, tr_int = bioaptitud.integrado(subs)
+                if eje["modulo"] == "geoaptitud":
+                    subs = modulo.factores(capas_por_nombre, canton_m, pendientes)
+                else:
+                    subs = modulo.submapas(capas_por_nombre, canton_m)
+                cat_int, tr_int = modulo.integrado(subs)
                 hechos = 0
-                # Mapa integrado (el principal del eje).
+
+                # Mapa integrado del eje (el principal).
                 if cat_int is not None:
-                    arch = salida.parent / f"{mdef.get('numero','')} Mapa IFA Bioaptitud {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Bioaptitud",
+                    arch = salida.parent / f"{mdef.get('numero','')} Mapa {eje['titulo']} {args.canton} {papel}.pdf"
+                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], eje["titulo"],
                         mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
                         fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
-                        cantones_full=cantones, raster=raster_dict(cat_int, tr_int), papel=papel)
+                        cantones_full=cantones,
+                        raster=raster_dict(cat_int, tr_int, eje["leyenda"]), papel=papel)
                     planchas_hechas.append(arch); hechos += 1
                     print(f"  ✓ {arch.name}")
-                # Sub-mapas (biotopos, categorías de manejo, cobertura vegetal).
+                    print("     reparto: " + ", ".join(
+                        f"{k} {v}%" for k, v in integracion_ifa.reparto(cat_int).items()))
+
+                # Sub-mapas del eje, cada uno en su propia lámina y con la misma leyenda.
                 for s in subs:
                     num = mapas_oficiales.get(s["id"], {}).get("numero", "")
                     arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} {papel}.pdf"
                     plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
                         mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
                         fecha=fecha_corta, lamina_num=i, total=total, numero=num,
-                        cantones_full=cantones, raster=raster_dict(s["cat"], s["transform"]), papel=papel)
+                        cantones_full=cantones,
+                        raster=raster_dict(s["cat"], s["transform"], eje["leyenda"]), papel=papel)
                     planchas_hechas.append(arch); hechos += 1
                     print(f"  ✓ {arch.name}")
-                if hechos == 0:
-                    print(f"  (sin datos de bioaptitud para {args.canton})")
-                continue
 
-            # Eje Geoaptitud: factores (geodinámica, estabilidad, amenazas) + integrado.
-            if mid == "geo_integrado":
-                import geoaptitud
-                canton_m = poligono_canton.to_crs("EPSG:5367")
-                facs = geoaptitud.factores(capas_por_nombre, canton_m, pendientes)
-                cat_int, tr_int = geoaptitud.integrado(facs)
-                hechos = 0
-                if cat_int is not None:
-                    arch = salida.parent / f"{mdef.get('numero','')} Mapa IFA Geoaptitud {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Geoaptitud",
-                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
-                        cantones_full=cantones, raster=raster_dict(cat_int, tr_int), papel=papel)
-                    planchas_hechas.append(arch); hechos += 1
-                    print(f"  ✓ {arch.name}")
-                for s in facs:
-                    num = mapas_oficiales.get(s["id"], {}).get("numero", "")
-                    arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
-                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=num,
-                        cantones_full=cantones, raster=raster_dict(s["cat"], s["transform"]), papel=papel)
-                    planchas_hechas.append(arch); hechos += 1
-                    print(f"  ✓ {arch.name}")
                 if hechos == 0:
-                    print(f"  (sin datos de geoaptitud para {args.canton}; ¿pasaste --dem?)")
+                    print(f"  (sin insumos de {eje['titulo']} para {args.canton}{eje.get('pista','')})")
                 continue
-
-            # Eje Edafoaptitud: capacidad de uso + integrado.
-            if mid == "eda_integrado":
-                import edafoaptitud
-                canton_m = poligono_canton.to_crs("EPSG:5367")
-                subs = edafoaptitud.submapas(capas_por_nombre, canton_m)
-                cat_int, tr_int = edafoaptitud.integrado(subs)
-                hechos = 0
-                if cat_int is not None:
-                    arch = salida.parent / f"{mdef.get('numero','')} Mapa IFA Edafoaptitud {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Edafoaptitud",
-                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
-                        cantones_full=cantones, raster=raster_dict(cat_int, tr_int), papel=papel)
-                    planchas_hechas.append(arch); hechos += 1
-                    print(f"  ✓ {arch.name}")
-                for s in subs:
-                    num = mapas_oficiales.get(s["id"], {}).get("numero", "")
-                    arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
-                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=num,
-                        cantones_full=cantones, raster=raster_dict(s["cat"], s["transform"]), papel=papel)
-                    planchas_hechas.append(arch); hechos += 1
-                    print(f"  ✓ {arch.name}")
-                if hechos == 0:
-                    print(f"  (sin datos de edafoaptitud para {args.canton}; el INTA puede no cubrirlo)")
-                continue
-
-            # Eje Antropoaptitud: uso antrópico + accesibilidad vial + integrado.
-            if mid == "ant_integrado":
-                import antropoaptitud
-                canton_m = poligono_canton.to_crs("EPSG:5367")
-                subs = antropoaptitud.submapas(capas_por_nombre, canton_m)
-                cat_int, tr_int = antropoaptitud.integrado(subs)
-                hechos = 0
-                if cat_int is not None:
-                    arch = salida.parent / f"{mdef.get('numero','')} Mapa IFA Antropoaptitud {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], "IFA Antropoaptitud",
-                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=mdef.get("numero", ""),
-                        cantones_full=cantones, raster=raster_dict(cat_int, tr_int), papel=papel)
-                    planchas_hechas.append(arch); hechos += 1
-                    print(f"  ✓ {arch.name}")
-                for s in subs:
-                    num = mapas_oficiales.get(s["id"], {}).get("numero", "")
-                    arch = salida.parent / f"{num} Mapa {s['titulo']} {args.canton} {papel}.pdf"
-                    plancha.dibujar_plancha(arch, args.canton, poligono_canton, [], s["titulo"],
-                        mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
-                        fecha=fecha_corta, lamina_num=i, total=total, numero=num,
-                        cantones_full=cantones, raster=raster_dict(s["cat"], s["transform"]), papel=papel)
-                    planchas_hechas.append(arch); hechos += 1
-                    print(f"  ✓ {arch.name}")
-                if hechos == 0:
-                    print(f"  (sin insumos de antropoaptitud para {args.canton})")
-                continue
-
             # Mapa IFA de pendiente: ráster clasificado 1-5 (necesita --dem).
             raster_ifa = None
-            if mid == "ifa_geoaptitud_pendiente" and pendientes is not None:
+            if mid == "geo_geodinamica" and pendientes is not None:
                 import calificacion_ifa as C
                 cat, transform, _, _ = pendientes
                 ifa = C.calificar_cat_pendiente_ifa(cat)

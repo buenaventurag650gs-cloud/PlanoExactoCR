@@ -13,6 +13,7 @@ import geopandas as gpd
 
 import bioaptitud
 import calificacion_ifa as C
+import integracion_ifa
 
 _ROMANO = re.compile(r"\b(VIII|VII|VI|IV|III|II|I|V)\b")
 
@@ -47,4 +48,6 @@ def submapas(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, res: float = 10
 
 
 def integrado(submapas_lista: list[dict]):
-    return bioaptitud.integrado(submapas_lista)
+    """Integra los sub-mapas en el IFA Edafoaptitud (suma algebraica + reclasificación,
+    igual que los otros tres ejes). Devuelve (cat, transform)."""
+    return integracion_ifa.integrar_submapas(submapas_lista)

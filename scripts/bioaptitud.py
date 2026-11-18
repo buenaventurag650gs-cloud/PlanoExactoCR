@@ -15,6 +15,7 @@ from rasterio import features
 from rasterio.transform import from_bounds
 
 import calificacion_ifa as C
+import integracion_ifa
 
 CRS_METRICO = "EPSG:5367"
 
@@ -64,20 +65,9 @@ def rasterizar(gdf_ifa: gpd.GeoDataFrame, canton_m: gpd.GeoDataFrame, res: float
 
 
 def integrar(rasters: list[np.ndarray]) -> np.ndarray:
-    """Integra varios sub-mapas (mismo tamaño) en el IFA Bioaptitud: promedio de los sub-mapas
-    presentes en cada píxel (ignora 0), redondeado a 1-5. 0 donde no hay ninguno."""
-    if not rasters:
-        return np.zeros((1, 1), dtype="uint8")
-    import warnings
-    pila = np.stack(rasters).astype("float32")
-    pila[pila == 0] = np.nan
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        prom = np.nanmean(pila, axis=0)
-    salida = np.zeros(prom.shape, dtype="uint8")
-    valido = ~np.isnan(prom)
-    salida[valido] = np.clip(np.round(prom[valido]), 1, 5).astype("uint8")
-    return salida
+    """Suma algebraica y reclasificación de varios sub-mapas (decreto 32967, 5.8.2 y 5.12.2).
+    Se delega en integracion_ifa para que los cuatro ejes categoricen exactamente igual."""
+    return integracion_ifa.sumar_y_reclasificar(rasters)
 
 
 def submapas(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, res: float = 100.0) -> list[dict]:
@@ -122,13 +112,4 @@ def submapas(capas_por_nombre: dict, canton_m: gpd.GeoDataFrame, res: float = 10
 
 def integrado(submapas_lista: list[dict]):
     """Integra los sub-mapas en el IFA Bioaptitud. Devuelve (cat, transform) o (None, None)."""
-    if not submapas_lista:
-        return None, None
-    # Todos comparten la misma grilla (se rasterizan con el mismo bbox/res).
-    formas = {s["cat"].shape for s in submapas_lista}
-    if len(formas) != 1:
-        # Por seguridad, si no coinciden, usa el primero solo.
-        s = submapas_lista[0]
-        return s["cat"], s["transform"]
-    cat = integrar([s["cat"] for s in submapas_lista])
-    return cat, submapas_lista[0]["transform"]
+    return integracion_ifa.integrar_submapas(submapas_lista)

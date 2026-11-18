@@ -150,7 +150,15 @@ afirmar($('resumen').textContent.includes('2 mapas'), 'apagar el ojito no desmar
 const ley = $('leyenda').textContent;
 afirmar(ley.includes('Límite cantonal'), 'la leyenda muestra el límite cantonal');
 afirmar(ley.includes('Red vial cantonal'), 'la leyenda muestra las capas base visibles');
-afirmar(ley.includes('Muy alta fragilidad'), 'la leyenda muestra la rampa IFA al haber mapas IFA marcados');
+afirmar(ley.includes('Índice de Fragilidad Ambiental') && ley.includes('Muy Alta') && ley.includes('Muy Baja'),
+  'la leyenda muestra la rampa IFA al haber mapas IFA marcados');
+// La rampa del tablero tiene que ser la misma que la del PDF (scripts/integracion_ifa.py).
+const rampaPy = fs.readFileSync('/home/claude/planoexactocr/scripts/integracion_ifa.py', 'utf8');
+const coloresPy = [...rampaPy.matchAll(/^\s*\d: "(#[0-9a-f]{6})",/gm)].map((m) => m[1]);
+const coloresJs = [...fs.readFileSync(path.join(MUNI, 'app.js'), 'utf8')
+  .matchAll(/\['(?:Muy Alta|Alta|Moderada|Baja|Muy Baja)', '(#[0-9a-f]{6})'\]/g)].map((m) => m[1]);
+afirmar(coloresPy.length === 5 && JSON.stringify(coloresPy) === JSON.stringify(coloresJs),
+  `la rampa del tablero coincide con la del PDF (py ${coloresPy} / js ${coloresJs})`);
 const swatches = todos('#leyenda .sw');
 afirmar(swatches.some((s) => s.classList.contains('linea')), 'la leyenda usa cuadrito de línea para capas lineales');
 
