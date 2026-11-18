@@ -75,6 +75,7 @@
   .lam-inst { font-size:10px; color:#555; text-align:right; max-width:2.6in; padding-top:2px; }
   .lam-mapa { flex:1; border:1px solid #111; }
   .lam-mapa .leaflet-container { background:#fff; }
+  .rot-vecino { color:#9a9a9a; font-size:8px; font-weight:600; text-align:center; white-space:nowrap; text-shadow:0 0 2px #fff; }
   .lam-caj { height:1.35in; border:1px solid #111; border-top:none; display:grid; grid-template-columns:2.4in 1fr 0.6in 2.1in; }
   .lam-caj > div { border-left:1px solid #111; padding:5px 7px; overflow:hidden; }
   .caj-simb { border-left:none !important; }
@@ -94,9 +95,11 @@
   .caj-fila { display:flex; gap:6px; }
   .caj-fila > span { flex:1; }
 
+  /* Sin esto, el navegador borra los colores de fondo al imprimir (cuadritos de leyenda en blanco). */
+  .lamina, .lamina * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: letter; margin: 0; }
   @media print {
-    #app, #avisos, #vistaPrevia { display:none !important; }
+    #app, #avisos, #vistaPrevia, #cajetinPreview { display:none !important; }
     #laminas { position:static; left:0; }
     .lamina { page-break-after: always; }
     .lamina:last-child { page-break-after: auto; }

@@ -41,6 +41,7 @@
   let cantonSel = null;
   let cantonLayer = null;
   let muniLogo = null;
+  let cantonesTodos = null;          // todos los cantones, para dibujar los vecinos
 
   // Capas base que se muestran al elegir cantón (del mapa base del INVU).
   const INFO_BASE = ['Límites distritales', 'Red vial cantonal', 'Zona marítimo terrestre'];
@@ -82,6 +83,19 @@
       try { return turf.booleanIntersects(f, cantonSel); } catch (e) { return true; }
     });
     return Object.assign({}, fc, { features: dentro });
+  }
+
+  // Cantones vecinos: los que tocan el recuadro ampliado del cantón elegido (menos él mismo).
+  function vecinosDe(feat) {
+    if (!cantonesTodos || !feat) return [];
+    const [a, b, c, d] = bboxDe(feat);
+    const mx = (c - a) * 0.15, my = (d - b) * 0.15;
+    const caja = turf.bboxPolygon([a - mx, b - my, c + mx, d + my]);
+    const propio = feat.properties.k;
+    return cantonesTodos.features.filter((f) => {
+      if (!f.properties || f.properties.k === propio) return false;
+      try { return turf.booleanIntersects(f, caja); } catch (e) { return false; }
+    });
   }
   function avisar(mensaje) {
     const el = $('avisos');
@@ -259,6 +273,7 @@
 
   // ---------- selector de cantón ----------
   const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson').then((r) => r.json()).catch(() => null);
+  cantonesTodos = baseCantones;
   if (baseCantones) {
     const nombres = [...new Set(baseCantones.features.map((f) => f.properties.k))].sort();
     const sel = $('selCanton');
@@ -360,7 +375,18 @@
                                  scrollWheelZoom: false, doubleClickZoom: false });
       laminasMapas.push(lm);
       // Sin tiles: fondo blanco, solo las capas vectoriales (cartografía de plan regulador).
-      cantonLayer && L.geoJSON(cantonSel, { style: { color: '#222', weight: 1.5, fill: false } }).addTo(lm);
+      // Cantones vecinos de contexto (gris + rótulo), como en la lámina de referencia.
+      vecinosDe(cantonSel).forEach((v) => {
+        L.geoJSON(v, { style: { color: '#c2c2c2', weight: 0.6, fillColor: '#ececec', fillOpacity: 0.75 },
+                       interactive: false }).addTo(lm);
+        try {
+          const ctr = turf.centroid(v).geometry.coordinates;
+          L.marker([ctr[1], ctr[0]], { interactive: false, icon: L.divIcon({
+            className: 'rot-vecino', html: String(v.properties.k).toUpperCase(),
+            iconSize: [80, 12], iconAnchor: [40, 6] }) }).addTo(lm);
+        } catch (e) { /* sin rótulo */ }
+      });
+      cantonLayer && L.geoJSON(cantonSel, { style: { color: '#222', weight: 1.5, fill: false }, interactive: false }).addTo(lm);
       const leyenda = [['Límite cantonal', '#222']];
       const nombres = insumosReales(ids[i]);
       for (const nombre of nombres) {
