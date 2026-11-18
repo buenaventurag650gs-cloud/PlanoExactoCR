@@ -15,6 +15,7 @@ const HOSTS_PERMITIDOS = new Set([
   "geoserver.mag.go.cr",
   "www.snitcr.go.cr",
   "snitcr.go.cr",
+  "images.squarespace-cdn.com",   // escudos municipales (munis.cr)
 ]);
 
 const CORS = {

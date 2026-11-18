@@ -46,13 +46,15 @@ NIVELES_IFA = {
     5: "Muy Baja",
 }
 
-# Colores oficiales del método (§5.3.5). 1 = más frágil = verde oscuro; 5 = menos frágil = rojo.
+# Rampa de colores oficial del IFA, tomada de las láminas reales de un plan regulador
+# (Ecoplan, cantón Abangares): Muy Alta = rosado → Muy Baja = verde oscuro.
+# 1 = más frágil = rosado; 5 = menos frágil = verde oscuro.
 COLORES_IFA = {
-    1: "#1a5e1a",  # verde oscuro  — Muy Alta fragilidad
-    2: "#7fbf4d",  # verde claro   — Alta
-    3: "#f2d64b",  # amarillo      — Moderada
-    4: "#e8963f",  # naranja       — Baja
-    5: "#a01818",  # rojo oscuro   — Muy Baja fragilidad
+    1: "#f09cba",  # rosado        — Muy Alta fragilidad
+    2: "#f5a623",  # naranja       — Alta
+    3: "#eedb5d",  # amarillo      — Moderada
+    4: "#aecf8a",  # verde claro   — Baja
+    5: "#5e9150",  # verde oscuro  — Muy Baja fragilidad
 }
 
 

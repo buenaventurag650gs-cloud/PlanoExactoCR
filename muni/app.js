@@ -187,9 +187,12 @@
   // o, si no está, desde un archivo local escudos/<canton>.png.
   function aplicarIdentidadCanton(canton) {
     muniNombreVal = 'Municipalidad de ' + canton;
-    const url = escudosDB[canton] || `escudos/${slug(canton)}.png`;
+    const raw = escudosDB[canton] || `escudos/${slug(canton)}.png`;
+    // Los escudos del CDN se piden por el proxy del Worker (evita bloqueo por hotlink/CORS y
+    // deja que el escudo entre al PDF como imagen). Los locales se piden directo.
+    const url = /^https?:/.test(raw) ? '/geoproxy?url=' + encodeURIComponent(raw) : raw;
     const img = new Image();
-    img.crossOrigin = 'anonymous';   // el CDN permite CORS; así el escudo entra al PDF como imagen
+    img.crossOrigin = 'anonymous';   // el proxy manda CORS; así el escudo entra al PDF como imagen
     img.onload = () => {
       try {
         const c = document.createElement('canvas');
@@ -396,7 +399,7 @@
               <div class="caj-muni">${muni}</div>
               <div class="caj-canton">Cantón de ${canton}</div>
               <div class="caj-mapa">${m.nombre}</div>
-              <div class="caj-elab">Elaborado con <img src="planoexacto.png" class="caj-pe"> PlanoExacto</div>
+              <div class="caj-elab"><span>Elaborado por</span><img src="planoexacto.png" class="caj-pe"></div>
             </div>
           </div>
           <div class="caj-norte"><div class="flecha">▲</div><div>N</div></div>
