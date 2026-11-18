@@ -46,18 +46,23 @@
   // Capas base que se muestran al elegir cantón (del mapa base del INVU).
   const INFO_BASE = ['Límites distritales', 'Red vial cantonal', 'Zona marítimo terrestre'];
 
+  // Paleta tomada de la lámina de referencia de Liberia (forma y colores del POT).
   const COLORES = {
-    'Límites cantonales': '#8b949e', 'Límites distritales': '#30363d',
-    'Zona marítimo terrestre': '#58a6ff', 'Estado del plan regulador por cantón': '#f0883e',
-    'Zonas de vida': '#3fb950', 'Infraestructura general': '#d29922', 'Red eléctrica': '#db6d28',
-    'ASADAS y abastecimiento de agua': '#39c5cf', 'Sedes de salud': '#f85149',
-    'Red vial cantonal': '#9aa0a6', 'Uso urbano 1:5mil': '#d9534f', 'Cultivos 1:5mil': '#8fbc8f',
-    'Áreas silvestres protegidas': '#1b5e20', 'Corredores biológicos': '#81c784',
+    'Límites cantonales': '#8b949e', 'Límites distritales': '#222222',
+    'Zona marítimo terrestre': '#6fb1e0', 'Estado del plan regulador por cantón': '#f0883e',
+    'Zonas de vida': '#8fcf9a', 'Infraestructura general': '#d29922', 'Red eléctrica': '#db6d28',
+    'ASADAS y abastecimiento de agua': '#39c5cf', 'Sedes de salud': '#e03131',
+    'Red vial cantonal': '#a07850',           // vialidad cantonal: café
+    'Curvas de nivel 10m': '#c79a6b',          // curvas: tierra/café (como la referencia)
+    'Uso urbano 1:5mil': '#f2a7c4',            // áreas urbanas: rosado
+    'Cultivos 1:5mil': '#cfe3b0',              // cultivos: verde claro
+    'Hidrografía': '#3b82c4', 'Cuerpos de agua': '#9ec9e8',
+    'Áreas silvestres protegidas': '#1b5e20', 'Corredores biológicos': '#7cc47f',
     'Patrimonio Natural del Estado': '#388e3c', 'Registro Nacional de Humedales': '#4fc3f7',
     'Áreas de Conservación': '#b2dfdb', 'Cobertura forestal 2020': '#2d6a4f',
-    'Coronas de deslizamientos': '#e03131', 'Deslizamientos': '#f08c00',
-    'Fallas del cuaternario': '#862e9c', 'Áreas con potencial a inundación': '#1971c2',
-    'Capacidad de uso de la tierra': '#a9742f'
+    'Coronas de deslizamientos': '#e03131', 'Deslizamientos': '#f0883e',
+    'Fallas del cuaternario': '#8e44ad', 'Áreas con potencial a inundación': '#5a9fd4',
+    'Capacidad de uso de la tierra': '#c79a6b'
   };
   const colorDe = (n) => COLORES[n] || '#4f8cff';
 
@@ -318,11 +323,13 @@
 
   // ---------- imprimir: una lámina por mapa seleccionado, con título y cajetín ----------
   let laminasMapas = [];
+  let laminasInsets = [];
   async function construirLaminas() {
     const cont = $('laminas');
     cont.innerHTML = '';
     laminasMapas.forEach((m) => m.remove());
-    laminasMapas = [];
+    laminasInsets.forEach((m) => m.remove());
+    laminasMapas = []; laminasInsets = [];
 
     const muni = $('muniNombre').value.trim() || ('Municipalidad de ' + $('selCanton').value);
     const canton = $('selCanton').value;
@@ -344,7 +351,10 @@
           </div>
           <span class="lam-inst">${m.institucion}</span>
         </div>
-        <div class="lam-mapa" id="${idMapa}"></div>
+        <div class="lam-mapa-wrap">
+          <div class="lam-mapa" id="${idMapa}"></div>
+          <div class="lam-inset" id="ins-${i}"><div class="lam-inset-tit">Ubicación del cantón</div></div>
+        </div>
         <div class="lam-caj">
           <div class="caj-simb">
             <div class="caj-rot">Simbología</div>
@@ -402,16 +412,28 @@
       L.control.scale({ imperial: false, position: 'bottomright', maxWidth: 140 }).addTo(lm);
       const b = L.geoJSON(cantonSel).getBounds();
       lm.fitBounds(b, { padding: [10, 10] });
+
+      // Recuadro de ubicación: el país en gris con el cantón en rojo.
+      if (cantonesTodos) {
+        const ins = L.map(`ins-${i}`, { zoomControl: false, attributionControl: false, dragging: false,
+                                        scrollWheelZoom: false, doubleClickZoom: false, keyboard: false, boxZoom: false });
+        laminasInsets.push(ins);
+        L.geoJSON(cantonesTodos, { style: { color: '#c4c4c4', weight: 0.3, fillColor: '#ededed', fillOpacity: 1 }, interactive: false }).addTo(ins);
+        L.geoJSON(cantonSel, { style: { color: '#d11a1a', weight: 0.6, fillColor: '#d11a1a', fillOpacity: 1 }, interactive: false }).addTo(ins);
+      }
     }
     // Deja que los mapas tomen tamaño antes de imprimir.
-    await new Promise((res) => setTimeout(res, 300));
+    await new Promise((res) => setTimeout(res, 350));
     laminasMapas.forEach((lm) => { lm.invalidateSize(); lm.fitBounds(L.geoJSON(cantonSel).getBounds(), { padding: [10, 10] }); });
+    const boundsPais = cantonesTodos ? L.geoJSON(cantonesTodos).getBounds() : null;
+    laminasInsets.forEach((ins) => { ins.invalidateSize(); if (boundsPais) ins.fitBounds(boundsPais, { padding: [3, 3] }); });
     await new Promise((res) => setTimeout(res, 300));
   }
 
   function limpiarLaminas() {
     laminasMapas.forEach((m) => m.remove());
-    laminasMapas = [];
+    laminasInsets.forEach((m) => m.remove());
+    laminasMapas = []; laminasInsets = [];
     $('laminas').innerHTML = '';
     document.body.classList.remove('imprimiendo');
   }
