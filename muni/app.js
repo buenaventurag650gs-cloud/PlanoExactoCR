@@ -68,7 +68,7 @@
     'Curvas de nivel 10m': '#c79a6b',          // curvas: tierra/café (como la referencia)
     'Uso urbano 1:5mil': '#f2a7c4',            // áreas urbanas: rosado
     'Cultivos 1:5mil': '#cfe3b0',              // cultivos: verde claro
-    'Hidrografía': '#3b82c4', 'Cuerpos de agua': '#9ec9e8',
+    'Hidrografía': '#3b82c4', 'Red hídrica': '#3b82c4', 'Cuerpos de agua': '#9ec9e8',
     'Áreas silvestres protegidas': '#1b5e20', 'Corredores biológicos': '#7cc47f',
     'Patrimonio Natural del Estado': '#388e3c', 'Registro Nacional de Humedales': '#4fc3f7',
     'Áreas de Conservación': '#b2dfdb', 'Cobertura forestal 2020': '#2d6a4f',
@@ -187,28 +187,31 @@
   // o, si no está, desde un archivo local escudos/<canton>.png.
   function aplicarIdentidadCanton(canton) {
     muniNombreVal = 'Municipalidad de ' + canton;
-    const raw = escudosDB[canton] || `escudos/${slug(canton)}.png`;
-    // Los escudos del CDN se piden por el proxy del Worker (evita bloqueo por hotlink/CORS y
-    // deja que el escudo entre al PDF como imagen). Los locales se piden directo.
+    // Primero un archivo local escudos/<cantón>.png (para poder actualizar un escudo viejo),
+    // y si no existe, la base de datos de munis.cr. Se prueban en orden.
+    const fuentes = [`escudos/${slug(canton)}.png`, escudosDB[canton]].filter(Boolean);
+    cargarEscudo(fuentes);
+    actualizarCajetinPreview();
+  }
+
+  function cargarEscudo(fuentes) {
+    if (!fuentes.length) { muniLogo = null; actualizarCajetinPreview(); return; }
+    const raw = fuentes[0];
+    // Los escudos del CDN se piden por el proxy (evita bloqueo por hotlink/CORS y entran al PDF).
     const url = /^https?:/.test(raw) ? '/geoproxy?url=' + encodeURIComponent(raw) : raw;
     const img = new Image();
-    img.crossOrigin = 'anonymous';   // el proxy manda CORS; así el escudo entra al PDF como imagen
+    img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
         const c = document.createElement('canvas');
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         c.getContext('2d').drawImage(img, 0, 0);
         muniLogo = c.toDataURL('image/png');
-      } catch (e) { muniLogo = url; }   // si el canvas se "ensucia", usamos la URL directa
+      } catch (e) { muniLogo = url; }
       actualizarCajetinPreview();
     };
-    img.onerror = () => {
-      // Si falló con CORS, reintentamos sin canvas (solo para mostrar/imprimir por URL).
-      muniLogo = url;
-      actualizarCajetinPreview();
-    };
+    img.onerror = () => cargarEscudo(fuentes.slice(1));   // prueba la siguiente fuente
     img.src = url;
-    actualizarCajetinPreview();
   }
 
   // Muestra el cajetín (escudo + muni + cantón) sobre el mapa, como se verá en las láminas.

@@ -179,6 +179,19 @@
       ]
     },
     {
+      "eje": "Base cartográfica",
+      "capas": [
+        {
+          "nombre": "Red hídrica",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=hidrografia_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "ríos y quebradas; capa nacional, se recorta al cantón"
+        }
+      ]
+    },
+    {
       "eje": "Infraestructura y servicios",
       "capas": [
         {
