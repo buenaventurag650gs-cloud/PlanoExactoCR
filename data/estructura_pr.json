@@ -1,0 +1,2558 @@
+{
+ "version": "1.0",
+ "generado": "2026-11-18",
+ "fuente": "Desglose de entregables y productos del Plan Regulador (guía interna, nov 2026)",
+ "nota": "Estructura del Plan Regulador compartida por atlas.planoexactocr.com y calibrador.planoexactocr.com. Un solo archivo para que los códigos de mapa, las etapas y los entregables sean los mismos en los dos sitios y en el expediente que llega al INVU.",
+ "proyeccion": "CRTM05 (EPSG:5367)",
+ "codificacion": {
+  "patron": "M[bloque].[componente].[correlativo]",
+  "ejemplo": "M1.1.04 = bloque 1 (variable ambiental), componente 1 (geoaptitud), mapa 04 (susceptibilidad a deslizamientos)",
+  "reglas": [
+   "El código es permanente. Un mapa que se reutiliza en otro producto conserva su código de origen.",
+   "Un código no se recicla. Si un mapa se elimina, su código se retira.",
+   "Mapas de varias hojas: sufijo -h1, -h2.",
+   "Versiones: sufijo _v01, _v02 en el archivo; versión y fecha en el cajetín.",
+   "Nombre de PDF: M1.1.04_SusceptibilidadDeslizamientos_v01.pdf; de capa: m1_1_04_susc_desliz.shp (minúsculas, guión bajo, sin tildes ni espacios).",
+   "Correlativo 90 reservado para el mapa que integra el componente.",
+   "Carpetas: PR_[código]_[NC] con una subcarpeta por bloque (0_MapaBase, 1_Ambiental, 2_Diagnostico, 3_Pronostico, 4_Propuesta).",
+   "Ficha técnica por mapa: código, título, objetivo, insumos y fechas, método, escala, unidad mínima cartografiable, responsable, validación y limitaciones."
+  ]
+ },
+ "escalas": {
+  "trabajo": "1:10.000 base cantonal; 1:5.000 en áreas urbanas y costeras",
+  "lienzo_horizontal": [
+   "1:5.000",
+   "1:10.000",
+   "1:25.000"
+  ],
+  "lienzo_vertical": [
+   "1:50.000",
+   "1:100.000"
+  ],
+  "nota": "El Anexo 1 del DE 44710 admite 1:50.000; usarla solo en sectores rurales extensos y justificarlo."
+ },
+ "normas": [
+  {
+   "instrumento": "Ley de Planificación Urbana N.º 4240",
+   "fija": "Competencia municipal (art. 15), contenido mínimo del PR (art. 16), requisitos de adopción (art. 17) y los cinco reglamentos de desarrollo urbano (art. 19 y ss.)",
+   "estado": "Vigente"
+  },
+  {
+   "instrumento": "MAPRIOT 2025 (INVU) + guías 2026",
+   "fija": "Etapas, productos mínimos requeridos, trámite de revisión por etapas, adopción y seguimiento",
+   "estado": "Aprobado en sesión JDINVU-028-2025 (6-nov-2025); guías en el Alcance 29 a La Gaceta 53 (18-mar-2026)"
+  },
+  {
+   "instrumento": "DE 44710-MINAE (RIVAIOT)",
+   "fija": "EsIVA y su viabilidad ambiental ante SETENA; dos metodologías: Anexo 1 IFA y Anexo 2 RIVAIOT",
+   "estado": "Publicado el 17-feb-2025; vigente desde el 18-ago-2025; deroga el DE 32967-MINAE"
+  },
+  {
+   "instrumento": "Complementarios",
+   "fija": "Guía INVU de Gestión del Riesgo y Acción Climática; Guía de comunicación; Cuadrantes Urbanos; criterio SENARA sobre acuíferos; consulta indígena donde aplique",
+   "estado": "Vigentes; aplicar según el cantón"
+  }
+ ],
+ "clases_ifa": [
+  {
+   "orden": 1,
+   "numeral": "I",
+   "fragilidad": "Muy baja",
+   "color": "#3d983a",
+   "lectura": "Terreno estable, sin amenazas relevantes ni valores ecológicos críticos",
+   "uso": "Desarrollo urbano de mayor intensidad",
+   "estrategia": "Fomentar",
+   "zonificacion": "Zonas de consolidación, densificación y usos mixtos"
+  },
+  {
+   "orden": 2,
+   "numeral": "II",
+   "fragilidad": "Baja",
+   "color": "#94d180",
+   "lectura": "Limitaciones menores y manejables",
+   "uso": "Desarrollo urbano con medidas estándar",
+   "estrategia": "Controlar",
+   "zonificacion": "Residencial media y alta, comercio, servicios"
+  },
+  {
+   "orden": 3,
+   "numeral": "III",
+   "fragilidad": "Moderada",
+   "color": "#ffff33",
+   "lectura": "Limitaciones que exigen estudios o diseño específico",
+   "uso": "Desarrollo de baja o media intensidad con condiciones",
+   "estrategia": "Condicionar",
+   "zonificacion": "Residencial de baja densidad, agroturismo, usos condicionales con estudio geotécnico o hidrogeológico"
+  },
+  {
+   "orden": 4,
+   "numeral": "IV",
+   "fragilidad": "Alta",
+   "color": "#ff7f00",
+   "lectura": "Limitaciones severas o valores ambientales altos",
+   "uso": "Usos de muy baja intensidad, agropecuario y forestal",
+   "estrategia": "Restringir",
+   "zonificacion": "Zonas rurales, agroforestales, de amortiguamiento; cobertura y lote mínimo restrictivos"
+  },
+  {
+   "orden": 5,
+   "numeral": "V",
+   "fragilidad": "Muy alta",
+   "color": "#e41a1c",
+   "lectura": "Amenaza alta, protección legal o ecosistema crítico",
+   "uso": "Conservación, sin urbanización",
+   "estrategia": "Prohibir",
+   "zonificacion": "Zonas de protección, conservación y riesgo; parques lineales en riberas"
+  }
+ ],
+ "clases_ifa_nota": "El numeral romano es el oficial y el que citan los reglamentos: Zona I es la MENOS frágil y Zona V la más frágil. `orden` es el rango por fragilidad, no el valor del ráster: el ráster del atlas numera al revés (1 = más frágil), porque sigue la escala de puntos de la Tabla Nº 3 del 32967. Lo que coincide en los dos lados, y lo único que sale impreso, es el par nombre + color.",
+ "etapas": [
+  {
+   "numero": 1,
+   "nombre": "Preparación preliminar",
+   "bloque": "Elaboración",
+   "lidera": "Municipalidad",
+   "revisa": "Concejo Municipal",
+   "cierra": "Comisión del PR, Términos de Referencia y Equipo Planificador contratado"
+  },
+  {
+   "numero": 2,
+   "nombre": "Elaboración del Mapa Base",
+   "bloque": "Elaboración",
+   "lidera": "Equipo Planificador",
+   "revisa": "Municipalidad (y revisión por etapa del INVU)",
+   "cierra": "Mapa Base y geodatabase del Área de Planificación"
+  },
+  {
+   "numero": 3,
+   "nombre": "Evaluación ambiental (variable ambiental)",
+   "bloque": "Elaboración",
+   "lidera": "Proponente (Municipalidad) + equipo ambiental",
+   "revisa": "SETENA (viabilidad ambiental)",
+   "cierra": "EsIVA con IFA integrado y condicionantes ambientales"
+  },
+  {
+   "numero": 4,
+   "nombre": "Diagnóstico territorial",
+   "bloque": "Elaboración",
+   "lidera": "Equipo Planificador",
+   "revisa": "Comisión del PR / INVU por etapa",
+   "cierra": "Documento de Diagnóstico, Atlas y Mapa Unificado del Diagnóstico"
+  },
+  {
+   "numero": 5,
+   "nombre": "Pronóstico territorial",
+   "bloque": "Elaboración",
+   "lidera": "Equipo Planificador",
+   "revisa": "Comisión del PR",
+   "cierra": "Escenarios (tendencial, deseable, posible) y modelo territorial elegido"
+  },
+  {
+   "numero": 6,
+   "nombre": "Propuesta",
+   "bloque": "Elaboración",
+   "lidera": "Equipo Planificador",
+   "revisa": "Comisión del PR, SETENA (análisis de alcance y reglamento ambiental)",
+   "cierra": "Política de Desarrollo Urbano + 5 Reglamentos + Atlas de la Propuesta"
+  },
+  {
+   "numero": 7,
+   "nombre": "Audiencia Pública",
+   "bloque": "Trámite",
+   "lidera": "Municipalidad",
+   "revisa": "Art. 17 Ley 4240",
+   "cierra": "Acta, registro de observaciones y matriz de respuestas"
+  },
+  {
+   "numero": 8,
+   "nombre": "Revisión por parte del INVU",
+   "bloque": "Trámite",
+   "lidera": "INVU (Ventanilla Única)",
+   "revisa": "INVU, matriz de criterios mínimos cumple / no cumple (art. 16)",
+   "cierra": "Oficio de aprobación INVU"
+  },
+  {
+   "numero": 9,
+   "nombre": "Adopción y publicación",
+   "bloque": "Adopción",
+   "lidera": "Municipalidad",
+   "revisa": "Concejo Municipal",
+   "cierra": "Acuerdo de adopción y publicación en La Gaceta"
+  },
+  {
+   "numero": 10,
+   "nombre": "Seguimiento y evaluación",
+   "bloque": "Gestión",
+   "lidera": "Municipalidad",
+   "revisa": "Municipalidad / INVU",
+   "cierra": "Matriz de seguimiento e informes periódicos (revisión recomendada cada 5 años)"
+  }
+ ],
+ "productos": [
+  {
+   "codigo": "E1.1",
+   "etapa": 1,
+   "actividad": "Designar la Comisión del Plan Regulador",
+   "entregable": "Acuerdo del Concejo que designa la Comisión",
+   "contenido": "Integrantes (Concejo, Alcaldía, técnicos municipales, representación comunal), funciones, periodicidad de sesiones",
+   "responsable": "Concejo Municipal",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E1.2",
+   "etapa": 1,
+   "actividad": "Delimitar preliminarmente el Área de Planificación",
+   "entregable": "Descripción textual y croquis del Área de Planificación preliminar",
+   "contenido": "Límites cantonales y distritales, exclusiones (ZMT con PRC propio, ASP, territorios indígenas), justificación",
+   "responsable": "Municipalidad",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E1.3",
+   "etapa": 1,
+   "actividad": "Estimar el presupuesto global",
+   "entregable": "Documento Presupuesto Global",
+   "contenido": "Costos por etapa, estudios especializados, cartografía, participación, publicaciones en La Gaceta",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E1.4",
+   "etapa": 1,
+   "actividad": "Asegurar financiamiento",
+   "entregable": "Fuente de financiamiento asegurada",
+   "contenido": "Presupuesto municipal, IFAM, MIDEPLAN (fondo de preinversión), convenios interinstitucionales",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E1.5",
+   "etapa": 1,
+   "actividad": "Elaborar Términos de Referencia",
+   "entregable": "TdR de la contratación",
+   "contenido": "Alcance por etapa, productos mínimos MAPRIOT 2025, metodología ambiental elegida (Anexo 1 IFA o Anexo 2 RIVAIOT), perfil del equipo, cronograma, forma de pago por entregable",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E1.6",
+   "etapa": 1,
+   "actividad": "Seleccionar al Equipo Planificador",
+   "entregable": "Equipo Planificador contratado",
+   "contenido": "Coordinación, urbanismo, SIG, ambiente (geólogo, hidrogeólogo, biólogo, edafólogo), social, económico, jurídico; inscripción ante SETENA cuando aplique",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E2.1",
+   "etapa": 2,
+   "actividad": "Geodatabase del Mapa Base",
+   "entregable": "Geodatabase",
+   "contenido": "Provincias, cantones, distritos y localidades. Shapefile en CRTM-05 con funcionalidad SIG",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.2",
+   "etapa": 2,
+   "actividad": "Topografía",
+   "entregable": "DEM y curvas de nivel",
+   "contenido": "Modelo digital de elevación y curvas, preferiblemente 1:5.000. Ráster + vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.3",
+   "etapa": 2,
+   "actividad": "Hidrografía",
+   "entregable": "Capa de hidrografía",
+   "contenido": "Ríos, quebradas, cuerpos de agua, nacientes. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.4",
+   "etapa": 2,
+   "actividad": "Infraestructura vial",
+   "entregable": "Capa de red vial",
+   "contenido": "Red nacional y cantonal, vías férreas, puentes. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.5",
+   "etapa": 2,
+   "actividad": "Usos actuales y áreas urbanas",
+   "entregable": "Capa de usos",
+   "contenido": "Huella urbana, usos predominantes. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.6",
+   "etapa": 2,
+   "actividad": "Cobertura vegetal",
+   "entregable": "Capa de cobertura",
+   "contenido": "Bosque, charral, pastos, cultivos, manglar, humedal. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.7",
+   "etapa": 2,
+   "actividad": "Áreas de riesgo",
+   "entregable": "Capa de amenazas",
+   "contenido": "Amenazas reconocidas por la CNE y estudios previos. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.8",
+   "etapa": 2,
+   "actividad": "Áreas Bajo Régimen Especial (ABRE)",
+   "entregable": "Capa de ABRE",
+   "contenido": "ASP, ZMT, territorios indígenas, patrimonio, conos de aproximación de aeropuertos. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E2.9",
+   "etapa": 2,
+   "actividad": "Mosaico catastral",
+   "entregable": "Capa catastral",
+   "contenido": "Base para zonificación y Mapa Oficial. Vector",
+   "responsable": "Equipo Planificador",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E2.10",
+   "etapa": 2,
+   "actividad": "Ortofoto o imagen reciente",
+   "entregable": "Ráster de ortofoto",
+   "contenido": "Insumo de fotointerpretación; vuelo dron en zonas urbanas o costeras de detalle",
+   "responsable": "Equipo Planificador",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E2.11",
+   "etapa": 2,
+   "actividad": "Mapa Base impreso + memoria",
+   "entregable": "PDF tabloide + memoria técnica",
+   "contenido": "Fuentes, fecha, proyección, autor, limitaciones. PDF tabloide (432 × 279 mm), plantilla INVU",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "A1",
+   "etapa": 3,
+   "actividad": "Elegir la metodología y fijarla en los TdR",
+   "entregable": "Acuerdo municipal o nota del proponente",
+   "contenido": "Anexo 1 (IFA) o Anexo 2 (RIVAIOT) del DE 44710",
+   "responsable": "Municipalidad (proponente)",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "A2",
+   "etapa": 3,
+   "actividad": "Abrir el expediente en la plataforma digital de SETENA",
+   "entregable": "Formulario de inicio",
+   "contenido": "Declaración jurada, equipo consultor inscrito",
+   "responsable": "Proponente + equipo ambiental",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "A3",
+   "etapa": 3,
+   "actividad": "Fase I: IFA por componentes e IFA integrado",
+   "entregable": "Informe IFA + atlas IFA + capas digitales",
+   "contenido": "Los mapas M1.1.01 a M1.9.02 con sus fichas técnicas",
+   "responsable": "Equipo ambiental",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "A4",
+   "etapa": 3,
+   "actividad": "Fase II: AAA, una vez existe el borrador de zonificación",
+   "entregable": "Informe AAA + matriz de compatibilidad + capacidad de carga",
+   "contenido": "Matriz C y los mapas M1.9.03 y M1.9.04",
+   "responsable": "Equipo ambiental + urbanismo",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "A5",
+   "etapa": 3,
+   "actividad": "Fase III: RDS, integrado en el Reglamento de Zonificación",
+   "entregable": "RDS (articulado) + matriz de condicionantes",
+   "contenido": "Matriz D: de la condicionante a la norma",
+   "responsable": "Equipo ambiental + jurídico",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "A6",
+   "etapa": 3,
+   "actividad": "Presentar el EsIVA completo",
+   "entregable": "Expediente digital firmado",
+   "contenido": "Informe, atlas, geodatabase, matrices A-D, declaración jurada",
+   "responsable": "Proponente",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "A7",
+   "etapa": 3,
+   "actividad": "Atender observaciones de SETENA",
+   "entregable": "Informe de respuestas",
+   "contenido": "Respuesta punto por punto con la corrección aplicada",
+   "responsable": "Equipo ambiental",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "A8",
+   "etapa": 3,
+   "actividad": "Obtener la viabilidad ambiental",
+   "entregable": "Resolución de VA",
+   "contenido": "Plazo de revisión de 60 días",
+   "responsable": "SETENA",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "A9",
+   "etapa": 3,
+   "actividad": "Incorporar la VA y sus condicionantes en la Propuesta final",
+   "entregable": "Matriz de trazabilidad VA → reglamentos",
+   "contenido": "Cada condicionante de la VA ligada al artículo que la gestiona",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E5.1",
+   "etapa": 5,
+   "actividad": "Análisis de tendencias",
+   "entregable": "Documento de tendencias",
+   "contenido": "Crecimiento de la huella urbana, demanda de vivienda y suelo al horizonte, presión sobre zonas IFA IV-V",
+   "responsable": "Equipo Planificador",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E5.2",
+   "etapa": 5,
+   "actividad": "Escenario tendencial",
+   "entregable": "Mapa y memoria del escenario",
+   "contenido": "Qué pasa si no hay plan: dónde crece, qué riesgos y conflictos aparecen",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E5.3",
+   "etapa": 5,
+   "actividad": "Escenario deseable",
+   "entregable": "Mapa y memoria del escenario",
+   "contenido": "Imagen objetivo construida con actores",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E5.4",
+   "etapa": 5,
+   "actividad": "Escenario posible o concertado",
+   "entregable": "Mapa y memoria del escenario",
+   "contenido": "Lo alcanzable según capacidad de carga, finanzas municipales y condicionantes ambientales",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E5.5",
+   "etapa": 5,
+   "actividad": "Cálculo de demanda de suelo",
+   "entregable": "Cuadro de demanda",
+   "contenido": "Hectáreas necesarias por uso y densidad para la población proyectada",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E5.6",
+   "etapa": 5,
+   "actividad": "Modelo territorial elegido",
+   "entregable": "Esquema de estructura territorial",
+   "contenido": "Centralidades, ejes, cuadrantes urbanos, áreas de protección, rural",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E5.7",
+   "etapa": 5,
+   "actividad": "Mapas de escenarios",
+   "entregable": "Un mapa por escenario + modelo territorial",
+   "contenido": "Atlas del Pronóstico",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E7.1",
+   "etapa": 7,
+   "actividad": "Acuerdo del Concejo que convoca",
+   "entregable": "Acuerdo del Concejo",
+   "contenido": "Fecha, hora, lugar y modalidad",
+   "responsable": "Concejo Municipal",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E7.2",
+   "etapa": 7,
+   "actividad": "Aviso en La Gaceta + divulgación adicional",
+   "entregable": "Publicación oficial",
+   "contenido": "Local, fecha y hora; publicado con la antelación legal (15 días hábiles, verificar contra el texto vigente del art. 17)",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E7.3",
+   "etapa": 7,
+   "actividad": "Expediente disponible para consulta",
+   "entregable": "Expediente público",
+   "contenido": "PDU, reglamentos, atlas y EsIVA accesibles en físico y en línea",
+   "responsable": "Municipalidad",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E7.4",
+   "etapa": 7,
+   "actividad": "Material de comunicación",
+   "entregable": "Presentación y resúmenes",
+   "contenido": "Presentación, resúmenes, mapas impresos (Guía de comunicación INVU)",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E7.5",
+   "etapa": 7,
+   "actividad": "Acta de la audiencia",
+   "entregable": "Acta",
+   "contenido": "Asistencia, desarrollo, observaciones verbales",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E7.6",
+   "etapa": 7,
+   "actividad": "Registro de observaciones escritas",
+   "entregable": "Registro",
+   "contenido": "Recibidas en el plazo fijado",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E7.7",
+   "etapa": 7,
+   "actividad": "Matriz de observaciones y respuestas",
+   "entregable": "Matriz de respuestas",
+   "contenido": "Cada observación con decisión: acoge, acoge parcialmente o rechaza, y su justificación técnica",
+   "responsable": "Equipo Planificador",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E7.8",
+   "etapa": 7,
+   "actividad": "Informe de ajustes a la Propuesta",
+   "entregable": "Informe de ajustes",
+   "contenido": "Cambios introducidos tras la audiencia; si tocan la zonificación, revisar coherencia con la VA",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E8.1",
+   "etapa": 8,
+   "actividad": "Nota municipal de solicitud de revisión",
+   "entregable": "Nota de solicitud",
+   "contenido": "Firmada por la Alcaldía, con acuerdo del Concejo",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E8.2",
+   "etapa": 8,
+   "actividad": "Expediente completo por Ventanilla Única de Inversión",
+   "entregable": "Expediente digital",
+   "contenido": "Todos los productos mínimos requeridos de las etapas 1-7",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E8.3",
+   "etapa": 8,
+   "actividad": "Resolución de viabilidad ambiental de SETENA",
+   "entregable": "Resolución de VA",
+   "contenido": "Requisito previo de la revisión",
+   "responsable": "SETENA",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E8.4",
+   "etapa": 8,
+   "actividad": "Cartografía conforme al Instrumento de Verificación",
+   "entregable": "Cartografía conforme",
+   "contenido": "Carpetas, PDF, shapefiles CRTM-05, RGB",
+   "responsable": "Equipo Planificador",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E8.5",
+   "etapa": 8,
+   "actividad": "Autoevaluación contra la matriz de criterios mínimos",
+   "entregable": "Autoevaluación",
+   "contenido": "Cada criterio del art. 16 marcado cumple / no cumple con referencia a página o mapa",
+   "responsable": "Equipo Planificador",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E8.6",
+   "etapa": 8,
+   "actividad": "Respuesta a observaciones del INVU",
+   "entregable": "Informe de subsanación",
+   "contenido": "Informe de subsanación y versión corregida",
+   "responsable": "Equipo Planificador",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E8.7",
+   "etapa": 8,
+   "actividad": "Oficio de aprobación del INVU",
+   "entregable": "Oficio de aprobación",
+   "contenido": "Emitido por el INVU; cierra la etapa",
+   "responsable": "INVU",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E9.1",
+   "etapa": 9,
+   "actividad": "Acuerdo de adopción del Concejo Municipal",
+   "entregable": "Acuerdo de adopción",
+   "contenido": "Adopta el PR aprobado por el INVU, sin cambios sustanciales",
+   "responsable": "Concejo Municipal",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E9.2",
+   "etapa": 9,
+   "actividad": "Publicación en La Gaceta",
+   "entregable": "Publicación oficial",
+   "contenido": "Aviso de adopción con la fecha desde la cual rigen las regulaciones; texto de los reglamentos según el formato de la Imprenta Nacional",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E9.3",
+   "etapa": 9,
+   "actividad": "Versión oficial digital",
+   "entregable": "PDF y capas oficiales",
+   "contenido": "Publicados en el sitio municipal; carga al SNIT recomendada",
+   "responsable": "Municipalidad",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E9.4",
+   "etapa": 9,
+   "actividad": "Transitorios operativos",
+   "entregable": "Transitorios",
+   "contenido": "Trámites en curso, certificados de uso de suelo vigentes",
+   "responsable": "Municipalidad",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E10.1",
+   "etapa": 10,
+   "actividad": "Matriz de seguimiento del PR",
+   "entregable": "Matriz de seguimiento",
+   "contenido": "Indicador, línea base, meta, responsable y frecuencia",
+   "responsable": "Municipalidad",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E10.2",
+   "etapa": 10,
+   "actividad": "Informe periódico de avance",
+   "entregable": "Informe de avance",
+   "contenido": "A la Comisión y al Concejo",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E10.3",
+   "etapa": 10,
+   "actividad": "Registro de certificados de uso de suelo y permisos",
+   "entregable": "Registro",
+   "contenido": "Certificados, permisos y usos no conformes para medir cumplimiento",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E10.4",
+   "etapa": 10,
+   "actividad": "Revisión integral",
+   "entregable": "Revisión del PR",
+   "contenido": "Recomendada cada cinco años (recomendación del Manual, no plazo legal)",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  }
+ ],
+ "entregables": [
+  {
+   "numero": 0,
+   "etapa": 1,
+   "nombre": "Expediente de inicio",
+   "componentes": "Comisión, área preliminar, presupuesto, TdR, contrato",
+   "norma": "MAPRIOT 2025",
+   "revisa": "Concejo",
+   "depende": [],
+   "hito": null,
+   "mes": null,
+   "porcentaje": null,
+   "condicion_de_pago": null
+  },
+  {
+   "numero": 1,
+   "etapa": 2,
+   "nombre": "Plan de trabajo",
+   "componentes": "Marco metodológico, cronograma, plan de participación y comunicación, mapeo de actores",
+   "norma": "MAPRIOT 2025",
+   "revisa": "Comisión",
+   "depende": [
+    0
+   ],
+   "hito": "P1",
+   "mes": 1,
+   "porcentaje": 10,
+   "condicion_de_pago": "Aprobación de la Comisión"
+  },
+  {
+   "numero": 2,
+   "etapa": 2,
+   "nombre": "Mapa Base",
+   "componentes": "Geodatabase, Mapa Base, memoria",
+   "norma": "Guía de Cartografía 2026",
+   "revisa": "Comisión / INVU por etapa",
+   "depende": [
+    1
+   ],
+   "hito": "P2",
+   "mes": 3,
+   "porcentaje": 10,
+   "condicion_de_pago": "Aprobación de la Comisión; revisión por etapa del INVU solicitada"
+  },
+  {
+   "numero": 3,
+   "etapa": 3,
+   "nombre": "EsIVA Fase I — IFA",
+   "componentes": "Informe IFA, Atlas IFA, Matriz A, Mapa IFA Integrado",
+   "norma": "DE 44710 Anexo 1",
+   "revisa": "Comisión (SETENA al final)",
+   "depende": [
+    2
+   ],
+   "hito": "P3",
+   "mes": 7,
+   "porcentaje": 15,
+   "condicion_de_pago": "Informe y atlas M1.1 a M1.9.02 aprobados por la Comisión"
+  },
+  {
+   "numero": 4,
+   "etapa": 4,
+   "nombre": "Diagnóstico Territorial",
+   "componentes": "Documento por ejes, Atlas, Mapa Unificado, memoria de participación",
+   "norma": "Ley 4240 art. 16; MAPRIOT 2025",
+   "revisa": "Comisión / INVU por etapa",
+   "depende": [
+    2,
+    3
+   ],
+   "hito": "P4",
+   "mes": 8,
+   "porcentaje": 15,
+   "condicion_de_pago": "Documento, atlas M2 y memoria de talleres aprobados"
+  },
+  {
+   "numero": 5,
+   "etapa": 5,
+   "nombre": "Pronóstico Territorial",
+   "componentes": "Tendencias, escenarios, demanda de suelo, modelo territorial",
+   "norma": "MAPRIOT 2025",
+   "revisa": "Comisión",
+   "depende": [
+    4
+   ],
+   "hito": null,
+   "mes": null,
+   "porcentaje": null,
+   "condicion_de_pago": null
+  },
+  {
+   "numero": 6,
+   "etapa": 6,
+   "nombre": "Política de Desarrollo Urbano",
+   "componentes": "Principios, visión, objetivos, ejes, acciones, implementación, indicadores",
+   "norma": "Ley 4240 art. 16.a; Guía PDU 2026",
+   "revisa": "Comisión",
+   "depende": [
+    5
+   ],
+   "hito": "P5",
+   "mes": 11,
+   "porcentaje": 10,
+   "condicion_de_pago": "Modelo territorial y PDU validados por la Comisión"
+  },
+  {
+   "numero": 7,
+   "etapa": 6,
+   "nombre": "Borrador de zonificación",
+   "componentes": "Mapa y fichas por zona con parámetros",
+   "norma": "Guía de Reglamentos 2026",
+   "revisa": "Comisión",
+   "depende": [
+    6,
+    3
+   ],
+   "hito": null,
+   "mes": null,
+   "porcentaje": null,
+   "condicion_de_pago": null
+  },
+  {
+   "numero": 8,
+   "etapa": 3,
+   "nombre": "EsIVA Fases II y III — AAA y RDS",
+   "componentes": "Matrices B, C y D, capacidad de carga, cuadro de áreas, RDS",
+   "norma": "DE 44710 Anexo 1",
+   "revisa": "Comisión",
+   "depende": [
+    7
+   ],
+   "hito": "P6",
+   "mes": 13,
+   "porcentaje": 10,
+   "condicion_de_pago": "EsIVA completo presentado en la plataforma de SETENA"
+  },
+  {
+   "numero": 9,
+   "etapa": 3,
+   "nombre": "Presentación del EsIVA y viabilidad ambiental",
+   "componentes": "Expediente digital, declaración jurada, respuestas, resolución de VA",
+   "norma": "DE 44710",
+   "revisa": "SETENA",
+   "depende": [
+    8
+   ],
+   "hito": null,
+   "mes": null,
+   "porcentaje": null,
+   "condicion_de_pago": null
+  },
+  {
+   "numero": 10,
+   "etapa": 6,
+   "nombre": "Reglamentos de Desarrollo Urbano",
+   "componentes": "Zonificación, Fraccionamiento y Urbanizaciones, Mapa Oficial, Renovación Urbana, Construcciones (+ conexos)",
+   "norma": "Ley 4240 art. 19 y ss.; Guía de Reglamentos 2026",
+   "revisa": "Comisión",
+   "depende": [
+    7,
+    8
+   ],
+   "hito": "P7",
+   "mes": 15,
+   "porcentaje": 15,
+   "condicion_de_pago": "Entrega de reglamentos y atlas, y respuestas a SETENA presentadas"
+  },
+  {
+   "numero": 11,
+   "etapa": 6,
+   "nombre": "Atlas de la Propuesta",
+   "componentes": "Zonificación, Vialidad, Mapa Oficial, ARU, condicionantes; PDF + shapefile",
+   "norma": "Guía de Cartografía 2026",
+   "revisa": "Comisión",
+   "depende": [
+    10
+   ],
+   "hito": null,
+   "mes": null,
+   "porcentaje": null,
+   "condicion_de_pago": null
+  },
+  {
+   "numero": 12,
+   "etapa": 7,
+   "nombre": "Audiencia Pública",
+   "componentes": "Aviso en La Gaceta, expediente público, acta, matriz de respuestas, informe de ajustes",
+   "norma": "Ley 4240 art. 17.1",
+   "revisa": "Concejo",
+   "depende": [
+    9,
+    10,
+    11
+   ],
+   "hito": "P8",
+   "mes": 16,
+   "porcentaje": 5,
+   "condicion_de_pago": "Acta y matriz de respuestas entregadas"
+  },
+  {
+   "numero": 13,
+   "etapa": 8,
+   "nombre": "Expediente de revisión INVU y aprobación",
+   "componentes": "Solicitud, expediente digital, autoevaluación de criterios mínimos, subsanaciones, oficio de aprobación",
+   "norma": "Ley 4240 art. 17.2; MAPRIOT 2025",
+   "revisa": "INVU",
+   "depende": [
+    12
+   ],
+   "hito": "P9",
+   "mes": 18,
+   "porcentaje": 10,
+   "condicion_de_pago": "Expediente presentado; conviene retener una parte hasta atender las observaciones del INVU"
+  },
+  {
+   "numero": 14,
+   "etapa": 9,
+   "nombre": "Adopción, publicación y seguimiento",
+   "componentes": "Acuerdo del Concejo, publicación en La Gaceta, versión oficial digital, matriz de seguimiento",
+   "norma": "Ley 4240 art. 17.3-4",
+   "revisa": "Concejo",
+   "depende": [
+    13
+   ],
+   "hito": null,
+   "mes": null,
+   "porcentaje": null,
+   "condicion_de_pago": null
+  }
+ ],
+ "bloques": [
+  {
+   "codigo": "0",
+   "nombre": "Mapa Base",
+   "etapa": 2,
+   "icono": "🗺",
+   "descripcion": "La capa sobre la que se montan el EsIVA, el Diagnóstico y la Propuesta."
+  },
+  {
+   "codigo": "1",
+   "nombre": "Variable ambiental (EsIVA)",
+   "etapa": 3,
+   "icono": "🌱",
+   "descripcion": "Los cuatro componentes del IFA, su integración y las condicionantes ambientales."
+  },
+  {
+   "codigo": "2",
+   "nombre": "Diagnóstico",
+   "etapa": 4,
+   "icono": "🔍",
+   "descripcion": "Seis ejes de lectura del territorio; el ambiental no se duplica, importa el IFA."
+  },
+  {
+   "codigo": "3",
+   "nombre": "Pronóstico",
+   "etapa": 5,
+   "icono": "🔮",
+   "descripcion": "Escenarios y modelo territorial elegido."
+  },
+  {
+   "codigo": "4",
+   "nombre": "Propuesta",
+   "etapa": 6,
+   "icono": "📐",
+   "descripcion": "Zonificación, vialidad, mapa oficial y condicionantes normativas."
+  },
+  {
+   "codigo": "5",
+   "nombre": "Seguimiento",
+   "etapa": 10,
+   "icono": "📊",
+   "descripcion": "Reservado para los mapas de seguimiento del plan adoptado."
+  }
+ ],
+ "componentes": [
+  {
+   "codigo": "0.0",
+   "bloque": "0",
+   "nombre": "Mapa Base"
+  },
+  {
+   "codigo": "0.9",
+   "bloque": "0",
+   "nombre": "Síntesis del Mapa Base"
+  },
+  {
+   "codigo": "1.1",
+   "bloque": "1",
+   "nombre": "Geoaptitud"
+  },
+  {
+   "codigo": "1.2",
+   "bloque": "1",
+   "nombre": "Bioaptitud"
+  },
+  {
+   "codigo": "1.3",
+   "bloque": "1",
+   "nombre": "Edafoaptitud"
+  },
+  {
+   "codigo": "1.4",
+   "bloque": "1",
+   "nombre": "Antropoaptitud"
+  },
+  {
+   "codigo": "1.5",
+   "bloque": "1",
+   "nombre": "Cambio climático"
+  },
+  {
+   "codigo": "1.9",
+   "bloque": "1",
+   "nombre": "Síntesis ambiental"
+  },
+  {
+   "codigo": "2.1",
+   "bloque": "2",
+   "nombre": "Eje social"
+  },
+  {
+   "codigo": "2.2",
+   "bloque": "2",
+   "nombre": "Eje físico-espacial"
+  },
+  {
+   "codigo": "2.3",
+   "bloque": "2",
+   "nombre": "Eje económico"
+  },
+  {
+   "codigo": "2.4",
+   "bloque": "2",
+   "nombre": "Eje político-institucional"
+  },
+  {
+   "codigo": "2.5",
+   "bloque": "2",
+   "nombre": "Eje jurídico"
+  },
+  {
+   "codigo": "2.9",
+   "bloque": "2",
+   "nombre": "Síntesis del Diagnóstico"
+  },
+  {
+   "codigo": "3.1",
+   "bloque": "3",
+   "nombre": "Tendencias"
+  },
+  {
+   "codigo": "3.2",
+   "bloque": "3",
+   "nombre": "Escenarios"
+  },
+  {
+   "codigo": "3.3",
+   "bloque": "3",
+   "nombre": "Demanda de suelo"
+  },
+  {
+   "codigo": "3.9",
+   "bloque": "3",
+   "nombre": "Modelo territorial"
+  },
+  {
+   "codigo": "4.1",
+   "bloque": "4",
+   "nombre": "Zonificación"
+  },
+  {
+   "codigo": "4.2",
+   "bloque": "4",
+   "nombre": "Vialidad"
+  },
+  {
+   "codigo": "4.3",
+   "bloque": "4",
+   "nombre": "Mapa Oficial"
+  },
+  {
+   "codigo": "4.4",
+   "bloque": "4",
+   "nombre": "Renovación Urbana"
+  },
+  {
+   "codigo": "4.5",
+   "bloque": "4",
+   "nombre": "Condicionantes normativas"
+  },
+  {
+   "codigo": "4.9",
+   "bloque": "4",
+   "nombre": "Síntesis de la Propuesta"
+  }
+ ],
+ "mapas": [
+  {
+   "codigo": "M0.0.01",
+   "nombre": "Localización y Área de Planificación",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "01",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "base_cartografica",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.02",
+   "nombre": "División político-administrativa y localidades",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "02",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "base_cartografica",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.03",
+   "nombre": "Topografía: DEM y curvas de nivel",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "03",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "base_cartografica",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "El atlas dibuja las curvas; el DEM hay que conseguirlo aparte",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.04",
+   "nombre": "Hidrografía y cuerpos de agua",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "04",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "base_cartografica",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.05",
+   "nombre": "Infraestructura vial, vías férreas y puentes",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "05",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "vialidad",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.06",
+   "nombre": "Usos actuales y áreas urbanas (base)",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "06",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "uso_actual_suelo",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.07",
+   "nombre": "Cobertura vegetal (base)",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "07",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "uso_actual_suelo",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.08",
+   "nombre": "Áreas de riesgo conocidas",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "08",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "amenazas_condicionantes",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.09",
+   "nombre": "Áreas Bajo Régimen Especial (ABRE)",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "09",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "amenazas_condicionantes",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.10",
+   "nombre": "Mosaico catastral",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "10",
+   "etapa": 2,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Base para zonificación y Mapa Oficial; no es capa pública",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.0.11",
+   "nombre": "Ortofoto u ortomosaico de dron",
+   "bloque": "0",
+   "componente": "0.0",
+   "correlativo": "11",
+   "etapa": 2,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Vuelo propio en zonas urbanas o costeras de detalle",
+   "sintesis": false
+  },
+  {
+   "codigo": "M0.9.01",
+   "nombre": "Mapa Base integrado",
+   "bloque": "0",
+   "componente": "0.9",
+   "correlativo": "01",
+   "etapa": 2,
+   "resuelve": "atlas",
+   "atlas": "base_cartografica",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del bloque",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.1.01",
+   "nombre": "Geológico (litopetrofísica)",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "01",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_litopetrofisico",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Falta la geología de la DGM",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.02",
+   "nombre": "Geomorfológico",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "02",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_geodinamica",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.03",
+   "nombre": "Pendientes",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "03",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El atlas lo calcula cuando se le entrega un DEM",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.04",
+   "nombre": "Susceptibilidad a deslizamientos",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "04",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_estabilidad",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Mora-Vahrson; requiere DEM y lluvia",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.05",
+   "nombre": "Hidrogeológico y vulnerabilidad de acuíferos",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "05",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_hidrogeologico",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Método GOD; requiere criterio SENARA",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.06",
+   "nombre": "Recarga potencial",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "06",
+   "etapa": 3,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El Anexo 1 exige el método de Schosinsky (2006), con pruebas de infiltración",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.07",
+   "nombre": "Amenaza sísmica y fallas",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "07",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_amenazas",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El atlas lo resuelve junto con las demás amenazas",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.08",
+   "nombre": "Amenaza por inundación",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "08",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_amenazas",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El atlas lo resuelve junto con las demás amenazas",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.09",
+   "nombre": "Amenaza volcánica",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "09",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_amenazas",
+   "guia_invu": false,
+   "condicion": "si aplica",
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.10",
+   "nombre": "Amenaza costera: tsunami, marejada y erosión",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "10",
+   "etapa": 3,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": "si aplica",
+   "observacion": "Requiere línea de costa multitemporal y cotas SINAMOT",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.1.90",
+   "nombre": "IFA Geoaptitud",
+   "bloque": "1",
+   "componente": "1.1",
+   "correlativo": "90",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "geo_integrado",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.2.01",
+   "nombre": "Cobertura de la tierra",
+   "bloque": "1",
+   "componente": "1.2",
+   "correlativo": "01",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "bio_cobertura_vegetal",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.2.02",
+   "nombre": "Áreas de protección legal y ecosistemas frágiles",
+   "bloque": "1",
+   "componente": "1.2",
+   "correlativo": "02",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "bio_biotopos",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Art. 33 Ley Forestal; actúa como veto en clase V",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.2.03",
+   "nombre": "ASP, corredores y conectividad",
+   "bloque": "1",
+   "componente": "1.2",
+   "correlativo": "03",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "bio_categorias_manejo",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.2.04",
+   "nombre": "Hábitat de especies amenazadas o endémicas",
+   "bloque": "1",
+   "componente": "1.2",
+   "correlativo": "04",
+   "etapa": 3,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere registros GBIF depurados y muestreo dirigido",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.2.90",
+   "nombre": "IFA Bioaptitud",
+   "bloque": "1",
+   "componente": "1.2",
+   "correlativo": "90",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "ifa_bioaptitud",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.3.01",
+   "nombre": "Unidades de suelo",
+   "bloque": "1",
+   "componente": "1.3",
+   "correlativo": "01",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "eda_tipo_suelo",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Insumo; no se clasifica en IFA",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.3.02",
+   "nombre": "Capacidad de uso de las tierras",
+   "bloque": "1",
+   "componente": "1.3",
+   "correlativo": "02",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "eda_capacidad_uso",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "DE 23214-MAG-MIRENEM; el INTA puede no cubrir todo el cantón",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.3.03",
+   "nombre": "Limitantes edáficas",
+   "bloque": "1",
+   "componente": "1.3",
+   "correlativo": "03",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "eda_fertilidad",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Erosión, drenaje, profundidad, pedregosidad",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.3.90",
+   "nombre": "IFA Edafoaptitud",
+   "bloque": "1",
+   "componente": "1.3",
+   "correlativo": "90",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "eda_integrado",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.4.01",
+   "nombre": "Uso antrópico actual",
+   "bloque": "1",
+   "componente": "1.4",
+   "correlativo": "01",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "ant_uso_antropico",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.4.02",
+   "nombre": "Patrimonio arqueológico e histórico",
+   "bloque": "1",
+   "componente": "1.4",
+   "correlativo": "02",
+   "etapa": 3,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El atlas ya dibuja los sitios registrados como capa; falta el registro del Museo Nacional completo",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.4.03",
+   "nombre": "Infraestructura y servicios",
+   "bloque": "1",
+   "componente": "1.4",
+   "correlativo": "03",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "ant_vialidad",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El atlas calcula cobertura por distancia a la red",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.4.04",
+   "nombre": "Paisaje y presión de ocupación",
+   "bloque": "1",
+   "componente": "1.4",
+   "correlativo": "04",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "ant_paisajismo",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere cuencas visuales desde miradores",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.4.90",
+   "nombre": "IFA Antropoaptitud",
+   "bloque": "1",
+   "componente": "1.4",
+   "correlativo": "90",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "ant_integrado",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.5.01",
+   "nombre": "Exposición climática",
+   "bloque": "1",
+   "componente": "1.5",
+   "correlativo": "01",
+   "etapa": 3,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Escenarios del IMN regionalizados al Área de Planificación",
+   "sintesis": false
+  },
+  {
+   "codigo": "M1.9.01",
+   "nombre": "IFA Integrado",
+   "bloque": "1",
+   "componente": "1.9",
+   "correlativo": "01",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "ifa_integrado",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del bloque; se reutiliza en los bloques 2 y 4 con este mismo código",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.9.02",
+   "nombre": "Condicionantes ambientales",
+   "bloque": "1",
+   "componente": "1.9",
+   "correlativo": "02",
+   "etapa": 3,
+   "resuelve": "atlas",
+   "atlas": "amenazas_condicionantes",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Se reutiliza en los bloques 2 y 4",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.9.03",
+   "nombre": "Compatibilidad zonificación × IFA (AAA)",
+   "bloque": "1",
+   "componente": "1.9",
+   "correlativo": "03",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Matriz C; requiere el borrador de zonificación M4.1.01",
+   "sintesis": true
+  },
+  {
+   "codigo": "M1.9.04",
+   "nombre": "Capacidad de carga por sector",
+   "bloque": "1",
+   "componente": "1.9",
+   "correlativo": "04",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "AAA; el calibrador ya calcula agua, saneamiento y densidad por zona",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.1.01",
+   "nombre": "Densidad de población",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "01",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere INEC",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.1.02",
+   "nombre": "Crecimiento y proyección de población por distrito",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "02",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere INEC 2011 y el censo más reciente",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.1.03",
+   "nombre": "Pobreza y vulnerabilidad social",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "03",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere INEC",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.1.04",
+   "nombre": "Asentamientos informales e irregulares",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "04",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.1.05",
+   "nombre": "Servicios comunales",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "05",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "soc_poblacion",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.1.06",
+   "nombre": "Déficit de vivienda",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "06",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere INEC",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.1.90",
+   "nombre": "Resultados del eje social",
+   "bloque": "2",
+   "componente": "2.1",
+   "correlativo": "90",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.2.01",
+   "nombre": "Uso actual del suelo (detalle)",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "01",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "uso_actual_suelo",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.02",
+   "nombre": "Huella y crecimiento urbano multitemporal",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "02",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere series históricas de cobertura",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.03",
+   "nombre": "Estructura y morfología urbana",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "03",
+   "etapa": 4,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El transecto T0-T6 del calibrador es justamente esta lectura",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.04",
+   "nombre": "Espacio público y áreas verdes",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "04",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.05",
+   "nombre": "Espacios públicos para comercio al aire libre",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "05",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.06",
+   "nombre": "Circulación y transporte",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "06",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "Falta la capa de transporte público",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.07",
+   "nombre": "Jerarquía vial",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "07",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "vialidad",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.08",
+   "nombre": "Servicios públicos: agua potable",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "08",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "servicios",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "ASADAS, concesiones y tomas registradas",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.09",
+   "nombre": "Servicios públicos: saneamiento y pluvial",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "09",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.10",
+   "nombre": "Servicios públicos: energía y telecomunicaciones",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "10",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "servicios",
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "Cobertura del tendido eléctrico derivada de ARESEP",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.11",
+   "nombre": "Patrimonio urbano",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "11",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.12",
+   "nombre": "Áreas con potencial de renovación urbana",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "12",
+   "etapa": 4,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "Alimenta el Reglamento de Renovación Urbana",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.2.90",
+   "nombre": "Resultados del eje físico-espacial",
+   "bloque": "2",
+   "componente": "2.2",
+   "correlativo": "90",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.3.01",
+   "nombre": "Actividades económicas",
+   "bloque": "2",
+   "componente": "2.3",
+   "correlativo": "01",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "eco_actividades",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Requiere el directorio de empresas",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.3.02",
+   "nombre": "Turismo",
+   "bloque": "2",
+   "componente": "2.3",
+   "correlativo": "02",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": "si aplica",
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.3.03",
+   "nombre": "Valores de suelo",
+   "bloque": "2",
+   "componente": "2.3",
+   "correlativo": "03",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "PlanoExactoCR ya tiene avalúos de remates: insumo directo",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.3.90",
+   "nombre": "Resultados del eje económico",
+   "bloque": "2",
+   "componente": "2.3",
+   "correlativo": "90",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.4.01",
+   "nombre": "Actores e instituciones",
+   "bloque": "2",
+   "componente": "2.4",
+   "correlativo": "01",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": "opcional",
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.4.90",
+   "nombre": "Resultados del eje político-institucional",
+   "bloque": "2",
+   "componente": "2.4",
+   "correlativo": "90",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.5.01",
+   "nombre": "Restricciones legales y ABRE (detalle)",
+   "bloque": "2",
+   "componente": "2.5",
+   "correlativo": "01",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": "amenazas_condicionantes",
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.5.02",
+   "nombre": "Normativa y zonificación vigentes",
+   "bloque": "2",
+   "componente": "2.5",
+   "correlativo": "02",
+   "etapa": 4,
+   "resuelve": "atlas",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El atlas ya tiene la capa de planes reguladores vigentes",
+   "sintesis": false
+  },
+  {
+   "codigo": "M2.5.90",
+   "nombre": "Resultados del eje jurídico",
+   "bloque": "2",
+   "componente": "2.5",
+   "correlativo": "90",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del componente",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.9.01",
+   "nombre": "Mapa Unificado del Diagnóstico",
+   "bloque": "2",
+   "componente": "2.9",
+   "correlativo": "01",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del bloque",
+   "sintesis": true
+  },
+  {
+   "codigo": "M2.9.02",
+   "nombre": "Potencialidades y limitantes",
+   "bloque": "2",
+   "componente": "2.9",
+   "correlativo": "02",
+   "etapa": 4,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": true
+  },
+  {
+   "codigo": "M3.1.01",
+   "nombre": "Tendencias de crecimiento",
+   "bloque": "3",
+   "componente": "3.1",
+   "correlativo": "01",
+   "etapa": 5,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M3.2.01",
+   "nombre": "Escenario tendencial",
+   "bloque": "3",
+   "componente": "3.2",
+   "correlativo": "01",
+   "etapa": 5,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M3.2.02",
+   "nombre": "Escenario deseable",
+   "bloque": "3",
+   "componente": "3.2",
+   "correlativo": "02",
+   "etapa": 5,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Se construye en taller de visión",
+   "sintesis": false
+  },
+  {
+   "codigo": "M3.2.03",
+   "nombre": "Escenario posible o concertado",
+   "bloque": "3",
+   "componente": "3.2",
+   "correlativo": "03",
+   "etapa": 5,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Limitado por capacidad de carga y finanzas municipales",
+   "sintesis": false
+  },
+  {
+   "codigo": "M3.3.01",
+   "nombre": "Demanda de suelo",
+   "bloque": "3",
+   "componente": "3.3",
+   "correlativo": "01",
+   "etapa": 5,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "El calibrador ya calcula hectáreas por uso y densidad",
+   "sintesis": false
+  },
+  {
+   "codigo": "M3.9.01",
+   "nombre": "Modelo territorial",
+   "bloque": "3",
+   "componente": "3.9",
+   "correlativo": "01",
+   "etapa": 5,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del bloque",
+   "sintesis": true
+  },
+  {
+   "codigo": "M4.1.01",
+   "nombre": "Zonificación",
+   "bloque": "4",
+   "componente": "4.1",
+   "correlativo": "01",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "Colores en códigos RGB de la Tabla 3 de la Guía de Cartografía",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.1.02",
+   "nombre": "Cuadrantes urbanos y de ciudad",
+   "bloque": "4",
+   "componente": "4.1",
+   "correlativo": "02",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Art. 40 Ley 4240; base de la cesión de áreas",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.1.03",
+   "nombre": "Densidades",
+   "bloque": "4",
+   "componente": "4.1",
+   "correlativo": "03",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.2.01",
+   "nombre": "Vialidad",
+   "bloque": "4",
+   "componente": "4.2",
+   "correlativo": "01",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "Jerarquía nacional y cantonal, vías propuestas",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.3.01",
+   "nombre": "Mapa Oficial",
+   "bloque": "4",
+   "componente": "4.3",
+   "correlativo": "01",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": true,
+   "condicion": null,
+   "observacion": "Debe coincidir con el catastro",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.4.01",
+   "nombre": "Áreas de Renovación Urbana",
+   "bloque": "4",
+   "componente": "4.4",
+   "correlativo": "01",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "No es un uso de suelo, es una capa superpuesta",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.5.01",
+   "nombre": "Condicionantes normativas ambientales (RDS)",
+   "bloque": "4",
+   "componente": "4.5",
+   "correlativo": "01",
+   "etapa": 6,
+   "resuelve": "calibrador",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Deriva de M1.9.02 y de la viabilidad ambiental",
+   "sintesis": false
+  },
+  {
+   "codigo": "M4.9.01",
+   "nombre": "Plano síntesis del Plan Regulador",
+   "bloque": "4",
+   "componente": "4.9",
+   "correlativo": "01",
+   "etapa": 6,
+   "resuelve": "equipo",
+   "atlas": null,
+   "guia_invu": false,
+   "condicion": null,
+   "observacion": "Síntesis del bloque",
+   "sintesis": true
+  }
+ ],
+ "matriz_compatibilidad": {
+  "leyenda": {
+   "P": "compatible",
+   "C": "condicionado a estudio o medidas",
+   "R": "restringido a baja intensidad",
+   "X": "incompatible"
+  },
+  "columnas": [
+   "I",
+   "II",
+   "III",
+   "IV",
+   "V"
+  ],
+  "filas": [
+   {
+    "zona": "Centro urbano / mixta de alta densidad",
+    "clases": [
+     "P",
+     "P",
+     "C",
+     "X",
+     "X"
+    ]
+   },
+   {
+    "zona": "Residencial de densidad media",
+    "clases": [
+     "P",
+     "P",
+     "C",
+     "X",
+     "X"
+    ]
+   },
+   {
+    "zona": "Residencial de baja densidad",
+    "clases": [
+     "P",
+     "P",
+     "C",
+     "R",
+     "X"
+    ]
+   },
+   {
+    "zona": "Comercial y de servicios",
+    "clases": [
+     "P",
+     "P",
+     "C",
+     "X",
+     "X"
+    ]
+   },
+   {
+    "zona": "Industrial y logística",
+    "clases": [
+     "P",
+     "C",
+     "C",
+     "X",
+     "X"
+    ]
+   },
+   {
+    "zona": "Turística",
+    "clases": [
+     "P",
+     "P",
+     "C",
+     "R",
+     "X"
+    ]
+   },
+   {
+    "zona": "Agropecuaria",
+    "clases": [
+     "P",
+     "P",
+     "P",
+     "C",
+     "X"
+    ]
+   },
+   {
+    "zona": "Agroforestal / rural de amortiguamiento",
+    "clases": [
+     "P",
+     "P",
+     "P",
+     "P",
+     "R"
+    ]
+   },
+   {
+    "zona": "Protección y conservación",
+    "clases": [
+     "P",
+     "P",
+     "P",
+     "P",
+     "P"
+    ]
+   },
+   {
+    "zona": "Equipamiento e infraestructura pública",
+    "clases": [
+     "P",
+     "P",
+     "C",
+     "C",
+     "X"
+    ]
+   }
+  ],
+  "nota": "Toda celda C o R debe tener su condición escrita en el RDS. Toda celda X que la propuesta ocupe debe corregirse en la zonificación o justificarse con estudio de detalle."
+ },
+ "condicionantes": [
+  {
+   "condicionante": "Susceptibilidad a deslizamientos",
+   "ambito": "IFA III-V geoaptitud",
+   "norma": "Estudio geotécnico previo; cobertura y movimientos de tierra limitados",
+   "reglamento": "Zonificación y Construcciones",
+   "control": "Certificado de uso de suelo + permiso de construcción"
+  },
+  {
+   "condicionante": "Inundación",
+   "ambito": "Planicies y zonas CNE",
+   "norma": "Prohibición de vivienda; usos recreativos o agrícolas; nivel mínimo de piso",
+   "reglamento": "Zonificación",
+   "control": "Certificado de uso de suelo"
+  },
+  {
+   "condicionante": "Vulnerabilidad alta de acuíferos",
+   "ambito": "IFA-hidro IV-V",
+   "norma": "Restricción de usos contaminantes y densidad según criterio SENARA; tratamiento de aguas obligatorio",
+   "reglamento": "Zonificación y Fraccionamiento",
+   "control": "Visado y aprobación de urbanizaciones"
+  },
+  {
+   "condicionante": "Zonas de recarga",
+   "ambito": "Recarga alta",
+   "norma": "Cobertura y índice de permeabilidad mínimos",
+   "reglamento": "Zonificación",
+   "control": "Revisión de planos"
+  },
+  {
+   "condicionante": "Nacientes y riberas",
+   "ambito": "Ley Forestal art. 33",
+   "norma": "Retiros de protección; cesión como parque lineal",
+   "reglamento": "Fraccionamiento y Mapa Oficial",
+   "control": "Plano catastrado y visado"
+  },
+  {
+   "condicionante": "Fallas activas",
+   "ambito": "Protocolo de fallas",
+   "norma": "Franja de retiro sin edificación",
+   "reglamento": "Zonificación y Construcciones",
+   "control": "Permiso de construcción"
+  },
+  {
+   "condicionante": "Ecosistemas frágiles y corredores",
+   "ambito": "Bioaptitud IV-V",
+   "norma": "Zona de protección; lote mínimo amplio en amortiguamiento",
+   "reglamento": "Zonificación",
+   "control": "Certificado de uso de suelo"
+  },
+  {
+   "condicionante": "Suelos de alta capacidad agrícola",
+   "ambito": "Edafoaptitud",
+   "norma": "Freno a la urbanización fuera de cuadrantes",
+   "reglamento": "Zonificación y Fraccionamiento",
+   "control": "Fraccionamiento con fines urbanísticos"
+  },
+  {
+   "condicionante": "Patrimonio arqueológico",
+   "ambito": "Antropoaptitud",
+   "norma": "Evaluación arqueológica previa",
+   "reglamento": "Construcciones",
+   "control": "Requisito del permiso"
+  },
+  {
+   "condicionante": "Exposición costera y climática",
+   "ambito": "Costa y zonas expuestas",
+   "norma": "Retiros, cotas mínimas, soluciones basadas en naturaleza",
+   "reglamento": "Zonificación y Renovación Urbana",
+   "control": "Certificado de uso de suelo"
+  }
+ ],
+ "reglamentos": [
+  {
+   "nombre": "Zonificación",
+   "contenido": "Zonas de uso y su función; ubicación; área y frente mínimo de lote; altura, área de piso, retiros y cobertura por zona; densidad; usos conformes, condicionales, no conformes y prohibidos; zonas especiales; publicidad; certificado de uso de suelo; cuadrantes de ciudad y urbanos para la cesión (art. 40)",
+   "variable_ambiental": "Núcleo del RDS: Matrices B, C y D; condiciones por clase IFA en cada ficha de zona"
+  },
+  {
+   "nombre": "Fraccionamientos y Urbanizaciones",
+   "contenido": "Acceso a vía pública, lotificación, servicios, derechos de vía; fraccionamiento simple, con fines urbanísticos y excepcional; cesión de área pública entre 5 % y 20 %; tope de 45 % para calles, juegos, parques y facilidades; visados y aprobaciones; garantía de cumplimiento a 5 años",
+   "variable_ambiental": "Riberas y nacientes como cesión o retiro; restricción en zonas de recarga y vulnerabilidad"
+  },
+  {
+   "nombre": "Mapa Oficial",
+   "contenido": "Áreas para vías, parques, plazas y edificios comunales, existentes y previstas; reservas y adquisición; base catastral y datos por predio",
+   "variable_ambiental": "Parques lineales y áreas de protección públicas"
+  },
+  {
+   "nombre": "Renovación Urbana",
+   "contenido": "Normas para conservar, rehabilitar, remodelar o regenerar; Áreas de Renovación Urbana como capa superpuesta; restricciones por 5 años; apertura o rectificación de calles; reajuste de terrenos e instrumentos de gestión del suelo",
+   "variable_ambiental": "Reubicación desde zonas de amenaza; soluciones basadas en naturaleza"
+  },
+  {
+   "nombre": "Construcciones",
+   "contenido": "Requisitos mínimos de edificación e infraestructura; permiso de construcción; remisión a la normativa nacional",
+   "variable_ambiental": "Estudios geotécnicos, arqueológicos e hidrológicos como requisito según clase IFA"
+  }
+ ],
+ "transversales": [
+  {
+   "proceso": "Participación ciudadana",
+   "descripcion": "Talleres por etapa; el MAPRIOT 2025 la trata como proceso continuo, no solo como la audiencia final"
+  },
+  {
+   "proceso": "Consulta indígena",
+   "descripcion": "Obligatoria cuando el Área de Planificación toca territorios indígenas"
+  },
+  {
+   "proceso": "Comunicación y coordinación interinstitucional",
+   "descripcion": "Guía de comunicación INVU; SETENA, SENARA, ICT si hay ZMT, CNE, MOPT, AyA, Museo Nacional"
+  },
+  {
+   "proceso": "Revisión por etapas del INVU",
+   "descripcion": "Servicio de acompañamiento que adelanta observaciones antes del trámite formal"
+  }
+ ],
+ "verificar": [
+  "Texto íntegro del Anexo 1 (IFA) del DE 44710: factores, ponderaciones, escalas (se admite 1:50.000), uso obligatorio de Schosinsky y tratamiento del cambio climático.",
+  "Anexo 4 (guía del cliente) y Anexo 5 (guía de revisión de SETENA): formatos de capas, formularios y lista de verificación.",
+  "Acción de inconstitucionalidad contra el art. 31 del DE 44710 (exp. 25-035276-0007-CO, Boletín Judicial N.º 225 del 28-nov-2025).",
+  "Transitorios del DE 44710: cómo siguen los estudios iniciados bajo el DE 32967.",
+  "Texto completo del MAPRIOT 2025: tabla de Productos Mínimos Requeridos por etapa y matriz de criterios mínimos de revisión.",
+  "Guía de la Política de Desarrollo Urbano 2026: cruzar el contenido mínimo de la PDU.",
+  "Casos especiales del cantón: criterio de SENARA sobre acuíferos, consulta indígena y, si hay ZMT, el PRC costero con su propio manual del ICT.",
+  "Dirección del numeral de las clases IFA: acá I es la menos frágil y V la más frágil, siguiendo la Matriz B de la guía. La Tabla Nº 3 del derogado 32967 puntúa al revés porque puntúa aptitud; confirmar contra el Anexo 1 del 44710 antes de cerrar los TdR."
+ ]
+}
