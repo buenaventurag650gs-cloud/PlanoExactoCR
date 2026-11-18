@@ -571,6 +571,10 @@ def main() -> None:
                               "Si se da, agrega el mapa de pendientes clasificado según el Decreto 23214.")
     args = parser.parse_args()
 
+    # Asegura que los módulos hermanos (plancha, calificacion_ifa, pendientes) se importen
+    # sin importar desde qué carpeta se corra el script.
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
     # Configuración del tablero: fija cantón, municipalidad, logo y los mapas a generar.
     config = leer_config(args.config) if args.config else {}
     seleccion = set(config["mapas"]) if config.get("mapas") else None
@@ -666,12 +670,42 @@ def main() -> None:
             pendientes = None
 
     generado = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-    armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado, pendientes,
-              seleccion=seleccion, municipalidad=municipalidad, logo=logo,
-              mapas_oficiales=mapas_oficiales)
+    fecha_corta = pd.Timestamp.now().strftime("%d/%m/%Y")
+    capas_por_nombre = {c["nombre"]: g for c, g in capas_recortadas}
+
+    planchas_hechas = []
+    if seleccion is not None and mapas_oficiales:
+        # Salida final: una plancha profesional por mapa elegido (estilo POT).
+        import plancha
+        orden = [mid for mid in mapas_oficiales if mid in seleccion]
+        total = len(orden)
+        for i, mid in enumerate(orden, 1):
+            mdef = mapas_oficiales[mid]
+            insumos = [(n, capas_por_nombre[n]) for n in mdef.get("insumos", []) if n in capas_por_nombre]
+            if not insumos:
+                print(f"  (sin insumos vectoriales para «{mdef['nombre']}», se omite)")
+                continue
+            arch = salida.parent / f"{i}. Mapa {mdef['nombre']} {args.canton} Carta.pdf"
+            try:
+                plancha.dibujar_plancha(
+                    arch, args.canton, poligono_canton, insumos, mdef["nombre"],
+                    mdef.get("institucion", ""), municipalidad=municipalidad, escudo=logo,
+                    fecha=fecha_corta, lamina_num=i, total=total, cantones_full=cantones)
+                planchas_hechas.append(arch)
+                print(f"  ✓ {arch.name}")
+            except Exception as e:
+                print(f"  ERROR en «{mdef['nombre']}»: {e}", file=sys.stderr)
+    else:
+        # Sin configuración: PDF rápido multipágina (todas las láminas temáticas).
+        armar_pdf(ruta_pdf, args.canton, poligono_canton, capas_recortadas, generado, pendientes,
+                  seleccion=seleccion, municipalidad=municipalidad, logo=logo,
+                  mapas_oficiales=mapas_oficiales)
 
     print(f"\nListo: {ruta_gpkg}")
-    print(f"       {ruta_pdf}")
+    if planchas_hechas:
+        print(f"       {len(planchas_hechas)} plancha(s) en {salida.parent}/")
+    else:
+        print(f"       {ruta_pdf}")
     if pendientes is not None:
         print(f"       {pendientes[2]}")
 
