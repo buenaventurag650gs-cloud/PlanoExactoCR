@@ -111,12 +111,22 @@
   .lam-titulo { font-size:calc(21px * var(--k)); font-weight:800; line-height:1.1; text-transform:uppercase; }
   .lam-subtit { font-size:calc(10px * var(--k)); color:#555; margin-top:1px; }
   .lam-inst { font-size:calc(10px * var(--k)); color:#555; text-align:right; max-width:calc(2.6in * var(--k)); padding-top:2px; }
-  .lam-mapa-wrap { flex:1; border:1px solid #111; position:relative; }
-  .lam-mapa { position:absolute; inset:0; }
-  .lam-mapa .leaflet-container, .lam-inset .leaflet-container { background:#fff; }
-  .rot-vecino { color:#9a9a9a; font-size:calc(8px * var(--k)); font-weight:600; text-align:center; white-space:nowrap; text-shadow:0 0 2px #fff; }
+  /* El mapa de la lámina es un SVG dibujado por app.js con las coordenadas completas
+     (no un mapa de Leaflet), para que el PDF aguante zoom sin deformar las geometrías. */
+  .lam-mapa-wrap { flex:1; border:1px solid #111; position:relative; overflow:hidden; background:#fff; }
+  .lam-svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .lam-rotulos { position:absolute; inset:0; pointer-events:none; }
+  .rot-vecino { position:absolute; transform:translate(-50%, -50%); color:#9a9a9a;
+                font-size:calc(8px * var(--k)); font-weight:600; white-space:nowrap; text-shadow:0 0 2px #fff; }
+  /* Escala gráfica, abajo a la izquierda del mapa. */
+  .lam-escala { position:absolute; left:calc(10px * var(--k)); bottom:calc(10px * var(--k)); z-index:600;
+                font-size:calc(7px * var(--k)); color:#111; max-width:45%; }
+  .lam-escala .barra { height:calc(4px * var(--k)); border:0.5px solid #111; display:flex; background:#fff; }
+  .lam-escala .barra i { flex:1; }
+  .lam-escala .barra i:first-child { background:#111; }
+  .lam-escala .rot { margin-top:1px; display:flex; justify-content:space-between; text-shadow:0 0 2px #fff; }
   /* Recuadro de ubicación del cantón en el país, arriba a la izquierda. */
-  .lam-inset { position:absolute; top:calc(8px * var(--k)); left:calc(8px * var(--k)); width:calc(1.5in * var(--k)); height:calc(1.15in * var(--k)); border:1.3px solid #333; background:#fff; z-index:500; }
+  .lam-inset { position:absolute; top:calc(8px * var(--k)); left:calc(8px * var(--k)); width:calc(1.5in * var(--k)); height:calc(1.15in * var(--k)); border:1.3px solid #333; background:#fff; z-index:500; overflow:hidden; }
   .lam-inset-tit { position:absolute; top:1px; left:3px; font-size:calc(7px * var(--k)); font-weight:600; color:#333; z-index:501; background:#fffd; padding:0 2px; }
   .lam-caj { height:calc(1.35in * var(--k)); border:1px solid #111; border-top:none; display:grid;
              grid-template-columns: calc(2.4in * var(--k)) 1fr calc(0.6in * var(--k)) calc(2.1in * var(--k)); }

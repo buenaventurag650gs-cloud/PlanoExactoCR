@@ -169,6 +169,34 @@ afirmar(Math.abs(parseFloat(lam.style.getPropertyValue('--k')) - 1.9459) < 0.01,
 // ---------- 10. Botones de exportar ----------
 afirmar(!$('btnAtlas').disabled, 'el botón de imprimir se habilita con cantón + mapas');
 
+// ---------- 11. Láminas de impresión en SVG ----------
+// Se marcan dos mapas que sí se pueden dibujar y se manda a imprimir.
+filasFis[0].querySelector('.imp').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));  // 6.1 base
+await $('btnAtlas').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await esperar(600);
+const laminas = todos('#laminas .lamina');
+afirmar(laminas.length === 3, `se arma una lámina por mapa marcado (hay ${laminas.length})`);
+afirmar(window.__imprimio === true, 'se dispara la impresión');
+const svgs = todos('#laminas .lam-mapa-wrap > svg.lam-svg');
+afirmar(svgs.length === 3, `cada lámina tiene su mapa en SVG (hay ${svgs.length})`);
+afirmar(todos('#laminas .leaflet-container').length === 0, 'las láminas ya no usan mapas de Leaflet');
+
+const svg0 = svgs[0];
+afirmar(/^0 0 10000 /.test(svg0.getAttribute('viewBox')), `viewBox correcto (${svg0.getAttribute('viewBox')})`);
+const paths = [...svg0.querySelectorAll('path')];
+afirmar(paths.length >= 3, `el SVG trae capas, máscara y límite (${paths.length} trazos)`);
+// Lo importante: las coordenadas conservan decimales (Leaflet las redondeaba al píxel).
+const conDecimales = paths.filter((p) => /\d+\.\d{1,2}[ L]/.test(p.getAttribute('d') || '')).length;
+afirmar(conDecimales >= 2, `las coordenadas conservan decimales, no se redondean (${conDecimales} trazos)`);
+const mascara = paths.find((p) => p.getAttribute('fill') === '#ececec');
+afirmar(!!mascara && mascara.getAttribute('fill-rule') === 'evenodd', 'la máscara deja el cantón como hueco');
+afirmar(paths.every((p) => !p.getAttribute('stroke') || p.getAttribute('stroke') === 'none'
+        || p.getAttribute('vector-effect') === 'non-scaling-stroke'),
+        'los grosores se miden en el papel (non-scaling-stroke)');
+afirmar(!!laminas[0].querySelector('.lam-escala .barra'), 'la lámina trae barra de escala');
+afirmar(!!laminas[0].querySelector('.lam-inset svg'), 'la lámina trae el recuadro de ubicación');
+afirmar(laminas[0].querySelectorAll('.caj-leyenda .ley-item').length >= 4, 'el cajetín trae la simbología');
+
 // ---------- resultado ----------
 console.log('\n=== PRUEBAS DEL TABLERO ===');
 ok.forEach((m) => console.log('  ok  ' + m));
