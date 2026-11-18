@@ -31,10 +31,17 @@
 
   const map = L.map('map', { zoomControl: true }).setView([9.9, -84.1], 8);
   configurarPanes(map);
-  // Foto satelital (Esri World Imagery), la misma que usa PlanoExactoCR.
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 21, maxNativeZoom: 19, attribution: 'Imagen © Esri, Maxar, Earthstar Geographics'
-  }).addTo(map);
+  // Mapas base elegibles (Esri), como en PlanoExactoCR.
+  const esriBase = (s, o) => L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/{z}/{y}/{x}`,
+    Object.assign({ maxZoom: 21, maxNativeZoom: 19 }, o));
+  const mapasBase = {
+    'Satélite': esriBase('World_Imagery', { attribution: 'Imagen © Esri, Maxar' }),
+    'Claro (B/N)': esriBase('Canvas/World_Light_Gray_Base', { maxNativeZoom: 16, attribution: '© Esri' }),
+    'Calles': esriBase('World_Street_Map', { attribution: '© Esri' }),
+    'Oscuro': esriBase('Canvas/World_Dark_Gray_Base', { maxNativeZoom: 16, attribution: '© Esri' })
+  };
+  mapasBase['Satélite'].addTo(map);
+  L.control.layers(mapasBase, null, { position: 'topright', collapsed: false }).addTo(map);
 
   const [cap, catalogo, escudosDoc] = await Promise.all([
     fetch('capas.json').then((r) => r.json()),
@@ -64,7 +71,7 @@
     'Zona marítimo terrestre': '#6fb1e0', 'Estado del plan regulador por cantón': '#f0883e',
     'Zonas de vida': '#8fcf9a', 'Infraestructura general': '#d29922', 'Red eléctrica': '#db6d28',
     'ASADAS y abastecimiento de agua': '#39c5cf', 'Sedes de salud': '#e03131',
-    'Red vial cantonal': '#a07850',           // vialidad cantonal: café
+    'Red vial cantonal': '#6e6e6e',           // vialidad: escala de grises
     'Curvas de nivel 10m': '#c79a6b',          // curvas: tierra/café (como la referencia)
     'Uso urbano 1:5mil': '#f2a7c4',            // áreas urbanas: rosado
     'Cultivos 1:5mil': '#cfe3b0',              // cultivos: verde claro
@@ -360,6 +367,8 @@
       generado: new Date().toISOString().slice(0, 10)
     };
   }
+  $('btnReset').addEventListener('click', () => location.reload());
+
   $('btnConfig').addEventListener('click', () => {
     const cfg = configActual();
     const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
