@@ -155,28 +155,33 @@
           "numero": "3.2",
           "id": "eda_fertilidad",
           "nombre": "IFA Fertilidad del suelo",
-          "estado": "pendiente",
-          "faltante": "fertilidad del suelo",
-          "descripcion": "Potencial agrícola por fertilidad del suelo.",
-          "insumos": []
+          "estado": "disponible",
+          "descripcion": "Potencial agrícola derivado del gran grupo de suelo (capa UCR/INTA/IICA 2015).",
+          "insumos": [
+            "Suelos de Costa Rica (tipo y orden)"
+          ]
         },
         {
           "numero": "3.3",
           "id": "eda_tipo_suelo",
           "nombre": "IFA Tipo de suelo",
-          "estado": "pendiente",
-          "faltante": "orden/tipo de suelo",
-          "descripcion": "Clasificación por tipo de suelo.",
-          "insumos": []
+          "estado": "disponible",
+          "descripcion": "Taxonomía de suelos 1:200.000 (UCR/INTA/IICA 2015). Órdenes y subórdenes según el sistema USDA.",
+          "insumos": [
+            "Suelos de Costa Rica (tipo y orden)"
+          ]
         },
         {
           "numero": "3.4",
           "id": "eda_integrado",
           "nombre": "IFA Edafoaptitud integrado",
-          "estado": "parcial",
-          "faltante": "por ahora solo capacidad de uso; faltan fertilidad y tipo de suelo",
-          "descripcion": "Integración de los sub-mapas de edafoaptitud.",
-          "insumos": []
+          "estado": "disponible",
+          "faltante": null,
+          "descripcion": "Integración: capacidad de uso (INTA) + tipo y fertilidad de suelo (UCR/INTA/IICA).",
+          "insumos": [
+            "Capacidad de uso de la tierra",
+            "Suelos de Costa Rica (tipo y orden)"
+          ]
         }
       ]
     },

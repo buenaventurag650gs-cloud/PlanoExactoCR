@@ -248,6 +248,13 @@
       "peso": 0.5,
       "relleno": 0.85,
       "geom": "punto"
+    },
+    "Suelos de Costa Rica (tipo y orden)": {
+      "color": "#8d6e44",
+      "trazo": "solido",
+      "peso": 0.4,
+      "relleno": 0.4,
+      "geom": "poligono"
     }
   }
 }

@@ -124,6 +124,14 @@
           "estado": "disponible",
           "filtrar_canton": true,
           "nota": "cobertura solo península de Nicoya y algunos cantones (Guanacaste, Alvarado, Naranjo, Los Santos); decreto 41960; el servidor de INTA es intermitente y a veces no responde"
+        },
+        {
+          "nombre": "Suelos de Costa Rica (tipo y orden)",
+          "archivo": "https://services.arcgis.com/LjCtRQt1uf8M6LGR/arcgis/rest/services/Suelos_de_Costa_Rica_2015/FeatureServer/0",
+          "fuente": "UCR / INTA / IICA (ArcGIS Hub, 2015)",
+          "estado": "disponible",
+          "nota": "Taxonomía de suelos 1:200.000; campos ORDEN, SUBORDEN, GRAN_GRUPO, DESCRIPCION",
+          "filtrar_canton": true
         }
       ]
     },
@@ -171,7 +179,7 @@
           "archivo": null,
           "fuente": "DGM (tramites.geologia.go.cr/Investigacion)",
           "estado": "pendiente",
-          "nota": "servidor DGM identificado; falta confirmar nombre de capa"
+          "nota": "URL suministrada por usuario pendiente de confirmar /FeatureServer; usar cuando llegue"
         }
       ]
     },
