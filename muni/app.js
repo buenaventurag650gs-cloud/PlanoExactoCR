@@ -1571,9 +1571,10 @@
   function limpiarLaminas() { $('laminas').innerHTML = ''; }
   window.addEventListener('afterprint', limpiarLaminas);
 
-  // ---------- datos INEC 2022 + CCSS serie ----------
+  // ---------- datos INEC 2022 + CCSS serie + CCSS pirámides ----------
   let datosInec = null;
   let datosCCSS = null;
+  let datosCCSSPir = null; // pirámides completas (1.6 MB, se carga al abrir la pestaña)
   fetch('datos/inec_2022.json').then(r => r.json()).then(d => { datosInec = d; }).catch(() => {});
   fetch('datos/ccss_pob_serie.json').then(r => r.json()).then(d => { datosCCSS = d; }).catch(() => {});
 
@@ -1703,6 +1704,51 @@
       }
       html += `</tbody></table></div>`;
 
+      // ── Densidad habitacional y territorio ──
+      const distsConTerritorio = distritos.filter(d => d.territorio);
+      if (distsConTerritorio.length) {
+        html += `<h3 class="inec-seccion">🗺️ Densidad habitacional y uso del territorio — ${nombre}</h3>`;
+        html += `<div style="font-size:.85em;color:var(--txt2,#666);margin-bottom:.8em">
+          Área, densidad y tasas de crecimiento según INEC Estimaciones 2022 (Cuadro 12).
+        </div>`;
+
+        const maxDens = Math.max(...distsConTerritorio.map(d => d.territorio.densidad || 0));
+        html += `<div style="overflow-x:auto"><table class="inec-tabla">
+          <thead><tr>
+            <th>Distrito</th>
+            <th style="text-align:right">Área km²</th>
+            <th style="text-align:right">Hab/km²</th>
+            <th style="width:80px"></th>
+            <th style="text-align:right">Crec. pob. anual</th>
+            <th style="text-align:right">Crec. viv. anual</th>
+          </tr></thead><tbody>`;
+        distsConTerritorio.sort((a, b) => (b.territorio.densidad || 0) - (a.territorio.densidad || 0));
+        let areaTotal = 0;
+        for (const d of distsConTerritorio) {
+          const t = d.territorio;
+          areaTotal += t.area_km2 || 0;
+          const densW = maxDens ? ((t.densidad || 0) / maxDens * 100).toFixed(0) : 0;
+          const crecColor = (t.tasa_crec_pob || 0) < 0 ? '#c0392b' : (t.tasa_crec_pob || 0) > 1.5 ? '#27ae60' : 'inherit';
+          html += `<tr>
+            <td><strong>${d.distrito}</strong></td>
+            <td style="text-align:right">${fmt(t.area_km2, 1)}</td>
+            <td style="text-align:right"><strong>${fmt(t.densidad, 0)}</strong></td>
+            <td><div class="inec-bar"><div style="width:${densW}%"></div></div></td>
+            <td style="text-align:right;color:${crecColor}">${t.tasa_crec_pob != null ? (t.tasa_crec_pob > 0 ? '+' : '') + t.tasa_crec_pob.toFixed(2) + ' %' : '—'}</td>
+            <td style="text-align:right">${t.tasa_crec_viv != null ? (t.tasa_crec_viv > 0 ? '+' : '') + t.tasa_crec_viv.toFixed(2) + ' %' : '—'}</td>
+          </tr>`;
+        }
+        // Fila total cantón
+        const densCantonProm = p.pob_total && areaTotal ? (p.pob_total / areaTotal) : null;
+        html += `<tr style="font-weight:700;border-top:2px solid var(--borde,#ccc)">
+          <td>${nombre} (total)</td>
+          <td style="text-align:right">${fmt(areaTotal, 1)}</td>
+          <td style="text-align:right">${densCantonProm ? fmt(densCantonProm, 0) : '—'}</td>
+          <td></td><td></td><td></td>
+        </tr>`;
+        html += `</tbody></table></div>`;
+      }
+
       // ── NBI por tipo de carencia ──
       html += `<h3 class="inec-seccion">NBI por tipo de carencia — ${nombre}</h3>`;
       html += `<div style="overflow-x:auto">`;
@@ -1770,7 +1816,7 @@
 
         html += `<h3 class="inec-seccion">Población adscrita CCSS · ${nombre} (2019 – 2050)</h3>`;
 
-        // Sparkline-like mini table of key years
+        // Tarjetas años clave
         const clave = [2019, 2022, 2025, 2030, 2035, 2040, 2045, 2050];
         html += `<div class="inec-grid">`;
         for (const yr of clave) {
@@ -1784,8 +1830,8 @@
         }
         html += `</div>`;
 
-        // Growth rate between key periods
-        const tasa = (a, b, n) => n > 0 ? ((Math.pow(b / a, 1 / n) - 1) * 100).toFixed(2) : '—';
+        // Tasas de crecimiento
+        const tasa = (a, b, n) => n > 0 && a > 0 ? ((Math.pow(b / a, 1 / n) - 1) * 100).toFixed(2) : '—';
         const t19 = totCanton[2019], t25 = totCanton[2025], t30 = totCanton[2030], t50 = totCanton[2050];
         if (t19 && t25 && t30 && t50) {
           html += `<div style="margin:10px 0;font-size:.9em;color:var(--txt2,#555)">
@@ -1795,7 +1841,7 @@
           </div>`;
         }
 
-        // District-level table for selected years
+        // Tabla distritos CCSS
         html += `<div style="overflow-x:auto"><table class="inec-tabla"><thead><tr><th>Distrito</th>`;
         for (const yr of clave) html += `<th style="text-align:right">${yr}</th>`;
         html += `<th style="text-align:right">Cambio 2019–2050</th></tr></thead><tbody>`;
@@ -1817,7 +1863,7 @@
           }
           html += `</tr>`;
         }
-        // Canton total row
+        // Fila total cantón
         html += `<tr style="font-weight:700;border-top:2px solid var(--borde,#ccc)"><td>${nombre}</td>`;
         for (const yr of clave) html += `<td style="text-align:right">${fmt(Math.round(totCanton[yr] || 0))}</td>`;
         if (t19 && t50) {
@@ -1828,11 +1874,217 @@
       }
     }
 
+    // ── Proyecciones de demanda para planificación (requiere pirámides CCSS) ──
+    if (!datosCCSSPir) {
+      // Ofrecer cargar pirámides si no están cargadas aún
+      html += `<h3 class="inec-seccion">📐 Proyecciones de demanda para planificación</h3>`;
+      html += `<div style="padding:1em;background:var(--fondo2,#f5f5f5);border-radius:8px;margin:.5em 0">
+        <p style="margin:0 0 .8em">
+          Esta sección muestra demanda proyectada de servicios según la pirámide de edad: escuelas, centros de salud,
+          vivienda nueva y ratio de dependencia. Requiere cargar datos adicionales (~1.6 MB).
+        </p>
+        <button onclick="cargarPiramidesYRender('${nombre.replace(/'/g, "\\'")}')"
+          style="background:#2980b9;color:#fff;border:none;padding:.5em 1.2em;border-radius:5px;cursor:pointer;font-size:.95em">
+          📊 Cargar proyecciones de demanda
+        </button>
+      </div>`;
+    }
+
     html += `<p style="margin-top:1.5em;font-size:.8em;color:var(--txt2,#888)">
-      Fuentes: INEC — Estimaciones y Proyecciones 2022 (socioeconómico); CCSS — Dashboard Población Adscrita (serie 2019–2050).
+      Fuentes: INEC — Estimaciones y Proyecciones 2022 (Cuadro 1, 3, 7, 10, 11, 12); CCSS — Dashboard Población Adscrita 2019–2050.
     </p>`;
 
     cuerpo.innerHTML = html;
+
+    // Si ya hay pirámides cargadas, renderizar demanda
+    if (datosCCSSPir) {
+      _renderDemandaFutura(nombre);
+    }
+  }
+
+  // Carga las pirámides completas y vuelve a renderizar la sección de demanda
+  window.cargarPiramidesYRender = function(nombreCanton) {
+    const btn = document.querySelector('button[onclick^="cargarPiramidesYRender"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Cargando…'; }
+    if (datosCCSSPir) {
+      construirDatosInec();
+      return;
+    }
+    fetch('datos/ccss_2019_2050.json')
+      .then(r => r.json())
+      .then(d => {
+        datosCCSSPir = d;
+        construirDatosInec(); // re-renderiza todo con pirámides disponibles
+      })
+      .catch(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '⚠️ Error al cargar. Reintentar'; }
+      });
+  };
+
+  // Renderiza la sección de proyecciones de demanda directamente en el DOM
+  function _renderDemandaFutura(nombreCanton) {
+    if (!datosCCSSPir) return;
+
+    // Grupos de la pirámide: ['0-4','5-9','10-14',...,'90+'] → índices 0-18
+    // Niños 0-14: índices 0,1,2  |  Jóvenes 15-24: índices 3,4
+    // Adultos formación hogar 25-39: índices 5,6,7  |  Adultos mayores 65+: índices 13-18
+    const GRP = datosCCSSPir.grupos; // ['0-4','5-9',...]
+    const idx014 = [0, 1, 2];
+    const idx1524 = [3, 4];
+    const idx2539 = [5, 6, 7];
+    const idx65p = GRP.reduce((acc, g, i) => { const a = parseInt(g); if (a >= 65) acc.push(i); return acc; }, []);
+    const idxActivo = GRP.reduce((acc, g, i) => { const a = parseInt(g); if (a >= 15 && a < 65) acc.push(i); return acc; }, []);
+
+    const distsCCSSPir = datosCCSSPir.distritos.filter(d => d.canton === nombreCanton);
+    if (!distsCCSSPir.length) return;
+
+    // Sumar pirámide del cantón para años clave
+    const aniosDem = [2025, 2030, 2035, 2040, 2045, 2050];
+    const pirCanton = {}; // { 2025: [sum0, sum1, ...sum18], ... }
+    const totalesAnio = {};
+    for (const yr of aniosDem) {
+      const yrStr = String(yr);
+      const sumGrupos = new Array(GRP.length).fill(0);
+      let tot = 0;
+      for (const d of distsCCSSPir) {
+        const serie = d.series && d.series[yrStr];
+        if (!serie || !serie.pir) continue;
+        for (let i = 0; i < GRP.length; i++) sumGrupos[i] += (serie.pir[i] || 0);
+        tot += serie.pob || 0;
+      }
+      pirCanton[yr] = sumGrupos;
+      totalesAnio[yr] = tot || sumGrupos.reduce((s, x) => s + x, 0);
+    }
+
+    // Calcular indicadores por año
+    const sumIdx = (arr, idxList) => idxList.reduce((s, i) => s + (arr[i] || 0), 0);
+    const demanda = {};
+    for (const yr of aniosDem) {
+      const pir = pirCanton[yr];
+      const tot = totalesAnio[yr] || 1;
+      const ninos = sumIdx(pir, idx014);
+      const jovenes = sumIdx(pir, idx1524);
+      const form = sumIdx(pir, idx2539);     // cohorte formación de hogar
+      const adultosMay = sumIdx(pir, idx65p);
+      const activos = sumIdx(pir, idxActivo);
+      const dependientes = ninos + adultosMay;
+      demanda[yr] = {
+        pob: tot,
+        ninos,         // demanda educación + cuido
+        jovenes,       // demanda educación superior + empleo inicial
+        form,          // demanda vivienda nueva
+        adultosMay,    // demanda servicios salud + vivienda asistida
+        activos,
+        dependientes,
+        ratio_dep: activos > 0 ? (dependientes / activos * 100) : 0,
+        pct_014: tot > 0 ? (ninos / tot * 100) : 0,
+        pct_65p: tot > 0 ? (adultosMay / tot * 100) : 0,
+        pct_form: tot > 0 ? (form / tot * 100) : 0,
+      };
+    }
+
+    const hoy = new Date().getFullYear();
+    const fmt2 = (v, dec) => v == null ? '—' : Number(v).toLocaleString('es-CR', { maximumFractionDigits: dec ?? 0 });
+
+    let bloque = `<h3 class="inec-seccion">📐 Proyecciones de demanda para planificación · ${nombreCanton}</h3>`;
+    bloque += `<div style="font-size:.85em;color:var(--txt2,#666);margin-bottom:.8em">
+      Calculado a partir de la pirámide de edad CCSS 2019–2050.
+      <strong>Años con borde azul</strong> = proyección.
+    </div>`;
+
+    // Tarjetas explicativas del ratio de dependencia
+    bloque += `<div class="inec-grid">`;
+    for (const yr of aniosDem) {
+      const d = demanda[yr];
+      if (!d) continue;
+      const esProy = yr > hoy;
+      const ratioColor = d.ratio_dep > 55 ? '#c0392b' : d.ratio_dep > 42 ? '#e67e22' : '#27ae60';
+      bloque += `<div class="inec-card" style="${esProy ? 'border-left:3px solid #3498db' : ''}">
+        <div class="inec-val" style="font-size:1.4em;color:${ratioColor}">${d.ratio_dep.toFixed(1)}</div>
+        <div class="inec-label">Ratio depend. ${yr}${esProy ? ' (proy.)' : ''}</div>
+        <div style="font-size:.8em;color:var(--txt2,#666);margin-top:3px">
+          Dependientes por cada 100 activos
+        </div>
+      </div>`;
+    }
+    bloque += `</div>`;
+    bloque += `<div style="font-size:.8em;color:var(--txt2,#666);margin:.4em 0 1em">
+      🟢 &lt;42 sostenible · 🟡 42–55 en transición · 🔴 &gt;55 presión alta sobre servicios públicos
+    </div>`;
+
+    // Tabla principal de indicadores
+    bloque += `<div style="overflow-x:auto"><table class="inec-tabla">
+      <thead><tr>
+        <th>Indicador</th>`;
+    for (const yr of aniosDem) bloque += `<th style="text-align:right">${yr}${yr > hoy ? ' ★' : ''}</th>`;
+    bloque += `</tr></thead><tbody>`;
+
+    const filas = [
+      { label: '👶 Niños 0–14 (demanda cuido y escuela)', key: 'ninos' },
+      { label: '   % de la población', key: 'pct_014', pct: true },
+      { label: '🎓 Jóvenes 15–24 (empleo + ed. superior)', key: 'jovenes' },
+      { label: '🏘️ Cohorte formación hogar 25–39 (vivienda nueva)', key: 'form' },
+      { label: '   % de la población', key: 'pct_form', pct: true },
+      { label: '🧓 Adultos mayores 65+ (salud + vivienda asistida)', key: 'adultosMay' },
+      { label: '   % de la población', key: 'pct_65p', pct: true },
+      { label: '⚖️ Ratio de dependencia (depend/activos × 100)', key: 'ratio_dep', dec: 1 },
+    ];
+
+    for (const fila of filas) {
+      bloque += `<tr><td>${fila.label}</td>`;
+      let prev = null;
+      for (const yr of aniosDem) {
+        const val = demanda[yr] ? demanda[yr][fila.key] : null;
+        let arrow = '';
+        if (prev != null && val != null) {
+          arrow = val > prev * 1.02 ? ' <span style="color:#27ae60">↑</span>' :
+                  val < prev * 0.98 ? ' <span style="color:#c0392b">↓</span>' : '';
+        }
+        const str = val == null ? '—' : fila.pct ? val.toFixed(1) + ' %' : fmt2(Math.round(val), fila.dec || 0);
+        bloque += `<td style="text-align:right">${str}${arrow}</td>`;
+        prev = val;
+      }
+      bloque += `</tr>`;
+    }
+    bloque += `</tbody></table></div>`;
+    bloque += `<div style="font-size:.8em;color:var(--txt2,#666);margin-top:.5em">★ = año proyectado por CCSS</div>`;
+
+    // Interpretación automática
+    const d25 = demanda[2025], d50 = demanda[2050];
+    if (d25 && d50) {
+      const cambNinos = ((d50.ninos - d25.ninos) / d25.ninos * 100).toFixed(1);
+      const cambMay   = ((d50.adultosMay - d25.adultosMay) / d25.adultosMay * 100).toFixed(1);
+      const cambForm  = ((d50.form - d25.form) / d25.form * 100).toFixed(1);
+      bloque += `<div style="background:var(--fondo2,#f5f5f5);border-radius:8px;padding:1em;margin-top:1em;font-size:.9em">
+        <strong>🔍 Lectura para planificación territorial (2025 → 2050):</strong>
+        <ul style="margin:.5em 0 0 1.2em;padding:0;line-height:1.8">
+          <li>Niños 0–14: <strong>${d25.ninos.toLocaleString('es-CR')} → ${d50.ninos.toLocaleString('es-CR')}</strong> (${cambNinos > 0 ? '+' : ''}${cambNinos}%) —
+            ${parseFloat(cambNinos) < -15 ? 'se libera capacidad en escuelas; oportunidad de reconvertir instalaciones educativas' :
+              parseFloat(cambNinos) > 15 ? 'crecimiento de demanda escolar; prever nuevos centros y cuido' : 'demanda escolar relativamente estable'}.
+          </li>
+          <li>Adultos mayores 65+: <strong>${d25.adultosMay.toLocaleString('es-CR')} → ${d50.adultosMay.toLocaleString('es-CR')}</strong> (${cambMay > 0 ? '+' : ''}${cambMay}%) —
+            ${parseFloat(cambMay) > 50 ? 'envejecimiento acelerado; prever EBAIS reforzados, hogares diurnos y vivienda accesible' :
+              parseFloat(cambMay) > 20 ? 'crecimiento moderado de adultos mayores; reforzar servicios de salud preventiva' : 'presión baja sobre servicios para adultos mayores'}.
+          </li>
+          <li>Cohorte de vivienda 25–39: <strong>${d25.form.toLocaleString('es-CR')} → ${d50.form.toLocaleString('es-CR')}</strong> (${cambForm > 0 ? '+' : ''}${cambForm}%) —
+            ${parseFloat(cambForm) < -20 ? 'contracción fuerte de la demanda de vivienda nueva; revisar cuotas de densificación' :
+              parseFloat(cambForm) > 10 ? 'presión sostenida sobre mercado de vivienda nueva' : 'demanda de vivienda relativamente estable'}.
+          </li>
+          <li>Ratio de dependencia: <strong>${d25.ratio_dep.toFixed(1)} → ${d50.ratio_dep.toFixed(1)}</strong> —
+            ${d50.ratio_dep > 55 ? 'presión fiscal alta; más personas dependientes por cada contribuyente activo' :
+              d50.ratio_dep > d25.ratio_dep ? 'tendencia al envejecimiento, aunque manejable' : 'estructura demográfica mejora en el período'}.
+          </li>
+        </ul>
+      </div>`;
+    }
+
+    // Insertar bloque en el DOM después del último hijo del cuerpo
+    const cuerpo = $('inecCuerpo');
+    if (cuerpo) {
+      const temp = document.createElement('div');
+      temp.innerHTML = bloque;
+      while (temp.firstChild) cuerpo.appendChild(temp.firstChild);
+    }
   }
 
   $('btnAtlas').addEventListener('click', async () => {
