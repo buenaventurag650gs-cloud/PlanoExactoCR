@@ -605,6 +605,7 @@
       actualizarExport();
       refrescarVista();
       if (!$('estructura').hidden) construirEstructura();   // quita el aviso de "elegí cantón"
+      if (!$('datosInec').hidden) construirDatosInec();     // refresca datos INEC si esa pestaña está visible
     });
 
     /* ---------- llegar desde el calibrador a un mapa concreto ----------
@@ -1555,9 +1556,11 @@
   function mostrarVista(cual) {
     $('map').hidden = cual !== 'visor';
     $('estructura').hidden = cual !== 'estructura';
+    $('datosInec').hidden = cual !== 'datosInec';
     document.querySelectorAll('.pest').forEach((b) => b.classList.toggle('activa', b.dataset.vista === cual));
     if (cual === 'visor') setTimeout(() => map.invalidateSize(), 60);
-    else construirEstructura();
+    else if (cual === 'estructura') construirEstructura();
+    else if (cual === 'datosInec') construirDatosInec();
     $('pestNota').textContent = cual === 'estructura'
       ? 'Los mapas se generan al momento, no están pre-hechos.' : '';
   }
@@ -1567,6 +1570,197 @@
 
   function limpiarLaminas() { $('laminas').innerHTML = ''; }
   window.addEventListener('afterprint', limpiarLaminas);
+
+  // ---------- datos INEC 2022 ----------
+  let datosInec = null;
+  fetch('datos/inec_2022.json').then(r => r.json()).then(d => { datosInec = d; }).catch(() => {});
+
+  function construirDatosInec() {
+    const cuerpo = $('inecCuerpo');
+    if (!cuerpo) return;
+    const nombre = $('selCanton') ? $('selCanton').value : '';
+    if (!nombre || !datosInec) {
+      cuerpo.innerHTML = '<div class="vacia">Elegí un cantón para ver sus datos.</div>';
+      return;
+    }
+    const regs = datosInec.registros;
+    const canton = regs.find(r => r.nivel === 'canton' && r.canton === nombre);
+    const distritos = regs.filter(r => r.nivel === 'distrito' && r.canton === nombre);
+    if (!canton) {
+      cuerpo.innerHTML = '<div class="vacia">No hay datos INEC para este cantón.</div>';
+      return;
+    }
+
+    // helpers
+    const fmt = (v, dec) => v == null ? '—' : Number(v).toLocaleString('es-CR', { maximumFractionDigits: dec ?? 0 });
+    const pct = (v) => v == null ? '—' : v.toFixed(1) + ' %';
+    const barra = (v, max) => {
+      const w = max ? Math.min(100, (v / max) * 100) : 0;
+      return `<div class="inec-bar"><div style="width:${w.toFixed(0)}%"></div></div>`;
+    };
+
+    // ── Tarjetas resumen del cantón ──
+    const p = canton.poblacion || {};
+    const e = canton.empleo || {};
+    const n = canton.nbi || {};
+    const v = canton.vivienda || {};
+    const ind = canton.indicadores || {};
+    const def = canton.deficit || {};
+
+    let html = `<h3 class="inec-seccion">Resumen del cantón: ${nombre}</h3>`;
+    html += `<div class="inec-grid">`;
+
+    // Población
+    html += `<div class="inec-card">
+      <div class="inec-val">${fmt(p.pob_total)}</div><div class="inec-label">Población total</div>
+      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+        ♂ ${fmt(p.hombres)} · ♀ ${fmt(p.mujeres)}
+      </div>
+    </div>`;
+
+    // Grupos etarios
+    html += `<div class="inec-card">
+      <div class="inec-val" style="font-size:1.2em">0-14: ${fmt(p.pob_0_14)} · 15-64: ${fmt(p.pob_15_64)} · 65+: ${fmt(p.pob_65_mas)}</div>
+      <div class="inec-label">Grupos de edad</div>
+    </div>`;
+
+    // NBI
+    html += `<div class="inec-card">
+      <div class="inec-val" style="color:#c0392b">${pct(n.pct_1mas_carencia)}</div>
+      <div class="inec-label">Con al menos 1 carencia (NBI)</div>
+      ${barra(n.pct_1mas_carencia, 60)}
+    </div>`;
+
+    // Empleo
+    html += `<div class="inec-card">
+      <div class="inec-val">${pct(e.pct_ocupada)}</div>
+      <div class="inec-label">Población ocupada</div>
+      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+        Desocupada: ${pct(e.pct_desocupada)} · Fuera fuerza: ${pct(e.pct_fuera_fuerza)}
+      </div>
+    </div>`;
+
+    // Vivienda
+    html += `<div class="inec-card">
+      <div class="inec-val">${fmt(v.viv_total)}</div>
+      <div class="inec-label">Viviendas totales</div>
+      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+        Ocupadas: ${fmt(v.viv_ocupadas)} · Desocupadas: ${fmt(v.viv_desocupadas)} · Prom. ocupantes: ${fmt(v.prom_ocupantes, 2)}
+      </div>
+    </div>`;
+
+    // Indicadores
+    html += `<div class="inec-card">
+      <div class="inec-val">${pct(ind.pct_extranjeros)}</div>
+      <div class="inec-label">Población extranjera</div>
+      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+        Asegurados: ${pct(ind.pct_asegurados)} · Dep. demográfica: ${fmt(ind.dep_demografica, 1)}
+      </div>
+    </div>`;
+
+    html += `</div>`; // cierra .inec-grid
+
+    // ── Tabla comparativa de distritos ──
+    if (distritos.length) {
+      const maxPob = Math.max(...distritos.map(d => (d.poblacion || {}).pob_total || 0));
+
+      html += `<h3 class="inec-seccion">Distritos de ${nombre} — comparativa</h3>`;
+      html += `<div style="overflow-x:auto">`;
+      html += `<table class="inec-tabla">
+        <thead><tr>
+          <th>Distrito</th>
+          <th>Población</th>
+          <th></th>
+          <th>NBI %</th>
+          <th>Ocupada %</th>
+          <th>Desocup. %</th>
+          <th>Terciario %</th>
+          <th>Viviendas</th>
+          <th>Déficit</th>
+        </tr></thead><tbody>`;
+
+      distritos.sort((a, b) => ((b.poblacion || {}).pob_total || 0) - ((a.poblacion || {}).pob_total || 0));
+      for (const d of distritos) {
+        const dp = d.poblacion || {};
+        const de = d.empleo || {};
+        const dn = d.nbi || {};
+        const dv = d.vivienda || {};
+        const dd = d.deficit || {};
+        const barW = maxPob ? ((dp.pob_total || 0) / maxPob * 100).toFixed(0) : 0;
+        html += `<tr>
+          <td><strong>${d.distrito}</strong></td>
+          <td style="text-align:right">${fmt(dp.pob_total)}</td>
+          <td style="width:80px"><div class="inec-bar"><div style="width:${barW}%"></div></div></td>
+          <td style="text-align:right;color:${(dn.pct_1mas_carencia || 0) > 25 ? '#c0392b' : 'inherit'}">${pct(dn.pct_1mas_carencia)}</td>
+          <td style="text-align:right">${pct(de.pct_ocupada)}</td>
+          <td style="text-align:right">${pct(de.pct_desocupada)}</td>
+          <td style="text-align:right">${pct(de.pct_terciario)}</td>
+          <td style="text-align:right">${fmt(dv.viv_total)}</td>
+          <td style="text-align:right">${fmt(dd.deficit_cualitativo)}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
+
+      // ── NBI por tipo de carencia ──
+      html += `<h3 class="inec-seccion">NBI por tipo de carencia — ${nombre}</h3>`;
+      html += `<div style="overflow-x:auto">`;
+      html += `<table class="inec-tabla">
+        <thead><tr>
+          <th>Distrito</th>
+          <th>1+ carencia</th>
+          <th>Albergue digno</th>
+          <th>Vida saludable</th>
+          <th>Conocimiento</th>
+          <th>Otros bienes</th>
+        </tr></thead><tbody>`;
+      for (const d of distritos) {
+        const dn = d.nbi || {};
+        html += `<tr>
+          <td><strong>${d.distrito}</strong></td>
+          <td style="text-align:right">${pct(dn.pct_1mas_carencia)}</td>
+          <td style="text-align:right">${pct(dn.carencia_albergue)}</td>
+          <td style="text-align:right">${pct(dn.carencia_salud)}</td>
+          <td style="text-align:right">${pct(dn.carencia_conocimiento)}</td>
+          <td style="text-align:right">${pct(dn.carencia_otros)}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
+
+      // ── Estructura económica ──
+      html += `<h3 class="inec-seccion">Estructura económica — ${nombre}</h3>`;
+      html += `<div style="overflow-x:auto">`;
+      html += `<table class="inec-tabla">
+        <thead><tr>
+          <th>Distrito</th>
+          <th>% Primario</th>
+          <th>% Secundario</th>
+          <th>% Terciario</th>
+          <th>% Ocupada</th>
+          <th>% Desocupada</th>
+          <th>% Fuera fuerza</th>
+        </tr></thead><tbody>`;
+      for (const d of distritos) {
+        const de = d.empleo || {};
+        html += `<tr>
+          <td><strong>${d.distrito}</strong></td>
+          <td style="text-align:right">${pct(de.pct_primario)}</td>
+          <td style="text-align:right">${pct(de.pct_secundario)}</td>
+          <td style="text-align:right">${pct(de.pct_terciario)}</td>
+          <td style="text-align:right">${pct(de.pct_ocupada)}</td>
+          <td style="text-align:right">${pct(de.pct_desocupada)}</td>
+          <td style="text-align:right">${pct(de.pct_fuera_fuerza)}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
+    }
+
+    html += `<p style="margin-top:1.5em;font-size:.8em;color:var(--txt2,#888)">
+      Fuente: INEC — Estimaciones y Proyecciones de Población 2022.
+      Estimaciones estadísticas basadas en Censo 2011 + registros administrativos; no es un censo completo.
+    </p>`;
+
+    cuerpo.innerHTML = html;
+  }
 
   $('btnAtlas').addEventListener('click', async () => {
     if (!cantonSel || !seleccion.size) { avisar('Elegí un cantón y marcá al menos un mapa con 🖨.'); return; }
