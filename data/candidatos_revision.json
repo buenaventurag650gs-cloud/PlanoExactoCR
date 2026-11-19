@@ -6,5 +6,45 @@
     "descripcion": "10. Aprueba remate/Aprobación de Remate + una vez firme puesta en poseción/EV=30/10/2026 10:31",
     "fecha": "2026-10-30T13:57:40.61",
     "detectado": "2026-11-13"
+  },
+  {
+    "ref": "2026211380",
+    "exp": "26-005875-1157-CJ",
+    "nom": "Casa · San José",
+    "descripcion": "10. Aprueba remate/EV=10/11/2026 10:38",
+    "fecha": "2026-11-15T19:28:00.25",
+    "detectado": "2026-11-19"
+  },
+  {
+    "ref": "2026211362",
+    "exp": "18-030803-1157-CJ",
+    "nom": "Filial 14 · Guácima",
+    "descripcion": "Apersonamiento / Anula acta / Imprueba remate / Solicitud de perito y curador",
+    "fecha": "2025-07-08T08:29:07.427",
+    "detectado": "2026-11-19"
+  },
+  {
+    "ref": "2026211128",
+    "exp": "21-008723-1157-CJ",
+    "nom": "Lote · Alajuela",
+    "descripcion": "Imprueba remate",
+    "fecha": "2025-06-09T16:56:26.353",
+    "detectado": "2026-11-19"
+  },
+  {
+    "ref": "2026210222",
+    "exp": "18-002538-1763-CJ",
+    "nom": "Lote · San Pedro",
+    "descripcion": "SE APRUEBA REMATE DE LAS 13:30 HRS DEL 19/06/2018- AUD. LIQUID",
+    "fecha": "2018-11-16T10:11:22.797",
+    "detectado": "2026-11-19"
+  },
+  {
+    "ref": "2026208303",
+    "exp": "26-002578-1202-CJ",
+    "nom": "Casa · Upala",
+    "descripcion": "Aprueba remate",
+    "fecha": "2026-11-18T09:39:34.187",
+    "detectado": "2026-11-19"
   }
 ]
