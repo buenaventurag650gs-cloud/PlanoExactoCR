@@ -1571,9 +1571,11 @@
   function limpiarLaminas() { $('laminas').innerHTML = ''; }
   window.addEventListener('afterprint', limpiarLaminas);
 
-  // ---------- datos INEC 2022 ----------
+  // ---------- datos INEC 2022 + CCSS serie ----------
   let datosInec = null;
+  let datosCCSS = null;
   fetch('datos/inec_2022.json').then(r => r.json()).then(d => { datosInec = d; }).catch(() => {});
+  fetch('datos/ccss_pob_serie.json').then(r => r.json()).then(d => { datosCCSS = d; }).catch(() => {});
 
   function construirDatosInec() {
     const cuerpo = $('inecCuerpo');
@@ -1754,9 +1756,80 @@
       html += `</tbody></table></div>`;
     }
 
+    // ── Serie histórica y proyección CCSS ──
+    if (datosCCSS) {
+      const distsCCSS = datosCCSS.distritos.filter(d => d.c === nombre);
+      if (distsCCSS.length) {
+        const anios = datosCCSS.anios;
+        const hoy = new Date().getFullYear();
+        // Totales del cantón por año (sumar distritos)
+        const totCanton = {};
+        for (const yr of anios) {
+          totCanton[yr] = distsCCSS.reduce((s, d) => s + (d.s[yr] || 0), 0);
+        }
+
+        html += `<h3 class="inec-seccion">Población adscrita CCSS · ${nombre} (2019 – 2050)</h3>`;
+
+        // Sparkline-like mini table of key years
+        const clave = [2019, 2022, 2025, 2030, 2035, 2040, 2045, 2050];
+        html += `<div class="inec-grid">`;
+        for (const yr of clave) {
+          const v = totCanton[yr];
+          if (v == null) continue;
+          const esProyeccion = yr > hoy;
+          html += `<div class="inec-card" style="${esProyeccion ? 'border-left:3px solid #3498db' : ''}">
+            <div class="inec-val" style="font-size:1.3em">${fmt(Math.round(v))}</div>
+            <div class="inec-label">${yr}${esProyeccion ? ' (proy.)' : ''}</div>
+          </div>`;
+        }
+        html += `</div>`;
+
+        // Growth rate between key periods
+        const tasa = (a, b, n) => n > 0 ? ((Math.pow(b / a, 1 / n) - 1) * 100).toFixed(2) : '—';
+        const t19 = totCanton[2019], t25 = totCanton[2025], t30 = totCanton[2030], t50 = totCanton[2050];
+        if (t19 && t25 && t30 && t50) {
+          html += `<div style="margin:10px 0;font-size:.9em;color:var(--txt2,#555)">
+            Tasa de crecimiento anual: 2019→2025: <strong>${tasa(t19, t25, 6)}%</strong> ·
+            2025→2030: <strong>${tasa(t25, t30, 5)}%</strong> ·
+            2030→2050: <strong>${tasa(t30, t50, 20)}%</strong>
+          </div>`;
+        }
+
+        // District-level table for selected years
+        html += `<div style="overflow-x:auto"><table class="inec-tabla"><thead><tr><th>Distrito</th>`;
+        for (const yr of clave) html += `<th style="text-align:right">${yr}</th>`;
+        html += `<th style="text-align:right">Cambio 2019–2050</th></tr></thead><tbody>`;
+
+        distsCCSS.sort((a, b) => (b.s[2025] || 0) - (a.s[2025] || 0));
+        for (const d of distsCCSS) {
+          html += `<tr><td><strong>${d.d}</strong></td>`;
+          for (const yr of clave) {
+            const v = d.s[yr];
+            html += `<td style="text-align:right">${v != null ? fmt(Math.round(v)) : '—'}</td>`;
+          }
+          const v19 = d.s[2019], v50 = d.s[2050];
+          if (v19 && v50) {
+            const cambio = ((v50 - v19) / v19 * 100).toFixed(1);
+            const color = cambio >= 0 ? '#27ae60' : '#c0392b';
+            html += `<td style="text-align:right;color:${color};font-weight:600">${cambio > 0 ? '+' : ''}${cambio}%</td>`;
+          } else {
+            html += `<td style="text-align:right">—</td>`;
+          }
+          html += `</tr>`;
+        }
+        // Canton total row
+        html += `<tr style="font-weight:700;border-top:2px solid var(--borde,#ccc)"><td>${nombre}</td>`;
+        for (const yr of clave) html += `<td style="text-align:right">${fmt(Math.round(totCanton[yr] || 0))}</td>`;
+        if (t19 && t50) {
+          const cambio = ((t50 - t19) / t19 * 100).toFixed(1);
+          html += `<td style="text-align:right">${cambio > 0 ? '+' : ''}${cambio}%</td>`;
+        }
+        html += `</tr></tbody></table></div>`;
+      }
+    }
+
     html += `<p style="margin-top:1.5em;font-size:.8em;color:var(--txt2,#888)">
-      Fuente: INEC — Estimaciones y Proyecciones de Población 2022.
-      Estimaciones estadísticas basadas en Censo 2011 + registros administrativos; no es un censo completo.
+      Fuentes: INEC — Estimaciones y Proyecciones 2022 (socioeconómico); CCSS — Dashboard Población Adscrita (serie 2019–2050).
     </p>`;
 
     cuerpo.innerHTML = html;
