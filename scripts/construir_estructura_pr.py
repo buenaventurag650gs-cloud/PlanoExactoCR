@@ -285,9 +285,94 @@ PRODUCTOS = [
     ("E10.3", 10, "Registro de certificados de uso de suelo y permisos", "Registro",
      "Certificados, permisos y usos no conformes para medir cumplimiento",
      "Municipalidad", "equipo"),
+    # Etapa 4 — Diagnóstico territorial. El desglose la organiza por ejes, no por pasos:
+    # cada eje produce sus análisis y sus mapas, y todos confluyen en el Mapa Unificado.
+    ("E4.1", 4, "Eje social", "Síntesis social del Diagnóstico",
+     "Población y proyecciones, estructura etárea, hogares, pobreza y vulnerabilidad, "
+     "vivienda (déficit cuantitativo y cualitativo), asentamientos informales, servicios "
+     "comunales", "Equipo consultor", "equipo"),
+    ("E4.2", 4, "Eje físico-espacial", "Síntesis físico-espacial del Diagnóstico",
+     "Uso actual del suelo, estructura urbana, tejido y morfología, espacio público, "
+     "vialidad y movilidad, transporte público, servicios públicos, patrimonio",
+     "Equipo consultor", "atlas"),
+    ("E4.3", 4, "Eje económico", "Síntesis económica del Diagnóstico",
+     "Estructura productiva, empleo, actividades por sector, turismo, mercado de suelo y "
+     "valores, finanzas municipales", "Equipo consultor", "equipo"),
+    ("E4.4", 4, "Eje político-institucional", "Síntesis político-institucional",
+     "Capacidad municipal (planificación, control urbano, catastro), actores, instancias "
+     "de coordinación, instrumentos vigentes", "Equipo consultor", "equipo"),
+    ("E4.5", 4, "Eje jurídico", "Matriz normativa e inventario de restricciones",
+     "Normativa nacional y local aplicable, regímenes especiales (ZMT, ASP, territorios "
+     "indígenas, patrimonio), PR vigente, jurisprudencia de la Sala Constitucional",
+     "Equipo consultor", "equipo"),
+    ("E4.6", 4, "Eje ambiental", "Condicionantes ambientales y su superficie",
+     "No se duplica: importa del EsIVA el IFA integrado, las amenazas, la recarga y "
+     "vulnerabilidad y las áreas de protección", "Equipo ambiental", "calibrador"),
+    ("E4.7", 4, "Talleres de diagnóstico participativo",
+     "Memoria de participación (anexo del Diagnóstico)",
+     "Talleres por distrito o sector y talleres con poblaciones en condición de "
+     "vulnerabilidad; resultados sistematizados", "Municipalidad", "equipo"),
+    ("E4.8", 4, "Unificar el Diagnóstico", "Mapa Unificado del Diagnóstico Territorial",
+     "Síntesis por eje (potencialidades, limitantes, problemas), geodatabase y matriz de "
+     "problemas y causas, que es la base del Pronóstico", "Equipo consultor", "calibrador"),
+    # Etapa 6 — Propuesta. Son tres piezas que se entregan juntas: la PDU, los cinco
+    # reglamentos obligatorios y el Atlas de la Propuesta.
+    ("E6.1", 6, "Redactar la Política de Desarrollo Urbano", "Documento PDU",
+     "Síntesis del Diagnóstico y modelo elegido, principios, visión, objetivos, ejes "
+     "estratégicos, acciones e instrumentos de gestión del suelo, programa de "
+     "implementación e indicadores de seguimiento", "Equipo consultor", "equipo"),
+    ("E6.2", 6, "Reglamento de Zonificación", "Articulado del Reglamento de Zonificación",
+     "Zonas, usos permitidos y condicionados, parámetros por zona; acá se integra el RDS "
+     "del EsIVA", "Equipo consultor", "calibrador"),
+    ("E6.3", 6, "Reglamento de Fraccionamientos y Urbanizaciones",
+     "Articulado del Reglamento de Fraccionamientos y Urbanizaciones",
+     "Lote mínimo, frentes, cesiones, vialidad interna, áreas públicas",
+     "Equipo consultor", "calibrador"),
+    ("E6.4", 6, "Reglamento de Mapa Oficial", "Articulado del Reglamento de Mapa Oficial",
+     "Vías y áreas de uso público, coincidencia con catastro", "Equipo consultor", "atlas"),
+    ("E6.5", 6, "Reglamento de Renovación Urbana",
+     "Articulado del Reglamento de Renovación Urbana",
+     "Áreas de Renovación Urbana (ARU) como capa superpuesta, no como uso de suelo",
+     "Equipo consultor", "calibrador"),
+    ("E6.6", 6, "Reglamento de Construcciones", "Articulado del Reglamento de Construcciones",
+     "Alturas, retiros, cobertura y demás parámetros constructivos",
+     "Equipo consultor", "calibrador"),
+    ("E6.7", 6, "Armar el Atlas de la Propuesta", "Atlas de la Propuesta en PDF y shapefile",
+     "Zonificación, Vialidad, Mapa Oficial, Renovación Urbana y Condicionantes "
+     "ambientales; colores en los códigos RGB de la Tabla 3 de la Guía",
+     "Equipo consultor", "calibrador"),
+    ("E6.8", 6, "Fichas normativas por zona y cuadro de áreas",
+     "Fichas por zona con parámetros y cuadro de áreas",
+     "Una ficha por zona con sus parámetros; el cuadro de áreas cierra con la superficie "
+     "del Área de Planificación", "Equipo consultor", "calibrador"),
+    ("E6.9", 6, "Matriz de trazabilidad", "Matriz Diagnóstico → PDU → Reglamentos",
+     "Cada norma debe poder rastrearse hasta un problema del Diagnóstico y hasta la "
+     "política que la ordena", "Equipo consultor", "equipo"),
     ("E10.4", 10, "Revisión integral", "Revisión del PR",
      "Recomendada cada cinco años (recomendación del Manual, no plazo legal)",
      "Municipalidad", "equipo"),
+]
+
+# --------------------------------------------------------------------------------------
+# Hitos de pago del cronograma de 18 meses
+# --------------------------------------------------------------------------------------
+# Un hito puede cubrir VARIOS entregables: el P5 cubre el 5 y el 6, el P6 el 7 y el 8, y el
+# P7 el 9, el 10 y el 11. Antes el hito se guardaba dentro de un solo entregable, así que
+# los demás salían sin pago y la numeración no cuadraba al leerla de corrido. Ahora la
+# tabla manda y cada entregable que cubre un hito lo muestra, diciendo con cuáles lo comparte.
+# (hito, mes, porcentaje, [entregables que cubre], condición de pago)
+HITOS = [
+    ("P1", 1, 10, [1], "Aprobación de la Comisión"),
+    ("P2", 3, 10, [2], "Aprobación de la Comisión; revisión por etapa del INVU solicitada"),
+    ("P3", 7, 15, [3], "Informe y atlas M1.1 a M1.9.02 aprobados por la Comisión"),
+    ("P4", 8, 15, [4], "Documento, atlas M2 y memoria de talleres aprobados"),
+    ("P5", 11, 10, [5, 6], "Modelo territorial y PDU validados por la Comisión"),
+    ("P6", 13, 10, [7, 8], "EsIVA completo presentado en la plataforma de SETENA"),
+    ("P7", 15, 15, [9, 10, 11],
+     "Entrega de reglamentos y atlas, y respuestas a SETENA presentadas"),
+    ("P8", 16, 5, [12], "Acta y matriz de respuestas entregadas"),
+    ("P9", 18, 10, [13],
+     "Expediente presentado; conviene retener una parte hasta atender las observaciones del INVU"),
 ]
 
 # --------------------------------------------------------------------------------------
@@ -759,14 +844,29 @@ def construir() -> dict:
         for cod, et, act, ent, con, res, resu in PRODUCTOS
     ]
 
+    # El hito de pago lo manda la tabla HITOS, no el entregable: así un hito que cubre
+    # varios entregables aparece en todos ellos y ninguno queda sin pago.
+    por_entregable = {}
+    for hito, mes, pct, cubre, cond in HITOS:
+        for n in cubre:
+            por_entregable[n] = {"hito": hito, "mes": mes, "porcentaje": pct,
+                                 "condicion_de_pago": cond,
+                                 "hito_cubre": [c for c in cubre]}
     entregables = [
         {
             "numero": num, "etapa": et, "nombre": nom, "componentes": comp, "norma": nor,
-            "revisa": rev, "depende": dep, "hito": hito, "mes": mes,
-            "porcentaje": pct, "condicion_de_pago": cond,
+            "revisa": rev, "depende": dep,
+            "hito": por_entregable.get(num, {}).get("hito"),
+            "mes": por_entregable.get(num, {}).get("mes"),
+            "porcentaje": por_entregable.get(num, {}).get("porcentaje"),
+            "condicion_de_pago": por_entregable.get(num, {}).get("condicion_de_pago"),
+            "hito_cubre": por_entregable.get(num, {}).get("hito_cubre", []),
         }
-        for num, et, nom, comp, nor, rev, dep, hito, mes, pct, cond in ENTREGABLES
+        for num, et, nom, comp, nor, rev, dep, _h, _m, _p, _c in ENTREGABLES
     ]
+    suma = sum(pct for _h, _m, pct, _cu, _co in HITOS)
+    if suma != 100:
+        raise SystemExit(f"Los hitos de pago suman {suma} %, no 100 %.")
 
     bloques = [
         {"codigo": cod, "nombre": nom, "etapa": et, "icono": ico, "descripcion": desc}

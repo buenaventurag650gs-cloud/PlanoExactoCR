@@ -685,6 +685,159 @@
    "resuelve": "equipo"
   },
   {
+   "codigo": "E4.1",
+   "etapa": 4,
+   "actividad": "Eje social",
+   "entregable": "Síntesis social del Diagnóstico",
+   "contenido": "Población y proyecciones, estructura etárea, hogares, pobreza y vulnerabilidad, vivienda (déficit cuantitativo y cualitativo), asentamientos informales, servicios comunales",
+   "responsable": "Equipo consultor",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E4.2",
+   "etapa": 4,
+   "actividad": "Eje físico-espacial",
+   "entregable": "Síntesis físico-espacial del Diagnóstico",
+   "contenido": "Uso actual del suelo, estructura urbana, tejido y morfología, espacio público, vialidad y movilidad, transporte público, servicios públicos, patrimonio",
+   "responsable": "Equipo consultor",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E4.3",
+   "etapa": 4,
+   "actividad": "Eje económico",
+   "entregable": "Síntesis económica del Diagnóstico",
+   "contenido": "Estructura productiva, empleo, actividades por sector, turismo, mercado de suelo y valores, finanzas municipales",
+   "responsable": "Equipo consultor",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E4.4",
+   "etapa": 4,
+   "actividad": "Eje político-institucional",
+   "entregable": "Síntesis político-institucional",
+   "contenido": "Capacidad municipal (planificación, control urbano, catastro), actores, instancias de coordinación, instrumentos vigentes",
+   "responsable": "Equipo consultor",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E4.5",
+   "etapa": 4,
+   "actividad": "Eje jurídico",
+   "entregable": "Matriz normativa e inventario de restricciones",
+   "contenido": "Normativa nacional y local aplicable, regímenes especiales (ZMT, ASP, territorios indígenas, patrimonio), PR vigente, jurisprudencia de la Sala Constitucional",
+   "responsable": "Equipo consultor",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E4.6",
+   "etapa": 4,
+   "actividad": "Eje ambiental",
+   "entregable": "Condicionantes ambientales y su superficie",
+   "contenido": "No se duplica: importa del EsIVA el IFA integrado, las amenazas, la recarga y vulnerabilidad y las áreas de protección",
+   "responsable": "Equipo ambiental",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E4.7",
+   "etapa": 4,
+   "actividad": "Talleres de diagnóstico participativo",
+   "entregable": "Memoria de participación (anexo del Diagnóstico)",
+   "contenido": "Talleres por distrito o sector y talleres con poblaciones en condición de vulnerabilidad; resultados sistematizados",
+   "responsable": "Municipalidad",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E4.8",
+   "etapa": 4,
+   "actividad": "Unificar el Diagnóstico",
+   "entregable": "Mapa Unificado del Diagnóstico Territorial",
+   "contenido": "Síntesis por eje (potencialidades, limitantes, problemas), geodatabase y matriz de problemas y causas, que es la base del Pronóstico",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.1",
+   "etapa": 6,
+   "actividad": "Redactar la Política de Desarrollo Urbano",
+   "entregable": "Documento PDU",
+   "contenido": "Síntesis del Diagnóstico y modelo elegido, principios, visión, objetivos, ejes estratégicos, acciones e instrumentos de gestión del suelo, programa de implementación e indicadores de seguimiento",
+   "responsable": "Equipo consultor",
+   "resuelve": "equipo"
+  },
+  {
+   "codigo": "E6.2",
+   "etapa": 6,
+   "actividad": "Reglamento de Zonificación",
+   "entregable": "Articulado del Reglamento de Zonificación",
+   "contenido": "Zonas, usos permitidos y condicionados, parámetros por zona; acá se integra el RDS del EsIVA",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.3",
+   "etapa": 6,
+   "actividad": "Reglamento de Fraccionamientos y Urbanizaciones",
+   "entregable": "Articulado del Reglamento de Fraccionamientos y Urbanizaciones",
+   "contenido": "Lote mínimo, frentes, cesiones, vialidad interna, áreas públicas",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.4",
+   "etapa": 6,
+   "actividad": "Reglamento de Mapa Oficial",
+   "entregable": "Articulado del Reglamento de Mapa Oficial",
+   "contenido": "Vías y áreas de uso público, coincidencia con catastro",
+   "responsable": "Equipo consultor",
+   "resuelve": "atlas"
+  },
+  {
+   "codigo": "E6.5",
+   "etapa": 6,
+   "actividad": "Reglamento de Renovación Urbana",
+   "entregable": "Articulado del Reglamento de Renovación Urbana",
+   "contenido": "Áreas de Renovación Urbana (ARU) como capa superpuesta, no como uso de suelo",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.6",
+   "etapa": 6,
+   "actividad": "Reglamento de Construcciones",
+   "entregable": "Articulado del Reglamento de Construcciones",
+   "contenido": "Alturas, retiros, cobertura y demás parámetros constructivos",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.7",
+   "etapa": 6,
+   "actividad": "Armar el Atlas de la Propuesta",
+   "entregable": "Atlas de la Propuesta en PDF y shapefile",
+   "contenido": "Zonificación, Vialidad, Mapa Oficial, Renovación Urbana y Condicionantes ambientales; colores en los códigos RGB de la Tabla 3 de la Guía",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.8",
+   "etapa": 6,
+   "actividad": "Fichas normativas por zona y cuadro de áreas",
+   "entregable": "Fichas por zona con parámetros y cuadro de áreas",
+   "contenido": "Una ficha por zona con sus parámetros; el cuadro de áreas cierra con la superficie del Área de Planificación",
+   "responsable": "Equipo consultor",
+   "resuelve": "calibrador"
+  },
+  {
+   "codigo": "E6.9",
+   "etapa": 6,
+   "actividad": "Matriz de trazabilidad",
+   "entregable": "Matriz Diagnóstico → PDU → Reglamentos",
+   "contenido": "Cada norma debe poder rastrearse hasta un problema del Diagnóstico y hasta la política que la ordena",
+   "responsable": "Equipo consultor",
+   "resuelve": "equipo"
+  },
+  {
    "codigo": "E10.4",
    "etapa": 10,
    "actividad": "Revisión integral",
@@ -706,7 +859,8 @@
    "hito": null,
    "mes": null,
    "porcentaje": null,
-   "condicion_de_pago": null
+   "condicion_de_pago": null,
+   "hito_cubre": []
   },
   {
    "numero": 1,
@@ -721,7 +875,10 @@
    "hito": "P1",
    "mes": 1,
    "porcentaje": 10,
-   "condicion_de_pago": "Aprobación de la Comisión"
+   "condicion_de_pago": "Aprobación de la Comisión",
+   "hito_cubre": [
+    1
+   ]
   },
   {
    "numero": 2,
@@ -736,7 +893,10 @@
    "hito": "P2",
    "mes": 3,
    "porcentaje": 10,
-   "condicion_de_pago": "Aprobación de la Comisión; revisión por etapa del INVU solicitada"
+   "condicion_de_pago": "Aprobación de la Comisión; revisión por etapa del INVU solicitada",
+   "hito_cubre": [
+    2
+   ]
   },
   {
    "numero": 3,
@@ -751,7 +911,10 @@
    "hito": "P3",
    "mes": 7,
    "porcentaje": 15,
-   "condicion_de_pago": "Informe y atlas M1.1 a M1.9.02 aprobados por la Comisión"
+   "condicion_de_pago": "Informe y atlas M1.1 a M1.9.02 aprobados por la Comisión",
+   "hito_cubre": [
+    3
+   ]
   },
   {
    "numero": 4,
@@ -767,7 +930,10 @@
    "hito": "P4",
    "mes": 8,
    "porcentaje": 15,
-   "condicion_de_pago": "Documento, atlas M2 y memoria de talleres aprobados"
+   "condicion_de_pago": "Documento, atlas M2 y memoria de talleres aprobados",
+   "hito_cubre": [
+    4
+   ]
   },
   {
    "numero": 5,
@@ -779,10 +945,14 @@
    "depende": [
     4
    ],
-   "hito": null,
-   "mes": null,
-   "porcentaje": null,
-   "condicion_de_pago": null
+   "hito": "P5",
+   "mes": 11,
+   "porcentaje": 10,
+   "condicion_de_pago": "Modelo territorial y PDU validados por la Comisión",
+   "hito_cubre": [
+    5,
+    6
+   ]
   },
   {
    "numero": 6,
@@ -797,7 +967,11 @@
    "hito": "P5",
    "mes": 11,
    "porcentaje": 10,
-   "condicion_de_pago": "Modelo territorial y PDU validados por la Comisión"
+   "condicion_de_pago": "Modelo territorial y PDU validados por la Comisión",
+   "hito_cubre": [
+    5,
+    6
+   ]
   },
   {
    "numero": 7,
@@ -810,10 +984,14 @@
     6,
     3
    ],
-   "hito": null,
-   "mes": null,
-   "porcentaje": null,
-   "condicion_de_pago": null
+   "hito": "P6",
+   "mes": 13,
+   "porcentaje": 10,
+   "condicion_de_pago": "EsIVA completo presentado en la plataforma de SETENA",
+   "hito_cubre": [
+    7,
+    8
+   ]
   },
   {
    "numero": 8,
@@ -828,7 +1006,11 @@
    "hito": "P6",
    "mes": 13,
    "porcentaje": 10,
-   "condicion_de_pago": "EsIVA completo presentado en la plataforma de SETENA"
+   "condicion_de_pago": "EsIVA completo presentado en la plataforma de SETENA",
+   "hito_cubre": [
+    7,
+    8
+   ]
   },
   {
    "numero": 9,
@@ -840,10 +1022,15 @@
    "depende": [
     8
    ],
-   "hito": null,
-   "mes": null,
-   "porcentaje": null,
-   "condicion_de_pago": null
+   "hito": "P7",
+   "mes": 15,
+   "porcentaje": 15,
+   "condicion_de_pago": "Entrega de reglamentos y atlas, y respuestas a SETENA presentadas",
+   "hito_cubre": [
+    9,
+    10,
+    11
+   ]
   },
   {
    "numero": 10,
@@ -859,7 +1046,12 @@
    "hito": "P7",
    "mes": 15,
    "porcentaje": 15,
-   "condicion_de_pago": "Entrega de reglamentos y atlas, y respuestas a SETENA presentadas"
+   "condicion_de_pago": "Entrega de reglamentos y atlas, y respuestas a SETENA presentadas",
+   "hito_cubre": [
+    9,
+    10,
+    11
+   ]
   },
   {
    "numero": 11,
@@ -871,10 +1063,15 @@
    "depende": [
     10
    ],
-   "hito": null,
-   "mes": null,
-   "porcentaje": null,
-   "condicion_de_pago": null
+   "hito": "P7",
+   "mes": 15,
+   "porcentaje": 15,
+   "condicion_de_pago": "Entrega de reglamentos y atlas, y respuestas a SETENA presentadas",
+   "hito_cubre": [
+    9,
+    10,
+    11
+   ]
   },
   {
    "numero": 12,
@@ -891,7 +1088,10 @@
    "hito": "P8",
    "mes": 16,
    "porcentaje": 5,
-   "condicion_de_pago": "Acta y matriz de respuestas entregadas"
+   "condicion_de_pago": "Acta y matriz de respuestas entregadas",
+   "hito_cubre": [
+    12
+   ]
   },
   {
    "numero": 13,
@@ -906,7 +1106,10 @@
    "hito": "P9",
    "mes": 18,
    "porcentaje": 10,
-   "condicion_de_pago": "Expediente presentado; conviene retener una parte hasta atender las observaciones del INVU"
+   "condicion_de_pago": "Expediente presentado; conviene retener una parte hasta atender las observaciones del INVU",
+   "hito_cubre": [
+    13
+   ]
   },
   {
    "numero": 14,
@@ -921,7 +1124,8 @@
    "hito": null,
    "mes": null,
    "porcentaje": null,
-   "condicion_de_pago": null
+   "condicion_de_pago": null,
+   "hito_cubre": []
   }
  ],
  "bloques": [
