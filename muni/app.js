@@ -574,9 +574,25 @@
   const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson').then((r) => r.json()).catch(() => null);
   cantonesTodos = baseCantones;
   if (baseCantones) {
-    const nombres = [...new Set(baseCantones.features.map((f) => f.properties.k))].sort();
     const sel = $('selCanton');
-    nombres.forEach((n) => sel.insertAdjacentHTML('beforeend', `<option value="${n}">${n}</option>`));
+    // Agrupar cantones por provincia según código político-administrativo (c: 1xx=SJ, 2xx=Alajuela, …)
+    const PROVINCIAS = { 1:'San José', 2:'Alajuela', 3:'Cartago', 4:'Heredia', 5:'Guanacaste', 6:'Puntarenas', 7:'Limón' };
+    const porProvincia = {};
+    baseCantones.features.forEach((f) => {
+      const prov = Math.floor(f.properties.c / 100);
+      if (!porProvincia[prov]) porProvincia[prov] = [];
+      porProvincia[prov].push({ c: f.properties.c, k: f.properties.k });
+    });
+    Object.keys(porProvincia).sort((a, b) => a - b).forEach((prov) => {
+      const grupo = document.createElement('optgroup');
+      grupo.label = PROVINCIAS[prov] || `Provincia ${prov}`;
+      porProvincia[prov].sort((a, b) => a.c - b.c).forEach(({ k }) => {
+        const opt = document.createElement('option');
+        opt.value = k; opt.textContent = k;
+        grupo.appendChild(opt);
+      });
+      sel.appendChild(grupo);
+    });
     sel.addEventListener('change', () => {
       if (!sel.value) { cantonSel = null; habilitarCatalogo(false); actualizarExport(); actualizarLeyenda(); return; }
       cantonSel = baseCantones.features.find((f) => f.properties.k === sel.value) || null;
