@@ -45,7 +45,11 @@ async function geoproxy(url, request) {
   } catch {
     return new Response("URL inválida", { status: 400, headers: CORS });
   }
-  if (!HOSTS_PERMITIDOS.has(u.hostname)) {
+  // Los servicios de ArcGIS viven en muchos subdominios (services1, services7, tiles…),
+  // así que se permiten por sufijo en vez de listarlos uno por uno. Sigue siendo una lista
+  // cerrada: cualquier otro dominio se rechaza.
+  const esArcGIS = /(^|\.)arcgis\.com$/.test(u.hostname) || /(^|\.)arcgisonline\.com$/.test(u.hostname);
+  if (!HOSTS_PERMITIDOS.has(u.hostname) && !esArcGIS) {
     return new Response(`Host no permitido: ${u.hostname}`, { status: 403, headers: CORS });
   }
 
@@ -71,7 +75,7 @@ async function geoproxy(url, request) {
   const cuerpo = await upstream.arrayBuffer();
   // El relieve sombreado no cambia nunca: se guarda un mes, así la segunda lámina del mismo
   // cantón sale al instante. Las capas del SNIT sí se revisan cada hora.
-  const vida = u.hostname.endsWith("arcgisonline.com") ? 2592000 : 3600;
+  const vida = /arcgisonline\.com$/.test(u.hostname) ? 2592000 : 3600;
   const resp = new Response(cuerpo, {
     status: upstream.status,
     headers: {

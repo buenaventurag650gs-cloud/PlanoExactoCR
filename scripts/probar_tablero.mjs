@@ -65,9 +65,9 @@ globalThis.__marcar = (n) => { nombreEnCurso = n; };
 /* Monta el tablero en una ventana simulada. Se usa dos veces: una con la estructura del
    Plan Regulador disponible y otra sin ella, para probar que el atlas no se cae cuando el
    mundo público no responde. */
-function montar({ sinEstructura = false } = {}) {
+function montar({ sinEstructura = false, busqueda = '' } = {}) {
   const dom = new JSDOM(lee('index.html'),
-    { runScripts: 'outside-only', url: 'https://atlas.planoexactocr.com/' });
+    { runScripts: 'outside-only', url: 'https://atlas.planoexactocr.com/' + busqueda });
   const w = dom.window;
   w.fetch = async (url) => {
     pedidos.push(url);
@@ -449,6 +449,53 @@ afirmar(coloresTablero.length === 5
     'respaldo: avisa que los códigos pueden no coincidir con los del calibrador');
   afirmar(filas2.some((r) => r.querySelector('[data-descargar]')),
     'respaldo: se siguen pudiendo descargar los mapas del atlas');
+}
+
+/* ---------- llegar desde el calibrador a un mapa concreto ----------
+   El calibrador enlaza cada mapa con ?canton=…&mapa=…; el atlas tiene que elegir ese cantón
+   y abrir ese mapa, no la portada. */
+{
+  const w3 = montar({ busqueda: '?canton=acosta&mapa=base_cartografica' });
+  await esperar(900);
+  const $3 = (id) => w3.document.getElementById(id);
+  afirmar($3('selCanton').value === 'Acosta',
+    `enlace entrante: elige el cantón del enlace aunque venga sin tilde ni mayúscula (${$3('selCanton').value})`);
+  const filaBase = [...w3.document.querySelectorAll('#catalogo .fila')]
+    .find((f) => /Mapa base/i.test(f.textContent));
+  afirmar(!!filaBase && filaBase.classList.contains('viendo'),
+    'enlace entrante: deja prendido el mapa pedido, no la portada');
+  afirmar(!$3('map').hidden, 'enlace entrante: se queda en el visor para que se vea el mapa');
+}
+
+/* Un mapa que todavía no se puede dibujar manda a la estructura, que es donde se explica
+   qué insumo le falta. */
+{
+  const w4 = montar({ busqueda: '?canton=Acosta&mapa=geo_litopetrofisico' });
+  await esperar(900);
+  afirmar(!w4.document.getElementById('estructura').hidden,
+    'enlace entrante: un mapa sin insumos abre la estructura en vez de dejar la pantalla vacía');
+  const marcado = w4.document.querySelector('#estCuerpo tr[data-mapa="geo_litopetrofisico"]');
+  afirmar(!!marcado, 'enlace entrante: la fila del mapa se puede ubicar por su identificador');
+  afirmar(marcado && marcado.dataset.situacion === 'falta',
+    `enlace entrante: la fila dice en qué situación está (${marcado && marcado.dataset.situacion})`);
+}
+
+/* ---------- filtrar la estructura por lo que falta ---------- */
+{
+  const chips = [...window.document.querySelectorAll('#estResumen .est-chip.filtro')];
+  afirmar(chips.length === 3, `estructura: hay tres chips de situación para filtrar (${chips.length})`);
+  const antes = [...window.document.querySelectorAll('#estCuerpo tr[data-situacion]')];
+  const falta = chips.find((c) => c.dataset.filtro === 'falta');
+  falta.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  const visibles = antes.filter((r) => !r.hidden);
+  afirmar(visibles.length > 0 && visibles.every((r) => r.dataset.situacion === 'falta'),
+    `estructura: el filtro deja solo los mapas a los que les falta un insumo (${visibles.length})`);
+  afirmar(visibles.length < antes.length, 'estructura: filtrar de verdad esconde los demás');
+  afirmar([...window.document.querySelectorAll('#estCuerpo .est-comp')]
+    .filter((c) => !c.hidden).every((c) => c.querySelector('tr[data-situacion]:not([hidden])')),
+    'estructura: no quedan títulos de componente sin mapas debajo');
+  falta.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  afirmar(antes.every((r) => !r.hidden), 'estructura: tocar el chip otra vez vuelve a mostrar todo');
 }
 
 // ---------- resultado ----------

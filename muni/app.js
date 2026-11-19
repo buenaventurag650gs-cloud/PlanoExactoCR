@@ -27,10 +27,14 @@
     'geos.snitcr.go.cr', 'geos1.snitcr.go.cr', 'geos1pne.sirefor.go.cr',
     'mapas.cne.go.cr', 'geoserver.mag.go.cr', 'www.snitcr.go.cr', 'snitcr.go.cr'
   ]);
+  // Los servicios de ArcGIS (los de ArcGIS Hub y de varias instituciones) también van por
+  // el proxy: son muchos subdominios (services1, services3, services7…), así que se
+  // reconocen por el final del nombre en vez de listarlos uno por uno.
+  const esArcGIS = (h) => /(^|\.)arcgis\.com$/.test(h) || /(^|\.)arcgisonline\.com$/.test(h);
   function viaProxy(url) {
     try {
       const h = new URL(url).hostname;
-      if (HOSTS_PROXY.has(h)) return '/geoproxy?url=' + encodeURIComponent(url);
+      if (HOSTS_PROXY.has(h) || esArcGIS(h)) return '/geoproxy?url=' + encodeURIComponent(url);
     } catch (e) { /* url relativa */ }
     return url;
   }
@@ -137,6 +141,18 @@
     return [a, b, c, d];
   }
   function urlConBbox(url, bbox) {
+    /* Un servicio ArcGIS no se consulta como un WFS: en vez de `bbox` lleva una geometría
+       de sobre, y hay que pedirle explícitamente la respuesta en GeoJSON. Se reconoce por
+       terminar en /FeatureServer/<n> o /MapServer/<n>. */
+    const limpia = url.split('?')[0].replace(/\/$/, '');
+    if (/\/(Feature|Map)Server\/\d+$/i.test(limpia)) {
+      const p = new URLSearchParams({
+        where: '1=1', outFields: '*', f: 'geojson', outSR: '4326', inSR: '4326',
+        geometryType: 'esriGeometryEnvelope', spatialRel: 'esriSpatialRelIntersects',
+        geometry: bbox.join(','), returnGeometry: 'true', resultRecordCount: '20000'
+      });
+      return `${limpia}/query?${p}`;
+    }
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}bbox=${bbox.join(',')},EPSG:4326&count=150000`;
   }
@@ -590,6 +606,58 @@
       refrescarVista();
       if (!$('estructura').hidden) construirEstructura();   // quita el aviso de "elegí cantón"
     });
+
+    /* ---------- llegar desde el calibrador a un mapa concreto ----------
+       El calibrador enlaza cada mapa del índice maestro con
+       atlas.planoexactocr.com/?canton=<cantón>&mapa=<id>. Acá se lee ese enlace: se elige el
+       cantón, y si el mapa se puede dibujar se prende solo; si todavía no se puede, se abre
+       la pestaña de estructura en ese mapa, que es donde se ve qué le falta. */
+    const entrada = new URLSearchParams(location.search);
+    const cantonPedido = (entrada.get('canton') || '').trim();
+    const mapaPedido = (entrada.get('mapa') || '').trim();
+    if (cantonPedido) {
+      // Se busca sin tildes ni mayúsculas, porque el nombre viaja escrito a mano.
+      const plano = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+      const calce = nombres.find((n) => plano(n) === plano(cantonPedido));
+      if (calce) {
+        sel.value = calce;
+        sel.dispatchEvent(new Event('change'));
+        // El cambio de cantón carga capas; se espera un respiro antes de ir al mapa.
+        if (mapaPedido) setTimeout(() => irAlMapa(mapaPedido), 400);
+      } else {
+        avisar(`No encontré el cantón "${cantonPedido}" en la lista.`);
+      }
+    } else if (mapaPedido) {
+      irAlMapa(mapaPedido);
+    }
+  }
+
+  // Lleva la vista al mapa pedido: lo prende si se puede ver, y si no lo muestra en la
+  // estructura, resaltado, que es donde se explica qué insumo le falta.
+  function irAlMapa(id) {
+    const m = defMapa(id);
+    if (!m) { avisar(`No encontré el mapa "${id}" en el catálogo del atlas.`); return; }
+    const ref = refFilasMapa[id];
+    if (ref && ref.btnOjo && !ref.btnOjo.disabled) {
+      const grupo = ref.fila.closest('.grupo');
+      if (grupo) grupo.classList.add('abierto');     // si venía plegado, se abre
+      verMapa(id);
+      mostrarVista('visor');
+      ref.fila.scrollIntoView({ block: 'center' });
+      resaltar(ref.fila);
+      avisar(`Mostrando «${m.nombre}».`);
+      return;
+    }
+    // Todavía no se puede dibujar: se abre la estructura, que es donde se dice qué le falta.
+    mostrarVista('estructura');
+    const caja = document.querySelector(`#estCuerpo [data-mapa="${CSS.escape(id)}"]`);
+    if (caja) { caja.scrollIntoView({ block: 'center' }); resaltar(caja); }
+    avisar(`«${m.nombre}» todavía no se puede dibujar; acá se ve qué le falta.`);
+  }
+
+  function resaltar(el) {
+    el.classList.add('resaltado');
+    setTimeout(() => el.classList.remove('resaltado'), 6000);
   }
 
   // ---------- tamaño de papel ----------
@@ -1347,7 +1415,12 @@
             + (mp.sintesis ? '<span class="badge sint">síntesis</span>' : '')
             + (estado ? `<span class="badge ${estado}">${estado}</span>` : '');
 
-          h += `<tr><td class="est-cod">${mp.codigo}</td>` +
+          // `data-mapa` y `data-situacion` permiten llegar directo desde el calibrador y
+          // filtrar la lista por lo que ya sale y lo que falta.
+          const situacion = mp.resuelve !== 'atlas' ? 'otro'
+            : estado === 'disponible' ? 'listo' : estado === 'parcial' ? 'parcial' : 'falta';
+          h += `<tr${mp.atlas ? ` data-mapa="${mp.atlas}"` : ''} data-situacion="${situacion}">` +
+               `<td class="est-cod">${mp.codigo}</td>` +
                `<td><div class="est-nom">${mp.nombre} ${quien} ${marcas}</div>` +
                `${m && m.descripcion ? `<div class="est-desc">${m.descripcion}</div>` : ''}` +
                `${mp.observacion ? `<div class="est-obs">${mp.observacion}</div>` : ''}` +
@@ -1363,12 +1436,14 @@
       h += '</div>';
     });
 
+    /* Los tres primeros chips filtran la lista. Repasar 87 mapas de corrido no se puede;
+       lo útil es poder quedarse solo con los que faltan y trabajar sobre esos. */
     $('estResumen').innerHTML =
       `<span class="est-chip"><b>${estructura.mapas.length}</b> mapas en la obra</span>` +
       `<span class="est-chip"><b>${conAtlas}</b> con lámina en el atlas</span>` +
-      `<span class="est-chip"><b>${listos}</b> listos</span>` +
-      `<span class="est-chip"><b>${parciales}</b> parciales</span>` +
-      `<span class="est-chip"><b>${porDatos}</b> por datos</span>` +
+      `<span class="est-chip filtro" data-filtro="listo"><b>${listos}</b> ya salen</span>` +
+      `<span class="est-chip filtro" data-filtro="parcial"><b>${parciales}</b> a medias</span>` +
+      `<span class="est-chip filtro" data-filtro="falta"><b>${porDatos}</b> les falta un insumo</span>` +
       `<span class="est-chip"><b>${deCalibrador}</b> los resuelve el calibrador</span>` +
       `<span class="est-chip"><b>${deEquipo}</b> el equipo consultor</span>` +
       `<span class="est-chip"><b>${cuenta.propias}</b> capas propias de PlanoExacto</span>` +
@@ -1438,6 +1513,26 @@
       b.addEventListener('click', () => {
         marcarImprimir(b.dataset.marcar);
         b.textContent = seleccion.has(b.dataset.marcar) ? 'Marcado 🖨' : 'Marcar 🖨';
+      });
+    });
+
+    /* Filtro por situación: al tocar un chip la lista se queda solo con esos mapas, y las
+       tablas y componentes que quedan vacíos se esconden para no dejar títulos huérfanos.
+       Tocar el chip otra vez vuelve a mostrar todo. */
+    $('estResumen').querySelectorAll('.est-chip.filtro').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const quiero = chip.classList.contains('activo') ? null : chip.dataset.filtro;
+        $('estResumen').querySelectorAll('.est-chip.filtro')
+          .forEach((c) => c.classList.toggle('activo', c.dataset.filtro === quiero));
+        cuerpo.querySelectorAll('tr[data-situacion]').forEach((fila) => {
+          fila.hidden = !!quiero && fila.dataset.situacion !== quiero;
+        });
+        cuerpo.querySelectorAll('.est-comp').forEach((comp) => {
+          comp.hidden = !comp.querySelector('tr[data-situacion]:not([hidden])');
+        });
+        cuerpo.querySelectorAll('.est-eje').forEach((eje) => {
+          eje.hidden = !eje.querySelector('.est-comp:not([hidden])');
+        });
       });
     });
   }
