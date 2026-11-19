@@ -16,9 +16,8 @@
           "numero": "1.1",
           "id": "geo_litopetrofisico",
           "nombre": "Factor litopetrofísico",
-          "estado": "pendiente",
-          "faltante": "geología, geomorfología, dureza, cohesión, meteorización, arcilla, permeabilidad (DGM)",
-          "descripcion": "Resistencia del material: geología, geomorfología, dureza, cohesión, meteorización, espesor de suelo, arcilla, permeabilidad.",
+          "estado": "disponible",
+          "descripcion": "Unidades litológicas y petrológicas (Tournon & Alvarado 1997, 1:500.000). Regiones: volcánica, sedimentaria, metamórfica, plutónica.",
           "insumos": [
             "Geología"
           ]

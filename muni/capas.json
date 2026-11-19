@@ -176,10 +176,11 @@
         },
         {
           "nombre": "Geología",
-          "archivo": null,
-          "fuente": "DGM (tramites.geologia.go.cr/Investigacion)",
-          "estado": "pendiente",
-          "nota": "URL suministrada por usuario pendiente de confirmar /FeatureServer; usar cuando llegue"
+          "archivo": "https://services9.arcgis.com/RrvMEynxDB8hycVO/arcgis/rest/services/Mapa_Geol%C3%B3gico_de_Costa_Rica_WFL1/FeatureServer/0",
+          "fuente": "Tournon & Alvarado (1997), digitalizado ESRI Hub (belkis.ramirez)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Mapa 1:500.000; campos DESCRIPCION, EDAD, CLAVE; 4 regiones: volcánica, sedimentaria, metamórfica, plutónica"
         }
       ]
     },

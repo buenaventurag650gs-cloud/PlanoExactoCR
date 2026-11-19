@@ -381,10 +381,9 @@ afirmar(todos('#estCuerpo .est-calc').some((e) => e.textContent.includes('sumand
 // Botón de descarga: compone ese mapa solo, en el momento.
 const btnDescargar = todos('#estCuerpo [data-descargar]');
 afirmar(btnDescargar.length > 0, `estructura: hay botón de descargar por mapa (${btnDescargar.length})`);
-const pendiente = todos('#estCuerpo .est-tabla tbody tr')
-  .find((r) => r.textContent.includes('pendiente'));
+const pendiente = todos('#estCuerpo .est-tabla tbody tr[data-situacion="falta"]')[0];
 afirmar(pendiente && !pendiente.querySelector('[data-descargar]'),
-  'estructura: un mapa pendiente no ofrece descarga');
+  'estructura: un mapa sin insumos no ofrece descarga');
 
 const antes = todos('#laminas .lamina').length;
 window.__imprimio = false;
@@ -470,11 +469,11 @@ afirmar(coloresTablero.length === 5
 /* Un mapa que todavía no se puede dibujar manda a la estructura, que es donde se explica
    qué insumo le falta. */
 {
-  const w4 = montar({ busqueda: '?canton=Acosta&mapa=geo_litopetrofisico' });
+  const w4 = montar({ busqueda: '?canton=Acosta&mapa=geo_hidrogeologico' });
   await esperar(900);
   afirmar(!w4.document.getElementById('estructura').hidden,
     'enlace entrante: un mapa sin insumos abre la estructura en vez de dejar la pantalla vacía');
-  const marcado = w4.document.querySelector('#estCuerpo tr[data-mapa="geo_litopetrofisico"]');
+  const marcado = w4.document.querySelector('#estCuerpo tr[data-mapa="geo_hidrogeologico"]');
   afirmar(!!marcado, 'enlace entrante: la fila del mapa se puede ubicar por su identificador');
   afirmar(marcado && marcado.dataset.situacion === 'falta',
     `enlace entrante: la fila dice en qué situación está (${marcado && marcado.dataset.situacion})`);
