@@ -167,6 +167,14 @@
           "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
         },
         {
+          "nombre": "Inundaciones LiDAR (ZMT)",
+          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=Inundaciones_lidar&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "CNE (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Inundación costera con datos LiDAR; cubre únicamente la Zona Marítimo Terrestre (200 m de costa). Solo relevante para cantones costeros."
+        },
+        {
           "nombre": "Curvas de nivel 10m",
           "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=curvas_5000&outputFormat=application/json&srsName=EPSG:4326",
           "fuente": "IGN 1:5mil (SNIT)",

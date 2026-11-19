@@ -57,13 +57,14 @@
           "id": "geo_amenazas",
           "nombre": "Factor amenazas naturales",
           "estado": "parcial",
-          "faltante": "sismicidad, volcánica, licuefacción, tsunami",
+          "faltante": "sismicidad (RSN/UCR), amenaza volcánica (OVSICORI/UNA), licuefacción (SENARA/UCR), tsunami (SINAMOT/UCR) — ninguna disponible en WFS público al 2026-11",
           "descripcion": "Deslizamientos, fallas activas, inundación, sismicidad, amenaza volcánica, licuefacción, tsunami.",
           "insumos": [
             "Coronas de deslizamientos",
             "Deslizamientos",
             "Fallas del cuaternario",
-            "Áreas con potencial a inundación"
+            "Áreas con potencial a inundación",
+            "Inundaciones LiDAR (ZMT)"
           ]
         },
         {

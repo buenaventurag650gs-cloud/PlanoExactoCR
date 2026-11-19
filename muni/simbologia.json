@@ -165,6 +165,13 @@
       "relleno": 0.35,
       "geom": "poligono"
     },
+    "Inundaciones LiDAR (ZMT)": {
+      "color": "#1565c0",
+      "trazo": "solido",
+      "peso": 0.5,
+      "relleno": 0.45,
+      "geom": "poligono"
+    },
     "Capacidad de uso de la tierra": {
       "color": "#9e6ebd",
       "trazo": "solido",
