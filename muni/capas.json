@@ -24,11 +24,12 @@
           "estado": "disponible"
         },
         {
-          "nombre": "Unidades Geoestadísticas Mínimas (UGM)",
-          "archivo": "datos/ugm/{canton}.geojson",
-          "fuente": "INEC — Marco Geoestadístico Nacional 2022",
+          "nombre": "Unidades Geoestadísticas Mínimas (UGM) 2025",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:unidad_geoestadistica_minima_2025",
+          "fuente": "INEC — Marco Geoestadístico Nacional 2025 (geoportal)",
           "estado": "disponible",
-          "nota": "50.776 polígonos a nivel de manzana para todo el país, partidos en un archivo por cantón. Es la geometría estadística más fina que publica el INEC: 104 veces más resolución que el distrito. Trae la geometría, no la población — los datos del censo por UGM se piden aparte al INEC. Simplificado a 6 m (0,6 mm en papel a 1:10.000) desde el original en CRTM05."
+          "nota": "Geometría a nivel de manzana, la unidad estadística más fina del INEC. Se pide al GeoServer del geoportal del INEC, que publica la versión 2025 — más nueva que el shapefile 2022. Trae geometría, no población.",
+          "filtrar_canton": true
         }
       ]
     },
@@ -63,6 +64,38 @@
           "estado": "disponible",
           "filtrar_canton": true,
           "nota": "capa nacional, se recorta al cantón; uso no comercial/científico (copyright, confirmado con abogado); CORS igual que arriba"
+        },
+        {
+          "nombre": "Grado de urbanización por UGM (DEGURBA)",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:ugm_degurb_web_2m",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Clasifica cada manzana como ciudad, localidad densa, semidensa o área rural, con la metodología DEGURBA de Naciones Unidas. Trae la geometría de la UGM y la clase urbana en el mismo registro, así que sirve para trazar el perímetro urbano con criterio reproducible en vez de a ojo. Insumo directo de cuadrantes urbanos (M4.1.02) y de la zonificación.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Densidad de viviendas — cuadrícula 500 m",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:viviendas_grid_500m",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Viviendas por km2 en una malla regular de 500 m, agregando los puntos de vivienda del censo. Al no depender de límites administrativos muestra la forma real de la mancha urbana, cosa que el promedio por distrito esconde.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Densidad de viviendas — cuadrícula 1 km",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:viviendas_grid_1km",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "La misma malla a 1 km, para lectura cantonal y regional.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Estimaciones 2022 por distrito (con geometría)",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:UGED_ESTIMACIONES_2022",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Población total, por sexo, viviendas ocupadas y desocupadas, área y densidad, ya pegados a la geometría distrital. Evita tener que unir la tabla del INEC con los límites a mano.",
+          "filtrar_canton": true
         }
       ]
     },
@@ -332,6 +365,14 @@
           "fuente": "Dirección de Agua (MINAE) — GeoServer",
           "estado": "disponible",
           "nota": "113 organizaciones comunitarias de agua georreferenciadas. Complementa la capa de ASADAS para I25.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Centros de salud (INEC)",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:centros_de_salud_956d3d2ca53b726cb33cc231720afa39",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Centros de salud georreferenciados con nombre, dirección y código de distrito. Complementa la capa de sedes de la CCSS para el mapa de servicios comunales (M2.1.05).",
           "filtrar_canton": true
         }
       ]

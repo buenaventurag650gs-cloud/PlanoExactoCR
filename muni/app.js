@@ -241,16 +241,7 @@
     let fc = null;
     if (c && c.archivo && !c.archivo.startsWith('api:')) {
       let url, recortar;
-      /* Capas que ya vienen partidas por cantón: el archivo lleva {canton} y se sustituye
-         por el código del cantón (101 San José, 407 Belén…). Como el archivo ya trae solo
-         ese cantón, no hay nada que recortar ni bbox que mandar. Así es la capa de UGM,
-         que a nivel nacional serían 50.776 polígonos. */
-      if (c.archivo.includes('{canton}')) {
-        const cod = cantonSel && cantonSel.properties ? cantonSel.properties.c : null;
-        if (!cod) { datosCapa.set(nombre, null); return null; }
-        url = c.archivo.replace('{canton}', cod);
-        recortar = false;
-      } else if (c.filtrar_canton) { url = urlConBbox(c.archivo, bboxDe(cantonSel)); recortar = false; }
+      if (c.filtrar_canton) { url = urlConBbox(c.archivo, bboxDe(cantonSel)); recortar = false; }
       else { url = c.archivo; recortar = true; }
       try {
         const data = await fetch(viaProxy(url)).then((r) => { if (!r.ok) throw 0; return r.json(); });
