@@ -1573,12 +1573,15 @@
     $('map').hidden = cual !== 'visor';
     $('estructura').hidden = cual !== 'estructura';
     $('datosInec').hidden = cual !== 'datosInec';
+    $('matrizPr').hidden = cual !== 'matrizPr';
     document.querySelectorAll('.pest').forEach((b) => b.classList.toggle('activa', b.dataset.vista === cual));
     if (cual === 'visor') setTimeout(() => map.invalidateSize(), 60);
     else if (cual === 'estructura') construirEstructura();
     else if (cual === 'datosInec') construirDatosInec();
+    else if (cual === 'matrizPr') construirMatrizPr();
     $('pestNota').textContent = cual === 'estructura'
-      ? 'Los mapas se generan al momento, no están pre-hechos.' : '';
+      ? 'Los mapas se generan al momento, no están pre-hechos.'
+      : cual === 'matrizPr' ? 'Inventario normativo: es igual para todos los cantones.' : '';
   }
   document.querySelectorAll('.pest').forEach((b) => {
     b.addEventListener('click', () => mostrarVista(b.dataset.vista));
@@ -2119,5 +2122,160 @@
     await construirLaminas();
     window.print();
     $('btnAtlas').disabled = false;
+  });
+
+  /* ---------- matriz del Plan Regulador ----------
+     Inventario de todo lo que pide la normativa (87 mapas, 32 insumos) contra lo que
+     realmente tenemos cargado. No depende del cantón: es el marco normativo, igual
+     para los 82. Tres vistas: mapas por eje, insumos y geoservicios por conectar. */
+  let datosMatriz = null;
+  let mprVista = 'mapas';
+
+  function construirMatrizPr() {
+    const cuerpo = $('mprCuerpo');
+    if (!cuerpo) return;
+    if (!datosMatriz) {
+      cuerpo.innerHTML = '<div class="vacia">Cargando matriz…</div>';
+      fetch('datos/matriz_pr.json')
+        .then((r) => r.json())
+        .then((d) => { datosMatriz = d; construirMatrizPr(); })
+        .catch(() => { cuerpo.innerHTML = '<div class="vacia">No se pudo cargar la matriz.</div>'; });
+      return;
+    }
+    pintarResumenMatriz();
+    if (mprVista === 'mapas') cuerpo.innerHTML = vistaMatrizMapas();
+    else if (mprVista === 'insumos') cuerpo.innerHTML = vistaMatrizInsumos();
+    else cuerpo.innerHTML = vistaMatrizVisores();
+  }
+
+  // Los chips de arriba cuentan los mapas por estado y sirven de leyenda.
+  function pintarResumenMatriz() {
+    const cont = $('mprResumen');
+    if (!cont || !datosMatriz) return;
+    const cuenta = {};
+    let total = 0;
+    for (const b of datosMatriz.bloques)
+      for (const c of b.componentes)
+        for (const m of c.mapas) { cuenta[m.estado] = (cuenta[m.estado] || 0) + 1; total++; }
+    const ordenados = Object.entries(datosMatriz.estados).sort((a, b) => a[1].orden - b[1].orden);
+    let h = `<span class="est-chip"><b>${total}</b> mapas</span>`;
+    for (const [clave, def] of ordenados) {
+      if (!cuenta[clave]) continue;
+      h += `<span class="est-chip" style="color:${def.color}">${def.icono} <b>${cuenta[clave]}</b> ${def.label}</span>`;
+    }
+    cont.innerHTML = h;
+  }
+
+  function mprEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function mprPill(clave) {
+    const def = datosMatriz.estados[clave];
+    if (!def) return '';
+    return `<span class="mpr-estado" style="color:${def.color}">${def.icono} ${mprEsc(def.label)}</span>`;
+  }
+
+  // Vista 1 — los 87 mapas agrupados por bloque (etapa) y componente (eje).
+  function vistaMatrizMapas() {
+    const criticos = new Set(datosMatriz.insumos.filter((i) => i.critico).map((i) => i.cod));
+    const nombreIns = {};
+    datosMatriz.insumos.forEach((i) => { nombreIns[i.cod] = i.nombre; });
+    let h = '';
+    for (const b of datosMatriz.bloques) {
+      h += `<div class="mpr-bloque">
+        <div class="mpr-bloque-cab">
+          <h3>${b.icono} Bloque ${mprEsc(b.cod)} · ${mprEsc(b.nombre)}
+            <span class="mpr-etapa">${mprEsc(b.etapa)}</span></h3>
+          <p>${mprEsc(b.desc)}</p>
+        </div>`;
+      for (const c of b.componentes) {
+        h += `<div class="mpr-comp"><div class="mpr-comp-tit">${mprEsc(c.nombre)}</div>`;
+        for (const m of c.mapas) {
+          const ins = (m.insumos || []).map((cod) =>
+            `<span class="${criticos.has(cod) ? 'crit' : ''}" title="${mprEsc(cod + ' — ' + (nombreIns[cod] || ''))}">${cod}</span>`).join('');
+          h += `<div class="mpr-fila">
+            <div class="mpr-cod">${mprEsc(m.cod)}</div>
+            <div>
+              <div class="mpr-nom">${mprEsc(m.nombre)}${m.guia_invu ? '<span class="mpr-guia">Guía INVU</span>' : ''}</div>
+              ${m.nota ? `<div class="mpr-nota">${mprEsc(m.nota)}</div>` : ''}
+              ${ins ? `<div class="mpr-ins">${ins}</div>` : ''}
+            </div>
+            <div>${mprPill(m.estado)}</div>
+          </div>`;
+        }
+        h += `</div>`;
+      }
+      h += `</div>`;
+    }
+    return h;
+  }
+
+  // Vista 2 — los 32 insumos: qué tenemos de cada uno y cómo conseguir el resto.
+  function vistaMatrizInsumos() {
+    // Cuántos mapas dependen de cada insumo: así se ve cuál destraba más trabajo.
+    const usos = {};
+    for (const b of datosMatriz.bloques)
+      for (const c of b.componentes)
+        for (const m of c.mapas)
+          for (const cod of (m.insumos || [])) usos[cod] = (usos[cod] || 0) + 1;
+
+    let h = `<p style="font-size:12px;color:var(--muted);margin:0 0 14px;max-width:80ch">
+      Los cinco insumos marcados <span class="mpr-badge-crit">crítico</span> son los que el desglose
+      señala como cuello de botella: no existen a escala de plan regulador o están repartidos entre
+      instituciones. El número de mapas indica cuánto trabajo destraba cada uno.</p>`;
+
+    for (const i of datosMatriz.insumos) {
+      h += `<div class="mpr-ficha ${i.critico ? 'critico' : ''}">
+        <h4><span class="mpr-cod">${mprEsc(i.cod)}</span> ${mprEsc(i.nombre)}
+          ${i.critico ? '<span class="mpr-badge-crit">crítico</span>' : ''}
+          ${mprPill(i.estado)}
+          ${usos[i.cod] ? `<span class="est-chip" style="font-size:10px;padding:1px 7px">alimenta ${usos[i.cod]} mapa${usos[i.cod] > 1 ? 's' : ''}</span>` : ''}
+        </h4>
+        <p class="fuente">${mprEsc(i.fuente)} · vía ${mprEsc(i.via)} · dificultad ${mprEsc(i.dificultad)}</p>
+        <div class="mpr-dato"><b>Qué tenemos:</b> ${mprEsc(i.tenemos)}</div>
+        <div class="mpr-dato"><b>Cómo obtenerlo:</b> ${mprEsc(i.como)}</div>
+        ${i.endpoint ? `<div class="mpr-dato"><a class="mpr-link" href="${mprEsc(i.endpoint)}" target="_blank" rel="noopener">${mprEsc(i.endpoint)}</a></div>` : ''}
+      </div>`;
+    }
+    return h;
+  }
+
+  // Vista 3 — los visores y geoservicios revisados, ordenados por lo que destraban.
+  function vistaMatrizVisores() {
+    const nombreIns = {};
+    datosMatriz.insumos.forEach((i) => { nombreIns[i.cod] = i.nombre; });
+    let h = `<p style="font-size:12px;color:var(--muted);margin:0 0 14px;max-width:80ch">
+      Visores y geoservicios revisados, en orden de lo que resuelven. Los primeros cuatro cierran
+      vacíos que el desglose daba por difíciles; los dos últimos son municipalidades que ya publican
+      su plan regulador como servicios y sirven de referencia.</p>`;
+    for (const v of datosMatriz.visores) {
+      const aporta = (v.aporta || []).map((cod) =>
+        `<span title="${mprEsc(nombreIns[cod] || '')}">${cod}</span>`).join('');
+      h += `<div class="mpr-ficha">
+        <h4>${mprEsc(v.nombre)}
+          <span class="est-chip" style="font-size:10px;padding:1px 7px">${mprEsc(v.tipo)}</span>
+        </h4>
+        <div class="mpr-dato">${mprEsc(v.detalle)}</div>
+        ${aporta ? `<div class="mpr-dato"><b>Insumos que aporta:</b> <span class="mpr-ins" style="display:inline-flex">${aporta}</span></div>` : ''}
+        <div class="mpr-dato" style="color:var(--muted)">${mprEsc(v.nota)}</div>
+        ${(v.endpoints || []).map((e) => {
+          // Los endpoints vienen como "WMS: http://…". Se quita la etiqueta solo si hay
+          // un espacio después de los dos puntos, para no mutilar el "https://" de la URL.
+          const url = e.replace(/^[A-Za-z]+:[ \t]+/, '');
+          return `<div class="mpr-dato"><a class="mpr-link" href="${mprEsc(url)}" target="_blank" rel="noopener">${mprEsc(e)}</a></div>`;
+        }).join('')}
+      </div>`;
+    }
+    return h;
+  }
+
+  document.querySelectorAll('.mpr-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      mprVista = b.dataset.mpr;
+      document.querySelectorAll('.mpr-tab').forEach((o) => o.classList.toggle('activa', o === b));
+      construirMatrizPr();
+    });
   });
 })();

@@ -81,8 +81,8 @@
   .pest.activa { color:var(--ink); border-bottom-color:var(--accent); }
   .pest-nota { margin-left:auto; font-size:11px; color:var(--muted); padding-right:4px; }
   #vistas { position:relative; min-height:0; }
-  #map, #estructura, #datosInec { position:absolute; inset:0; }
-  #map[hidden], #estructura[hidden], #datosInec[hidden] { display:none !important; }
+  #map, #estructura, #datosInec, #matrizPr { position:absolute; inset:0; }
+  #map[hidden], #estructura[hidden], #datosInec[hidden], #matrizPr[hidden] { display:none !important; }
 
   /* ---------- estructura cartográfica ---------- */
   #estructura { overflow-y:auto; padding:18px 20px 40px; background:var(--bg); }
@@ -118,6 +118,50 @@
   .est-chip.filtro:hover { border-color:var(--accent,#4f8cff); }
   .est-chip.filtro.activo { background:var(--accent,#4f8cff); border-color:var(--accent,#4f8cff); color:#fff; }
   .est-chip.filtro.activo b { color:#fff; }
+  /* ---------- matriz del plan regulador ---------- */
+  #matrizPr { overflow-y:auto; padding:18px 20px 40px; background:var(--bg); }
+  .mpr-tabs { display:flex; gap:6px; margin:0 0 16px; border-bottom:1px solid var(--line); }
+  .mpr-tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--muted);
+             font-size:12.5px; padding:7px 12px; cursor:pointer; font-family:inherit; }
+  .mpr-tab:hover { color:var(--ink); }
+  .mpr-tab.activa { color:var(--accent,#4f8cff); border-bottom-color:var(--accent,#4f8cff); font-weight:600; }
+  /* Bloque = etapa del MAPRIOT. Cada uno agrupa sus componentes. */
+  .mpr-bloque { margin-bottom:22px; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--panel); }
+  .mpr-bloque-cab { padding:11px 14px; background:#0e1116; border-bottom:1px solid var(--line); }
+  .mpr-bloque-cab h3 { margin:0; font-size:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .mpr-etapa { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+               border:1px solid var(--line); border-radius:10px; padding:2px 7px; font-weight:700; }
+  .mpr-bloque-cab p { margin:5px 0 0; font-size:11.5px; color:var(--muted); max-width:85ch; }
+  .mpr-comp { border-top:1px solid var(--line); }
+  .mpr-comp-tit { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+                  padding:7px 14px 4px; font-weight:700; }
+  .mpr-fila { display:grid; grid-template-columns:76px 1fr auto; gap:10px; align-items:start;
+              padding:8px 14px; border-top:1px solid #161c24; }
+  .mpr-fila:hover { background:#1b222c; }
+  .mpr-cod { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--accent); font-weight:600; }
+  .mpr-nom { font-size:12.5px; }
+  .mpr-nota { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.45; }
+  .mpr-ins { display:flex; gap:3px; flex-wrap:wrap; margin-top:4px; }
+  .mpr-ins span { font-family:ui-monospace,Menlo,monospace; font-size:9.5px; padding:1px 5px;
+                  border-radius:3px; border:1px solid var(--line); color:var(--muted); cursor:help; }
+  .mpr-ins span.crit { border-color:#c0392b; color:#e57373; }
+  .mpr-estado { font-size:10.5px; white-space:nowrap; padding:2px 8px; border-radius:11px;
+                border:1px solid currentColor; font-weight:600; }
+  .mpr-guia { font-size:9px; text-transform:uppercase; letter-spacing:.04em; color:#8e44ad;
+              border:1px solid #8e44ad; border-radius:3px; padding:1px 4px; margin-left:6px; font-weight:700; }
+  /* Fichas de insumos y de geoservicios */
+  .mpr-ficha { border:1px solid var(--line); border-radius:9px; background:var(--panel);
+               padding:12px 14px; margin-bottom:10px; }
+  .mpr-ficha.critico { border-left:3px solid #c0392b; }
+  .mpr-ficha h4 { margin:0 0 3px; font-size:13px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .mpr-ficha .fuente { font-size:11px; color:var(--muted); margin:0 0 7px; }
+  .mpr-dato { font-size:11.5px; line-height:1.55; margin:4px 0; }
+  .mpr-dato b { color:var(--ink); font-weight:600; }
+  .mpr-link { font-family:ui-monospace,Menlo,monospace; font-size:10.5px; color:var(--accent);
+              word-break:break-all; text-decoration:none; }
+  .mpr-link:hover { text-decoration:underline; }
+  .mpr-badge-crit { font-size:9px; text-transform:uppercase; letter-spacing:.05em; background:#c0392b;
+                    color:#fff; border-radius:3px; padding:1px 5px; font-weight:700; }
   /* Al llegar desde el calibrador se resalta un momento el mapa buscado. */
   .resaltado { animation:destello 6s ease-out 1; }
   @keyframes destello { 0%,55% { background:#4f8cff33; } 100% { background:transparent; } }
@@ -349,6 +393,7 @@
       <button class="pest activa" data-vista="visor">🗺 Visor</button>
       <button class="pest" data-vista="estructura">🧩 Estructura cartográfica</button>
       <button class="pest" data-vista="datosInec">📊 Datos INEC</button>
+      <button class="pest" data-vista="matrizPr">📋 Matriz PR</button>
       <span class="pest-nota" id="pestNota"></span>
     </div>
     <div id="vistas">
@@ -382,6 +427,22 @@
           <p>Estimaciones estadísticas de población, empleo, NBI y vivienda por distrito. Fuente: INEC — Estimaciones y Proyecciones de Población 2022.</p>
         </div>
         <div id="inecCuerpo"><div class="vacia">Elegí un cantón para ver sus datos.</div></div>
+      </div>
+
+      <!-- Matriz del Plan Regulador: toda la información que pide la normativa, por eje,
+           marcando lo que ya está en el sistema y cómo conseguir lo que falta. -->
+      <div id="matrizPr" hidden>
+        <div class="est-cab">
+          <h2>Matriz de información del Plan Regulador</h2>
+          <p>Los 87 mapas que pide la normativa y los 32 insumos que los alimentan, con el estado real de cada uno. Fuentes: Ley 4240, MAPRIOT 2025 (INVU) y DE 44710-MINAE (variable ambiental, ruta IFA).</p>
+          <div id="mprResumen" class="est-resumen"></div>
+        </div>
+        <div id="mprTabs" class="mpr-tabs">
+          <button class="mpr-tab activa" data-mpr="mapas">🗂 Mapas por eje</button>
+          <button class="mpr-tab" data-mpr="insumos">📥 Insumos I01–I32</button>
+          <button class="mpr-tab" data-mpr="visores">🌐 Geoservicios</button>
+        </div>
+        <div id="mprCuerpo"></div>
       </div>
     </div>
   </div>
