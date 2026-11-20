@@ -18,12 +18,23 @@ const HOSTS_PERMITIDOS = new Set([
   "images.squarespace-cdn.com",   // escudos municipales (munis.cr)
   "server.arcgisonline.com",      // relieve sombreado de fondo (World Hillshade)
   "services.arcgisonline.com",    // el mismo servicio, por su otro nombre
+  // Dirección de Agua (MINAE): GeoServer con acuíferos SENARA, vulnerabilidad,
+  // zonas de restricción, concesiones, pozos y geología vectorial.
+  "visor.da.go.cr",
+  "mapas.da.go.cr",
+  // CNE — geoportal SARACC (GeoNode con GeoServer detrás).
+  "geoportal-saracc.cne.go.cr",
+  // Copernicus DEM GLO-30 en S3. Son COG, así que admiten peticiones por rango:
+  // se puede leer solo la ventana del cantón sin bajar la tesela entera. El bucket
+  // no manda cabeceras CORS, por eso tiene que pasar por acá y no desde el navegador.
+  "copernicus-dem-30m.s3.amazonaws.com",
 ]);
 
 const CORS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, OPTIONS",
-  "access-control-allow-headers": "content-type",
+  // `range` va acá para que el navegador pueda pedir pedazos de un COG (ver más abajo).
+  "access-control-allow-headers": "content-type, range",
 };
 
 async function geoproxy(url, request) {
@@ -53,19 +64,29 @@ async function geoproxy(url, request) {
     return new Response(`Host no permitido: ${u.hostname}`, { status: 403, headers: CORS });
   }
 
-  // Cache de borde: estas capas cambian poco; evita golpear el SNIT en cada carga.
+  /* Peticiones por rango: los GeoTIFF de Copernicus son COG, o sea que se puede leer
+     solo el pedazo que interesa (la ventana del cantón, o una vista general) en vez de
+     bajar los 25 MB de la tesela. Esas NO se guardan en el cache de borde: la clave del
+     cache es la URL y no incluye el rango, así que cachearlas devolvería los bytes
+     equivocados a quien pida otro rango. */
+  const rango = request.headers.get("range");
+
   const cache = caches.default;
   const claveCache = new Request(url.toString(), { method: "GET" });
-  const enCache = await cache.match(claveCache);
-  if (enCache) return enCache;
+  if (!rango) {
+    const enCache = await cache.match(claveCache);
+    if (enCache) return enCache;
+  }
 
   let upstream;
   try {
+    const cabeceras = { accept: "application/json, */*" };
+    if (rango) cabeceras.range = rango;
     upstream = await fetch(u.toString(), {
       method: "GET",
-      headers: { accept: "application/json, */*" },
+      headers: cabeceras,
       // Los servidores del SNIT a veces tardan; el Worker tiene su propio límite.
-      cf: { cacheTtl: 3600, cacheEverything: true },
+      cf: rango ? {} : { cacheTtl: 3600, cacheEverything: true },
     });
   } catch (e) {
     return new Response(`No se pudo contactar el geoservicio: ${e}`, { status: 502, headers: CORS });
@@ -76,15 +97,19 @@ async function geoproxy(url, request) {
   // El relieve sombreado no cambia nunca: se guarda un mes, así la segunda lámina del mismo
   // cantón sale al instante. Las capas del SNIT sí se revisan cada hora.
   const vida = /arcgisonline\.com$/.test(u.hostname) ? 2592000 : 3600;
-  const resp = new Response(cuerpo, {
-    status: upstream.status,
-    headers: {
-      ...CORS,
-      "content-type": tipo,
-      "cache-control": `public, max-age=${vida}`,
-    },
-  });
-  if (upstream.ok) {
+  const cabecerasResp = {
+    ...CORS,
+    "content-type": tipo,
+    "cache-control": `public, max-age=${vida}`,
+    // Sin esto el lector de COG del navegador no sabe que puede pedir por rango.
+    "access-control-expose-headers": "content-range, content-length, accept-ranges",
+    "accept-ranges": upstream.headers.get("accept-ranges") || "bytes",
+  };
+  const contentRange = upstream.headers.get("content-range");
+  if (contentRange) cabecerasResp["content-range"] = contentRange;
+
+  const resp = new Response(cuerpo, { status: upstream.status, headers: cabecerasResp });
+  if (upstream.ok && !rango) {
     // Guarda en cache de borde sin bloquear la respuesta.
     cache.put(claveCache, resp.clone());
   }

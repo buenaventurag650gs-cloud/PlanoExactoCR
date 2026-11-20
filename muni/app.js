@@ -25,7 +25,11 @@
   // Servidores que hay que pedir por el proxy del Worker (los demás se piden directo).
   const HOSTS_PROXY = new Set([
     'geos.snitcr.go.cr', 'geos1.snitcr.go.cr', 'geos1pne.sirefor.go.cr',
-    'mapas.cne.go.cr', 'geoserver.mag.go.cr', 'www.snitcr.go.cr', 'snitcr.go.cr'
+    'mapas.cne.go.cr', 'geoserver.mag.go.cr', 'www.snitcr.go.cr', 'snitcr.go.cr',
+    // Dirección de Agua (MINAE) y geoportal SARACC de la CNE.
+    'visor.da.go.cr', 'mapas.da.go.cr', 'geoportal-saracc.cne.go.cr',
+    // Copernicus DEM GLO-30 (el bucket no manda cabeceras CORS).
+    'copernicus-dem-30m.s3.amazonaws.com'
   ]);
   // Los servicios de ArcGIS (los de ArcGIS Hub y de varias instituciones) también van por
   // el proxy: son muchos subdominios (services1, services3, services7…), así que se
@@ -237,7 +241,16 @@
     let fc = null;
     if (c && c.archivo && !c.archivo.startsWith('api:')) {
       let url, recortar;
-      if (c.filtrar_canton) { url = urlConBbox(c.archivo, bboxDe(cantonSel)); recortar = false; }
+      /* Capas que ya vienen partidas por cantón: el archivo lleva {canton} y se sustituye
+         por el código del cantón (101 San José, 407 Belén…). Como el archivo ya trae solo
+         ese cantón, no hay nada que recortar ni bbox que mandar. Así es la capa de UGM,
+         que a nivel nacional serían 50.776 polígonos. */
+      if (c.archivo.includes('{canton}')) {
+        const cod = cantonSel && cantonSel.properties ? cantonSel.properties.c : null;
+        if (!cod) { datosCapa.set(nombre, null); return null; }
+        url = c.archivo.replace('{canton}', cod);
+        recortar = false;
+      } else if (c.filtrar_canton) { url = urlConBbox(c.archivo, bboxDe(cantonSel)); recortar = false; }
       else { url = c.archivo; recortar = true; }
       try {
         const data = await fetch(viaProxy(url)).then((r) => { if (!r.ok) throw 0; return r.json(); });
@@ -356,7 +369,8 @@
     const m = defMapa(id);
     return (m?.insumos || []).filter((n) => {
       const c = capaPorNombre[n];
-      return c && c.archivo && !String(c.archivo).startsWith('api:');
+      // Una capa calculada (pendientes) no tiene archivo, pero sí se puede dibujar.
+      return c && (c.calculada || (c.archivo && !String(c.archivo).startsWith('api:')));
     });
   }
   const sePuedeVer = (m) => !m.solo_pdf && m.estado !== 'pendiente' && insumosReales(m.id).length > 0;
@@ -515,6 +529,8 @@
   }
   let cargando = false;
   let repetir = false;
+  // Reparto por clase de pendiente del último cálculo; lo usa la leyenda.
+  let repartoPendiente = null;
   async function refrescarVista() {
     if (!cantonSel) return;
     actualizarResumen();
@@ -530,6 +546,19 @@
     const fallidas = [];
     for (const nombre of necesarias) {
       if (layerLookup[nombre]) continue;
+      const c = capaPorNombre[nombre];
+      // Capas que no se descargan sino que se calculan acá mismo (pendientes desde el
+      // modelo de elevación). Se dibujan como imagen, no como geometría.
+      if (c && c.calculada === 'pendientes') {
+        const elev = await elevacionDe(bboxDe(cantonSel), 64);
+        if (!capasVisibles().has(nombre)) continue;
+        const r = elev && pendientesDesdeElevacion(elev);
+        if (!r) { fallidas.push(nombre); continue; }
+        repartoPendiente = r.reparto;
+        layerLookup[nombre] = L.imageOverlay(r.url,
+          [[r.caja[1], r.caja[0]], [r.caja[3], r.caja[2]]], { opacity: 0.75, interactive: false }).addTo(map);
+        continue;
+      }
       const fc = await obtenerDatos(nombre);
       if (!capasVisibles().has(nombre)) continue;     // se apagó mientras cargaba
       if (!fc || !fc.features || !fc.features.length) { fallidas.push(nombre); continue; }
@@ -550,6 +579,16 @@
     [...baseVisibles].forEach((n) => {
       const cargada = !!layerLookup[n];
       h += `<div class="lg">${muestraHTML(n)}<span${cargada ? '' : ' class="vacia"'}>${n}${cargada ? '' : ' (cargando…)'}</span></div>`;
+      // La pendiente no se explica con un cuadrito de color: lo que sirve es saber cuánto
+      // del cantón cae en cada clase, porque eso es lo que condiciona dónde se puede urbanizar.
+      const c = capaPorNombre[n];
+      if (cargada && c && c.calculada === 'pendientes' && repartoPendiente) {
+        repartoPendiente.forEach((r) => {
+          h += `<div class="lg" style="padding-left:14px">` +
+               `<span class="sw" style="background:${r.color};border-color:#0004"></span>` +
+               `${r.clase} · ${r.etiqueta} <b>${r.pct.toFixed(1)} %</b></div>`;
+        });
+      }
     });
     if (mapaVisto) {
       const m = defMapa(mapaVisto);
@@ -1072,6 +1111,165 @@
     return tarea;
   }
 
+  /* ---------- modelo de elevación y pendientes ----------
+     El IFA pide el mapa de pendientes (M1.1.03) en cinco clases, y para eso hace falta un
+     modelo de elevación. El DEM fino del IGN (5 m) no está publicado como servicio, así que
+     se usan teselas de elevación: imágenes PNG donde cada píxel guarda la altura codificada
+     en sus tres canales de color, con la fórmula del formato "terrarium":
+
+         altura_en_metros = (R * 256 + G + B / 256) - 32768
+
+     Ese servidor sí manda cabeceras CORS, así que las teselas se piden directo, sin pasar
+     por el Worker, y el lienzo no queda "manchado" (se puede exportar al PDF).
+
+     Qué resolución es esta: las teselas vienen de SRTM y fuentes equivalentes, o sea unos
+     30 m de paso. Sirve para la lectura cantonal y para una primera clasificación, pero NO
+     reemplaza el levantamiento fino: para el detalle urbano el desglose pide 5 m, que sale
+     de interpolar las curvas del IGN o de un vuelo de dron. El Copernicus DEM GLO-30 (30 m
+     también) se puede traer por el Worker, que sí llega al bucket; queda para el paso
+     siguiente porque son GeoTIFF y hay que leerlos por rango. */
+  const TERRENO_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium';
+  const elevCache = new Map();
+
+  function cargarTeselaElev(z, x, y) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';     // el servidor sí lo permite; sin esto el lienzo se mancha
+      const reloj = setTimeout(() => resolve(null), 8000);
+      const listo = (v) => { clearTimeout(reloj); resolve(v); };
+      img.onload = () => listo(img);
+      img.onerror = () => listo(null);
+      img.src = `${TERRENO_URL}/${z}/${x}/${y}.png`;
+    });
+  }
+
+  /* Arma el mosaico de elevación que cubre `bb` y devuelve las alturas ya decodificadas.
+     Devuelve null si no se pudo traer nada, para que el mapa siga funcionando sin esto. */
+  async function elevacionDe(bb, maxTeselas) {
+    const clave = bb.map((v) => v.toFixed(4)).join(',') + '|' + maxTeselas;
+    if (elevCache.has(clave)) return elevCache.get(clave);
+    const tarea = (async () => {
+      // Las teselas de elevación son Web Mercator estándar (z/x/y), no el orden de ArcGIS.
+      const aTx = (lon, z) => (lon + 180) / 360 * Math.pow(2, z);
+      const aTy = (lat, z) => {
+        const r = lat * Math.PI / 180;
+        return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
+      };
+      let z = 0;
+      for (let pruebe = 14; pruebe >= 8; pruebe--) {
+        const nx = Math.ceil(aTx(bb[2], pruebe)) - Math.floor(aTx(bb[0], pruebe));
+        const ny = Math.ceil(aTy(bb[1], pruebe)) - Math.floor(aTy(bb[3], pruebe));
+        if (nx * ny <= maxTeselas) { z = pruebe; break; }
+      }
+      if (!z) return null;
+      const x0 = Math.floor(aTx(bb[0], z)), x1 = Math.ceil(aTx(bb[2], z));
+      const y0 = Math.floor(aTy(bb[3], z)), y1 = Math.ceil(aTy(bb[1], z));
+      const nx = x1 - x0, ny = y1 - y0;
+      const lienzo = document.createElement('canvas');
+      lienzo.width = nx * 256; lienzo.height = ny * 256;
+      const ctx = lienzo.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+
+      const pedidos = [];
+      for (let x = x0; x < x1; x++) for (let y = y0; y < y1; y++) pedidos.push([x, y]);
+      let trajo = 0;
+      for (let i = 0; i < pedidos.length; i += 8) {
+        const lote = await Promise.all(pedidos.slice(i, i + 8).map(([x, y]) => cargarTeselaElev(z, x, y)));
+        lote.forEach((img, j) => {
+          if (!img) return;
+          const [x, y] = pedidos[i + j];
+          ctx.drawImage(img, (x - x0) * 256, (y - y0) * 256, 256, 256);
+          trajo++;
+        });
+        if (i === 0 && !trajo) return null;   // el servicio no responde: no se piden cien más
+      }
+      if (!trajo) return null;
+
+      let px;
+      try { px = ctx.getImageData(0, 0, lienzo.width, lienzo.height).data; }
+      catch (e) { return null; }              // lienzo manchado
+
+      const alturas = new Float32Array(lienzo.width * lienzo.height);
+      for (let i = 0, p = 0; i < alturas.length; i++, p += 4) {
+        // Un píxel sin tesela queda transparente: se marca como hueco, no como altura 0,
+        // porque el mar y un hueco de datos no son lo mismo.
+        alturas[i] = px[p + 3] === 0 ? NaN : (px[p] * 256 + px[p + 1] + px[p + 2] / 256) - 32768;
+      }
+      // Caja real del mosaico en grados, para colocar la imagen en el mapa.
+      const lonDe = (tx) => tx / Math.pow(2, z) * 360 - 180;
+      const latDe = (ty) => {
+        const n = Math.PI - 2 * Math.PI * ty / Math.pow(2, z);
+        return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+      };
+      return { alturas, ancho: lienzo.width, alto: lienzo.height, z, teselas: trajo,
+               caja: [lonDe(x0), latDe(y1), lonDe(x1), latDe(y0)] };
+    })();
+    elevCache.set(clave, tarea);
+    return tarea;
+  }
+
+  /* Las cinco clases de pendiente del IFA, con los cortes del Anexo 1 del DE 44710.
+     Los colores siguen la rampa de fragilidad: verde (apto) a rojo (muy frágil). */
+  const CLASES_PENDIENTE = [
+    { max: 5,        etiqueta: '0 – 5 %',    clase: 'I',   color: [ 26, 152,  80] },
+    { max: 15,       etiqueta: '5 – 15 %',   clase: 'II',  color: [166, 217, 106] },
+    { max: 30,       etiqueta: '15 – 30 %',  clase: 'III', color: [254, 224, 139] },
+    { max: 60,       etiqueta: '30 – 60 %',  clase: 'IV',  color: [244, 109,  67] },
+    { max: Infinity, etiqueta: 'más de 60 %', clase: 'V',  color: [165,   0,  38] },
+  ];
+
+  /* Calcula la pendiente por el método de Horn (la ventana de 3×3 que usan QGIS y ArcGIS)
+     y pinta cada píxel con el color de su clase. Devuelve también el histograma, que es
+     lo que de verdad sirve para planificar: cuánto del cantón está en cada clase. */
+  function pendientesDesdeElevacion(elev) {
+    const { alturas, ancho, alto, caja, z } = elev;
+    // Tamaño del píxel en metros. En Mercator depende de la latitud, así que se toma la
+    // del centro del mosaico: dentro de un cantón la variación es despreciable.
+    const latMedia = (caja[1] + caja[3]) / 2;
+    const metrosPorPixel = 156543.03392 * Math.cos(latMedia * Math.PI / 180) / Math.pow(2, z);
+
+    const lienzo = document.createElement('canvas');
+    lienzo.width = ancho; lienzo.height = alto;
+    const ctx = lienzo.getContext('2d');
+    if (!ctx) return null;
+    const img = ctx.createImageData(ancho, alto);
+    const out = img.data;
+    const histograma = new Array(CLASES_PENDIENTE.length).fill(0);
+    let validos = 0;
+
+    const h = (x, y) => alturas[y * ancho + x];
+    for (let y = 1; y < alto - 1; y++) {
+      for (let x = 1; x < ancho - 1; x++) {
+        const i = y * ancho + x;
+        const a = h(x - 1, y - 1), b = h(x, y - 1), c = h(x + 1, y - 1);
+        const d = h(x - 1, y),                      f = h(x + 1, y);
+        const g = h(x - 1, y + 1), hh = h(x, y + 1), k = h(x + 1, y + 1);
+        if (Number.isNaN(a) || Number.isNaN(b) || Number.isNaN(c) || Number.isNaN(d) ||
+            Number.isNaN(f) || Number.isNaN(g) || Number.isNaN(hh) || Number.isNaN(k)) continue;
+        const dzdx = ((c + 2 * f + k) - (a + 2 * d + g)) / (8 * metrosPorPixel);
+        const dzdy = ((g + 2 * hh + k) - (a + 2 * b + c)) / (8 * metrosPorPixel);
+        const pct = Math.sqrt(dzdx * dzdx + dzdy * dzdy) * 100;
+        let ci = 0;
+        while (ci < CLASES_PENDIENTE.length - 1 && pct > CLASES_PENDIENTE[ci].max) ci++;
+        histograma[ci]++; validos++;
+        const col = CLASES_PENDIENTE[ci].color;
+        const p = i * 4;
+        out[p] = col[0]; out[p + 1] = col[1]; out[p + 2] = col[2]; out[p + 3] = 150;
+      }
+    }
+    if (!validos) return null;
+    ctx.putImageData(img, 0, 0);
+    let url;
+    try { url = lienzo.toDataURL('image/png'); } catch (e) { return null; }
+    return {
+      url, caja, z, metrosPorPixel,
+      reparto: CLASES_PENDIENTE.map((c, i) => ({
+        clase: c.clase, etiqueta: c.etiqueta, color: `rgb(${c.color.join(',')})`,
+        pct: validos ? (histograma[i] / validos * 100) : 0,
+      })),
+    };
+  }
+
   // Escalas "de plano": se sube a la siguiente escala redonda, nunca se baja, para que la
   // escala numérica que se imprime sea exacta y no un número cualquiera.
   function escalaBonita(minima) {
@@ -1341,6 +1539,8 @@
     const c = capaPorNombre[nombre];
     if (!c) return { nivel: 'falta', origen: 'no identificada' };
     const a = String(c.archivo || '');
+    // Las calculadas no se descargan: se derivan acá mismo de otra fuente.
+    if (c.calculada) return { nivel: c.estado === 'disponible' ? 'ok' : 'parcial', origen: c.fuente || 'calculada' };
     if (!a) return { nivel: 'falta', origen: c.fuente || 'sin fuente' };
     if (a.startsWith('api:')) return { nivel: 'parcial', origen: 'consulta por plano' };
     if (a.includes('planoexactocr.com/data/')) return { nivel: 'ok', origen: 'PlanoExacto', propio: true };

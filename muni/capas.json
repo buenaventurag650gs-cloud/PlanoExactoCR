@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-17",
+  "generado": "2026-11-20",
   "nota": "Catálogo de capas del atlas. Las capas del mundo público de PlanoExactoCR NO se copian acá: se leen desde https://planoexactocr.com/data/, que es la misma infraestructura que usa el visor de remates. Así hay una sola copia de cada dato y lo que se actualice allá llega solo al atlas. Las capas nacionales del SNIT/CNE/MAG se piden en vivo por /geoproxy con el recuadro del cantón (filtrar_canton). El campo 'formato' dice cómo viene el archivo: si falta, es GeoJSON; 'puntos_ll' es una lista de registros con coordenadas en la clave 'll'.",
   "grupos": [
     {
@@ -22,6 +22,13 @@
           "archivo": "https://planoexactocr.com/data/zmt.geojson",
           "fuente": "ICT / Registro Inmobiliario",
           "estado": "disponible"
+        },
+        {
+          "nombre": "Unidades Geoestadísticas Mínimas (UGM)",
+          "archivo": "datos/ugm/{canton}.geojson",
+          "fuente": "INEC — Marco Geoestadístico Nacional 2022",
+          "estado": "disponible",
+          "nota": "50.776 polígonos a nivel de manzana para todo el país, partidos en un archivo por cantón. Es la geometría estadística más fina que publica el INEC: 104 veces más resolución que el distrito. Trae la geometría, no la población — los datos del censo por UGM se piden aparte al INEC. Simplificado a 6 m (0,6 mm en papel a 1:10.000) desde el original en CRTM05."
         }
       ]
     },
@@ -189,6 +196,46 @@
           "estado": "disponible",
           "filtrar_canton": true,
           "nota": "Mapa 1:500.000; campos DESCRIPCION, EDAD, CLAVE; 4 regiones: volcánica, sedimentaria, metamórfica, plutónica"
+        },
+        {
+          "nombre": "Zona de restricción absoluta (SENARA)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:SENARA_ZONA_DE_RESTRICCION_ABSOLUTA",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Restricción legal para construir sobre acuífero. Alimenta M1.1.05 y M2.5.01: no es solo insumo ambiental, es limitante jurídica.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Zona de restricción con estudio (SENARA)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:SENARA_ZONA_RESTRICCION_CON_ESTUDIO",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Construcción condicionada a estudio hidrogeológico previo.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Geología general (Dirección de Agua)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_GEOLOGIA_GENERAL",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "parcial",
+          "nota": "3.955 polígonos con litología, unidades y formación. OJO: la cobertura es irregular — 2.687 están en Guanacaste y hay huecos en el Valle Central (Belén, por ejemplo, devuelve cero). Sirve de complemento a Tournon y Alvarado 1:500.000, no de reemplazo, y sigue muy lejos del 1:10.000 que pide el IFA.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Amenaza por eventos secos (IMN)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:IMN_AMENAZA_EVENTOS_SECOS",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Nivel de amenaza por sequía, por cantón. Insumo de exposición climática (M1.5.01).",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Pendientes (5 clases IFA)",
+          "archivo": null,
+          "calculada": "pendientes",
+          "fuente": "Calculada en el navegador desde teselas de elevación (SRTM ~30 m)",
+          "estado": "parcial",
+          "nota": "Mapa M1.1.03. Se calcula al vuelo por el método de Horn y se clasifica en los cinco rangos del Anexo 1 del DE 44710 (0-5, 5-15, 15-30, 30-60, más de 60 %). La leyenda muestra qué porcentaje del cantón cae en cada clase. Resolución ~30 m: sirve para la lectura cantonal, no para el detalle urbano, que pide 5 m."
         }
       ]
     },
@@ -278,6 +325,14 @@
           "estado": "disponible",
           "formato": "puntos_ll",
           "nota": "6 889 aprovechamientos con su caudal concesionado."
+        },
+        {
+          "nombre": "Organismos comunitarios de agua (OCAS)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:OCAS_ORGANISMO_COMUNITARIO_DE_AGUA",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "113 organizaciones comunitarias de agua georreferenciadas. Complementa la capa de ASADAS para I25.",
+          "filtrar_canton": true
         }
       ]
     },
@@ -290,6 +345,65 @@
           "fuente": "Museo Nacional",
           "estado": "pendiente",
           "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas"
+        }
+      ]
+    },
+    {
+      "eje": "Hidrogeología y agua",
+      "capas": [
+        {
+          "nombre": "Pozos de monitoreo de aguas subterráneas",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_Monitoreo_Aguas_Subterraneas",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "435 pozos con número, tipo, acuífero asociado y estado de monitoreo. Insumo central de I14.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Concesiones de agua (técnico)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:Z_CONCESIONES_TECNICO",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "41.142 tomas concesionadas con código, titular, expediente y estado. Capa nacional pesada: se recorta al cantón.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Zonas de protección de captaciones",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:ZONAS_DE_PROTECCION",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "202 zonas con tipo, vulnerabilidad y control. Define radios de protección alrededor de captaciones.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Acuífero Barva (SENARA)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:SENARA_ACUIFERO_BARVA",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "El servicio publica 7 acuíferos SENARA (Barva, Cañas, Cóbano-Montezuma, Colima, Santa Cruz, Tempisque, costeros sur), 21 mapas de vulnerabilidad y 11 acuíferos CTI-AGUA. Se agregan bajo demanda según el cantón.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Obras en cauce",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_OBRAS_EN_CAUCE",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "1.413 obras con tipo, área tributaria y caudal disponible.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Cuencas hidrográficas",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_Cuencas_Hidrograficas_CR",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "34 cuencas con nombre, número y área."
+        },
+        {
+          "nombre": "Unidades hidrológicas",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_UNIDADES_HIDROLOGICAS",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Las 5 unidades en que la Dirección de Agua divide el país."
         }
       ]
     }
