@@ -1406,11 +1406,12 @@
                 `preserveAspectRatio="none"/>`;
       }
 
-      // Capas: las base prendidas + las del mapa, con la misma simbología de la pantalla.
+      // Capas: SOLO las del mapa (insumos), nada más.
+      // Cada lámina muestra únicamente lo que indica su título;
+      // las capas base visibles en pantalla NO se agregan.
       if (prog) { prog.paso('Relieve listo. Preparando capas…', '🗺️'); prog.porcentaje(30); }
       const leyenda = [['Límite cantonal', 'Límites cantonales']];
       const nombres = [];
-      baseVisibles.forEach((n) => { if (capaPorNombre[n]) nombres.push(n); });
       insumosReales(ids[i]).forEach((n) => { if (!nombres.includes(n)) nombres.push(n); });
       let capasSVG = '';
       const fuentes = new Set();
