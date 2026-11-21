@@ -60,6 +60,13 @@
       "relleno": 0,
       "geom": "linea"
     },
+    "Red vial nacional (MOPT)": {
+      "color": "#e67e00",
+      "trazo": "solido",
+      "peso": 0.65,
+      "relleno": 0,
+      "geom": "linea"
+    },
     "Edificaciones": {
       "color": "#7a0025",
       "trazo": "solido",

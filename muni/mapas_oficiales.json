@@ -1,534 +1,536 @@
 {
-  "generado": "2026-11-18",
-  "nota": "Catálogo numerado de los mapas del plan regulador / EsIVA. Ejes 1-4 del IFA (SETENA, decreto 44710), 5 el IFA integrado, y 6-8 las dimensiones del diagnóstico territorial del MAPRIOT (INVU). Cada eje declara icono, si sus mapas son resultado calculado (solo_pdf: no se dibujan en pantalla, se calculan al exportar) y cuál es su mapa integrado. Cada mapa declara su número, estado e insumos. El estado es: disponible / parcial / pendiente.",
-  "proyeccion": "CRTM05 (EPSG:5367)",
-  "instituciones": [
+ "generado": "2026-11-18",
+ "nota": "Catálogo numerado de los mapas del plan regulador / EsIVA. Ejes 1-4 del IFA (SETENA, decreto 44710), 5 el IFA integrado, y 6-8 las dimensiones del diagnóstico territorial del MAPRIOT (INVU). Cada eje declara icono, si sus mapas son resultado calculado (solo_pdf: no se dibujan en pantalla, se calculan al exportar) y cuál es su mapa integrado. Cada mapa declara su número, estado e insumos. El estado es: disponible / parcial / pendiente.",
+ "proyeccion": "CRTM05 (EPSG:5367)",
+ "instituciones": [
+  {
+   "numero": "1",
+   "id": "geoaptitud",
+   "nombre": "1. Geoaptitud",
+   "icono": "🪨",
+   "descripcion": "Aptitud del medio geológico-geomorfológico. Cinco factores que se integran en el IFA Geoaptitud.",
+   "solo_pdf": true,
+   "integrado": "geo_integrado",
+   "mapas": [
     {
-      "numero": "1",
-      "id": "geoaptitud",
-      "nombre": "1. Geoaptitud",
-      "icono": "🪨",
-      "descripcion": "Aptitud del medio geológico-geomorfológico. Cinco factores que se integran en el IFA Geoaptitud.",
-      "solo_pdf": true,
-      "integrado": "geo_integrado",
-      "mapas": [
-        {
-          "numero": "1.1",
-          "id": "geo_litopetrofisico",
-          "nombre": "Factor litopetrofísico",
-          "estado": "disponible",
-          "descripcion": "Unidades litológicas y petrológicas (Tournon & Alvarado 1997, 1:500.000). Regiones: volcánica, sedimentaria, metamórfica, plutónica.",
-          "insumos": [
-            "Geología"
-          ]
-        },
-        {
-          "numero": "1.2",
-          "id": "geo_geodinamica",
-          "nombre": "Factor geodinámica externa",
-          "estado": "disponible",
-          "requiere_dem": true,
-          "descripcion": "Pendiente, relieve relativo, densidad de drenaje, erosión y sedimentación. La pendiente se calcula del DEM (Tabla 8).",
-          "insumos": [
-            "Curvas de nivel 10m",
-            "DEM del IGN"
-          ]
-        },
-        {
-          "numero": "1.3",
-          "id": "geo_hidrogeologico",
-          "nombre": "Factor hidrogeológico",
-          "estado": "pendiente",
-          "faltante": "hidrogeología, perfil, infiltración, índice GOD",
-          "descripcion": "Hidrogeología, perfil hidrogeológico, potencial de infiltración, precipitación, índice GOD.",
-          "insumos": []
-        },
-        {
-          "numero": "1.4",
-          "id": "geo_estabilidad",
-          "nombre": "Factor estabilidad de laderas",
-          "estado": "parcial",
-          "faltante": "IFA tres meses más lluviosos",
-          "descripcion": "Dirección de talud (del DEM) e índice de los tres meses más lluviosos.",
-          "insumos": []
-        },
-        {
-          "numero": "1.5",
-          "id": "geo_amenazas",
-          "nombre": "Factor amenazas naturales",
-          "estado": "parcial",
-          "faltante": "sismicidad (RSN/UCR), amenaza volcánica (OVSICORI/UNA), licuefacción (SENARA/UCR), tsunami (SINAMOT/UCR) — ninguna disponible en WFS público al 2026-11",
-          "descripcion": "Deslizamientos, fallas activas, inundación, sismicidad, amenaza volcánica, licuefacción, tsunami.",
-          "insumos": [
-            "Coronas de deslizamientos",
-            "Deslizamientos",
-            "Fallas del cuaternario",
-            "Áreas con potencial a inundación",
-            "Inundaciones LiDAR (ZMT)"
-          ]
-        },
-        {
-          "numero": "1.6",
-          "id": "geo_integrado",
-          "nombre": "IFA Geoaptitud integrado",
-          "estado": "parcial",
-          "faltante": "faltan litopetrofísico e hidrogeológico; la pendiente y la estabilidad requieren el DEM",
-          "descripcion": "Integración de los cinco factores de geoaptitud.",
-          "insumos": []
-        }
-      ]
+     "numero": "1.1",
+     "id": "geo_litopetrofisico",
+     "nombre": "Factor litopetrofísico",
+     "estado": "disponible",
+     "descripcion": "Unidades litológicas y petrológicas (Tournon & Alvarado 1997, 1:500.000). Regiones: volcánica, sedimentaria, metamórfica, plutónica.",
+     "insumos": [
+      "Geología"
+     ]
     },
     {
-      "numero": "2",
-      "id": "bioaptitud",
-      "nombre": "2. Bioaptitud",
-      "icono": "🌿",
-      "descripcion": "Aptitud del medio biológico (IFA Biológico). Sub-mapas que se integran en el IFA Bioaptitud.",
-      "solo_pdf": true,
-      "integrado": "ifa_bioaptitud",
-      "mapas": [
-        {
-          "numero": "2.1",
-          "id": "bio_biotopos",
-          "nombre": "IFA Biotopos sensibles",
-          "estado": "disponible",
-          "descripcion": "Manglares, bosque ripario, humedales.",
-          "insumos": [
-            "Registro Nacional de Humedales"
-          ]
-        },
-        {
-          "numero": "2.2",
-          "id": "bio_categorias_manejo",
-          "nombre": "IFA Categorías de manejo",
-          "estado": "disponible",
-          "descripcion": "Según la categoría de manejo de las áreas protegidas (Parque Nacional, Zona Protectora, etc.).",
-          "insumos": [
-            "Áreas silvestres protegidas"
-          ]
-        },
-        {
-          "numero": "2.3",
-          "id": "bio_cobertura_vegetal",
-          "nombre": "IFA Cobertura vegetal",
-          "estado": "disponible",
-          "descripcion": "Según el tipo de cobertura (bosque, charral, pasto, cultivo, urbano) del MAF2020.",
-          "insumos": [
-            "Cobertura MAF2020"
-          ]
-        },
-        {
-          "numero": "2.4",
-          "id": "ifa_bioaptitud",
-          "nombre": "IFA Bioaptitud integrado",
-          "estado": "disponible",
-          "descripcion": "Integración de los sub-mapas de bioaptitud.",
-          "insumos": [
-            "Zonas de vida",
-            "Corredores biológicos",
-            "Áreas de Conservación"
-          ]
-        }
-      ]
+     "numero": "1.2",
+     "id": "geo_geodinamica",
+     "nombre": "Factor geodinámica externa",
+     "estado": "disponible",
+     "requiere_dem": true,
+     "descripcion": "Pendiente, relieve relativo, densidad de drenaje, erosión y sedimentación. La pendiente se calcula del DEM (Tabla 8).",
+     "insumos": [
+      "Curvas de nivel 10m",
+      "DEM del IGN"
+     ]
     },
     {
-      "numero": "3",
-      "id": "edafoaptitud",
-      "nombre": "3. Edafoaptitud",
-      "icono": "🟫",
-      "descripcion": "Aptitud del suelo. Sub-mapas que se integran en el IFA Edafoaptitud.",
-      "solo_pdf": true,
-      "integrado": "eda_integrado",
-      "mapas": [
-        {
-          "numero": "3.1",
-          "id": "eda_capacidad_uso",
-          "nombre": "IFA Capacidad de uso de la tierra",
-          "estado": "parcial",
-          "faltante": "el INTA solo cubre algunos cantones",
-          "descripcion": "Clases I-VIII de capacidad de uso (Decreto 23214).",
-          "insumos": [
-            "Capacidad de uso de la tierra"
-          ]
-        },
-        {
-          "numero": "3.2",
-          "id": "eda_fertilidad",
-          "nombre": "IFA Fertilidad del suelo",
-          "estado": "disponible",
-          "descripcion": "Potencial agrícola derivado del gran grupo de suelo (capa UCR/INTA/IICA 2015).",
-          "insumos": [
-            "Suelos de Costa Rica (tipo y orden)"
-          ]
-        },
-        {
-          "numero": "3.3",
-          "id": "eda_tipo_suelo",
-          "nombre": "IFA Tipo de suelo",
-          "estado": "disponible",
-          "descripcion": "Taxonomía de suelos 1:200.000 (UCR/INTA/IICA 2015). Órdenes y subórdenes según el sistema USDA.",
-          "insumos": [
-            "Suelos de Costa Rica (tipo y orden)"
-          ]
-        },
-        {
-          "numero": "3.4",
-          "id": "eda_integrado",
-          "nombre": "IFA Edafoaptitud integrado",
-          "estado": "disponible",
-          "faltante": null,
-          "descripcion": "Integración: capacidad de uso (INTA) + tipo y fertilidad de suelo (UCR/INTA/IICA).",
-          "insumos": [
-            "Capacidad de uso de la tierra",
-            "Suelos de Costa Rica (tipo y orden)"
-          ]
-        }
-      ]
+     "numero": "1.3",
+     "id": "geo_hidrogeologico",
+     "nombre": "Factor hidrogeológico",
+     "estado": "pendiente",
+     "faltante": "hidrogeología, perfil, infiltración, índice GOD",
+     "descripcion": "Hidrogeología, perfil hidrogeológico, potencial de infiltración, precipitación, índice GOD.",
+     "insumos": []
     },
     {
-      "numero": "4",
-      "id": "antropoaptitud",
-      "nombre": "4. Antropoaptitud",
-      "icono": "🏘",
-      "descripcion": "Aptitud por uso antrópico, accesibilidad y paisaje. Califica qué tan intervenido está ya el territorio: lo urbanizado y servido por vías tiene baja fragilidad para nuevo desarrollo; lo sin intervenir o con restricción legal encima, alta.",
-      "solo_pdf": true,
-      "integrado": "ant_integrado",
-      "mapas": [
-        {
-          "numero": "4.1",
-          "id": "ant_uso_antropico",
-          "nombre": "IFA Uso antrópico",
-          "estado": "disponible",
-          "faltante": "sitios arqueológicos y patrimonio (Museo Nacional)",
-          "descripcion": "Uso del suelo según qué tan intervenido está (urbano, cultivos, cobertura MAF), con las áreas protegidas y el patrimonio como restricción encima.",
-          "insumos": [
-            "Uso urbano 1:5mil",
-            "Cultivos 1:5mil",
-            "Cobertura MAF2020",
-            "Áreas silvestres protegidas",
-            "Sitios arqueológicos registrados"
-          ]
-        },
-        {
-          "numero": "4.2",
-          "id": "ant_vialidad",
-          "nombre": "IFA Accesibilidad vial",
-          "estado": "disponible",
-          "descripcion": "Distancia a la red vial existente, por anillos (100 m, 300 m, 1 km). Lo ya servido por una vía está intervenido y es menos frágil.",
-          "insumos": [
-            "Red vial cantonal",
-            "Red vial nacional (MOPT)"
-          ]
-        },
-        {
-          "numero": "4.3",
-          "id": "ant_paisajismo",
-          "nombre": "IFA Paisajismo",
-          "estado": "pendiente",
-          "faltante": "tipologías de paisaje, calidad visual, hitos observables",
-          "descripcion": "Tipologías del paisaje, calidad visual, hitos observables.",
-          "insumos": []
-        },
-        {
-          "numero": "4.4",
-          "id": "ant_integrado",
-          "nombre": "IFA Antropoaptitud integrado",
-          "estado": "parcial",
-          "faltante": "falta el paisajismo y los sitios arqueológicos",
-          "descripcion": "Integración de los sub-mapas de antropoaptitud disponibles.",
-          "insumos": []
-        }
-      ]
+     "numero": "1.4",
+     "id": "geo_estabilidad",
+     "nombre": "Factor estabilidad de laderas",
+     "estado": "parcial",
+     "faltante": "IFA tres meses más lluviosos",
+     "descripcion": "Dirección de talud (del DEM) e índice de los tres meses más lluviosos.",
+     "insumos": []
     },
     {
-      "numero": "5",
-      "id": "ifa_integrado",
-      "nombre": "5. IFA Integrado",
-      "icono": "🧭",
-      "descripcion": "Integración de los cuatro ejes, zonificada en 5 zonas (muy alta … muy baja fragilidad).",
-      "solo_pdf": true,
-      "integrado": "ifa_integrado",
-      "mapas": [
-        {
-          "numero": "5.1",
-          "id": "ifa_integrado",
-          "nombre": "IFA Integrado — Zonificación ambiental",
-          "estado": "pendiente",
-          "faltante": "requiere los cuatro ejes calificados",
-          "descripcion": "Suma de Geoaptitud + Edafoaptitud + Bioaptitud + Antropoaptitud.",
-          "insumos": []
-        }
-      ]
+     "numero": "1.5",
+     "id": "geo_amenazas",
+     "nombre": "Factor amenazas naturales",
+     "estado": "parcial",
+     "faltante": "sismicidad (RSN/UCR), amenaza volcánica (OVSICORI/UNA), licuefacción (SENARA/UCR), tsunami (SINAMOT/UCR) — ninguna disponible en WFS público al 2026-11",
+     "descripcion": "Deslizamientos, fallas activas, inundación, sismicidad, amenaza volcánica, licuefacción, tsunami.",
+     "insumos": [
+      "Coronas de deslizamientos",
+      "Deslizamientos",
+      "Fallas del cuaternario",
+      "Áreas con potencial a inundación",
+      "Inundaciones LiDAR (ZMT)"
+     ]
     },
     {
-      "numero": "6",
-      "id": "fisico_espacial",
-      "nombre": "6. Diagnóstico físico-espacial",
-      "icono": "🗺",
-      "descripcion": "Cartografía base del territorio (MAPRIOT / INVU): base, uso del suelo, amenazas, vialidad, servicios.",
-      "solo_pdf": false,
-      "mapas": [
-        {
-          "numero": "6.1",
-          "id": "base_limites",
-          "nombre": "Límites administrativos",
-          "estado": "disponible",
-          "descripcion": "Límites distritales del cantón sobre relieve sombreado.",
-          "insumos": [
-            "Límites distritales"
-          ]
-        },
-        {
-          "numero": "6.2",
-          "id": "base_curvas",
-          "nombre": "Curvas de nivel",
-          "estado": "disponible",
-          "descripcion": "Curvas de nivel cada 10 metros sobre relieve sombreado.",
-          "insumos": [
-            "Curvas de nivel 10m"
-          ]
-        },
-        {
-          "numero": "6.3",
-          "id": "base_hidrica",
-          "nombre": "Red hídrica",
-          "estado": "disponible",
-          "descripcion": "Ríos, quebradas y cuerpos de agua sobre relieve sombreado.",
-          "insumos": [
-            "Red hídrica"
-          ]
-        },
-        {
-          "numero": "6.4",
-          "id": "base_areas_protegidas",
-          "nombre": "Áreas silvestres protegidas",
-          "estado": "disponible",
-          "descripcion": "Áreas protegidas del SINAC sobre relieve sombreado.",
-          "insumos": [
-            "Áreas silvestres protegidas"
-          ]
-        },
-        {
-          "numero": "6.5",
-          "id": "base_vial",
-          "nombre": "Red vial",
-          "estado": "disponible",
-          "descripcion": "Red vial cantonal y nacional sobre relieve sombreado.",
-          "insumos": [
-            "Red vial cantonal",
-            "Red vial nacional (MOPT)"
-          ]
-        },
-        {
-          "numero": "6.6",
-          "id": "base_edificaciones",
-          "nombre": "Edificaciones",
-          "estado": "disponible",
-          "descripcion": "Huellas de edificaciones sobre relieve sombreado.",
-          "insumos": [
-            "Edificaciones"
-          ]
-        },
-        {
-          "numero": "6.7",
-          "id": "base_zmt",
-          "nombre": "Zona marítimo terrestre",
-          "estado": "disponible",
-          "descripcion": "Franja de zona marítimo terrestre sobre relieve sombreado.",
-          "insumos": [
-            "Zona marítimo terrestre"
-          ]
-        },
-        {
-          "numero": "6.8",
-          "id": "base_cartografica",
-          "nombre": "Mapa base unificado",
-          "estado": "disponible",
-          "descripcion": "Todas las capas base juntas: límites, curvas, hidrografía, áreas protegidas, vialidad, edificaciones y ZMT sobre relieve sombreado.",
-          "insumos": [
-            "Límites distritales",
-            "Curvas de nivel 10m",
-            "Red hídrica",
-            "Áreas silvestres protegidas",
-            "Red vial cantonal",
-            "Red vial nacional (MOPT)",
-            "Edificaciones",
-            "Zona marítimo terrestre"
-          ]
-        },
-        {
-          "numero": "6.9",
-          "id": "uso_urbano",
-          "nombre": "Uso urbano",
-          "estado": "disponible",
-          "descripcion": "Suelo de uso urbano sobre relieve sombreado.",
-          "insumos": [
-            "Uso urbano 1:5mil"
-          ]
-        },
-        {
-          "numero": "6.10",
-          "id": "uso_cultivos",
-          "nombre": "Cultivos",
-          "estado": "disponible",
-          "descripcion": "Distribución de cultivos sobre relieve sombreado.",
-          "insumos": [
-            "Cultivos 1:5mil"
-          ]
-        },
-        {
-          "numero": "6.11",
-          "id": "uso_cobertura",
-          "nombre": "Cobertura forestal",
-          "estado": "disponible",
-          "descripcion": "Cobertura forestal 2020 sobre relieve sombreado.",
-          "insumos": [
-            "Cobertura MAF2020"
-          ]
-        },
-        {
-          "numero": "6.12",
-          "id": "uso_actual_suelo",
-          "nombre": "Uso del suelo unificado",
-          "estado": "disponible",
-          "descripcion": "Todas las capas de uso del suelo juntas: urbano, cultivos y cobertura forestal sobre relieve sombreado.",
-          "insumos": [
-            "Uso urbano 1:5mil",
-            "Cultivos 1:5mil",
-            "Cobertura MAF2020"
-          ]
-        },
-        {
-          "numero": "6.13",
-          "id": "amenaza_deslizamientos",
-          "nombre": "Deslizamientos",
-          "estado": "disponible",
-          "descripcion": "Coronas y áreas de deslizamiento sobre relieve sombreado.",
-          "insumos": [
-            "Coronas de deslizamientos",
-            "Deslizamientos"
-          ]
-        },
-        {
-          "numero": "6.14",
-          "id": "amenaza_fallas",
-          "nombre": "Fallas del cuaternario",
-          "estado": "disponible",
-          "descripcion": "Fallas geológicas activas sobre relieve sombreado.",
-          "insumos": [
-            "Fallas del cuaternario"
-          ]
-        },
-        {
-          "numero": "6.15",
-          "id": "amenaza_inundacion",
-          "nombre": "Áreas de inundación",
-          "estado": "disponible",
-          "descripcion": "Áreas con potencial a inundación sobre relieve sombreado.",
-          "insumos": [
-            "Áreas con potencial a inundación"
-          ]
-        },
-        {
-          "numero": "6.16",
-          "id": "amenazas_condicionantes",
-          "nombre": "Amenazas unificado",
-          "estado": "disponible",
-          "descripcion": "Todas las amenazas juntas: deslizamientos, fallas e inundación sobre relieve sombreado.",
-          "insumos": [
-            "Coronas de deslizamientos",
-            "Deslizamientos",
-            "Fallas del cuaternario",
-            "Áreas con potencial a inundación"
-          ]
-        },
-        {
-          "numero": "6.17",
-          "id": "serv_electrica",
-          "nombre": "Red eléctrica",
-          "estado": "disponible",
-          "descripcion": "Tendido eléctrico y cobertura sobre relieve sombreado.",
-          "insumos": [
-            "Red eléctrica",
-            "Cobertura del tendido eléctrico (100 m)"
-          ]
-        },
-        {
-          "numero": "6.18",
-          "id": "serv_agua",
-          "nombre": "Abastecimiento de agua",
-          "estado": "disponible",
-          "descripcion": "ASADAS, tomas de agua y concesiones sobre relieve sombreado.",
-          "insumos": [
-            "ASADAS y abastecimiento de agua",
-            "Tomas de agua registradas",
-            "Cobertura implícita de agua (concesiones)"
-          ]
-        },
-        {
-          "numero": "6.19",
-          "id": "serv_salud",
-          "nombre": "Sedes de salud",
-          "estado": "disponible",
-          "descripcion": "Centros y sedes de salud sobre relieve sombreado.",
-          "insumos": [
-            "Sedes de salud"
-          ]
-        },
-        {
-          "numero": "6.20",
-          "id": "servicios",
-          "nombre": "Infraestructura y servicios unificado",
-          "estado": "disponible",
-          "descripcion": "Todas las capas de infraestructura juntas: red eléctrica, agua y salud sobre relieve sombreado.",
-          "insumos": [
-            "Red eléctrica",
-            "ASADAS y abastecimiento de agua",
-            "Sedes de salud",
-            "Cobertura del tendido eléctrico (100 m)",
-            "Cobertura implícita de agua (concesiones)",
-            "Tomas de agua registradas"
-          ]
-        }
-      ]
-    },
-    {
-      "numero": "7",
-      "id": "economico",
-      "nombre": "7. Diagnóstico económico",
-      "icono": "📊",
-      "descripcion": "Actividades productivas, empleo y dinámica económica del cantón (MAPRIOT).",
-      "solo_pdf": false,
-      "mapas": [
-        {
-          "numero": "7.1",
-          "id": "eco_actividades",
-          "nombre": "Actividades económicas",
-          "estado": "pendiente",
-          "faltante": "fuente de actividades/empleo",
-          "descripcion": "Distribución de las actividades productivas.",
-          "insumos": []
-        }
-      ]
-    },
-    {
-      "numero": "8",
-      "id": "social",
-      "nombre": "8. Diagnóstico social",
-      "icono": "👥",
-      "descripcion": "Población, equipamientos y servicios sociales del cantón (MAPRIOT).",
-      "solo_pdf": false,
-      "mapas": [
-        {
-          "numero": "8.1",
-          "id": "soc_poblacion",
-          "nombre": "Población y equipamientos",
-          "estado": "pendiente",
-          "faltante": "datos de población (INEC) y equipamientos",
-          "descripcion": "Distribución de población y equipamientos sociales.",
-          "insumos": []
-        }
-      ]
+     "numero": "1.6",
+     "id": "geo_integrado",
+     "nombre": "IFA Geoaptitud integrado",
+     "estado": "parcial",
+     "faltante": "faltan litopetrofísico e hidrogeológico; la pendiente y la estabilidad requieren el DEM",
+     "descripcion": "Integración de los cinco factores de geoaptitud.",
+     "insumos": []
     }
-  ]
+   ]
+  },
+  {
+   "numero": "2",
+   "id": "bioaptitud",
+   "nombre": "2. Bioaptitud",
+   "icono": "🌿",
+   "descripcion": "Aptitud del medio biológico (IFA Biológico). Sub-mapas que se integran en el IFA Bioaptitud.",
+   "solo_pdf": true,
+   "integrado": "ifa_bioaptitud",
+   "mapas": [
+    {
+     "numero": "2.1",
+     "id": "bio_biotopos",
+     "nombre": "IFA Biotopos sensibles",
+     "estado": "disponible",
+     "descripcion": "Manglares, bosque ripario, humedales.",
+     "insumos": [
+      "Registro Nacional de Humedales"
+     ]
+    },
+    {
+     "numero": "2.2",
+     "id": "bio_categorias_manejo",
+     "nombre": "IFA Categorías de manejo",
+     "estado": "disponible",
+     "descripcion": "Según la categoría de manejo de las áreas protegidas (Parque Nacional, Zona Protectora, etc.).",
+     "insumos": [
+      "Áreas silvestres protegidas"
+     ]
+    },
+    {
+     "numero": "2.3",
+     "id": "bio_cobertura_vegetal",
+     "nombre": "IFA Cobertura vegetal",
+     "estado": "pendiente",
+     "descripcion": "Según el tipo de cobertura (bosque, charral, pasto, cultivo, urbano) del MAF2020.",
+     "insumos": [
+      "Cobertura MAF2020"
+     ],
+     "faltante": "fuente de cobertura de la tierra (MAF2020 se retiró de SINIA el 21-nov-2026)"
+    },
+    {
+     "numero": "2.4",
+     "id": "ifa_bioaptitud",
+     "nombre": "IFA Bioaptitud integrado",
+     "estado": "disponible",
+     "descripcion": "Integración de los sub-mapas de bioaptitud.",
+     "insumos": [
+      "Zonas de vida",
+      "Corredores biológicos",
+      "Áreas de Conservación"
+     ]
+    }
+   ]
+  },
+  {
+   "numero": "3",
+   "id": "edafoaptitud",
+   "nombre": "3. Edafoaptitud",
+   "icono": "🟫",
+   "descripcion": "Aptitud del suelo. Sub-mapas que se integran en el IFA Edafoaptitud.",
+   "solo_pdf": true,
+   "integrado": "eda_integrado",
+   "mapas": [
+    {
+     "numero": "3.1",
+     "id": "eda_capacidad_uso",
+     "nombre": "IFA Capacidad de uso de la tierra",
+     "estado": "parcial",
+     "faltante": "el INTA solo cubre algunos cantones",
+     "descripcion": "Clases I-VIII de capacidad de uso (Decreto 23214).",
+     "insumos": [
+      "Capacidad de uso de la tierra"
+     ]
+    },
+    {
+     "numero": "3.2",
+     "id": "eda_fertilidad",
+     "nombre": "IFA Fertilidad del suelo",
+     "estado": "disponible",
+     "descripcion": "Potencial agrícola derivado del gran grupo de suelo (capa UCR/INTA/IICA 2015).",
+     "insumos": [
+      "Suelos de Costa Rica (tipo y orden)"
+     ]
+    },
+    {
+     "numero": "3.3",
+     "id": "eda_tipo_suelo",
+     "nombre": "IFA Tipo de suelo",
+     "estado": "disponible",
+     "descripcion": "Taxonomía de suelos 1:200.000 (UCR/INTA/IICA 2015). Órdenes y subórdenes según el sistema USDA.",
+     "insumos": [
+      "Suelos de Costa Rica (tipo y orden)"
+     ]
+    },
+    {
+     "numero": "3.4",
+     "id": "eda_integrado",
+     "nombre": "IFA Edafoaptitud integrado",
+     "estado": "disponible",
+     "faltante": null,
+     "descripcion": "Integración: capacidad de uso (INTA) + tipo y fertilidad de suelo (UCR/INTA/IICA).",
+     "insumos": [
+      "Capacidad de uso de la tierra",
+      "Suelos de Costa Rica (tipo y orden)"
+     ]
+    }
+   ]
+  },
+  {
+   "numero": "4",
+   "id": "antropoaptitud",
+   "nombre": "4. Antropoaptitud",
+   "icono": "🏘",
+   "descripcion": "Aptitud por uso antrópico, accesibilidad y paisaje. Califica qué tan intervenido está ya el territorio: lo urbanizado y servido por vías tiene baja fragilidad para nuevo desarrollo; lo sin intervenir o con restricción legal encima, alta.",
+   "solo_pdf": true,
+   "integrado": "ant_integrado",
+   "mapas": [
+    {
+     "numero": "4.1",
+     "id": "ant_uso_antropico",
+     "nombre": "IFA Uso antrópico",
+     "estado": "parcial",
+     "faltante": "sitios arqueológicos y patrimonio (Museo Nacional)",
+     "descripcion": "Uso del suelo según qué tan intervenido está (urbano, cultivos, cobertura MAF), con las áreas protegidas y el patrimonio como restricción encima.",
+     "insumos": [
+      "Uso urbano 1:5mil",
+      "Cultivos 1:5mil",
+      "Cobertura MAF2020",
+      "Áreas silvestres protegidas",
+      "Sitios arqueológicos registrados"
+     ]
+    },
+    {
+     "numero": "4.2",
+     "id": "ant_vialidad",
+     "nombre": "IFA Accesibilidad vial",
+     "estado": "disponible",
+     "descripcion": "Distancia a la red vial existente, por anillos (100 m, 300 m, 1 km). Lo ya servido por una vía está intervenido y es menos frágil.",
+     "insumos": [
+      "Red vial cantonal",
+      "Red vial nacional (MOPT)"
+     ]
+    },
+    {
+     "numero": "4.3",
+     "id": "ant_paisajismo",
+     "nombre": "IFA Paisajismo",
+     "estado": "pendiente",
+     "faltante": "tipologías de paisaje, calidad visual, hitos observables",
+     "descripcion": "Tipologías del paisaje, calidad visual, hitos observables.",
+     "insumos": []
+    },
+    {
+     "numero": "4.4",
+     "id": "ant_integrado",
+     "nombre": "IFA Antropoaptitud integrado",
+     "estado": "parcial",
+     "faltante": "falta el paisajismo y los sitios arqueológicos",
+     "descripcion": "Integración de los sub-mapas de antropoaptitud disponibles.",
+     "insumos": []
+    }
+   ]
+  },
+  {
+   "numero": "5",
+   "id": "ifa_integrado",
+   "nombre": "5. IFA Integrado",
+   "icono": "🧭",
+   "descripcion": "Integración de los cuatro ejes, zonificada en 5 zonas (muy alta … muy baja fragilidad).",
+   "solo_pdf": true,
+   "integrado": "ifa_integrado",
+   "mapas": [
+    {
+     "numero": "5.1",
+     "id": "ifa_integrado",
+     "nombre": "IFA Integrado — Zonificación ambiental",
+     "estado": "pendiente",
+     "faltante": "requiere los cuatro ejes calificados",
+     "descripcion": "Suma de Geoaptitud + Edafoaptitud + Bioaptitud + Antropoaptitud.",
+     "insumos": []
+    }
+   ]
+  },
+  {
+   "numero": "6",
+   "id": "fisico_espacial",
+   "nombre": "6. Diagnóstico físico-espacial",
+   "icono": "🗺",
+   "descripcion": "Cartografía base del territorio (MAPRIOT / INVU): base, uso del suelo, amenazas, vialidad, servicios.",
+   "solo_pdf": false,
+   "mapas": [
+    {
+     "numero": "6.1",
+     "id": "base_limites",
+     "nombre": "Límites administrativos",
+     "estado": "disponible",
+     "descripcion": "Límites distritales del cantón sobre relieve sombreado.",
+     "insumos": [
+      "Límites distritales"
+     ]
+    },
+    {
+     "numero": "6.2",
+     "id": "base_curvas",
+     "nombre": "Curvas de nivel",
+     "estado": "disponible",
+     "descripcion": "Curvas de nivel cada 10 metros sobre relieve sombreado.",
+     "insumos": [
+      "Curvas de nivel 10m"
+     ]
+    },
+    {
+     "numero": "6.3",
+     "id": "base_hidrica",
+     "nombre": "Red hídrica",
+     "estado": "disponible",
+     "descripcion": "Ríos, quebradas y cuerpos de agua sobre relieve sombreado.",
+     "insumos": [
+      "Red hídrica"
+     ]
+    },
+    {
+     "numero": "6.4",
+     "id": "base_areas_protegidas",
+     "nombre": "Áreas silvestres protegidas",
+     "estado": "disponible",
+     "descripcion": "Áreas protegidas del SINAC sobre relieve sombreado.",
+     "insumos": [
+      "Áreas silvestres protegidas"
+     ]
+    },
+    {
+     "numero": "6.5",
+     "id": "base_vial",
+     "nombre": "Red vial",
+     "estado": "disponible",
+     "descripcion": "Red vial cantonal y nacional sobre relieve sombreado.",
+     "insumos": [
+      "Red vial cantonal",
+      "Red vial nacional (MOPT)"
+     ]
+    },
+    {
+     "numero": "6.6",
+     "id": "base_edificaciones",
+     "nombre": "Edificaciones",
+     "estado": "disponible",
+     "descripcion": "Huellas de edificaciones sobre relieve sombreado.",
+     "insumos": [
+      "Edificaciones"
+     ]
+    },
+    {
+     "numero": "6.7",
+     "id": "base_zmt",
+     "nombre": "Zona marítimo terrestre",
+     "estado": "disponible",
+     "descripcion": "Franja de zona marítimo terrestre sobre relieve sombreado.",
+     "insumos": [
+      "Zona marítimo terrestre"
+     ]
+    },
+    {
+     "numero": "6.8",
+     "id": "base_cartografica",
+     "nombre": "Mapa base unificado",
+     "estado": "disponible",
+     "descripcion": "Todas las capas base juntas: límites, curvas, hidrografía, áreas protegidas, vialidad, edificaciones y ZMT sobre relieve sombreado.",
+     "insumos": [
+      "Límites distritales",
+      "Curvas de nivel 10m",
+      "Red hídrica",
+      "Áreas silvestres protegidas",
+      "Red vial cantonal",
+      "Red vial nacional (MOPT)",
+      "Edificaciones",
+      "Zona marítimo terrestre"
+     ]
+    },
+    {
+     "numero": "6.9",
+     "id": "uso_urbano",
+     "nombre": "Uso urbano",
+     "estado": "disponible",
+     "descripcion": "Suelo de uso urbano sobre relieve sombreado.",
+     "insumos": [
+      "Uso urbano 1:5mil"
+     ]
+    },
+    {
+     "numero": "6.10",
+     "id": "uso_cultivos",
+     "nombre": "Cultivos",
+     "estado": "disponible",
+     "descripcion": "Distribución de cultivos sobre relieve sombreado.",
+     "insumos": [
+      "Cultivos 1:5mil"
+     ]
+    },
+    {
+     "numero": "6.11",
+     "id": "uso_cobertura",
+     "nombre": "Cobertura forestal",
+     "estado": "pendiente",
+     "descripcion": "Cobertura forestal 2020 sobre relieve sombreado.",
+     "insumos": [
+      "Cobertura MAF2020"
+     ],
+     "faltante": "fuente de cobertura de la tierra (MAF2020 se retiró de SINIA el 21-nov-2026)"
+    },
+    {
+     "numero": "6.12",
+     "id": "uso_actual_suelo",
+     "nombre": "Uso del suelo unificado",
+     "estado": "parcial",
+     "descripcion": "Todas las capas de uso del suelo juntas: urbano, cultivos y cobertura forestal sobre relieve sombreado.",
+     "insumos": [
+      "Uso urbano 1:5mil",
+      "Cultivos 1:5mil",
+      "Cobertura MAF2020"
+     ]
+    },
+    {
+     "numero": "6.13",
+     "id": "amenaza_deslizamientos",
+     "nombre": "Deslizamientos",
+     "estado": "disponible",
+     "descripcion": "Coronas y áreas de deslizamiento sobre relieve sombreado.",
+     "insumos": [
+      "Coronas de deslizamientos",
+      "Deslizamientos"
+     ]
+    },
+    {
+     "numero": "6.14",
+     "id": "amenaza_fallas",
+     "nombre": "Fallas del cuaternario",
+     "estado": "disponible",
+     "descripcion": "Fallas geológicas activas sobre relieve sombreado.",
+     "insumos": [
+      "Fallas del cuaternario"
+     ]
+    },
+    {
+     "numero": "6.15",
+     "id": "amenaza_inundacion",
+     "nombre": "Áreas de inundación",
+     "estado": "disponible",
+     "descripcion": "Áreas con potencial a inundación sobre relieve sombreado.",
+     "insumos": [
+      "Áreas con potencial a inundación"
+     ]
+    },
+    {
+     "numero": "6.16",
+     "id": "amenazas_condicionantes",
+     "nombre": "Amenazas unificado",
+     "estado": "disponible",
+     "descripcion": "Todas las amenazas juntas: deslizamientos, fallas e inundación sobre relieve sombreado.",
+     "insumos": [
+      "Coronas de deslizamientos",
+      "Deslizamientos",
+      "Fallas del cuaternario",
+      "Áreas con potencial a inundación"
+     ]
+    },
+    {
+     "numero": "6.17",
+     "id": "serv_electrica",
+     "nombre": "Red eléctrica",
+     "estado": "disponible",
+     "descripcion": "Tendido eléctrico y cobertura sobre relieve sombreado.",
+     "insumos": [
+      "Red eléctrica",
+      "Cobertura del tendido eléctrico (100 m)"
+     ]
+    },
+    {
+     "numero": "6.18",
+     "id": "serv_agua",
+     "nombre": "Abastecimiento de agua",
+     "estado": "disponible",
+     "descripcion": "ASADAS, tomas de agua y concesiones sobre relieve sombreado.",
+     "insumos": [
+      "ASADAS y abastecimiento de agua",
+      "Tomas de agua registradas",
+      "Cobertura implícita de agua (concesiones)"
+     ]
+    },
+    {
+     "numero": "6.19",
+     "id": "serv_salud",
+     "nombre": "Sedes de salud",
+     "estado": "disponible",
+     "descripcion": "Centros y sedes de salud sobre relieve sombreado.",
+     "insumos": [
+      "Sedes de salud"
+     ]
+    },
+    {
+     "numero": "6.20",
+     "id": "servicios",
+     "nombre": "Infraestructura y servicios unificado",
+     "estado": "disponible",
+     "descripcion": "Todas las capas de infraestructura juntas: red eléctrica, agua y salud sobre relieve sombreado.",
+     "insumos": [
+      "Red eléctrica",
+      "ASADAS y abastecimiento de agua",
+      "Sedes de salud",
+      "Cobertura del tendido eléctrico (100 m)",
+      "Cobertura implícita de agua (concesiones)",
+      "Tomas de agua registradas"
+     ]
+    }
+   ]
+  },
+  {
+   "numero": "7",
+   "id": "economico",
+   "nombre": "7. Diagnóstico económico",
+   "icono": "📊",
+   "descripcion": "Actividades productivas, empleo y dinámica económica del cantón (MAPRIOT).",
+   "solo_pdf": false,
+   "mapas": [
+    {
+     "numero": "7.1",
+     "id": "eco_actividades",
+     "nombre": "Actividades económicas",
+     "estado": "pendiente",
+     "faltante": "fuente de actividades/empleo",
+     "descripcion": "Distribución de las actividades productivas.",
+     "insumos": []
+    }
+   ]
+  },
+  {
+   "numero": "8",
+   "id": "social",
+   "nombre": "8. Diagnóstico social",
+   "icono": "👥",
+   "descripcion": "Población, equipamientos y servicios sociales del cantón (MAPRIOT).",
+   "solo_pdf": false,
+   "mapas": [
+    {
+     "numero": "8.1",
+     "id": "soc_poblacion",
+     "nombre": "Población y equipamientos",
+     "estado": "pendiente",
+     "faltante": "datos de población (INEC) y equipamientos",
+     "descripcion": "Distribución de población y equipamientos sociales.",
+     "insumos": []
+    }
+   ]
+  }
+ ]
 }

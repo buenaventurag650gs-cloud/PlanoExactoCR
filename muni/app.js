@@ -245,11 +245,28 @@
       let url, recortar;
       if (c.filtrar_canton) { url = urlConBbox(c.archivo, bboxDe(cantonSel)); recortar = false; }
       else { url = c.archivo; recortar = true; }
+      const final = viaProxy(url);
       try {
-        const data = await fetch(viaProxy(url)).then((r) => { if (!r.ok) throw 0; return r.json(); });
+        const r = await fetch(final);
+        if (!r.ok) {
+          // No tapar el error: con esto en consola se sabe si fue 403 (host no permitido
+          // en el proxy), 404 (la capa ya no existe en el servidor de origen), 5xx, etc.
+          const cuerpo = await r.text().catch(() => '');
+          console.error(`[capa] ${nombre}: HTTP ${r.status} en ${final}`, cuerpo.slice(0, 300));
+          throw new Error(`HTTP ${r.status}`);
+        }
+        const data = await r.json();
         const bruto = aFeatureCollection(data);
         fc = recortar ? soloCanton(bruto) : bruto;
-      } catch (e) { fc = null; }
+        if (!fc || !fc.features || !fc.features.length) {
+          console.warn(`[capa] ${nombre}: la respuesta no trajo features (bbox sin datos o capa vacía)`, final);
+        }
+      } catch (e) {
+        console.error(`[capa] ${nombre}: fallo al traer datos —`, e, final);
+        fc = null;
+      }
+    } else {
+      console.warn(`[capa] ${nombre}: sin "archivo" utilizable en capas.json (¿capa calculada o fuente retirada?)`);
     }
     datosCapa.set(nombre, fc);
     return fc;

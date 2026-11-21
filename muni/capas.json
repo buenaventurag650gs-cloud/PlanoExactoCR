@@ -146,11 +146,11 @@
         },
         {
           "nombre": "Cobertura MAF2020",
-          "archivo": "https://geodatos.sinia.go.cr/geoserver/MAF2020/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=MAF2020:MAF2020&outputFormat=application/json&srsName=EPSG:4326",
+          "archivo": null,
           "fuente": "MINAE / SINIA (Mapa Agropecuario y Forestal 2020)",
-          "estado": "disponible",
+          "estado": "pendiente",
           "filtrar_canton": true,
-          "nota": "Cobertura de la tierra por categoría (campo CATEGORIA). Insumo de la Cobertura vegetal del eje Bioaptitud."
+          "nota": "21-nov-2026: el workspace MAF2020 ya no existe en geodatos.sinia.go.cr (GetFeature devuelve 404 'No endpoint'; se revisó el listado completo de workspaces del GeoServer — CENIGA, DIRECCION_ENERGIA, FONAFIFO, IMN, IMN_2, MOCUPPU, PNUD_TEVU, REDD, TAA — y ninguno tiene un sucesor de cobertura de la tierra). Hay que gestionar con MINAE/SINIA una fuente nueva, o usar otra capa de cobertura (p.ej. ESA WorldCover o Dynamic World de Google) mientras tanto."
         }
       ]
     },
