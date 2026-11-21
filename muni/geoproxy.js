@@ -24,6 +24,12 @@ const HOSTS_PERMITIDOS = new Set([
   "mapas.da.go.cr",
   // CNE — geoportal SARACC (GeoNode con GeoServer detrás).
   "geoportal-saracc.cne.go.cr",
+  // COSEVI — siniestralidad vial (GeoServer). Sin CORS, necesita proxy.
+  "mapas.csv.go.cr",
+  // CICG (UCR) — mapa geológico (WMS). Sin CORS.
+  "cicg.ucr.ac.cr",
+  // LANAMME (UCR) — puentes de la red vial (ArcGIS FeatureServer público).
+  "gis.lanamme.ucr.ac.cr",
   // Copernicus DEM GLO-30 en S3. Son COG, así que admiten peticiones por rango:
   // se puede leer solo la ventana del cantón sin bajar la tesela entera. El bucket
   // no manda cabeceras CORS, por eso tiene que pasar por acá y no desde el navegador.

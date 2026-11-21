@@ -378,6 +378,67 @@
       ]
     },
     {
+      "eje": "Transporte e infraestructura vial",
+      "capas": [
+        {
+          "nombre": "Siniestralidad vial 2021–2025",
+          "archivo": "https://mapas.csv.go.cr/Geoservicios/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=cosevi:cosevi_historico_2021_2025&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "COSEVI (CSV) — GeoServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Puntos de accidentes viales 2021–2025 con tipo, gravedad y ubicación. Insumo de M0.0.08 (áreas de riesgo)."
+        },
+        {
+          "nombre": "Estaciones de conteo vehicular (TPD)",
+          "archivo": "https://dservices8.arcgis.com/ZqXGDrsqPTc7VmWp/arcgis/rest/services/Mapa/FeatureServer/0",
+          "fuente": "MOPT — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Estaciones de tránsito promedio diario. Los datos vienen como FeatureServer REST (f=geojson). Incluye red vial, travesías y pasos de fauna."
+        },
+        {
+          "nombre": "Red vial nacional (MOPT)",
+          "archivo": "https://dservices8.arcgis.com/ZqXGDrsqPTc7VmWp/arcgis/rest/services/Mapa/FeatureServer/1",
+          "fuente": "MOPT — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Red vial clasificada del MOPT. Complementa la red vial cantonal del IGN 1:5mil con la jerarquía nacional."
+        },
+        {
+          "nombre": "Inventario de puentes (Red Vial Nacional)",
+          "archivo": "https://gis.lanamme.ucr.ac.cr/server/rest/services/Servicios_WMS/LanammeUCR_PUENTES_RVN_1/FeatureServer/0",
+          "fuente": "LANAMME UCR — ArcGIS FeatureServer público",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Ubicación e inventario de puentes de la red vial nacional. Alimenta M0.0.05 (infraestructura vial y puentes)."
+        },
+        {
+          "nombre": "Superficies limitadoras de obstáculos (aviación)",
+          "archivo": "https://dservices7.arcgis.com/b5sBca6uZSGrXbnq/arcgis/rest/services/SLO_CR/FeatureServer/0",
+          "fuente": "DGAC — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Conos de aproximación y superficies limitadoras de aeropuertos. Alimenta M0.0.09 (ABRE) como zona de regulación aeronáutica."
+        },
+        {
+          "nombre": "Rutas de autobús",
+          "archivo": "https://mapas.aresep.go.cr/server/rest/services/I_Transporte_Externo/Sector_transporte/FeatureServer/0",
+          "fuente": "ARESEP — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Recorridos de rutas de autobús concesionadas. Incluye además capas de tren (1), taxi (2), correo (3) y cabotaje (4,5) en el mismo servicio."
+        },
+        {
+          "nombre": "Recorrido del tren",
+          "archivo": "https://mapas.aresep.go.cr/server/rest/services/I_Transporte_Externo/Sector_transporte/FeatureServer/1",
+          "fuente": "ARESEP — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Línea férrea del tren urbano e interurbano. Alimenta M0.0.05 (vías férreas) y M2.2.06 (circulación y transporte)."
+        }
+      ]
+    },
+    {
       "eje": "Patrimonio",
       "capas": [
         {

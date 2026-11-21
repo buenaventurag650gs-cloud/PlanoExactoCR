@@ -28,6 +28,8 @@
     'mapas.cne.go.cr', 'geoserver.mag.go.cr', 'www.snitcr.go.cr', 'snitcr.go.cr',
     // Dirección de Agua (MINAE) y geoportal SARACC de la CNE.
     'visor.da.go.cr', 'mapas.da.go.cr', 'geoportal-saracc.cne.go.cr',
+    // COSEVI, CICG geología, LANAMME puentes.
+    'mapas.csv.go.cr', 'cicg.ucr.ac.cr', 'gis.lanamme.ucr.ac.cr',
     // Copernicus DEM GLO-30 (el bucket no manda cabeceras CORS).
     'copernicus-dem-30m.s3.amazonaws.com'
   ]);
