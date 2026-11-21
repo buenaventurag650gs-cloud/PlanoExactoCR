@@ -1551,47 +1551,88 @@
     return { nivel: 'ok', origen: c.fuente || 'servicio nacional' };
   }
 
-  // Icono representativo de cada capa, para reconocerla de un vistazo.
-  const ICONO_CAPA = {
-    'Límites cantonales': '🔲', 'Límites distritales': '🔲',
-    'Zona marítimo terrestre': '🌊', 'Curvas de nivel 10m': '⛰️',
-    'Red hídrica': '💧', 'Red vial cantonal': '🛣️', 'Red vial nacional (MOPT)': '🛣️',
-    'Edificaciones': '🏠', 'Infraestructura general': '🏗️',
-    'Áreas silvestres protegidas': '🌿', 'Corredores biológicos': '🦜',
-    'Patrimonio Natural del Estado': '🌳', 'Registro Nacional de Humedales': '🐸',
-    'Áreas de Conservación': '🏞️', 'Cobertura MAF2020': '🌲', 'Cobertura forestal 2020': '🌲',
-    'Zonas de vida': '🧬',
-    'Uso urbano 1:5mil': '🏘️', 'Cultivos 1:5mil': '🌾',
-    'Grado de urbanización por UGM (DEGURBA)': '🏙️',
-    'Densidad de viviendas — cuadrícula 500 m': '📊', 'Densidad de viviendas — cuadrícula 1 km': '📊',
-    'Coronas de deslizamientos': '⚠️', 'Deslizamientos': '🏔️',
-    'Fallas del cuaternario': '〰️', 'Áreas con potencial a inundación': '🌧️',
-    'Inundaciones LiDAR (ZMT)': '🌧️',
-    'Geología': '🪨', 'Geología general (Dirección de Agua)': '🪨',
-    'Capacidad de uso de la tierra': '🧪', 'Suelos de Costa Rica (tipo y orden)': '🟤',
-    'Red eléctrica': '⚡', 'Cobertura del tendido eléctrico (100 m)': '⚡',
-    'Cobertura del tendido eléctrico (40 m)': '⚡',
-    'ASADAS y abastecimiento de agua': '🚰', 'Tomas de agua registradas': '🚰',
-    'Cobertura implícita de agua (concesiones)': '🚰',
-    'Organismos comunitarios de agua (OCAS)': '🚰',
-    'Sedes de salud': '🏥', 'Centros de salud (INEC)': '🏥',
-    'Sitios arqueológicos registrados': '🏛️',
-    'Siniestralidad vial 2021–2025': '🚧', 'Estaciones de conteo vehicular (TPD)': '🚗',
-    'Inventario de puentes (Red Vial Nacional)': '🌉',
-    'Superficies limitadoras de obstáculos (aviación)': '✈️',
-    'Rutas de autobús': '🚌', 'Recorrido del tren': '🚂',
-    'Pendientes (5 clases IFA)': '📐',
-    'Pozos de monitoreo de aguas subterráneas': '🕳️', 'Concesiones de agua (técnico)': '💧',
-    'Zonas de protección de captaciones': '🛡️', 'Acuífero Barva (SENARA)': '💧',
-    'Obras en cauce': '🔧', 'Cuencas hidrográficas': '🗺️', 'Unidades hidrológicas': '🗺️',
-    'Zona de restricción absoluta (SENARA)': '🚫', 'Zona de restricción con estudio (SENARA)': '⚠️',
-    'Amenaza por eventos secos (IMN)': '☀️',
-    'DEM del IGN': '📏', 'Catastro (plano y finca)': '📐',
-    'Estado del plan regulador por cantón': '📋',
-    'Unidades Geoestadísticas Mínimas (UGM) 2025': '📊',
-    'Estimaciones 2022 por distrito (con geometría)': '👥',
+  // Icono SVG representativo de cada capa, para reconocerla de un vistazo.
+  // Son SVG inline monocloro, estilo cartográfico limpio — como en remates.planoexactocr.
+  const _s = (d, color = 'currentColor') =>
+    `<svg viewBox="0 0 16 16" fill="none" stroke="${color}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="ic">${d}</svg>`;
+  const _sf = (d, color = 'currentColor') =>
+    `<svg viewBox="0 0 16 16" fill="${color}" class="ic">${d}</svg>`;
+  const IC = {
+    limite:    _s('<rect x="2" y="2" width="12" height="12" rx="1.5" stroke-dasharray="2 2"/>'),
+    curva:     _s('<path d="M2 12c2-4 4-8 6-8s4 3 6 4"/>'),
+    agua:      _s('<path d="M8 2c-2 3-4 5-4 7a4 4 0 008 0c0-2-2-4-4-7z"/>', '#58a6ff'),
+    rio:       _s('<path d="M4 2c2 2 0 5 2 7s0 5 2 5"/><path d="M8 2c2 2 0 5 2 7s0 5 2 5"/>', '#58a6ff'),
+    via:       _s('<path d="M2 14L14 2"/><circle cx="4" cy="12" r="1.2"/><circle cx="12" cy="4" r="1.2"/>'),
+    edif:      _s('<rect x="3" y="6" width="10" height="8" rx="1"/><path d="M3 6l5-4 5 4"/>'),
+    bosque:    _sf('<path d="M8 1L4 6h2L3 11h3v3h4v-3h3l-3-5h2z"/>', '#3fb950'),
+    area:      _s('<circle cx="8" cy="8" r="5.5" stroke-dasharray="3 2"/><path d="M6 8l1.5 2 3-4"/>', '#3fb950'),
+    mar:       _s('<path d="M2 7c1.5-1.5 3-1.5 4 0s3 1.5 4 0 3-1.5 4 0"/><path d="M2 11c1.5-1.5 3-1.5 4 0s3 1.5 4 0 3-1.5 4 0"/>', '#58a6ff'),
+    geo:       _s('<path d="M3 13l3-5 2 3 2-6 3 8"/>'),
+    suelo:     _s('<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 7h12"/><path d="M2 11h12"/>'),
+    rayo:      _s('<path d="M9 2L5 9h3l-1 5 5-7H9z"/>', '#e3b341'),
+    salud:     _s('<path d="M6 3h4v4h3v4h-3v4H6v-4H3V7h3z"/>', '#f85149'),
+    urbano:    _s('<rect x="1" y="8" width="4" height="6"/><rect x="6" y="4" width="4" height="10"/><rect x="11" y="6" width="4" height="8"/>'),
+    cultivo:   _s('<path d="M8 14V5"/><path d="M5 7c0-3 3-5 3-5s3 2 3 5"/>'),
+    peligro:   _s('<path d="M8 2L1.5 13h13z"/><path d="M8 7v3"/><circle cx="8" cy="12" r=".7" fill="currentColor"/>','#e3b341'),
+    falla:     _s('<path d="M3 3l4 5-4 5"/><path d="M13 3l-4 5 4 5"/>'),
+    inunda:    _s('<path d="M2 6c1.5-1.5 3-1.5 4 0s3 1.5 4 0 3-1.5 4 0"/><path d="M4 10l1 4h6l1-4"/>', '#58a6ff'),
+    arq:       _sf('<path d="M4 3h8l-1 2H5zM3 6h10v1H3zM4 8h2v5H4zM10 8h2v5h-2zM3 13h10v1H3z"/>'),
+    puente:    _s('<path d="M1 6h14"/><path d="M3 6v5a5 5 0 005 0V6"/><path d="M8 6v5a5 5 0 005 0V6"/>'),
+    bus:       _s('<rect x="3" y="2" width="10" height="11" rx="2"/><path d="M3 9h10"/><circle cx="5.5" cy="14" r="1"/><circle cx="10.5" cy="14" r="1"/>'),
+    tren:      _s('<rect x="4" y="2" width="8" height="9" rx="2"/><path d="M4 7h8"/><circle cx="6" cy="13" r="1"/><circle cx="10" cy="13" r="1"/><path d="M5 14l-1 1"/><path d="M11 14l1 1"/>'),
+    avion:     _s('<path d="M8 1v14M4 6l4-2 4 2M5 12l3-1 3 1"/>'),
+    pend:      _s('<path d="M2 14h12"/><path d="M2 14L14 4"/><path d="M6 14v-4"/><path d="M10 14v-8"/>'),
+    pozo:      _s('<circle cx="8" cy="6" r="3"/><path d="M8 9v5"/><path d="M5 12h6"/>'),
+    cuenca:    _s('<path d="M2 3c3 2 5 5 6 10"/><path d="M14 3c-3 2-5 5-6 10"/>'),
+    escudo:    _s('<path d="M8 1C5 1 3 2 3 4v3c0 4 5 7 5 7s5-3 5-7V4c0-2-2-3-5-3z"/>'),
+    restricc:  _s('<circle cx="8" cy="8" r="6"/><path d="M4 4l8 8"/>', '#f85149'),
+    sol:       _s('<circle cx="8" cy="8" r="3"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.5 1.5M10.5 10.5L12 12M12 4l-1.5 1.5M5.5 10.5L4 12"/>'),
+    catastro:  _s('<rect x="2" y="2" width="12" height="12"/><path d="M7 2v12"/><path d="M2 7h12"/>'),
+    plan:      _s('<rect x="3" y="1" width="10" height="14" rx="1.5"/><path d="M6 5h4"/><path d="M6 8h4"/><path d="M6 11h3"/>'),
+    estadist:  _s('<rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="5" width="3" height="9"/><rect x="11" y="2" width="3" height="12"/>'),
+    gente:     _s('<circle cx="8" cy="5" r="2.5"/><path d="M3 14c0-3 2.5-5 5-5s5 2 5 5"/>'),
+    defecto:   _s('<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="1" fill="currentColor"/>'),
   };
-  function iconoCapa(nombre) { return ICONO_CAPA[nombre] || '📍'; }
+  const ICONO_CAPA = {
+    'Límites cantonales': IC.limite, 'Límites distritales': IC.limite,
+    'Zona marítimo terrestre': IC.mar, 'Curvas de nivel 10m': IC.curva,
+    'Red hídrica': IC.rio, 'Red vial cantonal': IC.via, 'Red vial nacional (MOPT)': IC.via,
+    'Edificaciones': IC.edif, 'Infraestructura general': IC.edif,
+    'Áreas silvestres protegidas': IC.area, 'Corredores biológicos': IC.bosque,
+    'Patrimonio Natural del Estado': IC.bosque, 'Registro Nacional de Humedales': IC.agua,
+    'Áreas de Conservación': IC.area, 'Cobertura MAF2020': IC.bosque, 'Cobertura forestal 2020': IC.bosque,
+    'Zonas de vida': IC.bosque,
+    'Uso urbano 1:5mil': IC.urbano, 'Cultivos 1:5mil': IC.cultivo,
+    'Grado de urbanización por UGM (DEGURBA)': IC.urbano,
+    'Densidad de viviendas — cuadrícula 500 m': IC.estadist, 'Densidad de viviendas — cuadrícula 1 km': IC.estadist,
+    'Coronas de deslizamientos': IC.peligro, 'Deslizamientos': IC.peligro,
+    'Fallas del cuaternario': IC.falla, 'Áreas con potencial a inundación': IC.inunda,
+    'Inundaciones LiDAR (ZMT)': IC.inunda,
+    'Geología': IC.geo, 'Geología general (Dirección de Agua)': IC.geo,
+    'Capacidad de uso de la tierra': IC.suelo, 'Suelos de Costa Rica (tipo y orden)': IC.suelo,
+    'Red eléctrica': IC.rayo, 'Cobertura del tendido eléctrico (100 m)': IC.rayo,
+    'Cobertura del tendido eléctrico (40 m)': IC.rayo,
+    'ASADAS y abastecimiento de agua': IC.agua, 'Tomas de agua registradas': IC.agua,
+    'Cobertura implícita de agua (concesiones)': IC.agua,
+    'Organismos comunitarios de agua (OCAS)': IC.agua,
+    'Sedes de salud': IC.salud, 'Centros de salud (INEC)': IC.salud,
+    'Sitios arqueológicos registrados': IC.arq,
+    'Siniestralidad vial 2021–2025': IC.peligro, 'Estaciones de conteo vehicular (TPD)': IC.via,
+    'Inventario de puentes (Red Vial Nacional)': IC.puente,
+    'Superficies limitadoras de obstáculos (aviación)': IC.avion,
+    'Rutas de autobús': IC.bus, 'Recorrido del tren': IC.tren,
+    'Pendientes (5 clases IFA)': IC.pend,
+    'Pozos de monitoreo de aguas subterráneas': IC.pozo, 'Concesiones de agua (técnico)': IC.agua,
+    'Zonas de protección de captaciones': IC.escudo, 'Acuífero Barva (SENARA)': IC.agua,
+    'Obras en cauce': IC.rio, 'Cuencas hidrográficas': IC.cuenca, 'Unidades hidrológicas': IC.cuenca,
+    'Zona de restricción absoluta (SENARA)': IC.restricc, 'Zona de restricción con estudio (SENARA)': IC.peligro,
+    'Amenaza por eventos secos (IMN)': IC.sol,
+    'DEM del IGN': IC.pend, 'Catastro (plano y finca)': IC.catastro,
+    'Estado del plan regulador por cantón': IC.plan,
+    'Unidades Geoestadísticas Mínimas (UGM) 2025': IC.estadist,
+    'Estimaciones 2022 por distrito (con geometría)': IC.gente,
+  };
+  function iconoCapa(nombre) { return ICONO_CAPA[nombre] || IC.defecto; }
 
   // Insumos de un mapa del catálogo, con el estado de cada capa.
   function insumosHTML(m, vistas, cuenta) {
@@ -1858,6 +1899,10 @@
     $('estructura').hidden = cual !== 'estructura';
     $('datosInec').hidden = cual !== 'datosInec';
     $('matrizPr').hidden = cual !== 'matrizPr';
+    // El panel lateral (tablero) solo se muestra en el visor cartográfico.
+    const esVisor = cual === 'visor';
+    $('panel').hidden = !esVisor;
+    $('app').style.gridTemplateColumns = esVisor ? '380px 1fr' : '1fr';
     document.querySelectorAll('.pest').forEach((b) => b.classList.toggle('activa', b.dataset.vista === cual));
     if (cual === 'visor') setTimeout(() => map.invalidateSize(), 60);
     else if (cual === 'estructura') construirEstructura();
