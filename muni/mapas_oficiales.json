@@ -269,10 +269,80 @@
       "mapas": [
         {
           "numero": "6.1",
-          "id": "base_cartografica",
-          "nombre": "Mapa base cartográfico",
+          "id": "base_limites",
+          "nombre": "Límites administrativos",
           "estado": "disponible",
-          "descripcion": "Límites cantonal y distrital, red vial, red hídrica, curvas de nivel, áreas protegidas, cuerpos de agua y ZMT.",
+          "descripcion": "Límites distritales del cantón sobre relieve sombreado.",
+          "insumos": [
+            "Límites distritales"
+          ]
+        },
+        {
+          "numero": "6.2",
+          "id": "base_curvas",
+          "nombre": "Curvas de nivel",
+          "estado": "disponible",
+          "descripcion": "Curvas de nivel cada 10 metros sobre relieve sombreado.",
+          "insumos": [
+            "Curvas de nivel 10m"
+          ]
+        },
+        {
+          "numero": "6.3",
+          "id": "base_hidrica",
+          "nombre": "Red hídrica",
+          "estado": "disponible",
+          "descripcion": "Ríos, quebradas y cuerpos de agua sobre relieve sombreado.",
+          "insumos": [
+            "Red hídrica"
+          ]
+        },
+        {
+          "numero": "6.4",
+          "id": "base_areas_protegidas",
+          "nombre": "Áreas silvestres protegidas",
+          "estado": "disponible",
+          "descripcion": "Áreas protegidas del SINAC sobre relieve sombreado.",
+          "insumos": [
+            "Áreas silvestres protegidas"
+          ]
+        },
+        {
+          "numero": "6.5",
+          "id": "base_vial",
+          "nombre": "Red vial",
+          "estado": "disponible",
+          "descripcion": "Red vial cantonal y nacional sobre relieve sombreado.",
+          "insumos": [
+            "Red vial cantonal"
+          ]
+        },
+        {
+          "numero": "6.6",
+          "id": "base_edificaciones",
+          "nombre": "Edificaciones",
+          "estado": "disponible",
+          "descripcion": "Huellas de edificaciones sobre relieve sombreado.",
+          "insumos": [
+            "Edificaciones"
+          ]
+        },
+        {
+          "numero": "6.7",
+          "id": "base_zmt",
+          "nombre": "Zona marítimo terrestre",
+          "estado": "disponible",
+          "descripcion": "Franja de zona marítimo terrestre sobre relieve sombreado.",
+          "insumos": [
+            "Zona marítimo terrestre"
+          ]
+        },
+        {
+          "numero": "6.8",
+          "id": "base_cartografica",
+          "nombre": "Mapa base unificado",
+          "estado": "disponible",
+          "descripcion": "Todas las capas base juntas: límites, curvas, hidrografía, áreas protegidas, vialidad, edificaciones y ZMT sobre relieve sombreado.",
           "insumos": [
             "Límites distritales",
             "Curvas de nivel 10m",
@@ -284,7 +354,7 @@
           ]
         },
         {
-          "numero": "6.2",
+          "numero": "6.9",
           "id": "uso_actual_suelo",
           "nombre": "Uso actual del suelo",
           "estado": "disponible",
@@ -296,7 +366,7 @@
           ]
         },
         {
-          "numero": "6.3",
+          "numero": "6.10",
           "id": "amenazas_condicionantes",
           "nombre": "Amenazas y condicionantes",
           "estado": "disponible",
@@ -309,7 +379,7 @@
           ]
         },
         {
-          "numero": "6.4",
+          "numero": "6.11",
           "id": "vialidad",
           "nombre": "Red vial",
           "estado": "disponible",
@@ -319,7 +389,7 @@
           ]
         },
         {
-          "numero": "6.5",
+          "numero": "6.12",
           "id": "servicios",
           "nombre": "Infraestructura y servicios",
           "estado": "disponible",

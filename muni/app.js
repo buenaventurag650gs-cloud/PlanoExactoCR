@@ -1282,7 +1282,7 @@
   const TESELAS_POR_PAPEL = { 'Carta': 60, 'A3': 100, 'A2': 160, 'A1': 260 };
 
   // ---------- imprimir: una lámina por mapa marcado ----------
-  async function construirLaminas(soloEstos) {
+  async function construirLaminas(soloEstos, prog) {
     const cont = $('laminas');
     cont.innerHTML = '';
 
@@ -1393,6 +1393,7 @@
       if (escEl) escEl.innerHTML = `<b>Escala numérica</b><br>1: ${milesCon(escala)}`;
 
       // Relieve sombreado de fondo (si se pudo traer).
+      if (prog) { prog.paso('Cargando relieve sombreado…', '🏔️'); prog.porcentaje(15); await new Promise(r => setTimeout(r, 30)); }
       const relieve = conRelieve ? await relieveDe(bb, TESELAS_POR_PAPEL[papel.nombre] || 120) : null;
       let fondo = '';
       if (relieve) {
@@ -1406,13 +1407,21 @@
       }
 
       // Capas: las base prendidas + las del mapa, con la misma simbología de la pantalla.
+      if (prog) { prog.paso('Relieve listo. Preparando capas…', '🗺️'); prog.porcentaje(30); }
       const leyenda = [['Límite cantonal', 'Límites cantonales']];
       const nombres = [];
       baseVisibles.forEach((n) => { if (capaPorNombre[n]) nombres.push(n); });
       insumosReales(ids[i]).forEach((n) => { if (!nombres.includes(n)) nombres.push(n); });
       let capasSVG = '';
       const fuentes = new Set();
-      for (const nombre of nombres) {
+      for (let ci = 0; ci < nombres.length; ci++) {
+        const nombre = nombres[ci];
+        if (prog) {
+          const pct = 30 + Math.round((ci / nombres.length) * 50);
+          prog.paso(`${iconoCapa(nombre)} Dibujando: ${nombre}`, '');
+          prog.porcentaje(pct);
+          await new Promise(r => setTimeout(r, 20));
+        }
         const fc = await obtenerDatos(nombre);
         if (fc && fc.features && fc.features.length) {
           capasSVG += capaSVG(nombre, fc, px, k);
@@ -1493,6 +1502,7 @@
       if (zona) zona.insertAdjacentHTML('beforeend', `<div class="lam-rej">${grilla.rotulos}</div>`);
 
       // Simbología del cajetín, en dos columnas.
+      if (prog) { prog.paso('Armando simbología y cajetín…', '🎨'); prog.porcentaje(85); }
       $(`ley-${i}`).innerHTML = leyenda.slice(0, 24).map(([etiqueta, capa]) =>
         `<div class="ley-item">${muestraHTML(capa, 'ley-color')}<em>${esc(etiqueta)}</em></div>`).join('');
 
@@ -1541,6 +1551,48 @@
     return { nivel: 'ok', origen: c.fuente || 'servicio nacional' };
   }
 
+  // Icono representativo de cada capa, para reconocerla de un vistazo.
+  const ICONO_CAPA = {
+    'Límites cantonales': '🔲', 'Límites distritales': '🔲',
+    'Zona marítimo terrestre': '🌊', 'Curvas de nivel 10m': '⛰️',
+    'Red hídrica': '💧', 'Red vial cantonal': '🛣️', 'Red vial nacional (MOPT)': '🛣️',
+    'Edificaciones': '🏠', 'Infraestructura general': '🏗️',
+    'Áreas silvestres protegidas': '🌿', 'Corredores biológicos': '🦜',
+    'Patrimonio Natural del Estado': '🌳', 'Registro Nacional de Humedales': '🐸',
+    'Áreas de Conservación': '🏞️', 'Cobertura MAF2020': '🌲', 'Cobertura forestal 2020': '🌲',
+    'Zonas de vida': '🧬',
+    'Uso urbano 1:5mil': '🏘️', 'Cultivos 1:5mil': '🌾',
+    'Grado de urbanización por UGM (DEGURBA)': '🏙️',
+    'Densidad de viviendas — cuadrícula 500 m': '📊', 'Densidad de viviendas — cuadrícula 1 km': '📊',
+    'Coronas de deslizamientos': '⚠️', 'Deslizamientos': '🏔️',
+    'Fallas del cuaternario': '〰️', 'Áreas con potencial a inundación': '🌧️',
+    'Inundaciones LiDAR (ZMT)': '🌧️',
+    'Geología': '🪨', 'Geología general (Dirección de Agua)': '🪨',
+    'Capacidad de uso de la tierra': '🧪', 'Suelos de Costa Rica (tipo y orden)': '🟤',
+    'Red eléctrica': '⚡', 'Cobertura del tendido eléctrico (100 m)': '⚡',
+    'Cobertura del tendido eléctrico (40 m)': '⚡',
+    'ASADAS y abastecimiento de agua': '🚰', 'Tomas de agua registradas': '🚰',
+    'Cobertura implícita de agua (concesiones)': '🚰',
+    'Organismos comunitarios de agua (OCAS)': '🚰',
+    'Sedes de salud': '🏥', 'Centros de salud (INEC)': '🏥',
+    'Sitios arqueológicos registrados': '🏛️',
+    'Siniestralidad vial 2021–2025': '🚧', 'Estaciones de conteo vehicular (TPD)': '🚗',
+    'Inventario de puentes (Red Vial Nacional)': '🌉',
+    'Superficies limitadoras de obstáculos (aviación)': '✈️',
+    'Rutas de autobús': '🚌', 'Recorrido del tren': '🚂',
+    'Pendientes (5 clases IFA)': '📐',
+    'Pozos de monitoreo de aguas subterráneas': '🕳️', 'Concesiones de agua (técnico)': '💧',
+    'Zonas de protección de captaciones': '🛡️', 'Acuífero Barva (SENARA)': '💧',
+    'Obras en cauce': '🔧', 'Cuencas hidrográficas': '🗺️', 'Unidades hidrológicas': '🗺️',
+    'Zona de restricción absoluta (SENARA)': '🚫', 'Zona de restricción con estudio (SENARA)': '⚠️',
+    'Amenaza por eventos secos (IMN)': '☀️',
+    'DEM del IGN': '📏', 'Catastro (plano y finca)': '📐',
+    'Estado del plan regulador por cantón': '📋',
+    'Unidades Geoestadísticas Mínimas (UGM) 2025': '📊',
+    'Estimaciones 2022 por distrito (con geometría)': '👥',
+  };
+  function iconoCapa(nombre) { return ICONO_CAPA[nombre] || '📍'; }
+
   // Insumos de un mapa del catálogo, con el estado de cada capa.
   function insumosHTML(m, vistas, cuenta) {
     if (!m || !m.insumos || !m.insumos.length) {
@@ -1555,6 +1607,7 @@
         if (e.propio) cuenta.propias++; else if (e.nivel === 'ok') cuenta.nacionales++;
       }
       return `<div class="est-ins"><span class="punto ${e.nivel}"></span>` +
+             `<span class="icono-capa">${iconoCapa(n)}</span>` +
              `<span>${n}</span><span class="origen${e.propio ? ' propio' : ''}">${e.origen}</span></div>`;
     }).join('') + '</div>';
   }
@@ -1747,6 +1800,37 @@
     });
   }
 
+  // Panel de progreso mientras se compone un mapa.
+  function mostrarProgreso(titulo) {
+    let panel = $('progresoMapa');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'progresoMapa';
+      panel.innerHTML = '<div class="prog-caja"><div class="prog-titulo"></div>' +
+        '<div class="prog-pasos"></div><div class="prog-barra"><div class="prog-relleno"></div></div></div>';
+      document.body.appendChild(panel);
+    }
+    panel.hidden = false;
+    panel.querySelector('.prog-titulo').textContent = titulo;
+    panel.querySelector('.prog-pasos').innerHTML = '';
+    panel.querySelector('.prog-relleno').style.width = '0%';
+    return {
+      paso(texto, icono) {
+        const p = document.createElement('div');
+        p.className = 'prog-paso';
+        p.innerHTML = `<span class="prog-ico">${icono || '⏳'}</span> ${texto}`;
+        panel.querySelector('.prog-pasos').appendChild(p);
+        // Auto-scroll al último paso.
+        const cont = panel.querySelector('.prog-pasos');
+        cont.scrollTop = cont.scrollHeight;
+      },
+      porcentaje(pct) {
+        panel.querySelector('.prog-relleno').style.width = pct + '%';
+      },
+      cerrar() { panel.hidden = true; }
+    };
+  }
+
   // Genera un solo mapa, en el momento, con las capas que ese mapa necesita.
   async function descargarMapa(id) {
     if (!cantonSel) { avisar('Elegí primero un cantón en el panel de la izquierda.'); return; }
@@ -1756,8 +1840,15 @@
     const papel = papelActual().nombre;
     const nom = /^mapa/i.test(m.nombre) ? m.nombre : 'Mapa ' + m.nombre;
     document.title = `${codigoDe(m) ? codigoDe(m) + '. ' : ''}${nom} ${canton} ${papel}`;
-    avisar(`Componiendo "${m.nombre}"…`);
-    await construirLaminas([id]);
+    const prog = mostrarProgreso(`Componiendo: ${m.nombre}`);
+    prog.paso('Preparando la lámina…', '📐');
+    prog.porcentaje(5);
+    await new Promise(r => setTimeout(r, 80)); // para que se pinte el panel
+    await construirLaminas([id], prog);
+    prog.porcentaje(100);
+    prog.paso('¡Listo! Abriendo impresión…', '✅');
+    await new Promise(r => setTimeout(r, 400));
+    prog.cerrar();
     window.print();
   }
 
