@@ -328,6 +328,31 @@
   .lam-inset-tit { position:absolute; top:1px; left:3px; font-size:calc(1.8mm * var(--k));
                    font-weight:600; color:#333; z-index:2; background:#fffd; padding:0 2px; }
 
+  /* ---- Portada / índice del atlas ---- */
+  .lam-portada { display:flex; align-items:center; justify-content:center; }
+  .portada-contenido { width:85%; max-height:92%; text-align:center; }
+  .portada-logos { margin-bottom:calc(4mm * var(--k)); }
+  .portada-escudo { height:calc(22mm * var(--k)); }
+  .portada-tit { font-size:calc(10mm * var(--k)); font-weight:900; text-transform:uppercase;
+                 letter-spacing:0.04em; margin:0 0 calc(1mm * var(--k)); }
+  .portada-subtit { font-size:calc(5mm * var(--k)); font-weight:600; color:#444;
+                    margin:0 0 calc(1mm * var(--k)); }
+  .portada-canton { font-size:calc(6mm * var(--k)); font-weight:800; color:#111;
+                    margin:0 0 calc(4mm * var(--k)); }
+  .portada-meta { font-size:calc(2.6mm * var(--k)); color:#555; margin-bottom:calc(5mm * var(--k)); }
+  .portada-meta div { margin-bottom:calc(0.6mm * var(--k)); }
+  .portada-indice { width:100%; border-collapse:collapse; font-size:calc(2.2mm * var(--k));
+                    text-align:left; margin:0 auto calc(4mm * var(--k)); }
+  .portada-indice th { border-bottom:calc(0.4mm * var(--k)) solid #111; padding:calc(0.6mm * var(--k)) calc(1mm * var(--k));
+                       font-weight:700; }
+  .portada-indice td { padding:calc(0.4mm * var(--k)) calc(1mm * var(--k));
+                       border-bottom:calc(0.15mm * var(--k)) solid #ccc; }
+  .portada-indice .idx-grupo { background:#f0f0f0; font-weight:700; }
+  .portada-indice .idx-grupo td { padding-top:calc(1.2mm * var(--k)); border-bottom-color:#999; }
+  .portada-indice .idx-num { width:calc(5mm * var(--k)); text-align:right; color:#888; }
+  .portada-indice .idx-cod { width:calc(14mm * var(--k)); font-family:monospace; font-weight:600; color:#333; }
+  .portada-pie { font-size:calc(2mm * var(--k)); color:#888; margin-top:calc(3mm * var(--k)); }
+
   /* Sin esto, el navegador borra los colores de fondo al imprimir (cuadritos de leyenda en blanco). */
   .lamina, .lamina * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* Panel de progreso al componer un mapa */
@@ -371,9 +396,8 @@
     </div>
 
     <div class="seccion">
-      <div class="paso"><span class="n">3</span> Mapas <span class="ayuda">👁 ver · 🖨 imprimir</span></div>
+      <div class="paso"><span class="n">3</span> Mapas <span class="ayuda">👁 ver en pantalla</span></div>
       <p id="hintCanton" class="sub">Elegí un cantón primero; los mapas se arman recortados a ese cantón.</p>
-      <div class="resumen" id="resumen"></div>
       <div id="catalogo" class="bloqueado"></div>
     </div>
 
@@ -399,12 +423,11 @@
       <input id="inpElabora" type="text" placeholder="Nombre de la empresa o equipo">
       <label class="sub" style="display:block;margin:6px 0 3px">Profesional responsable</label>
       <input id="inpProfesional" type="text" placeholder="Nombre y número de colegiado">
-      <button id="btnAtlas" disabled>Imprimir mapas (PDF)</button>
+      <button id="btnAtlas" disabled>Descargar Atlas completo (PDF)</button>
       <div class="fila-botones">
-        <button id="btnConfig" class="sec" disabled>Configuración (.json)</button>
         <button id="btnReset" class="sec">Reiniciar</button>
       </div>
-      <p class="sub" style="margin-top:8px">Cada mapa marcado con 🖨 sale en su propia lámina con su cajetín. En el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>; el tamaño de la hoja ya va fijado en la lámina, así que no hay que tocar el selector de papel ni activar «ajustar a la página». La configuración sirve para generar el atlas con <code>build_atlas.py</code>.</p>
+      <p class="sub" style="margin-top:8px">Se genera el atlas completo con índice, logos y cajetín en cada lámina. En el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>; el tamaño de la hoja ya va fijado en la lámina, así que no hay que tocar el selector de papel ni activar «ajustar a la página».</p>
     </div>
   </div>
 

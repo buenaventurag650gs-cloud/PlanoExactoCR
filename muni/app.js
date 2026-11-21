@@ -420,13 +420,11 @@
     catalogo.instituciones.forEach((inst) => {
       const g = document.createElement('div');
       g.className = 'grupo' + (inst.id === 'fisico_espacial' ? ' abierto' : '');
-      const tieneIntegrado = inst.integrado && sePuedeImprimir(defMapa(inst.integrado) || {});
       g.innerHTML = `
         <div class="grupo-cab">
           <span class="chev">▶</span><span class="emoji">${inst.icono || '🗺'}</span>
           <span class="nom">${inst.nombre}</span>
           <span class="cuenta"></span>
-          ${tieneIntegrado ? `<button class="ctrl imp eje" title="Marcar el mapa integrado de este eje para imprimir">${ICO.imp}</button>` : ''}
         </div>
         <div class="grupo-cuerpo">
           <div class="grupo-desc">${inst.descripcion}${inst.solo_pdf ? ' <b>Son resultados calculados: salen solo en el PDF.</b>' : ''}</div>
@@ -443,7 +441,6 @@
         fila.className = 'fila';
         fila.innerHTML = `
           <button class="ctrl ojo" ${verOk ? '' : 'disabled'} title="${verOk ? 'Ver este mapa en pantalla (apaga el anterior)' : m.solo_pdf ? 'Se calcula al exportar; no se dibuja en pantalla' : 'Sin datos para dibujar'}">${ICO.ojoNo}</button>
-          <button class="ctrl imp" ${impOk ? '' : 'disabled'} title="${impOk ? 'Incluir en el PDF' : 'Todavía no se puede generar'}">${ICO.imp}</button>
           <div class="cuerpo">
             <div class="titulo"><b>${codigoDe(m)}</b> ${m.nombre}
               <span class="badge ${m.estado}">${m.estado}</span>
@@ -452,26 +449,17 @@
             ${m.faltante ? `<div class="falta">Falta: ${m.faltante}</div>` : ''}
           </div>`;
         const btnOjo = fila.querySelector('.ojo');
-        const btnImp = fila.querySelector('.imp');
         if (verOk) btnOjo.addEventListener('click', () => verMapa(m.id));
-        if (impOk) btnImp.addEventListener('click', () => marcarImprimir(m.id));
-        refFilasMapa[m.id] = { fila, btnOjo, btnImp };
+        refFilasMapa[m.id] = { fila, btnOjo };
         cuerpo.appendChild(fila);
       });
 
-      const btnEje = g.querySelector('.ctrl.eje');
-      if (btnEje) {
-        btnEje.addEventListener('click', (ev) => {
-          ev.stopPropagation();           // no abre ni cierra el grupo
-          marcarImprimir(inst.integrado);
-        });
-      }
-      refGrupos.push({ inst, el: g, cuenta: g.querySelector('.cuenta'), btnEje });
+      refGrupos.push({ inst, el: g, cuenta: g.querySelector('.cuenta') });
       catEl.appendChild(g);
     });
   }
 
-  // ---------- ver / imprimir ----------
+  // ---------- ver ----------
   function verMapa(id) {
     mapaVisto = (mapaVisto === id) ? null : id;
     Object.entries(refFilasMapa).forEach(([k, r]) => {
@@ -484,10 +472,6 @@
   function marcarImprimir(id) {
     const on = !seleccion.has(id);
     if (on) seleccion.add(id); else seleccion.delete(id);
-    const r = refFilasMapa[id];
-    if (r) r.btnImp.classList.toggle('on', on);
-    // El botón del encabezado del eje marca el mismo mapa integrado: se mantienen sincronizados.
-    refGrupos.forEach((g) => { if (g.btnEje && g.inst.integrado === id) g.btnEje.classList.toggle('on', on); });
     actualizarResumen();
     actualizarExport();
     actualizarLeyenda();
@@ -498,19 +482,11 @@
     $('hintCanton').style.display = on ? 'none' : '';
   }
   function actualizarResumen() {
-    const n = seleccion.size;
-    $('resumen').innerHTML = n ? `<b>${n}</b> mapa${n === 1 ? '' : 's'} marcado${n === 1 ? '' : 's'} para imprimir` : '';
-    refGrupos.forEach(({ inst, cuenta }) => {
-      const m = inst.mapas.filter((x) => seleccion.has(x.id)).length;
-      cuenta.textContent = m ? `${m} 🖨` : '';
-    });
     const cb = $('cuentaBase');
     if (cb) cb.textContent = baseVisibles.size ? `${baseVisibles.size} visibles` : '';
   }
   function actualizarExport() {
-    const listo = cantonSel && seleccion.size > 0;
-    $('btnConfig').disabled = !listo;
-    $('btnAtlas').disabled = !listo;
+    $('btnAtlas').disabled = !cantonSel;
   }
 
   // ---------- vista del mapa principal ----------
@@ -791,17 +767,6 @@
     };
   }
   $('btnReset').addEventListener('click', () => location.reload());
-
-  $('btnConfig').addEventListener('click', () => {
-    const cfg = configActual();
-    const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `atlas_${(cfg.canton || 'canton').toLowerCase().replace(/\s+/g, '_')}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    avisar('Configuración descargada. Usala con: python3 scripts/build_atlas.py --config <archivo>');
-  });
 
   /* ---------- dibujo vectorial de las láminas ----------
      Antes las láminas eran mapas de Leaflet. El problema: Leaflet redondea cada coordenada
@@ -1307,6 +1272,52 @@
     const profesional = firmaDe('profesional');
     const conRelieve = !$('chkRelieve') || $('chkRelieve').checked;
 
+    // 0) Portada/índice del atlas (solo si es el atlas completo, no una lámina suelta).
+    if (!soloEstos) {
+      const indiceHTML = (() => {
+        let filas = '';
+        let num = 0;
+        catalogo.instituciones.forEach((inst) => {
+          const mapasInst = inst.mapas.filter((m) => pedidos.has(m.id));
+          if (!mapasInst.length) return;
+          filas += `<tr class="idx-grupo"><td colspan="3">${esc(inst.icono || '🗺')} ${esc(inst.nombre)}</td></tr>`;
+          mapasInst.forEach((m) => {
+            num++;
+            const cod = codigoDe(m);
+            filas += `<tr><td class="idx-num">${num}</td><td class="idx-cod">${cod ? esc(cod) : ''}</td><td>${esc(m.nombre)}</td></tr>`;
+          });
+        });
+        return filas;
+      })();
+      const portada = document.createElement('div');
+      portada.className = 'lamina';
+      portada.innerHTML = `
+        <div class="lam-hoja lam-portada">
+          <div class="portada-contenido">
+            <div class="portada-logos">
+              ${muniLogo ? `<img src="${muniLogo}" class="portada-escudo" alt="">` : ''}
+            </div>
+            <h1 class="portada-tit">Atlas Cartográfico</h1>
+            <h2 class="portada-subtit">Plan Regulador Territorial</h2>
+            <h2 class="portada-canton">Cantón ${esc(canton)}</h2>
+            <div class="portada-meta">
+              ${elabora ? `<div>Elaborado por: <b>${esc(elabora)}</b></div>` : ''}
+              ${profesional ? `<div>Profesional responsable: <b>${esc(profesional)}</b></div>` : ''}
+              <div>${esc(mesAnio)}</div>
+            </div>
+            <table class="portada-indice">
+              <thead><tr><th>#</th><th>Código</th><th>Mapa</th></tr></thead>
+              <tbody>${indiceHTML}</tbody>
+            </table>
+            <div class="portada-pie">
+              ${esc(muni)} · Sistema CRSIRGAS / CRTM05 (EPSG:5367)<br>
+              Generado con PlanoExactoCR · atlas.planoexactocr.com
+            </div>
+          </div>
+        </div>`;
+      cont.appendChild(portada);
+    }
+
     // 1) Se arma el esqueleto de todas las láminas, para poder medir el recuadro del mapa.
     const hojas = [];
     for (let i = 0; i < ids.length; i++) {
@@ -1654,11 +1665,10 @@
     }).join('') + '</div>';
   }
 
-  // Botones de un mapa que el atlas sí puede componer.
+  // Botón de un mapa que el atlas sí puede componer.
   function accionesHTML(id, estado) {
     if (!id || estado === 'pendiente') return '';
-    return `<button data-descargar="${id}" title="Compone este mapa y abre el diálogo de impresión">Descargar</button>` +
-           `<button class="sec" data-marcar="${id}" title="Agregarlo a la lista que se exporta junta">Marcar 🖨</button>`;
+    return `<button data-descargar="${id}" title="Compone este mapa y abre el diálogo de impresión">Descargar lámina</button>`;
   }
 
   /* Vista principal: el índice maestro del Plan Regulador, con los códigos M que comparten
@@ -1813,12 +1823,6 @@
 
     cuerpo.querySelectorAll('[data-descargar]').forEach((b) => {
       b.addEventListener('click', () => descargarMapa(b.dataset.descargar));
-    });
-    cuerpo.querySelectorAll('[data-marcar]').forEach((b) => {
-      b.addEventListener('click', () => {
-        marcarImprimir(b.dataset.marcar);
-        b.textContent = seleccion.has(b.dataset.marcar) ? 'Marcado 🖨' : 'Marcar 🖨';
-      });
     });
 
     /* Filtro por situación: al tocar un chip la lista se queda solo con esos mapas, y las
@@ -2437,18 +2441,18 @@
   }
 
   $('btnAtlas').addEventListener('click', async () => {
-    if (!cantonSel || !seleccion.size) { avisar('Elegí un cantón y marcá al menos un mapa con 🖨.'); return; }
+    if (!cantonSel) { avisar('Elegí un cantón primero.'); return; }
+    // Seleccionar automáticamente TODOS los mapas imprimibles
+    seleccion.clear();
+    catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => {
+      if (sePuedeImprimir(m)) seleccion.add(m.id);
+    }));
+    if (!seleccion.size) { avisar('No hay mapas disponibles para generar.'); return; }
     const canton = $('selCanton').value;
     const papel = papelActual().nombre;
-    if (seleccion.size === 1) {
-      const m = defMapa([...seleccion][0]);
-      const nom = m ? (/^mapa/i.test(m.nombre) ? m.nombre : 'Mapa ' + m.nombre) : 'Mapa';
-      document.title = `${codigoDe(m) ? codigoDe(m) + '. ' : ''}${nom} ${canton} ${papel}`;
-    } else {
-      document.title = `Atlas ${canton} — ${seleccion.size} mapas ${papel}`;
-    }
+    document.title = `Atlas Cartográfico — Plan Regulador ${canton} ${papel}`;
     $('btnAtlas').disabled = true;
-    avisar(`Preparando ${seleccion.size} lámina(s) en ${papel}…`);
+    avisar(`Preparando atlas completo: ${seleccion.size} láminas en ${papel}…`);
     await construirLaminas();
     window.print();
     $('btnAtlas').disabled = false;
