@@ -216,7 +216,8 @@
           "estado": "disponible",
           "descripcion": "Distancia a la red vial existente, por anillos (100 m, 300 m, 1 km). Lo ya servido por una vía está intervenido y es menos frágil.",
           "insumos": [
-            "Red vial cantonal"
+            "Red vial cantonal",
+            "Red vial nacional (MOPT)"
           ]
         },
         {
@@ -314,7 +315,8 @@
           "estado": "disponible",
           "descripcion": "Red vial cantonal y nacional sobre relieve sombreado.",
           "insumos": [
-            "Red vial cantonal"
+            "Red vial cantonal",
+            "Red vial nacional (MOPT)"
           ]
         },
         {
@@ -349,16 +351,47 @@
             "Red hídrica",
             "Áreas silvestres protegidas",
             "Red vial cantonal",
+            "Red vial nacional (MOPT)",
             "Edificaciones",
             "Zona marítimo terrestre"
           ]
         },
         {
           "numero": "6.9",
-          "id": "uso_actual_suelo",
-          "nombre": "Uso actual del suelo",
+          "id": "uso_urbano",
+          "nombre": "Uso urbano",
           "estado": "disponible",
-          "descripcion": "Urbano, cultivos y cobertura.",
+          "descripcion": "Suelo de uso urbano sobre relieve sombreado.",
+          "insumos": [
+            "Uso urbano 1:5mil"
+          ]
+        },
+        {
+          "numero": "6.10",
+          "id": "uso_cultivos",
+          "nombre": "Cultivos",
+          "estado": "disponible",
+          "descripcion": "Distribución de cultivos sobre relieve sombreado.",
+          "insumos": [
+            "Cultivos 1:5mil"
+          ]
+        },
+        {
+          "numero": "6.11",
+          "id": "uso_cobertura",
+          "nombre": "Cobertura forestal",
+          "estado": "disponible",
+          "descripcion": "Cobertura forestal 2020 sobre relieve sombreado.",
+          "insumos": [
+            "Cobertura MAF2020"
+          ]
+        },
+        {
+          "numero": "6.12",
+          "id": "uso_actual_suelo",
+          "nombre": "Uso del suelo unificado",
+          "estado": "disponible",
+          "descripcion": "Todas las capas de uso del suelo juntas: urbano, cultivos y cobertura forestal sobre relieve sombreado.",
           "insumos": [
             "Uso urbano 1:5mil",
             "Cultivos 1:5mil",
@@ -366,11 +399,42 @@
           ]
         },
         {
-          "numero": "6.10",
-          "id": "amenazas_condicionantes",
-          "nombre": "Amenazas y condicionantes",
+          "numero": "6.13",
+          "id": "amenaza_deslizamientos",
+          "nombre": "Deslizamientos",
           "estado": "disponible",
-          "descripcion": "Deslizamientos, fallas, inundación.",
+          "descripcion": "Coronas y áreas de deslizamiento sobre relieve sombreado.",
+          "insumos": [
+            "Coronas de deslizamientos",
+            "Deslizamientos"
+          ]
+        },
+        {
+          "numero": "6.14",
+          "id": "amenaza_fallas",
+          "nombre": "Fallas del cuaternario",
+          "estado": "disponible",
+          "descripcion": "Fallas geológicas activas sobre relieve sombreado.",
+          "insumos": [
+            "Fallas del cuaternario"
+          ]
+        },
+        {
+          "numero": "6.15",
+          "id": "amenaza_inundacion",
+          "nombre": "Áreas de inundación",
+          "estado": "disponible",
+          "descripcion": "Áreas con potencial a inundación sobre relieve sombreado.",
+          "insumos": [
+            "Áreas con potencial a inundación"
+          ]
+        },
+        {
+          "numero": "6.16",
+          "id": "amenazas_condicionantes",
+          "nombre": "Amenazas unificado",
+          "estado": "disponible",
+          "descripcion": "Todas las amenazas juntas: deslizamientos, fallas e inundación sobre relieve sombreado.",
           "insumos": [
             "Coronas de deslizamientos",
             "Deslizamientos",
@@ -379,28 +443,49 @@
           ]
         },
         {
-          "numero": "6.11",
-          "id": "vialidad",
-          "nombre": "Red vial",
+          "numero": "6.17",
+          "id": "serv_electrica",
+          "nombre": "Red eléctrica",
           "estado": "disponible",
-          "descripcion": "Red vial cantonal y nacional.",
+          "descripcion": "Tendido eléctrico y cobertura sobre relieve sombreado.",
           "insumos": [
-            "Red vial cantonal"
+            "Red eléctrica",
+            "Cobertura del tendido eléctrico (100 m)"
           ]
         },
         {
-          "numero": "6.12",
-          "id": "servicios",
-          "nombre": "Infraestructura y servicios",
+          "numero": "6.18",
+          "id": "serv_agua",
+          "nombre": "Abastecimiento de agua",
           "estado": "disponible",
-          "descripcion": "Red eléctrica, ASADAS y agua, sedes de salud.",
+          "descripcion": "ASADAS, tomas de agua y concesiones sobre relieve sombreado.",
+          "insumos": [
+            "ASADAS y abastecimiento de agua",
+            "Tomas de agua registradas",
+            "Cobertura implícita de agua (concesiones)"
+          ]
+        },
+        {
+          "numero": "6.19",
+          "id": "serv_salud",
+          "nombre": "Sedes de salud",
+          "estado": "disponible",
+          "descripcion": "Centros y sedes de salud sobre relieve sombreado.",
+          "insumos": [
+            "Sedes de salud"
+          ]
+        },
+        {
+          "numero": "6.20",
+          "id": "servicios",
+          "nombre": "Infraestructura y servicios unificado",
+          "estado": "disponible",
+          "descripcion": "Todas las capas de infraestructura juntas: red eléctrica, agua y salud sobre relieve sombreado.",
           "insumos": [
             "Red eléctrica",
             "ASADAS y abastecimiento de agua",
             "Sedes de salud",
-            "Infraestructura general",
             "Cobertura del tendido eléctrico (100 m)",
-            "Cobertura del tendido eléctrico (40 m)",
             "Cobertura implícita de agua (concesiones)",
             "Tomas de agua registradas"
           ]
