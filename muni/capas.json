@@ -1,0 +1,513 @@
+{
+  "generado": "2026-11-20",
+  "nota": "Catálogo de capas del atlas. Las capas del mundo público de PlanoExactoCR NO se copian acá: se leen desde https://planoexactocr.com/data/, que es la misma infraestructura que usa el visor de remates. Así hay una sola copia de cada dato y lo que se actualice allá llega solo al atlas. Las capas nacionales del SNIT/CNE/MAG se piden en vivo por /geoproxy con el recuadro del cantón (filtrar_canton). El campo 'formato' dice cómo viene el archivo: si falta, es GeoJSON; 'puntos_ll' es una lista de registros con coordenadas en la clave 'll'.",
+  "grupos": [
+    {
+      "eje": "Base cartográfica",
+      "capas": [
+        {
+          "nombre": "Límites cantonales",
+          "archivo": "https://planoexactocr.com/data/cantones.geojson",
+          "fuente": "IGN (SNIT)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Límites distritales",
+          "archivo": "https://planoexactocr.com/data/distritos.geojson",
+          "fuente": "IGN (SNIT)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Zona marítimo terrestre",
+          "archivo": "https://planoexactocr.com/data/zmt.geojson",
+          "fuente": "ICT / Registro Inmobiliario",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Unidades Geoestadísticas Mínimas (UGM) 2025",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:unidad_geoestadistica_minima_2025",
+          "fuente": "INEC — Marco Geoestadístico Nacional 2025 (geoportal)",
+          "estado": "disponible",
+          "nota": "Geometría a nivel de manzana, la unidad estadística más fina del INEC. Se pide al GeoServer del geoportal del INEC, que publica la versión 2025 — más nueva que el shapefile 2022. Trae geometría, no población.",
+          "filtrar_canton": true
+        }
+      ]
+    },
+    {
+      "eje": "Antropoaptitud (uso y planificación)",
+      "capas": [
+        {
+          "nombre": "Estado del plan regulador por cantón",
+          "archivo": "https://planoexactocr.com/data/planes_reguladores.geojson",
+          "fuente": "INVU (SNIT)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Catastro (plano y finca)",
+          "archivo": "api:/api/plano, /api/finca",
+          "fuente": "Registro Inmobiliario (SNIT)",
+          "estado": "disponible",
+          "nota": "mismo puente del sitio público; se consulta por plano o finca, no se descarga completo"
+        },
+        {
+          "nombre": "Uso urbano 1:5mil",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=urbano_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "capa nacional, se recorta al cantón; uso no comercial/científico (copyright, confirmado con abogado); el visor en vivo puede no cargarla si el servidor del SNIT no permite CORS, el atlas en PDF sí"
+        },
+        {
+          "nombre": "Cultivos 1:5mil",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=cultivos2017_5k&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "capa nacional, se recorta al cantón; uso no comercial/científico (copyright, confirmado con abogado); CORS igual que arriba"
+        },
+        {
+          "nombre": "Grado de urbanización por UGM (DEGURBA)",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:ugm_degurb_web_2m",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Clasifica cada manzana como ciudad, localidad densa, semidensa o área rural, con la metodología DEGURBA de Naciones Unidas. Trae la geometría de la UGM y la clase urbana en el mismo registro, así que sirve para trazar el perímetro urbano con criterio reproducible en vez de a ojo. Insumo directo de cuadrantes urbanos (M4.1.02) y de la zonificación.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Densidad de viviendas — cuadrícula 500 m",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:viviendas_grid_500m",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Viviendas por km2 en una malla regular de 500 m, agregando los puntos de vivienda del censo. Al no depender de límites administrativos muestra la forma real de la mancha urbana, cosa que el promedio por distrito esconde.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Densidad de viviendas — cuadrícula 1 km",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:viviendas_grid_1km",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "La misma malla a 1 km, para lectura cantonal y regional.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Estimaciones 2022 por distrito (con geometría)",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:UGED_ESTIMACIONES_2022",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Población total, por sexo, viviendas ocupadas y desocupadas, área y densidad, ya pegados a la geometría distrital. Evita tener que unir la tabla del INEC con los límites a mano.",
+          "filtrar_canton": true
+        }
+      ]
+    },
+    {
+      "eje": "Bioaptitud",
+      "capas": [
+        {
+          "nombre": "Zonas de vida",
+          "archivo": "https://planoexactocr.com/data/zonasvida.geojson",
+          "fuente": "MINAE-CENIGA",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Cobertura forestal 2020",
+          "archivo": "api:/api/cobertura",
+          "fuente": "MINAE",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Áreas silvestres protegidas",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_silvestres_protegidas&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Corredores biológicos",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=corredoresbiologicos&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Patrimonio Natural del Estado",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=patrimonio_natural_del_estado&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Registro Nacional de Humedales",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=registro_nacional_humedales&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Áreas de Conservación",
+          "archivo": "https://geos1pne.sirefor.go.cr/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=areas_conservacion&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "SINAC (SNIT, capa oficial, uso libre)",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Cobertura MAF2020",
+          "archivo": "https://geodatos.sinia.go.cr/geoserver/MAF2020/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=MAF2020:MAF2020&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "MINAE / SINIA (Mapa Agropecuario y Forestal 2020)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Cobertura de la tierra por categoría (campo CATEGORIA). Insumo de la Cobertura vegetal del eje Bioaptitud."
+        }
+      ]
+    },
+    {
+      "eje": "Edafoaptitud",
+      "capas": [
+        {
+          "nombre": "Capacidad de uso de la tierra",
+          "archivo": "https://geoserver.mag.go.cr/geoserver/inta/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=inta:INTA-MAG_capUso_50&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "INTA (MAG)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "cobertura solo península de Nicoya y algunos cantones (Guanacaste, Alvarado, Naranjo, Los Santos); decreto 41960; el servidor de INTA es intermitente y a veces no responde"
+        },
+        {
+          "nombre": "Suelos de Costa Rica (tipo y orden)",
+          "archivo": "https://services.arcgis.com/LjCtRQt1uf8M6LGR/arcgis/rest/services/Suelos_de_Costa_Rica_2015/FeatureServer/0",
+          "fuente": "UCR / INTA / IICA (ArcGIS Hub, 2015)",
+          "estado": "disponible",
+          "nota": "Taxonomía de suelos 1:200.000; campos ORDEN, SUBORDEN, GRAN_GRUPO, DESCRIPCION",
+          "filtrar_canton": true
+        }
+      ]
+    },
+    {
+      "eje": "Geoaptitud (amenazas y geología)",
+      "capas": [
+        {
+          "nombre": "Coronas de deslizamientos",
+          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=coronas_de_deslizamientos&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "CNE (SNIT)",
+          "estado": "disponible",
+          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
+        },
+        {
+          "nombre": "Deslizamientos",
+          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=deslizamientos&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "CNE (SNIT)",
+          "estado": "disponible",
+          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
+        },
+        {
+          "nombre": "Fallas del cuaternario",
+          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=fallas_del_cuaternario&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "CNE (SNIT)",
+          "estado": "disponible",
+          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
+        },
+        {
+          "nombre": "Áreas con potencial a inundación",
+          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=inundaciones&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "CNE (SNIT)",
+          "estado": "disponible",
+          "nota": "uso no comercial/científico, confirmado con abogado; servidor solo por http, puede que el visor en vivo no la cargue por eso (el atlas en PDF sí la incluye)"
+        },
+        {
+          "nombre": "Inundaciones LiDAR (ZMT)",
+          "archivo": "http://mapas.cne.go.cr/servicios/cne/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=Inundaciones_lidar&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "CNE (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Inundación costera con datos LiDAR; cubre únicamente la Zona Marítimo Terrestre (200 m de costa). Solo relevante para cantones costeros."
+        },
+        {
+          "nombre": "Curvas de nivel 10m",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=curvas_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "de aquí se calcula la pendiente del terreno; capa nacional, se recorta al cantón; copyright/científico; alternativa: DEM descargable del IGN (ver FUENTES_SNIT.md)"
+        },
+        {
+          "nombre": "Geología",
+          "archivo": "https://services9.arcgis.com/RrvMEynxDB8hycVO/arcgis/rest/services/Mapa_Geol%C3%B3gico_de_Costa_Rica_WFL1/FeatureServer/0",
+          "fuente": "Tournon & Alvarado (1997), digitalizado ESRI Hub (belkis.ramirez)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Mapa 1:500.000; campos DESCRIPCION, EDAD, CLAVE; 4 regiones: volcánica, sedimentaria, metamórfica, plutónica"
+        },
+        {
+          "nombre": "Zona de restricción absoluta (SENARA)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:SENARA_ZONA_DE_RESTRICCION_ABSOLUTA",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Restricción legal para construir sobre acuífero. Alimenta M1.1.05 y M2.5.01: no es solo insumo ambiental, es limitante jurídica.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Zona de restricción con estudio (SENARA)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:SENARA_ZONA_RESTRICCION_CON_ESTUDIO",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Construcción condicionada a estudio hidrogeológico previo.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Geología general (Dirección de Agua)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_GEOLOGIA_GENERAL",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "parcial",
+          "nota": "3.955 polígonos con litología, unidades y formación. OJO: la cobertura es irregular — 2.687 están en Guanacaste y hay huecos en el Valle Central (Belén, por ejemplo, devuelve cero). Sirve de complemento a Tournon y Alvarado 1:500.000, no de reemplazo, y sigue muy lejos del 1:10.000 que pide el IFA.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Amenaza por eventos secos (IMN)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:IMN_AMENAZA_EVENTOS_SECOS",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Nivel de amenaza por sequía, por cantón. Insumo de exposición climática (M1.5.01).",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Pendientes (5 clases IFA)",
+          "archivo": null,
+          "calculada": "pendientes",
+          "fuente": "Calculada en el navegador desde teselas de elevación (SRTM ~30 m)",
+          "estado": "parcial",
+          "nota": "Mapa M1.1.03. Se calcula al vuelo por el método de Horn y se clasifica en los cinco rangos del Anexo 1 del DE 44710 (0-5, 5-15, 15-30, 30-60, más de 60 %). La leyenda muestra qué porcentaje del cantón cae en cada clase. Resolución ~30 m: sirve para la lectura cantonal, no para el detalle urbano, que pide 5 m."
+        }
+      ]
+    },
+    {
+      "eje": "Base cartográfica",
+      "capas": [
+        {
+          "nombre": "Red hídrica",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=hidrografia_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "ríos y quebradas; capa nacional, se recorta al cantón"
+        },
+        {
+          "nombre": "Edificaciones",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=edificaciones2017_5k&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil 2017 (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "huella de edificaciones; capa nacional pesada, se recorta al cantón"
+        }
+      ]
+    },
+    {
+      "eje": "Infraestructura y servicios",
+      "capas": [
+        {
+          "nombre": "Infraestructura general",
+          "archivo": "https://planoexactocr.com/data/infra.geojson",
+          "fuente": "varios",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "Red eléctrica",
+          "archivo": "https://planoexactocr.com/data/electricidad.geojson",
+          "fuente": "ICE / CNFL / concesionarias",
+          "estado": "disponible"
+        },
+        {
+          "nombre": "ASADAS y abastecimiento de agua",
+          "archivo": "https://planoexactocr.com/data/asadas.json",
+          "fuente": "AyA / ARESEP",
+          "estado": "disponible",
+          "formato": "puntos_ll"
+        },
+        {
+          "nombre": "Sedes de salud",
+          "archivo": "https://planoexactocr.com/data/salud.json",
+          "fuente": "CCSS",
+          "estado": "disponible",
+          "formato": "puntos_ll"
+        },
+        {
+          "nombre": "Red vial cantonal",
+          "archivo": "https://geos.snitcr.go.cr/be/IGN_5/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=vias_5000&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "IGN 1:5mil (SNIT)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "incluye red municipal, nacional, autopistas y línea férrea; capa nacional (989 mil tramos), se recorta al cantón; copyright/científico; CORS puede impedir el visor en vivo, el PDF sí"
+        },
+        {
+          "nombre": "Cobertura del tendido eléctrico (100 m)",
+          "archivo": "https://planoexactocr.com/data/postes_cov_100m.geojson",
+          "fuente": "ARESEP — derivada de ~484 000 postes",
+          "estado": "disponible",
+          "nota": "Área a menos de 100 m de un poste. Es la mejor aproximación que hay a dónde llega la red eléctrica. Pesa 4 MB: tarda en cargar."
+        },
+        {
+          "nombre": "Cobertura del tendido eléctrico (40 m)",
+          "archivo": "https://planoexactocr.com/data/postes_cov.geojson",
+          "fuente": "ARESEP — derivada de ~495 000 postes",
+          "estado": "disponible",
+          "nota": "Versión estricta de la anterior, a 40 m del poste."
+        },
+        {
+          "nombre": "Cobertura implícita de agua (concesiones)",
+          "archivo": "https://planoexactocr.com/data/cobertura_concesiones.geojson",
+          "fuente": "MINAE — Dirección de Agua",
+          "estado": "disponible",
+          "nota": "Área con tomas de agua registradas. Complementa la cobertura del AyA y las ASADAS."
+        },
+        {
+          "nombre": "Tomas de agua registradas",
+          "archivo": "https://planoexactocr.com/data/aprovechamientos.json",
+          "fuente": "MINAE — Dirección de Agua",
+          "estado": "disponible",
+          "formato": "puntos_ll",
+          "nota": "6 889 aprovechamientos con su caudal concesionado."
+        },
+        {
+          "nombre": "Organismos comunitarios de agua (OCAS)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:OCAS_ORGANISMO_COMUNITARIO_DE_AGUA",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "113 organizaciones comunitarias de agua georreferenciadas. Complementa la capa de ASADAS para I25.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Centros de salud (INEC)",
+          "archivo": "https://gestorgeo.inec.go.cr/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=geonode:centros_de_salud_956d3d2ca53b726cb33cc231720afa39",
+          "fuente": "INEC — geoportal estadístico (GeoServer)",
+          "estado": "disponible",
+          "nota": "Centros de salud georreferenciados con nombre, dirección y código de distrito. Complementa la capa de sedes de la CCSS para el mapa de servicios comunales (M2.1.05).",
+          "filtrar_canton": true
+        }
+      ]
+    },
+    {
+      "eje": "Transporte e infraestructura vial",
+      "capas": [
+        {
+          "nombre": "Siniestralidad vial 2021–2025",
+          "archivo": "https://mapas.csv.go.cr/Geoservicios/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=cosevi:cosevi_historico_2021_2025&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "COSEVI (CSV) — GeoServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Puntos de accidentes viales 2021–2025 con tipo, gravedad y ubicación. Insumo de M0.0.08 (áreas de riesgo)."
+        },
+        {
+          "nombre": "Estaciones de conteo vehicular (TPD)",
+          "archivo": "https://dservices8.arcgis.com/ZqXGDrsqPTc7VmWp/arcgis/rest/services/Mapa/FeatureServer/0",
+          "fuente": "MOPT — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Estaciones de tránsito promedio diario. Los datos vienen como FeatureServer REST (f=geojson). Incluye red vial, travesías y pasos de fauna."
+        },
+        {
+          "nombre": "Red vial nacional (MOPT)",
+          "archivo": "https://dservices8.arcgis.com/ZqXGDrsqPTc7VmWp/arcgis/rest/services/Mapa/FeatureServer/1",
+          "fuente": "MOPT — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Red vial clasificada del MOPT. Complementa la red vial cantonal del IGN 1:5mil con la jerarquía nacional."
+        },
+        {
+          "nombre": "Inventario de puentes (Red Vial Nacional)",
+          "archivo": "https://gis.lanamme.ucr.ac.cr/server/rest/services/Servicios_WMS/LanammeUCR_PUENTES_RVN_1/FeatureServer/0",
+          "fuente": "LANAMME UCR — ArcGIS FeatureServer público",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Ubicación e inventario de puentes de la red vial nacional. Alimenta M0.0.05 (infraestructura vial y puentes)."
+        },
+        {
+          "nombre": "Superficies limitadoras de obstáculos (aviación)",
+          "archivo": "https://dservices7.arcgis.com/b5sBca6uZSGrXbnq/arcgis/rest/services/SLO_CR/FeatureServer/0",
+          "fuente": "DGAC — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Conos de aproximación y superficies limitadoras de aeropuertos. Alimenta M0.0.09 (ABRE) como zona de regulación aeronáutica."
+        },
+        {
+          "nombre": "Rutas de autobús",
+          "archivo": "https://mapas.aresep.go.cr/server/rest/services/I_Transporte_Externo/Sector_transporte/FeatureServer/0",
+          "fuente": "ARESEP — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Recorridos de rutas de autobús concesionadas. Incluye además capas de tren (1), taxi (2), correo (3) y cabotaje (4,5) en el mismo servicio."
+        },
+        {
+          "nombre": "Recorrido del tren",
+          "archivo": "https://mapas.aresep.go.cr/server/rest/services/I_Transporte_Externo/Sector_transporte/FeatureServer/1",
+          "fuente": "ARESEP — ArcGIS FeatureServer",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Línea férrea del tren urbano e interurbano. Alimenta M0.0.05 (vías férreas) y M2.2.06 (circulación y transporte)."
+        }
+      ]
+    },
+    {
+      "eje": "Patrimonio",
+      "capas": [
+        {
+          "nombre": "Sitios arqueológicos registrados",
+          "archivo": null,
+          "fuente": "Museo Nacional",
+          "estado": "pendiente",
+          "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas"
+        }
+      ]
+    },
+    {
+      "eje": "Hidrogeología y agua",
+      "capas": [
+        {
+          "nombre": "Pozos de monitoreo de aguas subterráneas",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_Monitoreo_Aguas_Subterraneas",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "435 pozos con número, tipo, acuífero asociado y estado de monitoreo. Insumo central de I14.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Concesiones de agua (técnico)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:Z_CONCESIONES_TECNICO",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "41.142 tomas concesionadas con código, titular, expediente y estado. Capa nacional pesada: se recorta al cantón.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Zonas de protección de captaciones",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:ZONAS_DE_PROTECCION",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "202 zonas con tipo, vulnerabilidad y control. Define radios de protección alrededor de captaciones.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Acuífero Barva (SENARA)",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:SENARA_ACUIFERO_BARVA",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "El servicio publica 7 acuíferos SENARA (Barva, Cañas, Cóbano-Montezuma, Colima, Santa Cruz, Tempisque, costeros sur), 21 mapas de vulnerabilidad y 11 acuíferos CTI-AGUA. Se agregan bajo demanda según el cantón.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Obras en cauce",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_OBRAS_EN_CAUCE",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "1.413 obras con tipo, área tributaria y caudal disponible.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Cuencas hidrográficas",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_Cuencas_Hidrograficas_CR",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "34 cuencas con nombre, número y área."
+        },
+        {
+          "nombre": "Unidades hidrológicas",
+          "archivo": "https://visor.da.go.cr/geoserver/Aguas/wfs?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326&typeName=Aguas:DA_UNIDADES_HIDROLOGICAS",
+          "fuente": "Dirección de Agua (MINAE) — GeoServer",
+          "estado": "disponible",
+          "nota": "Las 5 unidades en que la Dirección de Agua divide el país."
+        }
+      ]
+    }
+  ]
+}

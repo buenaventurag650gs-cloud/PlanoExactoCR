@@ -1,0 +1,9 @@
+# Dependencias de scripts/build_atlas.py (recorte de capas + GeoPackage + PDF).
+# Instalar con: pip install -r scripts/requirements-atlas.txt
+geopandas
+shapely
+fiona
+pyproj
+requests
+pandas
+matplotlib
