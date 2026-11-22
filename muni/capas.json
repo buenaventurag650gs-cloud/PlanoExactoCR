@@ -146,6 +146,14 @@
           "estado": "disponible"
         },
         {
+          "nombre": "Fincas bajo Pago por Servicios Ambientales",
+          "archivo": "https://geodatos.sinia.go.cr/geoserver/FONAFIFO/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=FONAFIFO:psa2023&outputFormat=application/json&srsName=EPSG:4326",
+          "fuente": "FONAFIFO (SINIA, capa oficial)",
+          "estado": "disponible",
+          "filtrar_canton": true,
+          "nota": "Centroides (puntos) de los contratos PSA activos en 2023. FONAFIFO publica una capa por año (psa2019…psa2023); se usa la más reciente. Nov 2026: el año 2023 no trae contratos dentro del límite de Montes de Oca (el 2022 tenía 2 cerca). OJO: la muestra de MdO dibuja el POLÍGONO de la finca, que no viene en esta capa pública (solo centroides) — ese polígono salió del shapefile de contrato que FONAFIFO entrega directo. Para reproducirlo exacto hace falta ese archivo (mpk/mxd de MdO)."
+        },
+        {
           "nombre": "Cobertura MAF2020",
           "archivo": null,
           "fuente": "MINAE / SINIA (Mapa Agropecuario y Forestal 2020)",

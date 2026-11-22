@@ -24,6 +24,8 @@ const HOSTS_PERMITIDOS = new Set([
   "mapas.da.go.cr",
   // CNE — geoportal SARACC (GeoNode con GeoServer detrás).
   "geoportal-saracc.cne.go.cr",
+  // SINIA (MINAE) — GeoServer con FONAFIFO (Pago por Servicios Ambientales) y otras capas.
+  "geodatos.sinia.go.cr",
   // COSEVI — siniestralidad vial (GeoServer). Sin CORS, necesita proxy.
   "mapas.csv.go.cr",
   // CICG (UCR) — mapa geológico (WMS). Sin CORS.

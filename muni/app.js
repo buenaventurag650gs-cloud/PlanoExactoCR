@@ -30,6 +30,8 @@
     'visor.da.go.cr', 'mapas.da.go.cr', 'geoportal-saracc.cne.go.cr',
     // COSEVI, CICG geología, LANAMME puentes.
     'mapas.csv.go.cr', 'cicg.ucr.ac.cr', 'gis.lanamme.ucr.ac.cr',
+    // SINIA (MINAE): GeoServer con el workspace FONAFIFO (PSA) y otras capas ambientales.
+    'geodatos.sinia.go.cr',
     // Copernicus DEM GLO-30 (el bucket no manda cabeceras CORS).
     'copernicus-dem-30m.s3.amazonaws.com'
   ]);

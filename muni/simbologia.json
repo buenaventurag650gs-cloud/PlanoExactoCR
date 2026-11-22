@@ -116,6 +116,13 @@
       "relleno": 0.5,
       "geom": "poligono"
     },
+    "Fincas bajo Pago por Servicios Ambientales": {
+      "color": "#00897b",
+      "trazo": "solido",
+      "peso": 0.8,
+      "relleno": 0.9,
+      "geom": "punto"
+    },
     "Cobertura forestal 2020": {
       "color": "#2d6a4f",
       "trazo": "solido",
