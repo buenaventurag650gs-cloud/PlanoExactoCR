@@ -106,7 +106,8 @@
           "nombre": "Zonas de vida",
           "archivo": "https://planoexactocr.com/data/zonasvida.geojson",
           "fuente": "MINAE-CENIGA",
-          "estado": "disponible"
+          "estado": "disponible",
+          "nota": "Actualizado nov 2026 con la capa oficial I09_ZonasVida_Holdridge_CR_2026 (CENIGA, 473 polígonos, CRTM05): trae zona de Holdridge, piso, biotemperatura y precipitación por polígono, no solo el nombre."
         },
         {
           "nombre": "Cobertura forestal 2020",
@@ -446,7 +447,7 @@
           "archivo": null,
           "fuente": "Museo Nacional",
           "estado": "pendiente",
-          "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas"
+          "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas. Nov 2026: se recibió I23_Origenes_MNCR_sitios_CR_2026.gpkg con el esquema completo (30 campos: clave, nombre, código UCR, provincia/cantón/distrito, tipo de sitio, coordenadas CRTM05, etc.) pero 0 registros — el export llegó vacío. Falta volver a pedir al Museo el archivo con los datos reales."
         }
       ]
     },
