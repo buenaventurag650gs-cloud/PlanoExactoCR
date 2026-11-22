@@ -224,6 +224,32 @@
       try { return turf.booleanIntersects(f, caja); } catch (e) { return false; }
     });
   }
+  /* Rótulos de nombre sobre el mapa, como HTML (no se deforma al escalar el SVG). Pone un
+     rótulo por feature en su centroide, usando el primer campo de `campos` que tenga valor;
+     si el mismo nombre ya se puso (p.ej. un río partido en varios tramos), no se repite.
+     `px`, `UV`, `H` son los del mapa que se está dibujando (cambian por lámina). */
+  function rotulosDe(fc, campos, clase, px, UV, H) {
+    if (!fc || !fc.features) return '';
+    const vistos = new Set();
+    let html = '';
+    fc.features.forEach((f) => {
+      const props = f.properties || {};
+      let texto = null;
+      for (const c of campos) { if (props[c]) { texto = String(props[c]).trim(); break; } }
+      if (!texto) return;
+      const clave = texto.toLowerCase();
+      if (vistos.has(clave)) return;
+      try {
+        const ctr = turf.centroid(f).geometry.coordinates;
+        const q = px(ctr);
+        if (q[0] < 0 || q[0] > UV || q[1] < 0 || q[1] > H) return;
+        vistos.add(clave);
+        html += `<span class="${clase}" style="left:${(q[0] / UV * 100).toFixed(2)}%;` +
+                `top:${(q[1] / H * 100).toFixed(2)}%">${esc(texto)}</span>`;
+      } catch (e) { /* sin rótulo */ }
+    });
+    return html;
+  }
   function avisar(mensaje) {
     const el = $('avisos');
     if (!el) return;
@@ -810,9 +836,26 @@
     const modo = ($('selOrient') && $('selOrient').value) || 'auto';
     // El mapa ocupa ~78 % del ancho de la hoja (el resto es el cajetín), así que la hoja
     // acostada le queda bien a un cantón ancho y la parada a uno alargado.
-    const vertical = modo === 'vertical' || (modo === 'auto' && formaCanton() < 0.82);
+    const aspecto = formaCanton();
+    const vertical = modo === 'vertical' || (modo === 'auto' && aspecto < 0.82);
     const w = vertical ? p.h : p.w;
-    const h = vertical ? p.w : p.h;
+    const hNom = vertical ? p.w : p.h;
+    /* El recuadro del mapa ocupa ~72 % del ancho de hoja (el resto es el cajetín) y, al
+       tamaño nominal, ~78 % del alto (el resto es cabecera y márgenes). Esas dos fracciones
+       vienen de la maqueta (CSS) y no cambian si acortamos el alto, porque todo lo demás
+       escala con el ANCHO (--k), que queda fijo. Así se puede despejar el alto que el
+       cantón de verdad necesita, para no imprimir una hoja más larga de lo que da el
+       contenido (p.ej. Liberia, muy alargado de norte a sur, quedaba con medio metro de
+       hoja vacío abajo). */
+    let h = hNom;
+    if (cantonSel) {
+      const mapaAncho = w * 0.72;
+      const holgura = hNom * (1 - 0.78);
+      const altoIdeal = mapaAncho / aspecto + holgura;
+      // Nunca más larga que el tamaño nominal, ni más corta que ~55 % (para que el
+      // cajetín y la cabecera no se aprieten demasiado).
+      h = Math.min(hNom, Math.max(hNom * 0.55, altoIdeal));
+    }
     return { nombre, w, h, vertical, k: w / ANCHO_BASE };
   }
 
@@ -1111,9 +1154,13 @@
 
      Si no se pueden traer (sin red, servicio caído), la lámina sale igual, sin sombras. */
   const RELIEVE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile';
+  // Imagen satelital: mismo servidor ArcGIS (ya está en la lista blanca del proxy), otro
+  // MapServer. Se usa solo en M0.0.01 (Localización), para distinguirlo del resto de
+  // láminas, que siguen con el relieve sombreado.
+  const SATELITE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile';
   const relieveCache = new Map();
 
-  function cargarTesela(z, x, y) {
+  function cargarTesela(urlBase, z, x, y) {
     return new Promise((resolve) => {
       const img = new Image();
       // Siempre se responde, pase lo que pase: una tesela que no llega no puede dejar
@@ -1123,12 +1170,12 @@
       img.onload = () => listo(img);
       img.onerror = () => listo(null);
       // El orden del ArcGIS es /z/y/x, no /z/x/y.
-      img.src = '/geoproxy?url=' + encodeURIComponent(`${RELIEVE_URL}/${z}/${y}/${x}`);
+      img.src = '/geoproxy?url=' + encodeURIComponent(`${urlBase}/${z}/${y}/${x}`);
     });
   }
 
-  async function relieveDe(bb, maxTeselas) {
-    const clave = bb.map((v) => v.toFixed(4)).join(',') + '|' + maxTeselas;
+  async function mosaicoDe(bb, maxTeselas, urlBase) {
+    const clave = urlBase + '|' + bb.map((v) => v.toFixed(4)).join(',') + '|' + maxTeselas;
     if (relieveCache.has(clave)) return relieveCache.get(clave);
     const tarea = (async () => {
       // Se elige el zoom más alto que quepa en el presupuesto de teselas.
@@ -1155,7 +1202,7 @@
       for (let x = x0; x < x1; x++) for (let y = y0; y < y1; y++) pedidos.push([x, y]);
       let trajo = 0;
       for (let i = 0; i < pedidos.length; i += 8) {
-        const lote = await Promise.all(pedidos.slice(i, i + 8).map(([x, y]) => cargarTesela(z, x, y)));
+        const lote = await Promise.all(pedidos.slice(i, i + 8).map(([x, y]) => cargarTesela(urlBase, z, x, y)));
         lote.forEach((img, j) => {
           if (!img) return;
           const [x, y] = pedidos[i + j];
@@ -1179,6 +1226,9 @@
     relieveCache.set(clave, tarea);
     return tarea;
   }
+
+  function relieveDe(bb, maxTeselas) { return mosaicoDe(bb, maxTeselas, RELIEVE_URL); }
+  function satelitalDe(bb, maxTeselas) { return mosaicoDe(bb, maxTeselas, SATELITE_URL); }
 
   /* ---------- modelo de elevación y pendientes ----------
      El IFA pide el mapa de pendientes (M1.1.03) en cinco clases, y para eso hace falta un
@@ -1389,6 +1439,27 @@
     const [, latMin, , latMax] = bboxDe(cantonSel);
     const latMedia = (latMin + latMax) / 2;
     const vecinos = vecinosDe(cantonSel);
+    // Ciudad más poblada del cantón, para el recuadro de detalle de cada lámina. Se usa el
+    // dato real del Censo 2022 (no siempre es la cabecera) y la geometría de "Límites
+    // distritales" para ubicar su centro. Si falta cualquiera de los dos, sencillamente no
+    // sale el recuadro — no debe frenar la exportación del resto del atlas.
+    let ciudadPrincipal = null;
+    try {
+      const fcDistParaCiudad = await obtenerDatos('Límites distritales');
+      if (datosInec && datosInec.registros && fcDistParaCiudad && fcDistParaCiudad.features) {
+        const propios = datosInec.registros.filter((r) => r.nivel === 'distrito' && r.canton === canton);
+        if (propios.length) {
+          const top = propios.reduce((a, b) =>
+            ((b.poblacion || {}).pob_total || 0) > ((a.poblacion || {}).pob_total || 0) ? b : a);
+          const feat = fcDistParaCiudad.features.find((f) => f.properties && f.properties.d === top.distrito);
+          if (feat) {
+            const ctr = turf.centroid(feat).geometry.coordinates;
+            ciudadPrincipal = { nombre: top.distrito, centro: ctr,
+                                 poblacion: (top.poblacion || {}).pob_total || 0 };
+          }
+        }
+      }
+    } catch (e) { /* sin recuadro de ciudad */ }
     const elabora = firmaDe('elabora');
     const profesional = firmaDe('profesional');
     const conRelieve = !$('chkRelieve') || $('chkRelieve').checked;
@@ -1465,6 +1536,7 @@
             <div class="lam-mapa-zona" id="zona-${i}">
               <div class="lam-mapa-wrap" id="wrap-${i}">
                 <div class="lam-norte"><div class="flecha">▲</div>N</div>
+                <div class="lam-zoom" id="zoom-${i}"></div>
               </div>
             </div>
           </div>
@@ -1528,18 +1600,33 @@
       const escEl = $(`esc-${i}`);
       if (escEl) escEl.innerHTML = `<b>Escala numérica</b><br>1: ${milesCon(escala)}`;
 
-      // Relieve sombreado de fondo (si se pudo traer).
-      if (prog) { prog.paso('Cargando relieve sombreado…', '🏔️'); prog.porcentaje(15); await new Promise(r => setTimeout(r, 30)); }
-      const relieve = conRelieve ? await relieveDe(bb, TESELAS_POR_PAPEL[papel.nombre] || 120) : null;
+      // Fondo: imagen satelital solo en M0.0.01 (Localización); el resto sigue con el
+      // relieve sombreado. En M0.0.03 (Topografía) se pide bastante más presupuesto de
+      // teselas para que el relieve se note fuerte bajo las curvas de nivel.
+      const esLocalizacion = m.id === 'base_limites';
+      const esDistritos = m.id === 'base_distritos';
+      const esCurvas = m.id === 'base_curvas';
+      const esHidrica = m.id === 'base_hidrica';
+      if (prog) {
+        prog.paso(esLocalizacion ? 'Cargando imagen satelital…' : 'Cargando relieve sombreado…', '🏔️');
+        prog.porcentaje(15); await new Promise(r => setTimeout(r, 30));
+      }
+      const teselasBase = TESELAS_POR_PAPEL[papel.nombre] || 120;
+      const relieve = !conRelieve ? null
+        : esLocalizacion ? await satelitalDe(bb, teselasBase)
+        : await relieveDe(bb, esCurvas ? Math.round(teselasBase * 1.6) : teselasBase);
       let fondo = '';
       if (relieve) {
         const sx = UV / (bb[2] - bb[0]), sy = H / (bb[3] - bb[1]);
         const x = (relieve.caja[0] - bb[0]) * sx, y = (bb[3] - relieve.caja[3]) * sy;
         const w = (relieve.caja[2] - relieve.caja[0]) * sx;
         const h = (relieve.caja[3] - relieve.caja[1]) * sy;
+        // En Topografía se sube el contraste del relieve a punta de filtro CSS, para que se
+        // conjugue con las curvas de nivel en vez de quedar como un fondo plano.
+        const filtroCurvas = esCurvas ? ' style="filter:contrast(1.35) brightness(0.92) saturate(0.7)"' : '';
         fondo = `<image href="${relieve.url}" xlink:href="${relieve.url}" x="${x.toFixed(2)}" ` +
                 `y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ` +
-                `preserveAspectRatio="none"/>`;
+                `preserveAspectRatio="none"${filtroCurvas}/>`;
       }
 
       // Capas: SOLO las del mapa (insumos), nada más.
@@ -1551,6 +1638,9 @@
       insumosRealesDe(m).forEach((n) => { if (!nombres.includes(n)) nombres.push(n); });
       let capasSVG = '';
       const fuentes = new Set();
+      // Se guardan aparte, para poder rotular distritos (M0.0.02) y ríos (M0.0.04) una vez
+      // que el resto de las capas ya se dibujó.
+      let fcDistritos = null, fcHidrica = null;
       for (let ci = 0; ci < nombres.length; ci++) {
         const nombre = nombres[ci];
         if (prog) {
@@ -1560,6 +1650,8 @@
           await new Promise(r => setTimeout(r, 20));
         }
         const fc = await obtenerDatos(nombre);
+        if (nombre === 'Límites distritales') fcDistritos = fc;
+        if (nombre === 'Red hídrica') fcHidrica = fc;
         if (fc && fc.features && fc.features.length) {
           capasSVG += capaSVG(nombre, fc, px, k);
           const est = estiloDe(nombre);
@@ -1586,20 +1678,36 @@
       if (fuenteEl) {
         fuenteEl.innerHTML = '<b>Fuentes:</b> ' +
           ([...fuentes].sort().join('. ') || 'Sistema Nacional de Información Territorial (SNIT)') +
-          '.' + (relieve ? ' Relieve sombreado: Esri World Hillshade.' : '') +
+          '.' + (relieve ? (esLocalizacion ? ' Imagen satelital: Esri World Imagery.' : ' Relieve sombreado: Esri World Hillshade.') : '') +
           ' Elaboración propia con PlanoExactoCR.';
       }
 
       /* Velos: adentro del cantón uno blanco, para que el relieve quede de fondo suave y las
          capas se lean; afuera uno gris, que apaga el relieve y deja claro dónde termina el
-         área de planificación. Sin relieve, el de afuera es gris liso como antes. */
+         área de planificación. Sin relieve, el de afuera es gris liso como antes.
+
+         El mar: antes la máscara de "afuera" era "todo el mundo menos el cantón", de un solo
+         gris plano, así que el mar salía del mismo color que la tierra vecina. Ahora el fondo
+         de toda la hoja es azul, el relieve/satélite se recorta a la tierra (cantón + vecinos)
+         para no pintar el mar con la tesela "sin datos" del servicio, y el gris de "afuera"
+         solo se pinta sobre los cantones vecinos (tierra real). Donde no hay cantón ni vecino,
+         el azul queda a la vista: el mar siempre se ve azul. */
       const dCanton = dDe(partesCanton.anillos, px, true);
+      const dVecinos = vecinos.map((v) => dDe(partesDe(v.geometry).anillos, px, true)).join('');
+      const dTierra = dCanton + dVecinos;
       const veloDentro = relieve
         ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="evenodd"/>` : '';
       const marco = `M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z`;
-      const mascara = relieve
-        ? `<path d="${marco}${dCanton}" fill="#8d8d8d" fill-opacity="0.33" fill-rule="evenodd"/>`
-        : `<path d="${marco}${dCanton}" fill="#ececec" fill-rule="evenodd"/>`;
+      const fondoMar = `<path d="${marco}" fill="#bcdcf2" fill-rule="evenodd"/>`;
+      const recorteTierra = `tierra-${i}`;
+      const fondoRecortado = fondo
+        ? `<clipPath id="${recorteTierra}"><path d="${dTierra}" clip-rule="evenodd"/></clipPath>` +
+          `<g clip-path="url(#${recorteTierra})">${fondo}</g>`
+        : '';
+      const mascara = vecinos.length
+        ? `<path d="${dVecinos}" fill="${relieve ? '#8d8d8d' : '#ececec'}" ` +
+          `fill-opacity="${relieve ? 0.33 : 1}" fill-rule="evenodd"/>`
+        : '';
       // Las capas se recortan al cantón: el área de planificación es la que se analiza, y
       // dejar que las vías o los distritos sigan de largo por fuera confunde la lectura.
       const recorte = `recorte-${i}`;
@@ -1622,7 +1730,8 @@
       const svg = `<svg class="lam-svg" viewBox="0 0 ${UV} ${H.toFixed(2)}" preserveAspectRatio="none" ` +
                   `xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
                   `shape-rendering="geometricPrecision">` +
-                  fondo + veloDentro + capasRecortadas + mascara + svgVecinos + grilla.lineas + limite + '</svg>';
+                  fondoMar + fondoRecortado + veloDentro + capasRecortadas + mascara + svgVecinos +
+                  grilla.lineas + limite + '</svg>';
 
       // Rótulos de los cantones vecinos, como HTML (así la letra no se deforma).
       let rotulos = '';
@@ -1635,6 +1744,19 @@
                      `top:${(q[1] / H * 100).toFixed(2)}%">${esc(String(v.properties.k).toUpperCase())}</span>`;
         } catch (e) { /* sin rótulo */ }
       });
+      // Nombres de distrito (M0.0.02) y de ríos/cuerpos de agua (M0.0.04). El campo real
+      // de la capa se desconoce con certeza (no hay forma de inspeccionar el WFS en vivo
+      // desde acá), así que se prueban varios nombres de campo típicos; si ninguno calza,
+      // sencillamente no sale rótulo — no revienta la lámina.
+      if (esDistritos) {
+        rotulos += rotulosDe(fcDistritos, ['d', 'nombre', 'NOMBRE', 'distrito', 'DISTRITO'],
+                              'rot-distrito', px, UV, H);
+      }
+      if (esHidrica) {
+        rotulos += rotulosDe(fcHidrica,
+          ['nombre', 'NOMBRE', 'nom_geogra', 'NOM_GEOGRA', 'rotulo', 'ROTULO', 'etiqueta'],
+          'rot-hidrica', px, UV, H);
+      }
 
       // Barra de escala: el largo "redondo" en km, medido sobre el ancho real del mapa.
       const metrosMapa = (mapaW / 1000) * escala;
@@ -1648,6 +1770,44 @@
 
       wrap.insertAdjacentHTML('afterbegin', svg + '<div class="lam-rotulos">' + rotulos + '</div>');
       wrap.insertAdjacentHTML('beforeend', escalaHTML);
+
+      // Recuadro de detalle: zoom a la ciudad/distrito más poblado, esquina inferior
+      // izquierda del mapa. Reaprovecha el mosaico de relieve/satélite ya descargado para
+      // el mapa principal (si la ciudad queda dentro de esa ventana, que es casi siempre),
+      // en vez de pedir más teselas.
+      const zoomEl = $(`zoom-${i}`);
+      if (zoomEl && ciudadPrincipal) {
+        const UVz = 1000, Hz = 1000;
+        const radioG = 3200 / mPorGrado;   // ~6.4 km de ancho total
+        // `proyector` espera la caja ya en el mismo espacio "mercátor" que usa `bb` arriba
+        // (x = longitud en grados, y = latitud pasada por mercator()), no en lon/lat crudo.
+        const ctrMerc = mercator(ciudadPrincipal.centro[0], ciudadPrincipal.centro[1]);
+        const bbZ = [ctrMerc[0] - radioG, ctrMerc[1] - radioG,
+                     ctrMerc[0] + radioG, ctrMerc[1] + radioG];
+        const pxZ = proyector(bbZ, UVz, Hz);
+        let fondoZ = `<rect width="${UVz}" height="${Hz}" fill="#bcdcf2"/>`;
+        if (relieve) {
+          const sx = UVz / (bbZ[2] - bbZ[0]), sy = Hz / (bbZ[3] - bbZ[1]);
+          const x = (relieve.caja[0] - bbZ[0]) * sx, y = (bbZ[3] - relieve.caja[3]) * sy;
+          const w = (relieve.caja[2] - relieve.caja[0]) * sx;
+          const h = (relieve.caja[3] - relieve.caja[1]) * sy;
+          fondoZ += `<image href="${relieve.url}" xlink:href="${relieve.url}" x="${x.toFixed(2)}" ` +
+                    `y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ` +
+                    `preserveAspectRatio="none"/>`;
+        }
+        const limiteZ = `<path d="${dDe(partesCanton.anillos, pxZ, true)}" fill="none" ` +
+                         `stroke="#c0392b" stroke-width="6" vector-effect="non-scaling-stroke"/>`;
+        const pZ = pxZ(ciudadPrincipal.centro);
+        const marcaZ = `<circle cx="${pZ[0].toFixed(1)}" cy="${pZ[1].toFixed(1)}" r="12" ` +
+                       'fill="#c0392b" stroke="#fff" stroke-width="3"/>';
+        const svgZ = `<svg viewBox="0 0 ${UVz} ${Hz}" preserveAspectRatio="xMidYMid slice" ` +
+                     'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
+                     fondoZ + limiteZ + marcaZ + '</svg>';
+        zoomEl.innerHTML = `<div class="lam-zoom-tit">${esc(ciudadPrincipal.nombre)}</div>` +
+          svgZ + '<div class="lam-zoom-pie">zona más poblada (sin escala)</div>';
+      } else if (zoomEl) {
+        zoomEl.remove();
+      }
       // Los rótulos de la grilla van por fuera del marco, en una capa calcada sobre él.
       if (zona) zona.insertAdjacentHTML('beforeend', `<div class="lam-rej">${grilla.rotulos}</div>`);
 

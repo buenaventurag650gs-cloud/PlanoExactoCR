@@ -289,6 +289,12 @@
   .rot-vecino { position:absolute; transform:translate(-50%,-50%); color:#6b6b6b;
                 font-size:calc(2.5mm * var(--k)); font-weight:700; white-space:nowrap;
                 text-shadow:0 0 2px #fff, 0 0 2px #fff; }
+  .rot-distrito { position:absolute; transform:translate(-50%,-50%); color:#333;
+                  font-size:calc(2.3mm * var(--k)); font-weight:600; font-style:italic;
+                  white-space:nowrap; text-shadow:0 0 2px #fff, 0 0 2px #fff; }
+  .rot-hidrica { position:absolute; transform:translate(-50%,-50%); color:#1a6ea8;
+                 font-size:calc(1.9mm * var(--k)); font-weight:600; font-style:italic;
+                 white-space:nowrap; text-shadow:0 0 2px #fff, 0 0 2px #fff; }
   /* Rótulos de la grilla CRTM05: van por fuera del marco, en los cuatro lados. */
   .lam-rej { position:absolute; top:calc(3.6mm * var(--k)); bottom:calc(3.6mm * var(--k));
              left:calc(4.8mm * var(--k)); right:calc(4.8mm * var(--k)); pointer-events:none; }
@@ -352,6 +358,19 @@
                border:calc(0.3mm * var(--k)) solid #333; overflow:hidden; background:#fff; }
   .lam-inset-tit { position:absolute; top:1px; left:3px; font-size:calc(1.8mm * var(--k));
                    font-weight:600; color:#333; z-index:2; background:#fffd; padding:0 2px; }
+
+  /* Recuadro de detalle de la ciudad/distrito más poblado, en la esquina inferior izquierda
+     del propio mapa (distinto del "Área de estudio", que va en el cajetín). */
+  .lam-zoom { position:absolute; left:calc(2mm * var(--k)); bottom:calc(2mm * var(--k));
+              width:calc(38mm * var(--k)); height:calc(38mm * var(--k)); z-index:500;
+              border:calc(0.4mm * var(--k)) solid #333; overflow:hidden; background:#bcdcf2;
+              box-shadow:0 0 calc(1mm * var(--k)) rgba(0,0,0,.35); }
+  .lam-zoom svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .lam-zoom-tit { position:absolute; top:0; left:0; right:0; z-index:2; text-align:center;
+                  font-size:calc(1.7mm * var(--k)); font-weight:700; color:#111;
+                  background:#fffc; padding:calc(0.3mm * var(--k)) 0; }
+  .lam-zoom-pie { position:absolute; bottom:0; left:0; right:0; z-index:2; text-align:center;
+                  font-size:calc(1.2mm * var(--k)); color:#333; background:#fffc; }
 
   /* ---- Portada / índice del atlas ---- */
   .lam-portada { display:flex; align-items:center; justify-content:center; }

@@ -293,9 +293,17 @@
         {
           "numero": "6.1",
           "id": "base_limites",
-          "nombre": "Límites administrativos",
+          "nombre": "Localización y área de planificación",
           "estado": "disponible",
-          "descripcion": "Límites distritales del cantón sobre relieve sombreado.",
+          "descripcion": "Ubicación del cantón dentro del país, sobre imagen satelital.",
+          "insumos": []
+        },
+        {
+          "numero": "6.1b",
+          "id": "base_distritos",
+          "nombre": "División político-administrativa y localidades",
+          "estado": "disponible",
+          "descripcion": "Distritos del cantón, con nombre, sobre relieve sombreado.",
           "insumos": [
             "Límites distritales"
           ]

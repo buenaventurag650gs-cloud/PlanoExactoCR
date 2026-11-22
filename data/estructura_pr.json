@@ -1317,7 +1317,7 @@
    "correlativo": "02",
    "etapa": 2,
    "resuelve": "atlas",
-   "atlas": "base_limites",
+   "atlas": "base_distritos",
    "guia_invu": true,
    "condicion": null,
    "observacion": "",
