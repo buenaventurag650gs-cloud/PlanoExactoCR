@@ -444,10 +444,10 @@
       "capas": [
         {
           "nombre": "Sitios arqueológicos registrados",
-          "archivo": null,
+          "archivo": "datos/origenes_mncr.geojson",
           "fuente": "Museo Nacional",
-          "estado": "pendiente",
-          "nota": "gestionar convenio; es probable que el Museo entregue solo zonas de sensibilidad, no coordenadas exactas. Nov 2026: se recibió I23_Origenes_MNCR_sitios_CR_2026.gpkg con el esquema completo (30 campos: clave, nombre, código UCR, provincia/cantón/distrito, tipo de sitio, coordenadas CRTM05, etc.) pero 0 registros — el export llegó vacío. Falta volver a pedir al Museo el archivo con los datos reales."
+          "estado": "disponible",
+          "nota": "Nov 2026: reenviado por el Museo como Origenes_MNCR_sitios_CR_2026-11-20.geojson, ya con los 5,178 sitios registrados (coordenadas exactas incluidas, no solo zonas de sensibilidad). Se guarda en muni/datos/ (no en el /data/ público de planoexactocr.com) para que quede protegido por el mismo Cloudflare Access de todo el atlas — no es un dato para exponer sin control de acceso, por riesgo de huaqueo en sitios no resguardados."
         }
       ]
     },

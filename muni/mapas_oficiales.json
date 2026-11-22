@@ -200,7 +200,7 @@
      "id": "ant_uso_antropico",
      "nombre": "IFA Uso antrópico",
      "estado": "parcial",
-     "faltante": "sitios arqueológicos y patrimonio (Museo Nacional)",
+     "faltante": "Cobertura MAF2020 (el servidor de SINIA que la publicaba se retiró; sitios arqueológicos ya está disponible desde nov 2026)",
      "descripcion": "Uso del suelo según qué tan intervenido está (urbano, cultivos, cobertura MAF), con las áreas protegidas y el patrimonio como restricción encima.",
      "insumos": [
       "Uso urbano 1:5mil",
@@ -235,7 +235,7 @@
      "id": "ant_integrado",
      "nombre": "IFA Antropoaptitud integrado",
      "estado": "parcial",
-     "faltante": "falta el paisajismo y los sitios arqueológicos",
+     "faltante": "falta el paisajismo (4.3, pendiente del todo) y que 4.1 cierre su cobertura forestal",
      "descripcion": "Integración de los sub-mapas de antropoaptitud disponibles.",
      "insumos": []
     }
