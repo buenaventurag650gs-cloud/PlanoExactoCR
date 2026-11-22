@@ -397,14 +397,27 @@
      atlas —porque el atlas resuelve con una sola lámina lo que el índice separa— se rotula
      con el primero. Sin estructura compartida se cae a la numeración propia del atlas. */
   const CODIGO_DE = {};
+  const NOMBRE_OFICIAL = {};
   if (estructura && Array.isArray(estructura.mapas)) {
     estructura.mapas.forEach((mp) => {
-      if (mp.atlas && !CODIGO_DE[mp.atlas]) CODIGO_DE[mp.atlas] = mp.codigo;
+      if (mp.atlas && !CODIGO_DE[mp.atlas]) {
+        CODIGO_DE[mp.atlas] = mp.codigo;
+        // El nombre oficial del mapa lo fija el índice maestro (manual INVU/SETENA), no el
+        // nombre interno del atlas: M1.4.03 es "Infraestructura y servicios", no
+        // "IFA Accesibilidad vial". La lámina debe rotularse con el nombre oficial.
+        if (mp.nombre) NOMBRE_OFICIAL[mp.atlas] = mp.nombre;
+      }
     });
   }
   function codigoDe(m) {
     if (!m) return '';
     return CODIGO_DE[m.id] || m.numero || '';
+  }
+  // Nombre con el que se rotula la lámina: el oficial del índice maestro si el mapa tiene
+  // código asignado; si no, el nombre propio del atlas.
+  function nombreMapa(m) {
+    if (!m) return '';
+    return NOMBRE_OFICIAL[m.id] || m.nombre || '';
   }
   // Capas de insumo de un mapa (ya resuelto) que existen de verdad en capas.json y se pueden dibujar.
   function insumosRealesDe(m) {
@@ -492,7 +505,7 @@
         fila.innerHTML = `
           <button class="ctrl ojo" ${verOk ? '' : 'disabled'} title="${verOk ? 'Ver este mapa en pantalla (apaga el anterior)' : m.solo_pdf ? 'Se calcula al exportar; no se dibuja en pantalla' : 'Sin datos para dibujar'}">${ICO.ojoNo}</button>
           <div class="cuerpo">
-            <div class="titulo"><b>${codigoDe(m)}</b> ${m.nombre}
+            <div class="titulo"><b>${codigoDe(m)}</b> ${esc(nombreMapa(m))}
               <span class="badge ${m.estado}">${m.estado}</span>
               ${m.solo_pdf ? '<span class="badge pdf">solo PDF</span>' : ''}</div>
             <div class="desc">${m.descripcion}</div>
@@ -612,7 +625,7 @@
     });
     if (mapaVisto) {
       const m = defMapa(mapaVisto);
-      h += `<div class="tit-mapa">${codigoDe(m)} ${m.nombre}</div>`;
+      h += `<div class="tit-mapa">${codigoDe(m)} ${esc(nombreMapa(m))}</div>`;
       insumosReales(mapaVisto).forEach((n) => {
         const cargada = !!layerLookup[n];
         h += `<div class="lg">${muestraHTML(n)}<span${cargada ? '' : ' class="vacia"'}>${n}${cargada ? '' : ' (cargando…)'}</span></div>`;
@@ -1367,7 +1380,7 @@
           mapasInst.forEach((m) => {
             num++;
             const cod = codigoDe(m);
-            filas += `<tr><td class="idx-num">${num}</td><td class="idx-cod">${cod ? esc(cod) : ''}</td><td>${esc(m.nombre)}</td></tr>`;
+            filas += `<tr><td class="idx-num">${num}</td><td class="idx-cod">${cod ? esc(cod) : ''}</td><td>${esc(nombreMapa(m))}</td></tr>`;
           });
         });
         return filas;
@@ -1421,7 +1434,7 @@
         <div class="lam-hoja">
           <div class="lam-izq">
             <div class="lam-cab">
-              <div class="lam-titulo">${esc(m.nombre)}</div>
+              <div class="lam-titulo">${esc(nombreMapa(m))}</div>
               <div class="lam-subtit">${codigoDe(m) ? esc(codigoDe(m)) + ' · ' : ''}${esc(m.institucion)}</div>
             </div>
             <div class="lam-mapa-zona" id="zona-${i}">
@@ -1886,8 +1899,8 @@
         else if (m.estado === 'parcial') parciales++;
         else pendientes++;
 
-        h += `<tr><td class="est-num">${m.numero || ''}</td>` +
-             `<td><div class="est-nom">${m.nombre} <span class="badge ${m.estado}">${m.estado}</span></div>` +
+        h += `<tr><td class="est-num">${esc(codigoDe(m) || m.numero || '')}</td>` +
+             `<td><div class="est-nom">${esc(nombreMapa(m))} <span class="badge ${m.estado}">${m.estado}</span></div>` +
              `<div class="est-desc">${m.descripcion}</div>` +
              `${m.faltante ? `<div class="est-falta">Falta: ${m.faltante}</div>` : ''}</td>` +
              `<td>${insumosHTML(m, vistas, cuenta)}</td>` +
@@ -1984,9 +1997,10 @@
     if (!m) return;
     const canton = $('selCanton').value;
     const papel = papelActual().nombre;
-    const nom = /^mapa/i.test(m.nombre) ? m.nombre : 'Mapa ' + m.nombre;
+    const nomOf = nombreMapa(m);
+    const nom = /^mapa/i.test(nomOf) ? nomOf : 'Mapa ' + nomOf;
     document.title = `${codigoDe(m) ? codigoDe(m) + '. ' : ''}${nom} ${canton} ${papel}`;
-    const prog = mostrarProgreso(`Componiendo: ${m.nombre}`);
+    const prog = mostrarProgreso(`Componiendo: ${nomOf}`);
     prog.paso('Preparando la lámina…', '📐');
     prog.porcentaje(5);
     await new Promise(r => setTimeout(r, 80)); // para que se pinte el panel
