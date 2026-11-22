@@ -276,6 +276,60 @@
       "peso": 0.4,
       "relleno": 0.4,
       "geom": "poligono"
+    },
+    "Órdenes del suelo": {
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.78,
+      "geom": "poligono",
+      "categorias": {
+        "campo": "ORDENES",
+        "valores": {
+          "ANDISOLES": "#e08214",
+          "INCEPTISOLES": "#fee08b",
+          "ULTISOLES": "#b2182b",
+          "ENTISOLES": "#a6d96a",
+          "MOLLISOLES": "#8c510a",
+          "VERTISOLES": "#543005",
+          "ALFISOLES": "#80cdc1",
+          "HISTOSOLES": "#01665e",
+          "OXISOLES": "#bf812d",
+          "SPODOSOLES": "#c7eae5",
+          "URBANO": "#969696"
+        },
+        "otro": "#d9d9d9"
+      }
+    },
+    "Suborden del suelo": {
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.78,
+      "geom": "poligono",
+      "categorias": {
+        "campo": "SUBORDEN",
+        "valores": {
+          "Udands": "#e08214",
+          "Ustands": "#fdae61",
+          "Vitrands": "#f46d43",
+          "Udepts": "#fee08b",
+          "Ustepts": "#ffffbf",
+          "Aquepts": "#d9ef8b",
+          "Humults": "#b2182b",
+          "Udults": "#d6604d",
+          "Ustults": "#f4a582",
+          "Orthents": "#a6d96a",
+          "Fluvents": "#66bd63",
+          "Psamments": "#1a9850",
+          "Udolls": "#bf812d",
+          "Ustolls": "#8c510a",
+          "Uderts": "#543005",
+          "Udalfs": "#80cdc1",
+          "Ustalfs": "#35978f",
+          "Saprists": "#01665e",
+          "Urbano": "#969696"
+        },
+        "otro": "#d9d9d9"
+      }
     }
   }
 }

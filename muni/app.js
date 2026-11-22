@@ -123,6 +123,23 @@
   const ESTILO_DEF = { color: '#4f8cff', trazo: 'solido', peso: 0.7, relleno: 0.1, geom: 'poligono' };
   const estiloDe = (n) => Object.assign({}, ESTILO_DEF, SIMB[n] || {});
   const colorDe = (n) => estiloDe(n).color;
+  // Color de una categoría (simbología coloreada por el valor de un campo). Busca el valor en
+  // el mapa `valores`, ignorando mayúsculas/espacios, y cae a `otro` si no está listado.
+  function colorCategoria(cat, valor) {
+    if (!cat || !cat.valores) return (cat && cat.otro) || '#d9d9d9';
+    const v = valor == null ? '' : String(valor).trim();
+    if (cat.valores[v] !== undefined) return cat.valores[v];
+    const up = v.toUpperCase();
+    for (const kk in cat.valores) if (kk.toUpperCase() === up) return cat.valores[kk];
+    return cat.otro || '#d9d9d9';
+  }
+  // Etiqueta legible de una categoría (los campos oficiales suelen venir EN MAYÚSCULAS).
+  function etiquetaCategoria(valor) {
+    const v = valor == null ? '' : String(valor).trim();
+    if (!v) return 'Sin dato';
+    if (v === v.toUpperCase()) return v.charAt(0) + v.slice(1).toLowerCase();
+    return v;
+  }
   function dashDe(trazo, k) {
     if (trazo === 'guion') return `${(5 * k).toFixed(2)} ${(3 * k).toFixed(2)}`;
     if (trazo === 'punteado') return `${(1.4 * k).toFixed(2)} ${(2.4 * k).toFixed(2)}`;
@@ -130,7 +147,11 @@
   }
   // Cuadrito de muestra, con la forma de la geometría (línea, polígono o punto).
   function muestraHTML(nombre, clase) {
-    const e = estiloDe(nombre);
+    // `nombre` puede ser el nombre de una capa, o un objeto {__color, geom} para una
+    // entrada de leyenda categórica (un color suelto, sin capa propia).
+    const e = (nombre && typeof nombre === 'object' && nombre.__color)
+      ? { color: nombre.__color, trazo: 'solido', geom: nombre.geom || 'poligono' }
+      : estiloDe(nombre);
     const c = clase || 'sw';
     const tipo = e.trazo === 'guion' ? 'dashed' : e.trazo === 'punteado' ? 'dotted' : 'solid';
     if (e.geom === 'linea') return `<span class="${c} linea" style="border-top-color:${e.color};border-top-style:${tipo}"></span>`;
@@ -888,6 +909,28 @@
     const peso = Math.max(e.peso * k, 0.05);
     const dash = dashDe(e.trazo, k);
     const atrDash = dash ? ` stroke-dasharray="${dash}"` : '';
+    // Simbología categórica: polígonos coloreados por el valor de un campo (órdenes de suelo,
+    // clases de capacidad de uso, zonas de vida, etc.). Se agrupan por color y se dibuja un
+    // path por grupo; la leyenda la arma el bucle de láminas con las categorías presentes.
+    if (e.categorias && e.categorias.campo) {
+      const campo = e.categorias.campo;
+      const grupos = new Map();
+      (fc.features || []).forEach((f) => {
+        const p = partesDe(f.geometry);
+        if (!p.anillos.length) return;
+        const col = colorCategoria(e.categorias, f.properties ? f.properties[campo] : null);
+        if (!grupos.has(col)) grupos.set(col, []);
+        grupos.get(col).push(...p.anillos);
+      });
+      const borde = Math.max(peso * 0.5, 0.04);
+      let sc = '';
+      for (const [col, anillos] of grupos) {
+        sc += `<path d="${dDe(anillos, px, true)}" fill="${col}" fill-opacity="${e.relleno || 0.7}"` +
+              ` fill-rule="evenodd" stroke="${col}" stroke-width="${borde}"` +
+              ` vector-effect="non-scaling-stroke" stroke-linejoin="miter"/>`;
+      }
+      return sc;
+    }
     const anillos = [], lineas = [], puntos = [];
     (fc.features || []).forEach((f) => {
       const p = partesDe(f.geometry);
@@ -1481,7 +1524,20 @@
         const fc = await obtenerDatos(nombre);
         if (fc && fc.features && fc.features.length) {
           capasSVG += capaSVG(nombre, fc, px, k);
-          leyenda.push([nombre, nombre]);
+          const est = estiloDe(nombre);
+          if (est.categorias && est.categorias.campo) {
+            // Una entrada de leyenda por categoría realmente presente en el cantón.
+            const vistos = new Map();
+            fc.features.forEach((f) => {
+              const val = f.properties ? f.properties[est.categorias.campo] : null;
+              const etq = etiquetaCategoria(val);
+              if (!vistos.has(etq)) vistos.set(etq, colorCategoria(est.categorias, val));
+            });
+            [...vistos.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+              .forEach(([etq, col]) => leyenda.push([etq, { __color: col, geom: 'poligono' }]));
+          } else {
+            leyenda.push([nombre, nombre]);
+          }
           const f = (capaPorNombre[nombre] || {}).fuente;
           if (f) fuentes.add(String(f).trim().replace(/\.$/, ''));
         }

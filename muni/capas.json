@@ -179,7 +179,23 @@
           "archivo": "https://services.arcgis.com/LjCtRQt1uf8M6LGR/arcgis/rest/services/Suelos_de_Costa_Rica_2015/FeatureServer/0",
           "fuente": "UCR / INTA / IICA (ArcGIS Hub, 2015)",
           "estado": "disponible",
-          "nota": "Taxonomía de suelos 1:200.000; campos ORDEN, SUBORDEN, GRAN_GRUPO, DESCRIPCION",
+          "nota": "Capa 'Subórdenes de Suelo CR 2015', taxonomía USDA 1:200.000. Campos reales: ORDENES, SUBORDEN, Area_ha (no trae gran grupo ni fertilidad). Cubre todo el país; en Montes de Oca da sobre todo Andisoles (Udands/Ustands).",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Órdenes del suelo",
+          "archivo": "https://services.arcgis.com/LjCtRQt1uf8M6LGR/arcgis/rest/services/Suelos_de_Costa_Rica_2015/FeatureServer/0",
+          "fuente": "UCR / INTA / IICA (ArcGIS Hub, 2015)",
+          "estado": "disponible",
+          "nota": "Misma capa de suelos, coloreada por el campo ORDENES (simbología categórica). Órdenes USDA presentes en CR: Andisoles, Inceptisoles, Ultisoles, Entisoles, Mollisoles, Vertisoles, Alfisoles, Histosoles, Oxisoles, Spodosoles, Urbano.",
+          "filtrar_canton": true
+        },
+        {
+          "nombre": "Suborden del suelo",
+          "archivo": "https://services.arcgis.com/LjCtRQt1uf8M6LGR/arcgis/rest/services/Suelos_de_Costa_Rica_2015/FeatureServer/0",
+          "fuente": "UCR / INTA / IICA (ArcGIS Hub, 2015)",
+          "estado": "disponible",
+          "nota": "Misma capa de suelos, coloreada por el campo SUBORDEN (simbología categórica). Los subórdenes no listados en la paleta caen al color 'otro' (gris claro).",
           "filtrar_canton": true
         }
       ]

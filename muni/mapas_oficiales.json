@@ -143,46 +143,52 @@
    "mapas": [
     {
      "numero": "3.1",
+     "id": "eda_tipo_suelo",
+     "nombre": "Órdenes del suelo",
+     "estado": "disponible",
+     "descripcion": "Órdenes de suelo según la taxonomía USDA (capa UCR/INTA/IICA 2015, 1:200.000), coloreados por categoría. En Montes de Oca predominan los Andisoles.",
+     "insumos": [
+      "Órdenes del suelo"
+     ]
+    },
+    {
+     "numero": "3.2",
+     "id": "eda_suborden",
+     "nombre": "Suborden del suelo",
+     "estado": "disponible",
+     "descripcion": "Subórdenes de suelo (USDA) de la misma capa UCR/INTA/IICA 2015, coloreados por categoría.",
+     "insumos": [
+      "Suborden del suelo"
+     ]
+    },
+    {
+     "numero": "3.3",
      "id": "eda_capacidad_uso",
      "nombre": "IFA Capacidad de uso de la tierra",
      "estado": "parcial",
-     "faltante": "el INTA solo cubre algunos cantones",
-     "descripcion": "Clases I-VIII de capacidad de uso (Decreto 23214).",
+     "faltante": "la capa del INTA solo cubre Nicoya y unos pocos cantones (no Montes de Oca). La muestra de MdO usó el Mapa de capacidad de uso del Atlas ITCR 2014 (nacional), que no se encontró como servicio web público — hay que conseguir esa fuente.",
+     "descripcion": "Clases I-VIII de capacidad de uso de las tierras (Decreto 23214 / metodología oficial).",
      "insumos": [
       "Capacidad de uso de la tierra"
      ]
     },
     {
-     "numero": "3.2",
+     "numero": "3.4",
      "id": "eda_fertilidad",
      "nombre": "IFA Fertilidad del suelo",
-     "estado": "disponible",
-     "descripcion": "Potencial agrícola derivado del gran grupo de suelo (capa UCR/INTA/IICA 2015).",
-     "insumos": [
-      "Suelos de Costa Rica (tipo y orden)"
-     ]
+     "estado": "pendiente",
+     "faltante": "la capa de suelos 2015 solo trae ORDENES y SUBORDEN, no un atributo de fertilidad. La muestra de MdO usó el mapa de fertilidad del CIA-UCR 2020 (app Suelos CR), que no se encontró como servicio web público — hay que conseguir esa fuente o derivar la fertilidad por suborden.",
+     "descripcion": "Potencial de uso agrícola según la fertilidad del suelo.",
+     "insumos": []
     },
     {
-     "numero": "3.3",
-     "id": "eda_tipo_suelo",
-     "nombre": "IFA Tipo de suelo",
-     "estado": "disponible",
-     "descripcion": "Taxonomía de suelos 1:200.000 (UCR/INTA/IICA 2015). Órdenes y subórdenes según el sistema USDA.",
-     "insumos": [
-      "Suelos de Costa Rica (tipo y orden)"
-     ]
-    },
-    {
-     "numero": "3.4",
+     "numero": "3.5",
      "id": "eda_integrado",
      "nombre": "IFA Edafoaptitud integrado",
-     "estado": "disponible",
-     "faltante": null,
-     "descripcion": "Integración: capacidad de uso (INTA) + tipo y fertilidad de suelo (UCR/INTA/IICA).",
-     "insumos": [
-      "Capacidad de uso de la tierra",
-      "Suelos de Costa Rica (tipo y orden)"
-     ]
+     "estado": "parcial",
+     "faltante": "faltan capacidad de uso (3.3) y fertilidad (3.4) para integrar el eje completo; órdenes y suborden ya están.",
+     "descripcion": "Integración de los sub-mapas de edafoaptitud disponibles.",
+     "insumos": []
     }
    ]
   },
