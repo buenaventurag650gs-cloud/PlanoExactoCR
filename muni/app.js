@@ -109,6 +109,8 @@
   let muniLogoListo = Promise.resolve();  // se resuelve cuando el escudo terminó de cargar (o falló del todo)
   let cantonesTodos = null;
 
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   // Capas base prendidas al elegir cantón (las livianas; las densas quedan apagadas).
   const BASE_POR_DEFECTO = ['Límites distritales', 'Red vial cantonal', 'Red hídrica'];
 
@@ -913,8 +915,6 @@
     }
     return d;
   }
-
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // Dibuja una capa completa (polígonos + líneas + puntos) con su simbología.
   function capaSVG(nombre, fc, px, k) {
