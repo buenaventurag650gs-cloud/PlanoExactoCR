@@ -984,6 +984,49 @@
     return d;
   }
 
+  /* Suaviza un anillo YA PROYECTADO (en píxeles), cortando esquinas (Chaikin). El límite
+     cantonal del IGN que se usa acá (data/cantones.geojson, liviano a propósito para que
+     cargue rápido en el navegador) trae muy pocos vértices por cantón —apenas 15-30 en
+     total—, así que a la escala de una lámina (1:10 000 a 1:40 000) se ve como un polígono
+     de pocos lados, no como un límite real. Esto no agrega precisión que no exista: solo
+     ablanda el trazo para que no se note tanto la baja resolución del dato. Una pasada
+     (o dos) alcanza; no se usa en las capas temáticas (suelos, etc.), que si tienen el
+     detalle real y no hay que disimular nada ahí. */
+  function suavizarAnillo(pts, pasadas) {
+    let r = pts;
+    for (let it = 0; it < pasadas; it++) {
+      const n = r.length;
+      if (n < 3) return r;
+      const out = new Array(n * 2);
+      for (let i = 0; i < n; i++) {
+        const a = r[i], b = r[(i + 1) % n];
+        out[i * 2] = [a[0] + (b[0] - a[0]) * 0.25, a[1] + (b[1] - a[1]) * 0.25];
+        out[i * 2 + 1] = [a[0] + (b[0] - a[0]) * 0.75, a[1] + (b[1] - a[1]) * 0.75];
+      }
+      r = out;
+    }
+    return r;
+  }
+
+  // Como dDe, pero suaviza cada anillo antes de armar el trazo (ver suavizarAnillo arriba).
+  function dSuaveDe(listas, px, cerrar, pasadas) {
+    let d = '';
+    for (const pts of listas) {
+      if (!pts || pts.length < 2) continue;
+      // GeoJSON repite el primer punto al final de un anillo cerrado; hay que quitarlo antes
+      // de suavizar en ciclo (si no, la "costura" queda con un vértice duplicado y raro).
+      const cerrado = pts.length > 2 &&
+        Math.abs(pts[0][0] - pts[pts.length - 1][0]) < 1e-9 &&
+        Math.abs(pts[0][1] - pts[pts.length - 1][1]) < 1e-9;
+      let proy = pts.map((pt) => px(pt));
+      if (cerrado) proy = proy.slice(0, -1);
+      const suave = pasadas > 0 ? suavizarAnillo(proy, pasadas) : proy;
+      suave.forEach((q, j) => { d += (j ? 'L' : 'M') + q[0].toFixed(2) + ' ' + q[1].toFixed(2); });
+      if (cerrado || cerrar) d += 'Z';
+    }
+    return d;
+  }
+
   // Dibuja una capa completa (polígonos + líneas + puntos) con su simbología.
   function capaSVG(nombre, fc, px, k) {
     const e = estiloDe(nombre);
@@ -1692,9 +1735,14 @@
          para no pintar el mar con la tesela "sin datos" del servicio, y el gris de "afuera"
          solo se pinta sobre los cantones vecinos (tierra real). Donde no hay cantón ni vecino,
          el azul queda a la vista: el mar siempre se ve azul. */
-      const dCanton = dDe(partesCanton.anillos, px, true);
-      const dVecinos = vecinos.map((v) => dDe(partesDe(v.geometry).anillos, px, true)).join('');
-      const dTierra = dCanton + dVecinos;
+      const dCanton = dSuaveDe(partesCanton.anillos, px, true, 1);
+      // Un "d" por vecino, NO uno solo combinado: el límite cantonal del IGN es tan liviano
+      // (15-30 vértices por cantón) que dos cantones contiguos a veces se traslapan un poco
+      // en píxeles al proyectarlos. Si se juntan todos los anillos en un único path con
+      // fill-rule evenodd, ese traslape se lee como un "agujero" (par de cruces = afuera) y
+      // ese pedacito queda SIN máscara — se ve el azul del mar de fondo asomando en plena
+      // tierra. Cada vecino con su propio <path> evita que uno le "perfore" el relleno a otro.
+      const dsVecinos = vecinos.map((v) => dSuaveDe(partesDe(v.geometry).anillos, px, true, 1));
       // En Topografía (M0.0.03) se pidió que el relieve se note mucho más fuerte dentro del
       // propio cantón —no solo el contraste del fondo, sino el velo que lo atenúa—, para que
       // las curvas de nivel se dibujen "sobre" un relieve bien visible y no sobre un lavado
@@ -1707,13 +1755,13 @@
       const fondoMar = `<path d="${marco}" fill="#bcdcf2" fill-rule="evenodd"/>`;
       const recorteTierra = `tierra-${i}`;
       const fondoRecortado = fondo
-        ? `<clipPath id="${recorteTierra}"><path d="${dTierra}" clip-rule="evenodd"/></clipPath>` +
+        ? `<clipPath id="${recorteTierra}"><path d="${dCanton}" clip-rule="evenodd"/>` +
+          dsVecinos.map((d) => `<path d="${d}" clip-rule="evenodd"/>`).join('') + '</clipPath>' +
           `<g clip-path="url(#${recorteTierra})">${fondo}</g>`
         : '';
-      const mascara = vecinos.length
-        ? `<path d="${dVecinos}" fill="${relieve ? '#8d8d8d' : '#ececec'}" ` +
-          `fill-opacity="${relieve ? 0.33 : 1}" fill-rule="evenodd"/>`
-        : '';
+      const mascara = dsVecinos.map((d) =>
+        `<path d="${d}" fill="${relieve ? '#8d8d8d' : '#ececec'}" ` +
+        `fill-opacity="${relieve ? 0.33 : 1}" fill-rule="evenodd"/>`).join('');
       // Las capas se recortan al cantón: el área de planificación es la que se analiza, y
       // dejar que las vías o los distritos sigan de largo por fuera confunde la lectura.
       const recorte = `recorte-${i}`;
@@ -1722,12 +1770,9 @@
           `<g clip-path="url(#${recorte})">${capasSVG}</g>`
         : '';
       // Vecinos: solo el contorno, sobre el gris.
-      let svgVecinos = '';
-      vecinos.forEach((v) => {
-        const pv = partesDe(v.geometry);
-        svgVecinos += `<path d="${dDe(pv.anillos, px, true)}" fill="none" stroke="#9a9a9a" ` +
-                      `stroke-width="${0.5 * k}" vector-effect="non-scaling-stroke"/>`;
-      });
+      const svgVecinos = dsVecinos.map((d) =>
+        `<path d="${d}" fill="none" stroke="#9a9a9a" ` +
+        `stroke-width="${0.5 * k}" vector-effect="non-scaling-stroke"/>`).join('');
       const eC = estiloDe('Límites cantonales');
       const limite = `<path d="${dCanton}" fill="none" stroke="${eC.color}" stroke-width="${1.5 * k}" ` +
                      `stroke-dasharray="${dashDe('guion', k)}" vector-effect="non-scaling-stroke"/>`;
@@ -1801,7 +1846,7 @@
                     `y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ` +
                     `preserveAspectRatio="none"/>`;
         }
-        const limiteZ = `<path d="${dDe(partesCanton.anillos, pxZ, true)}" fill="none" ` +
+        const limiteZ = `<path d="${dSuaveDe(partesCanton.anillos, pxZ, true, 1)}" fill="none" ` +
                          `stroke="#c0392b" stroke-width="6" vector-effect="non-scaling-stroke"/>`;
         const pZ = pxZ(ciudadPrincipal.centro);
         const marcaZ = `<circle cx="${pZ[0].toFixed(1)}" cy="${pZ[1].toFixed(1)}" r="12" ` +
@@ -1837,12 +1882,12 @@
         const pxi = proyector(bbi, UV, Hi);
         let dPais = '';
         (dentro.length ? dentro : cantonesTodos.features).forEach((f) => {
-          dPais += dDe(partesDe(f.geometry).anillos, pxi, true);
+          dPais += dSuaveDe(partesDe(f.geometry).anillos, pxi, true, 1);
         });
         ins.insertAdjacentHTML('afterbegin',
           `<svg class="lam-svg" viewBox="0 0 ${UV} ${Hi.toFixed(2)}" preserveAspectRatio="none" ` +
           `xmlns="http://www.w3.org/2000/svg"><path d="${dPais}" fill="#ededed" stroke="#c4c4c4" ` +
-          `stroke-width="0.3" vector-effect="non-scaling-stroke"/><path d="${dDe(partesCanton.anillos, pxi, true)}" ` +
+          `stroke-width="0.3" vector-effect="non-scaling-stroke"/><path d="${dSuaveDe(partesCanton.anillos, pxi, true, 1)}" ` +
           `fill="${eC.color}" stroke="${eC.color}" stroke-width="0.5" vector-effect="non-scaling-stroke"/></svg>`);
       }
     }
