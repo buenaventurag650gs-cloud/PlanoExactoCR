@@ -104,6 +104,7 @@
   let cantonLayer = null;
   let maskPreview = null;
   let muniLogo = null;
+  let muniLogoListo = Promise.resolve();  // se resuelve cuando el escudo terminó de cargar (o falló del todo)
   let cantonesTodos = null;
 
   // Capas base prendidas al elegir cantón (las livianas; las densas quedan apagadas).
@@ -321,23 +322,31 @@
   }
 
   function cargarEscudo(fuentes) {
-    if (!fuentes.length) { muniLogo = null; actualizarCajetinPreview(); return; }
-    const raw = fuentes[0];
-    // Los escudos del CDN se piden por el proxy (evita bloqueo por hotlink/CORS y entran al PDF).
-    const url = /^https?:/.test(raw) ? '/geoproxy?url=' + encodeURIComponent(raw) : raw;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      try {
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth; c.height = img.naturalHeight;
-        c.getContext('2d').drawImage(img, 0, 0);
-        muniLogo = c.toDataURL('image/png');
-      } catch (e) { muniLogo = url; }
-      actualizarCajetinPreview();
-    };
-    img.onerror = () => cargarEscudo(fuentes.slice(1));
-    img.src = url;
+    // muniLogoListo se resuelve solo cuando ya se sabe el resultado final (cargó o se agotaron
+    // las fuentes). construirLaminas() espera esta promesa antes de armar cualquier lámina, para
+    // no imprimir sin escudo solo porque el usuario le dio clic a imprimir muy rápido.
+    muniLogoListo = new Promise((resolve) => {
+      (function intentar(lista) {
+        if (!lista.length) { muniLogo = null; actualizarCajetinPreview(); resolve(); return; }
+        const raw = lista[0];
+        // Los escudos del CDN se piden por el proxy (evita bloqueo por hotlink/CORS y entran al PDF).
+        const url = /^https?:/.test(raw) ? '/geoproxy?url=' + encodeURIComponent(raw) : raw;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = img.naturalWidth; c.height = img.naturalHeight;
+            c.getContext('2d').drawImage(img, 0, 0);
+            muniLogo = c.toDataURL('image/png');
+          } catch (e) { muniLogo = url; }
+          actualizarCajetinPreview();
+          resolve();
+        };
+        img.onerror = () => intentar(lista.slice(1));
+        img.src = url;
+      })(fuentes);
+    });
   }
 
   function actualizarCajetinPreview() {
@@ -1269,6 +1278,12 @@
   // `mapasAdHoc`: array de mapas ya armados (no del catálogo oficial), para el botón
   // "Imprimir" del visor, que imprime la combinación de capas que esté en pantalla.
   async function construirLaminas(soloEstos, prog, mapasAdHoc) {
+    // Espera a que el escudo municipal termine de cargar antes de armar nada — si no, una
+    // impresión muy rápida tras elegir cantón sale sin escudo solo por una carrera de tiempos
+    // (el escudo viene por red/proxy; el logo de PlanoExactoCR es local y siempre está listo).
+    if (prog) prog.paso('Cargando escudo municipal…', '🛡️');
+    await Promise.race([muniLogoListo, new Promise((r) => setTimeout(r, 6000))]);
+
     const cont = $('laminas');
     cont.innerHTML = '';
 
@@ -1318,7 +1333,7 @@
         <div class="lam-hoja lam-portada">
           <div class="portada-contenido">
             <div class="portada-logos">
-              ${muniLogo ? `<img src="${muniLogo}" class="portada-escudo" alt="">` : ''}
+              ${muniLogo ? `<img src="${muniLogo}" class="portada-escudo" alt="">` : '<div class="portada-sinescudo">escudo municipal<br>no disponible</div>'}
               <img src="planoexacto.png" class="portada-marca" alt="PlanoExactoCR">
             </div>
             <h1 class="portada-tit">Atlas Cartográfico</h1>
@@ -1373,7 +1388,7 @@
           <div class="lam-caj">
             <div class="caj-tit"><span>Plan Regulador Territorial</span><b>Cantón ${esc(canton)}</b></div>
             <div class="caj-logos">
-              <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}" alt="">` : ''}</div>
+              <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}" alt="">` : '<div class="caj-sinescudo">escudo<br>no disponible</div>'}</div>
               ${elabora ? `<div class="caj-elab">Elaborado por:<div class="firma">${esc(elabora)}</div></div>` : ''}
               <div class="caj-marca"><img src="planoexacto.png" alt="PlanoExactoCR"><span>PlanoExactoCR</span></div>
             </div>
