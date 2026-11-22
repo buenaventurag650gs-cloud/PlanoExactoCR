@@ -1749,24 +1749,36 @@
       // casi blanco. El resto de las láminas conserva el velo normal, que es el que deja leer
       // las demás capas sin que el relieve distraiga.
       const veloDentro = !relieve ? '' : esCurvas
-        ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.08" fill-rule="evenodd"/>`
-        : `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="evenodd"/>`;
+        ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.08" fill-rule="nonzero"/>`
+        : `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="nonzero"/>`;
       const marco = `M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z`;
       const fondoMar = `<path d="${marco}" fill="#bcdcf2" fill-rule="evenodd"/>`;
+      // Capa gris de tierra, debajo del relieve/satélite pero encima del mar: así, si el
+      // recorte de abajo tuviera algún borde imperfecto (antialiasing, un vértice al límite),
+      // lo que asoma es gris de tierra y no azul de mar. El relieve se dibuja encima de todas
+      // formas, así que esta capa normalmente no se ve; es un respaldo, no el relieve en sí.
+      const tierraBase = `<path d="${dCanton}" fill="#d6d6d2" fill-rule="nonzero"/>` +
+        dsVecinos.map((d) => `<path d="${d}" fill="#d6d6d2" fill-rule="nonzero"/>`).join('');
       const recorteTierra = `tierra-${i}`;
+      // clip-rule/fill-rule "nonzero" (no "evenodd") en el límite cantonal y de vecinos: el
+      // suavizado (suavizarAnillo) corta esquinas sin comprobar si el trazo resultante se
+      // autocruza, y en un cantón con muescas angostas y pocos vértices (dataset IGN liviano)
+      // sí puede autocruzarse. Con evenodd ese autocruce se lee como un "agujero" (recorte o
+      // máscara que falla ahí) y asoma el azul del mar en plena tierra; con nonzero el
+      // autocruce queda relleno igual, sin agujero.
       const fondoRecortado = fondo
-        ? `<clipPath id="${recorteTierra}"><path d="${dCanton}" clip-rule="evenodd"/>` +
-          dsVecinos.map((d) => `<path d="${d}" clip-rule="evenodd"/>`).join('') + '</clipPath>' +
+        ? `<clipPath id="${recorteTierra}"><path d="${dCanton}" clip-rule="nonzero"/>` +
+          dsVecinos.map((d) => `<path d="${d}" clip-rule="nonzero"/>`).join('') + '</clipPath>' +
           `<g clip-path="url(#${recorteTierra})">${fondo}</g>`
         : '';
       const mascara = dsVecinos.map((d) =>
         `<path d="${d}" fill="${relieve ? '#8d8d8d' : '#ececec'}" ` +
-        `fill-opacity="${relieve ? 0.33 : 1}" fill-rule="evenodd"/>`).join('');
+        `fill-opacity="${relieve ? 0.33 : 1}" fill-rule="nonzero"/>`).join('');
       // Las capas se recortan al cantón: el área de planificación es la que se analiza, y
       // dejar que las vías o los distritos sigan de largo por fuera confunde la lectura.
       const recorte = `recorte-${i}`;
       const capasRecortadas = capasSVG
-        ? `<clipPath id="${recorte}"><path d="${dCanton}" clip-rule="evenodd"/></clipPath>` +
+        ? `<clipPath id="${recorte}"><path d="${dCanton}" clip-rule="nonzero"/></clipPath>` +
           `<g clip-path="url(#${recorte})">${capasSVG}</g>`
         : '';
       // Vecinos: solo el contorno, sobre el gris.
@@ -1781,7 +1793,7 @@
       const svg = `<svg class="lam-svg" viewBox="0 0 ${UV} ${H.toFixed(2)}" preserveAspectRatio="none" ` +
                   `xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
                   `shape-rendering="geometricPrecision">` +
-                  fondoMar + fondoRecortado + veloDentro + capasRecortadas + mascara + svgVecinos +
+                  fondoMar + tierraBase + fondoRecortado + veloDentro + capasRecortadas + mascara + svgVecinos +
                   grilla.lineas + limite + '</svg>';
 
       // Rótulos de los cantones vecinos, como HTML (así la letra no se deforma).
