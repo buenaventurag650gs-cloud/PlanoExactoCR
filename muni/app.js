@@ -1623,7 +1623,7 @@
         const h = (relieve.caja[3] - relieve.caja[1]) * sy;
         // En Topografía se sube el contraste del relieve a punta de filtro CSS, para que se
         // conjugue con las curvas de nivel en vez de quedar como un fondo plano.
-        const filtroCurvas = esCurvas ? ' style="filter:contrast(1.35) brightness(0.92) saturate(0.7)"' : '';
+        const filtroCurvas = esCurvas ? ' style="filter:contrast(1.5) brightness(0.9) saturate(0.6)"' : '';
         fondo = `<image href="${relieve.url}" xlink:href="${relieve.url}" x="${x.toFixed(2)}" ` +
                 `y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ` +
                 `preserveAspectRatio="none"${filtroCurvas}/>`;
@@ -1695,8 +1695,14 @@
       const dCanton = dDe(partesCanton.anillos, px, true);
       const dVecinos = vecinos.map((v) => dDe(partesDe(v.geometry).anillos, px, true)).join('');
       const dTierra = dCanton + dVecinos;
-      const veloDentro = relieve
-        ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="evenodd"/>` : '';
+      // En Topografía (M0.0.03) se pidió que el relieve se note mucho más fuerte dentro del
+      // propio cantón —no solo el contraste del fondo, sino el velo que lo atenúa—, para que
+      // las curvas de nivel se dibujen "sobre" un relieve bien visible y no sobre un lavado
+      // casi blanco. El resto de las láminas conserva el velo normal, que es el que deja leer
+      // las demás capas sin que el relieve distraiga.
+      const veloDentro = !relieve ? '' : esCurvas
+        ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.08" fill-rule="evenodd"/>`
+        : `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="evenodd"/>`;
       const marco = `M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z`;
       const fondoMar = `<path d="${marco}" fill="#bcdcf2" fill-rule="evenodd"/>`;
       const recorteTierra = `tierra-${i}`;
