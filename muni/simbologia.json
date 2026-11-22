@@ -300,6 +300,58 @@
         "otro": "#d9d9d9"
       }
     },
+    "Capacidad de uso de las tierras": {
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.8,
+      "geom": "poligono",
+      "categorias": {
+        "campo": "NOMBRE",
+        "valores": {
+          "Clase I": "#1a9850",
+          "Clase II": "#66bd63",
+          "Clase III": "#a6d96a",
+          "Clase IV": "#ffffbf",
+          "Clase V": "#fee08b",
+          "Clase VI": "#fdae61",
+          "Clase VII": "#f46d43",
+          "Clase VIII": "#e8998d"
+        },
+        "otro": "#d9d9d9"
+      }
+    },
+    "Categorías de uso de la tierra (IFA)": {
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.8,
+      "geom": "poligono",
+      "categorias": {
+        "campo": "IFA_DESCRI",
+        "valores": {
+          "Muy alta": "#e41a1c",
+          "Alta": "#ff7f00",
+          "Moderada": "#ffff33",
+          "Baja": "#94d180",
+          "Muy baja": "#3d983a"
+        },
+        "otro": "#d9d9d9"
+      }
+    },
+    "Potencial de uso agrícola por fertilidad": {
+      "trazo": "solido",
+      "peso": 0.3,
+      "relleno": 0.8,
+      "geom": "poligono",
+      "categorias": {
+        "campo": "DESCRIP",
+        "valores": {
+          "Alta fertilidad": "#238443",
+          "Media fertilidad": "#fee08b",
+          "Baja fertilidad": "#fdae61"
+        },
+        "otro": "#d9d9d9"
+      }
+    },
     "Suborden del suelo": {
       "trazo": "solido",
       "peso": 0.3,

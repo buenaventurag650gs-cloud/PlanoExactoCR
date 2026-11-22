@@ -1499,7 +1499,7 @@
    "correlativo": "03",
    "etapa": 3,
    "resuelve": "atlas",
-   "atlas": null,
+   "atlas": "geo_pendientes",
    "guia_invu": false,
    "condicion": null,
    "observacion": "El atlas lo calcula cuando se le entrega un DEM",

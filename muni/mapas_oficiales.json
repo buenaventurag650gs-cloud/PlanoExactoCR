@@ -36,6 +36,17 @@
     },
     {
      "numero": "1.3",
+     "id": "geo_pendientes",
+     "nombre": "Pendientes",
+     "estado": "disponible",
+     "requiere_dem": true,
+     "descripcion": "Mapa de pendientes en las cinco clases del IFA (Anexo 1, DE 44710): 0-5, 5-15, 15-30, 30-60 y más de 60 %. Se calcula del modelo de elevación (teselas SRTM ~30 m) por el método de Horn.",
+     "insumos": [
+      "Pendientes (5 clases IFA)"
+     ]
+    },
+    {
+     "numero": "1.4",
      "id": "geo_hidrogeologico",
      "nombre": "Factor hidrogeológico",
      "estado": "pendiente",
@@ -44,7 +55,7 @@
      "insumos": []
     },
     {
-     "numero": "1.4",
+     "numero": "1.5",
      "id": "geo_estabilidad",
      "nombre": "Factor estabilidad de laderas",
      "estado": "parcial",
@@ -53,7 +64,7 @@
      "insumos": []
     },
     {
-     "numero": "1.5",
+     "numero": "1.6",
      "id": "geo_amenazas",
      "nombre": "Factor amenazas naturales",
      "estado": "parcial",
@@ -68,7 +79,7 @@
      ]
     },
     {
-     "numero": "1.6",
+     "numero": "1.7",
      "id": "geo_integrado",
      "nombre": "IFA Geoaptitud integrado",
      "estado": "parcial",
@@ -165,30 +176,34 @@
      "numero": "3.3",
      "id": "eda_capacidad_uso",
      "nombre": "IFA Capacidad de uso de la tierra",
-     "estado": "parcial",
-     "faltante": "la capa del INTA solo cubre Nicoya y unos pocos cantones (no Montes de Oca). La muestra de MdO usó el Mapa de capacidad de uso del Atlas ITCR 2014 (nacional), que no se encontró como servicio web público — hay que conseguir esa fuente.",
-     "descripcion": "Clases I-VIII de capacidad de uso de las tierras (Decreto 23214 / metodología oficial).",
+     "estado": "disponible",
+     "faltante": "solo Montes de Oca: la clasificación viene del mpk del equipo (Atlas ITCR 2014). Para otros cantones falta la capa nacional de capacidad de uso.",
+     "descripcion": "Clases I-VIII de capacidad de uso de las tierras (Decreto 23214 / metodología oficial). En Montes de Oca da Clase IV y Clase VIII.",
      "insumos": [
-      "Capacidad de uso de la tierra"
+      "Capacidad de uso de las tierras"
      ]
     },
     {
      "numero": "3.4",
      "id": "eda_fertilidad",
      "nombre": "IFA Fertilidad del suelo",
-     "estado": "pendiente",
-     "faltante": "la capa de suelos 2015 solo trae ORDENES y SUBORDEN, no un atributo de fertilidad. La muestra de MdO usó el mapa de fertilidad del CIA-UCR 2020 (app Suelos CR), que no se encontró como servicio web público — hay que conseguir esa fuente o derivar la fertilidad por suborden.",
-     "descripcion": "Potencial de uso agrícola según la fertilidad del suelo.",
-     "insumos": []
+     "estado": "disponible",
+     "faltante": "solo Montes de Oca: la clasificación viene del mpk del equipo (CIA-UCR 2020). Para otros cantones falta el mapa de fertilidad nacional.",
+     "descripcion": "Potencial de uso agrícola según la fertilidad del suelo. En Montes de Oca da fertilidad media.",
+     "insumos": [
+      "Potencial de uso agrícola por fertilidad"
+     ]
     },
     {
      "numero": "3.5",
      "id": "eda_integrado",
      "nombre": "IFA Edafoaptitud integrado",
-     "estado": "parcial",
-     "faltante": "faltan capacidad de uso (3.3) y fertilidad (3.4) para integrar el eje completo; órdenes y suborden ya están.",
-     "descripcion": "Integración de los sub-mapas de edafoaptitud disponibles.",
-     "insumos": []
+     "estado": "disponible",
+     "faltante": "solo Montes de Oca por ahora (depende de capacidad de uso y fertilidad, que vienen del mpk del equipo).",
+     "descripcion": "Integración de edafoaptitud: categoría de fragilidad IFA (Muy alta / Moderada) por unidad de capacidad de uso y fertilidad.",
+     "insumos": [
+      "Categorías de uso de la tierra (IFA)"
+     ]
     }
    ]
   },

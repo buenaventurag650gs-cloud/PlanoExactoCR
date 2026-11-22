@@ -197,6 +197,27 @@
           "estado": "disponible",
           "nota": "Misma capa de suelos, coloreada por el campo SUBORDEN (simbología categórica). Los subórdenes no listados en la paleta caen al color 'otro' (gris claro).",
           "filtrar_canton": true
+        },
+        {
+          "nombre": "Capacidad de uso de las tierras",
+          "archivo": "datos/capacidad_uso_mdo.geojson",
+          "fuente": "Mapa de capacidad de uso, Atlas ITCR 2014 (clasificación IFA del equipo del PR)",
+          "estado": "disponible",
+          "nota": "SOLO MONTES DE OCA. Clasificación de capacidad de uso (clases I-VIII) ya hecha por el equipo del Plan Regulador, recortada al cantón (del mpk de MdO). En MdO da Clase IV y Clase VIII. Coloreada por el campo NOMBRE. Para otros cantones falta la capa nacional de capacidad de uso del Atlas ITCR 2014 (no se halló como servicio web)."
+        },
+        {
+          "nombre": "Categorías de uso de la tierra (IFA)",
+          "archivo": "datos/capacidad_uso_mdo.geojson",
+          "fuente": "Mapa de capacidad de uso, Atlas ITCR 2014 + Mapa de suelos CIA-UCR 2020 (clasificación IFA del equipo)",
+          "estado": "disponible",
+          "nota": "SOLO MONTES DE OCA. Misma capa de capacidad, coloreada por la categoría de fragilidad IFA (campo IFA_DESCRI: Muy alta / Moderada). Es el insumo del IFA Edafoaptitud integrado (M1.3.90)."
+        },
+        {
+          "nombre": "Potencial de uso agrícola por fertilidad",
+          "archivo": "datos/fertilidad_mdo.geojson",
+          "fuente": "Mapa de suelos de Costa Rica, CIA-UCR 2020 (clasificación IFA del equipo)",
+          "estado": "disponible",
+          "nota": "SOLO MONTES DE OCA. Potencial agrícola según la fertilidad del suelo, recortado al cantón (del mpk de MdO). En MdO da 'Media fertilidad'. Coloreada por el campo DESCRIP. Para otros cantones falta el mapa de fertilidad nacional del CIA-UCR 2020 (no se halló como servicio web)."
         }
       ]
     },
