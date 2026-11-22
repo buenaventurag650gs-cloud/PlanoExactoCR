@@ -374,15 +374,16 @@
     if (!m) return '';
     return CODIGO_DE[m.id] || m.numero || '';
   }
-  // Capas de insumo de un mapa que existen de verdad en capas.json y se pueden dibujar.
-  function insumosReales(id) {
-    const m = defMapa(id);
+  // Capas de insumo de un mapa (ya resuelto) que existen de verdad en capas.json y se pueden dibujar.
+  function insumosRealesDe(m) {
     return (m?.insumos || []).filter((n) => {
       const c = capaPorNombre[n];
       // Una capa calculada (pendientes) no tiene archivo, pero sí se puede dibujar.
       return c && (c.calculada || (c.archivo && !String(c.archivo).startsWith('api:')));
     });
   }
+  // Igual, pero a partir del id de un mapa del catálogo oficial.
+  function insumosReales(id) { return insumosRealesDe(defMapa(id)); }
   const sePuedeVer = (m) => !m.solo_pdf && m.estado !== 'pendiente' && insumosReales(m.id).length > 0;
   const sePuedeImprimir = (m) => m.estado !== 'pendiente';
 
@@ -504,6 +505,7 @@
   }
   function actualizarExport() {
     $('btnAtlas').disabled = !cantonSel;
+    if ($('btnImprimirVisor')) $('btnImprimirVisor').disabled = !cantonSel;
   }
 
   // ---------- vista del mapa principal ----------
@@ -1264,7 +1266,9 @@
   const TESELAS_POR_PAPEL = { 'Carta': 60, 'A3': 100, 'A2': 160, 'A1': 260 };
 
   // ---------- imprimir: una lámina por mapa marcado ----------
-  async function construirLaminas(soloEstos, prog) {
+  // `mapasAdHoc`: array de mapas ya armados (no del catálogo oficial), para el botón
+  // "Imprimir" del visor, que imprime la combinación de capas que esté en pantalla.
+  async function construirLaminas(soloEstos, prog, mapasAdHoc) {
     const cont = $('laminas');
     cont.innerHTML = '';
 
@@ -1278,7 +1282,9 @@
     // `soloEstos` lo usa el botón "Descargar" de la estructura, para una lámina sola.
     const pedidos = soloEstos ? new Set(soloEstos) : seleccion;
     const ids = [];
-    catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => { if (pedidos.has(m.id)) ids.push(m.id); }));
+    if (!mapasAdHoc) {
+      catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => { if (pedidos.has(m.id)) ids.push(m.id); }));
+    }
 
     const partesCanton = partesDe(cantonSel.geometry);
     const cajaCanton = cajaMerc([cantonSel]);
@@ -1289,8 +1295,8 @@
     const profesional = firmaDe('profesional');
     const conRelieve = !$('chkRelieve') || $('chkRelieve').checked;
 
-    // 0) Portada/índice del atlas (solo si es el atlas completo, no una lámina suelta).
-    if (!soloEstos) {
+    // 0) Portada/índice del atlas (solo si es el atlas completo, no una lámina suelta ni ad hoc).
+    if (!soloEstos && !mapasAdHoc) {
       const indiceHTML = (() => {
         let filas = '';
         let num = 0;
@@ -1313,6 +1319,7 @@
           <div class="portada-contenido">
             <div class="portada-logos">
               ${muniLogo ? `<img src="${muniLogo}" class="portada-escudo" alt="">` : ''}
+              <img src="planoexacto.png" class="portada-marca" alt="PlanoExactoCR">
             </div>
             <h1 class="portada-tit">Atlas Cartográfico</h1>
             <h2 class="portada-subtit">Plan Regulador Territorial</h2>
@@ -1337,10 +1344,14 @@
 
     // 1) Se arma el esqueleto de todas las láminas, para poder medir el recuadro del mapa.
     const hojas = [];
-    for (let i = 0; i < ids.length; i++) {
-      const m = defMapa(ids[i]);
-      if (!m) continue;
-      hojas.push({ i, m });
+    if (mapasAdHoc) {
+      mapasAdHoc.forEach((m, i) => hojas.push({ i, m }));
+    } else {
+      for (let i = 0; i < ids.length; i++) {
+        const m = defMapa(ids[i]);
+        if (!m) continue;
+        hojas.push({ i, m });
+      }
     }
     const total = hojas.length;
     hojas.forEach(({ i, m }, n) => {
@@ -1363,9 +1374,8 @@
             <div class="caj-tit"><span>Plan Regulador Territorial</span><b>Cantón ${esc(canton)}</b></div>
             <div class="caj-logos">
               <div class="caj-escudo">${muniLogo ? `<img src="${muniLogo}" alt="">` : ''}</div>
-              <div class="caj-elab">Elaborado por:${elabora
-                ? `<div class="firma">${esc(elabora)}</div>`
-                : '<img src="planoexacto.png" alt="">'}</div>
+              ${elabora ? `<div class="caj-elab">Elaborado por:<div class="firma">${esc(elabora)}</div></div>` : ''}
+              <div class="caj-marca"><img src="planoexacto.png" alt="PlanoExactoCR"><span>PlanoExactoCR</span></div>
             </div>
             <div class="caj-simb">
               <div class="caj-rot">Simbología</div>
@@ -1388,7 +1398,7 @@
     });
 
     // 2) Se dibuja el mapa de cada lámina, ya sabiendo su tamaño real en el papel.
-    for (const { i, lam } of hojas) {
+    for (const { i, lam, m } of hojas) {
       const wrap = $(`wrap-${i}`);
       const zona = $(`zona-${i}`);
       if (!wrap) continue;
@@ -1440,7 +1450,7 @@
       if (prog) { prog.paso('Relieve listo. Preparando capas…', '🗺️'); prog.porcentaje(30); }
       const leyenda = [['Límite cantonal', 'Límites cantonales']];
       const nombres = [];
-      insumosReales(ids[i]).forEach((n) => { if (!nombres.includes(n)) nombres.push(n); });
+      insumosRealesDe(m).forEach((n) => { if (!nombres.includes(n)) nombres.push(n); });
       let capasSVG = '';
       const fuentes = new Set();
       for (let ci = 0; ci < nombres.length; ci++) {
@@ -1908,6 +1918,35 @@
     prog.porcentaje(5);
     await new Promise(r => setTimeout(r, 80)); // para que se pinte el panel
     await construirLaminas([id], prog);
+    prog.porcentaje(100);
+    prog.paso('¡Listo! Abriendo impresión…', '✅');
+    await new Promise(r => setTimeout(r, 400));
+    prog.cerrar();
+    window.print();
+  }
+
+  // El Visor es solo para ver: un botón imprime exactamente la combinación de capas que
+  // está prendida en pantalla ahora mismo (capas base + el mapa que se esté viendo, si hay uno).
+  async function imprimirVisorActual() {
+    if (!cantonSel) { avisar('Elegí un cantón primero.'); return; }
+    const nombres = Array.from(capasVisibles());
+    if (!nombres.length) { avisar('Prendé al menos una capa base para poder imprimir.'); return; }
+    const base = mapaVisto && defMapa(mapaVisto);
+    const mapaAdHoc = {
+      id: '__visor_actual__',
+      nombre: base ? base.nombre : 'Vista actual',
+      numero: base ? base.numero : '',
+      institucion: base ? base.institucion : 'Combinación de capas del visor',
+      insumos: nombres,
+    };
+    const canton = $('selCanton').value;
+    const papel = papelActual().nombre;
+    document.title = `${mapaAdHoc.nombre} ${canton} ${papel}`;
+    const prog = mostrarProgreso(`Componiendo: ${mapaAdHoc.nombre}`);
+    prog.paso('Preparando la lámina…', '📐');
+    prog.porcentaje(5);
+    await new Promise(r => setTimeout(r, 80));
+    await construirLaminas(null, prog, [mapaAdHoc]);
     prog.porcentaje(100);
     prog.paso('¡Listo! Abriendo impresión…', '✅');
     await new Promise(r => setTimeout(r, 400));
@@ -2474,6 +2513,8 @@
     window.print();
     $('btnAtlas').disabled = false;
   });
+
+  $('btnImprimirVisor').addEventListener('click', imprimirVisorActual);
 
   /* ---------- matriz del Plan Regulador ----------
      Inventario de todo lo que pide la normativa (87 mapas, 32 insumos) contra lo que

@@ -127,6 +127,18 @@
   .est-chip.filtro:hover { border-color:var(--accent,#4f8cff); }
   .est-chip.filtro.activo { background:var(--accent,#4f8cff); border-color:var(--accent,#4f8cff); color:#fff; }
   .est-chip.filtro.activo b { color:#fff; }
+
+  /* ---------- ajustes de exportación del atlas (pestaña Estructura) ---------- */
+  .exp-cfg { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 16px;
+             margin:0 0 16px; padding:12px 14px; background:var(--panel); border:1px solid var(--line);
+             border-radius:8px; }
+  .exp-cfg .campo { display:flex; flex-direction:column; gap:3px; }
+  .exp-cfg label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .exp-cfg select, .exp-cfg input { width:auto; margin:0; padding:6px 8px; font-size:12.5px; min-width:150px; }
+  .exp-cfg .chk { flex-direction:row; align-items:center; gap:6px; font-size:12px; color:var(--ink); }
+  .exp-cfg .chk input { width:auto; margin:0; }
+  .exp-cfg button { width:auto; margin:0; padding:9px 16px; white-space:nowrap; }
+  .exp-cfg .nota { flex-basis:100%; margin:2px 0 0; font-size:11.5px; color:var(--muted); }
   /* ---------- matriz del plan regulador ---------- */
   #matrizPr { overflow-y:auto; padding:18px 20px 40px; background:var(--bg); }
   .mpr-tabs { display:flex; gap:6px; margin:0 0 16px; border-bottom:1px solid var(--line); }
@@ -305,15 +317,19 @@
   .caj-tit { text-align:center; line-height:1.3; flex:0 0 auto; }
   .caj-tit span { font-size:calc(2.9mm * var(--k)); font-weight:700; }
   .caj-tit b { display:block; font-size:calc(3.4mm * var(--k)); margin-top:calc(1mm * var(--k)); }
-  .caj-logos { display:flex; align-items:center; justify-content:space-around;
+  .caj-logos { display:flex; align-items:center; justify-content:space-between;
                gap:calc(2mm * var(--k)); flex:0 0 auto; }
+  .caj-escudo { flex:0 0 auto; }
   .caj-escudo img { max-width:calc(17mm * var(--k)); max-height:calc(17mm * var(--k));
                     object-fit:contain; display:block; }
-  .caj-elab { text-align:center; font-size:calc(2.1mm * var(--k)); color:#333; }
-  .caj-elab img { max-width:calc(26mm * var(--k)); max-height:calc(8mm * var(--k)); object-fit:contain;
-                  display:block; margin:calc(1.2mm * var(--k)) auto 0; }
+  .caj-elab { flex:1 1 auto; min-width:0; text-align:center; font-size:calc(2.1mm * var(--k)); color:#333; }
   .caj-elab .firma { font-weight:700; font-size:calc(2.5mm * var(--k)); color:#111;
                      margin-top:calc(1.2mm * var(--k)); }
+  /* La marca de PlanoExactoCR va SIEMPRE en el cajetín, sin importar quién elabora el mapa. */
+  .caj-marca { flex:0 0 auto; text-align:center; font-size:calc(1.7mm * var(--k)); color:#666; }
+  .caj-marca img { max-width:calc(9mm * var(--k)); max-height:calc(9mm * var(--k));
+                   object-fit:contain; display:block; margin:0 auto; }
+  .caj-marca span { display:block; margin-top:calc(0.5mm * var(--k)); white-space:nowrap; }
   .caj-simb { flex:0 1 auto; min-height:0; overflow:hidden; }
   .caj-rot { font-weight:700; font-size:calc(2.7mm * var(--k)); text-align:center;
              border-bottom:calc(0.2mm * var(--k)) solid #111; padding-bottom:calc(0.8mm * var(--k));
@@ -337,8 +353,10 @@
   /* ---- Portada / índice del atlas ---- */
   .lam-portada { display:flex; align-items:center; justify-content:center; }
   .portada-contenido { width:85%; max-height:92%; text-align:center; }
-  .portada-logos { margin-bottom:calc(4mm * var(--k)); }
+  .portada-logos { margin-bottom:calc(4mm * var(--k)); display:flex; align-items:center;
+                   justify-content:center; gap:calc(8mm * var(--k)); }
   .portada-escudo { height:calc(22mm * var(--k)); }
+  .portada-marca { height:calc(14mm * var(--k)); }
   .portada-tit { font-size:calc(10mm * var(--k)); font-weight:900; text-transform:uppercase;
                  letter-spacing:0.04em; margin:0 0 calc(1mm * var(--k)); }
   .portada-subtit { font-size:calc(5mm * var(--k)); font-weight:600; color:#444;
@@ -409,32 +427,13 @@
     </div>
 
     <div class="seccion">
-      <div class="paso"><span class="n">3</span> Exportar</div>
-      <label class="sub" style="display:block;margin-bottom:3px">Tamaño de página</label>
-      <select id="selPapel">
-        <option value="A1">A1 — 59,4 × 84,1 cm (lámina de pared)</option>
-        <option value="A2" selected>A2 — 42 × 59,4 cm</option>
-        <option value="A3">A3 — 29,7 × 42 cm</option>
-        <option value="Carta">Carta — 21,6 × 27,9 cm</option>
-      </select>
-      <label class="sub" style="display:block;margin:6px 0 3px">Orientación</label>
-      <select id="selOrient">
-        <option value="auto" selected>Automática (según la forma del cantón)</option>
-        <option value="apaisado">Apaisada</option>
-        <option value="vertical">Vertical</option>
-      </select>
-      <label style="display:flex;align-items:center;gap:7px;margin:8px 0 4px;font-size:12px;color:var(--sub,#9aa)">
-        <input type="checkbox" id="chkRelieve" checked style="width:auto;margin:0"> Relieve sombreado de fondo
-      </label>
-      <label class="sub" style="display:block;margin:6px 0 3px">Elaborado por</label>
-      <input id="inpElabora" type="text" placeholder="Nombre de la empresa o equipo">
-      <label class="sub" style="display:block;margin:6px 0 3px">Profesional responsable</label>
-      <input id="inpProfesional" type="text" placeholder="Nombre y número de colegiado">
-      <button id="btnAtlas" disabled>Descargar Atlas completo (PDF)</button>
+      <div class="paso"><span class="n">3</span> Imprimir</div>
+      <p class="sub" style="margin-top:0">Imprime exactamente lo que está prendido en el visor ahora mismo (capas base + el mapa que se esté viendo).</p>
+      <button id="btnImprimirVisor" disabled>🖨 Imprimir esta vista</button>
       <div class="fila-botones">
         <button id="btnReset" class="sec">Reiniciar</button>
       </div>
-      <p class="sub" style="margin-top:8px">Se genera el atlas completo con índice, logos y cajetín en cada lámina. En el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>; el tamaño de la hoja ya va fijado en la lámina, así que no hay que tocar el selector de papel ni activar «ajustar a la página».</p>
+      <p class="sub" style="margin-top:8px">Para generar los mapas oficiales (uno por uno o el atlas completo con índice y cajetín), andá a la pestaña <b>Estructura cartográfica</b>.</p>
     </div>
   </div>
 
@@ -465,7 +464,37 @@
       <div id="estructura" hidden>
         <div class="est-cab">
           <h2>Estructura cartográfica</h2>
-          <p>Todos los mapas que pide la normativa, con los insumos de cada uno y de dónde salen. <b>Descargar</b> compone el mapa en el momento con las capas que necesita.</p>
+          <p>Todos los mapas que pide la normativa, con los insumos de cada uno y de dónde salen. <b>Descargar lámina</b> compone un mapa en el momento; el atlas completo junta todos los que estén disponibles con su índice.</p>
+          <div class="exp-cfg">
+            <div class="campo">
+              <label for="selPapel">Tamaño de página</label>
+              <select id="selPapel">
+                <option value="A1">A1 — 59,4 × 84,1 cm (lámina de pared)</option>
+                <option value="A2" selected>A2 — 42 × 59,4 cm</option>
+                <option value="A3">A3 — 29,7 × 42 cm</option>
+                <option value="Carta">Carta — 21,6 × 27,9 cm</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="selOrient">Orientación</label>
+              <select id="selOrient">
+                <option value="auto" selected>Automática (según la forma del cantón)</option>
+                <option value="apaisado">Apaisada</option>
+                <option value="vertical">Vertical</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="inpElabora">Elaborado por</label>
+              <input id="inpElabora" type="text" placeholder="Nombre de la empresa o equipo">
+            </div>
+            <div class="campo">
+              <label for="inpProfesional">Profesional responsable</label>
+              <input id="inpProfesional" type="text" placeholder="Nombre y número de colegiado">
+            </div>
+            <label class="campo chk"><input type="checkbox" id="chkRelieve" checked> Relieve sombreado de fondo</label>
+            <button id="btnAtlas" disabled>Descargar Atlas completo (PDF)</button>
+            <p class="nota">Con el atlas completo, en el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>; el tamaño de la hoja ya va fijado en cada lámina.</p>
+          </div>
           <div id="estResumen" class="est-resumen"></div>
         </div>
         <div id="estCuerpo"></div>
