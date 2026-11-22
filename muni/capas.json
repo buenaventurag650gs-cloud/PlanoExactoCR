@@ -179,45 +179,63 @@
           "archivo": "datos/suelos_ordenes_cr_2015.geojson",
           "fuente": "MAG/INTA-ITCR, Mapa de Órdenes y Subórdenes de Suelos de Costa Rica (2015)",
           "estado": "disponible",
-          "nota": "Capa nacional detallada de suelos (1,088 polígonos, incluye clases mixtas como \"ALFISOLES / ENTISOLES\"), igual fuente y resolución que usan los estudios profesionales de Plan Regulador (p.ej. Ecoplan/Hidrogeotecnia). Reemplaza el servicio ArcGIS 1:200.000 (menos detallado). Campos: ORDENES, SUBORDEN, Area_ha.",
-          "filtrar_canton": false
+          "nota": "Capa nacional detallada de suelos (1,088 polígonos, incluye clases mixtas como \"ALFISOLES / ENTISOLES\"), igual fuente y resolución que usan los estudios profesionales de Plan Regulador (p.ej. Ecoplan/Hidrogeotecnia). Reemplaza el servicio ArcGIS 1:200.000 (menos detallado). Campos: ORDENES, SUBORDEN, Area_ha. En Liberia se usa en su lugar el levantamiento municipal 1:22.000 del Plan Regulador (más detalle real que el nacional).",
+          "filtrar_canton": false,
+          "archivo_por_canton": {
+            "Liberia": "datos/edaf/liberia_suelos.geojson"
+          }
         },
         {
           "nombre": "Órdenes del suelo",
           "archivo": "datos/suelos_ordenes_cr_2015.geojson",
           "fuente": "MAG/INTA-ITCR, Mapa de Órdenes y Subórdenes de Suelos de Costa Rica (2015)",
           "estado": "disponible",
-          "nota": "Capa nacional de suelos coloreada por el campo ORDENES (simbología categórica), con la misma paleta de color y fuente que usan los estudios profesionales de Plan Regulador. Incluye clases simples y mixtas (ej. \"MOLLISOLES / ALFISOLES\").",
-          "filtrar_canton": false
+          "nota": "Capa nacional de suelos coloreada por el campo ORDENES (simbología categórica), con la misma paleta de color y fuente que usan los estudios profesionales de Plan Regulador. Incluye clases simples y mixtas (ej. \"MOLLISOLES / ALFISOLES\"). En Liberia usa el levantamiento municipal 1:22.000 (Plan Regulador) en vez del nacional.",
+          "filtrar_canton": false,
+          "archivo_por_canton": {
+            "Liberia": "datos/edaf/liberia_suelos.geojson"
+          }
         },
         {
           "nombre": "Suborden del suelo",
           "archivo": "datos/suelos_subordenes_cr_2015.geojson",
           "fuente": "MAG/INTA-ITCR, Mapa de Órdenes y Subórdenes de Suelos de Costa Rica (2015)",
           "estado": "disponible",
-          "nota": "Misma capa nacional de suelos, coloreada por el campo SUBORDEN (39 categorías), con la paleta oficial del estudio de 2015.",
-          "filtrar_canton": false
+          "nota": "Misma capa nacional de suelos, coloreada por el campo SUBORDEN (39 categorías), con la paleta oficial del estudio de 2015. En Liberia usa el levantamiento municipal 1:22.000 (Plan Regulador) en vez del nacional.",
+          "filtrar_canton": false,
+          "archivo_por_canton": {
+            "Liberia": "datos/edaf/liberia_suelos.geojson"
+          }
         },
         {
           "nombre": "Capacidad de uso de las tierras",
-          "archivo": "datos/capacidad_uso_mdo.geojson",
-          "fuente": "Mapa de capacidad de uso, Atlas ITCR 2014 (clasificación IFA del equipo del PR)",
+          "fuente": "Mapa de capacidad de uso del Plan Regulador (levantamiento municipal de cada cantón)",
           "estado": "disponible",
-          "nota": "SOLO MONTES DE OCA. Clasificación de capacidad de uso (clases I-VIII) ya hecha por el equipo del Plan Regulador, recortada al cantón (del mpk de MdO). En MdO da Clase IV y Clase VIII. Coloreada por el campo NOMBRE. Para otros cantones falta la capa nacional de capacidad de uso del Atlas ITCR 2014 (no se halló como servicio web)."
+          "nota": "Clasificación de capacidad de uso (clases I-VIII) del equipo del Plan Regulador, por cantón: Montes de Oca (Atlas ITCR 2014, clases IV/VIII) y Liberia (levantamiento 1:22.000, clases III-VIII). Coloreada por el campo NOMBRE. Para otros cantones falta su propio levantamiento municipal (no existe una capa nacional de capacidad de uso).",
+          "archivo_por_canton": {
+            "Montes de Oca": "datos/capacidad_uso_mdo.geojson",
+            "Liberia": "datos/edaf/liberia.geojson"
+          }
         },
         {
           "nombre": "Categorías de uso de la tierra (IFA)",
-          "archivo": "datos/capacidad_uso_mdo.geojson",
-          "fuente": "Mapa de capacidad de uso, Atlas ITCR 2014 + Mapa de suelos CIA-UCR 2020 (clasificación IFA del equipo)",
+          "fuente": "Clasificación IFA del Plan Regulador (levantamiento municipal de cada cantón)",
           "estado": "disponible",
-          "nota": "SOLO MONTES DE OCA. Misma capa de capacidad, coloreada por la categoría de fragilidad IFA (campo IFA_DESCRI: Muy alta / Moderada). Es el insumo del IFA Edafoaptitud integrado (M1.3.90)."
+          "nota": "Misma capa de capacidad, coloreada por la categoría de fragilidad IFA (campo IFA_DESCRI: Muy alta/Alta/Moderada/Baja/Muy baja). Es el insumo del IFA Edafoaptitud integrado (M1.3.90). Por cantón: Montes de Oca y Liberia; para otros falta su propio levantamiento.",
+          "archivo_por_canton": {
+            "Montes de Oca": "datos/capacidad_uso_mdo.geojson",
+            "Liberia": "datos/edaf/liberia.geojson"
+          }
         },
         {
           "nombre": "Potencial de uso agrícola por fertilidad",
-          "archivo": "datos/fertilidad_mdo.geojson",
-          "fuente": "Mapa de suelos de Costa Rica, CIA-UCR 2020 (clasificación IFA del equipo)",
+          "fuente": "Potencial agrícola por fertilidad del Plan Regulador (levantamiento municipal de cada cantón)",
           "estado": "disponible",
-          "nota": "SOLO MONTES DE OCA. Potencial agrícola según la fertilidad del suelo, recortado al cantón (del mpk de MdO). En MdO da 'Media fertilidad'. Coloreada por el campo DESCRIP. Para otros cantones falta el mapa de fertilidad nacional del CIA-UCR 2020 (no se halló como servicio web)."
+          "nota": "Potencial agrícola según la fertilidad del suelo, por cantón: Montes de Oca (Media fertilidad) y Liberia (levantamiento 1:22.000, Alta/Media/Baja). Coloreada por el campo DESCRIP. Para otros cantones falta su propio levantamiento.",
+          "archivo_por_canton": {
+            "Montes de Oca": "datos/fertilidad_mdo.geojson",
+            "Liberia": "datos/edaf/liberia_suelos.geojson"
+          }
         }
       ]
     },

@@ -353,7 +353,7 @@
           "Clase VII": "#f46d43",
           "Clase VIII": "#e8998d"
         },
-        "otro": "#d9d9d9"
+        "otro": "#c9a0dc"
       }
     },
     "Categorías de uso de la tierra (IFA)": {
@@ -370,7 +370,7 @@
           "Baja": "#94d180",
           "Muy baja": "#3d983a"
         },
-        "otro": "#d9d9d9"
+        "otro": "#c9a0dc"
       }
     },
     "Potencial de uso agrícola por fertilidad": {
@@ -385,7 +385,7 @@
           "Media fertilidad": "#fee08b",
           "Baja fertilidad": "#fdae61"
         },
-        "otro": "#d9d9d9"
+        "otro": "#c9a0dc"
       }
     },
     "Suborden del suelo": {

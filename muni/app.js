@@ -262,15 +262,39 @@
     return { type: 'FeatureCollection', features };
   }
 
+  /* Resuelve de qué archivo sale una capa para el cantón elegido. Una capa puede traer
+     "archivo_por_canton": { "Liberia": "datos/edaf/liberia.geojson", ... } para usar datos
+     detallados municipales donde existan, y "archivo" como respaldo nacional (o nada, si
+     todavía no hay dato nacional). Así el mismo mecanismo sirve a todo el país: cualquier
+     cantón con su propio levantamiento usa ese archivo; los demás caen al nacional o
+     quedan sin dato hasta que llegue el suyo. */
+  function archivoDeCapa(c) {
+    if (c && c.archivo_por_canton && cantonSel && cantonSel.properties) {
+      const k = cantonSel.properties.k;
+      if (c.archivo_por_canton[k]) return c.archivo_por_canton[k];
+    }
+    return c ? c.archivo : null;
+  }
+
+  // Si el archivo activo viene de un override por cantón (ya recortado de por sí al
+  // levantamiento municipal de ese cantón), nunca se le arma bbox: se pide tal cual y,
+  // por las dudas, se recorta igual con soloCanton() — aunque ya venga acotado.
+  function esArchivoPorCanton(c, archivo) {
+    return !!(c && c.archivo_por_canton && cantonSel && cantonSel.properties &&
+      c.archivo_por_canton[cantonSel.properties.k] === archivo);
+  }
+
   // ---------- datos de una capa, recortados al cantón (con cache) ----------
   async function obtenerDatos(nombre) {
     if (datosCapa.has(nombre)) return datosCapa.get(nombre);
     const c = capaPorNombre[nombre];
+    const archivo = archivoDeCapa(c);
     let fc = null;
-    if (c && c.archivo && !c.archivo.startsWith('api:')) {
+    if (c && archivo && !String(archivo).startsWith('api:')) {
       let url, recortar;
-      if (c.filtrar_canton) { url = urlConBbox(c.archivo, bboxDe(cantonSel)); recortar = false; }
-      else { url = c.archivo; recortar = true; }
+      if (c.filtrar_canton && !esArchivoPorCanton(c, archivo)) {
+        url = urlConBbox(archivo, bboxDe(cantonSel)); recortar = false;
+      } else { url = archivo; recortar = true; }
       const final = viaProxy(url);
       try {
         const r = await fetch(final);
@@ -426,7 +450,8 @@
     return (m?.insumos || []).filter((n) => {
       const c = capaPorNombre[n];
       // Una capa calculada (pendientes) no tiene archivo, pero sí se puede dibujar.
-      return c && (c.calculada || (c.archivo && !String(c.archivo).startsWith('api:')));
+      const a = c && archivoDeCapa(c);
+      return c && (c.calculada || (a && !String(a).startsWith('api:')));
     });
   }
   // Igual, pero a partir del id de un mapa del catálogo oficial.
@@ -1666,7 +1691,7 @@
   function estadoInsumo(nombre) {
     const c = capaPorNombre[nombre];
     if (!c) return { nivel: 'falta', origen: 'no identificada' };
-    const a = String(c.archivo || '');
+    const a = String(archivoDeCapa(c) || '');
     // Las calculadas no se descargan: se derivan acá mismo de otra fuente.
     if (c.calculada) return { nivel: c.estado === 'disponible' ? 'ok' : 'parcial', origen: c.fuente || 'calculada' };
     if (!a) return { nivel: 'falta', origen: c.fuente || 'sin fuente' };
