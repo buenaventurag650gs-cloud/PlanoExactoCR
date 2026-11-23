@@ -630,7 +630,23 @@ MAPAS = [
      "Síntesis del componente"),
 
     # ---- Bloque 2 · Eje político-institucional
+    # El eje solo traía "Actores e instituciones"; se amplía con el resto de apartados
+    # habituales de un diagnóstico político-institucional (capacidad de gestión,
+    # instrumentos vigentes, articulación interinstitucional). Es un borrador propio del
+    # equipo, no una transcripción del MAPRIOT: ver el punto correspondiente en
+    # `verificar` más abajo.
     ("M2.4.01", "Actores e instituciones", 4, "equipo", None, False, "opcional", ""),
+    ("M2.4.02", "Capacidad de gestión municipal", 4, "equipo", None, False, None,
+     "Personal técnico y presupuesto de la unidad de planificación, nivel de "
+     "digitalización del catastro y los trámites"),
+    ("M2.4.03", "Instrumentos de planificación vigentes", 4, "equipo", None, False, None,
+     "Plan regulador anterior y reglamentos conexos que siguen rigiendo mientras se "
+     "publica el nuevo, plan de desarrollo cantonal, convenios de delegación de "
+     "competencias"),
+    ("M2.4.04", "Articulación interinstitucional", 4, "equipo", None, False, None,
+     "Competencias concurrentes con SETENA, INVU, AyA, ICE, MOPT, CNE y demás "
+     "instituciones con presencia en el territorio, y los mecanismos de coordinación "
+     "que ya existen"),
     ("M2.4.90", "Resultados del eje político-institucional", 4, "equipo", None, False,
      None, "Síntesis del componente"),
 
@@ -795,6 +811,9 @@ VERIFICAR = [
     "Dirección del numeral de las clases IFA: acá I es la menos frágil y V la más frágil, "
     "siguiendo la Matriz B de la guía. La Tabla Nº 3 del derogado 32967 puntúa al revés "
     "porque puntúa aptitud; confirmar contra el Anexo 1 del 44710 antes de cerrar los TdR.",
+    "Apartados del eje político-institucional (M2.4.02 a M2.4.04): se redactaron con el "
+    "criterio del equipo, a falta del texto completo del MAPRIOT 2025 citado arriba. "
+    "Cruzarlos contra la tabla de Productos Mínimos Requeridos antes de darlos por cerrados.",
 ]
 
 NORMAS = [
