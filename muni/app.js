@@ -1050,9 +1050,14 @@
       });
       const borde = Math.max(peso * 0.5, 0.04);
       let sc = '';
+      // fill-rule "nonzero" (no "evenodd"): los datos de fuentes externas (CNE/SNIT, IGN,
+      // etc.) traen a veces anillos que se autocruzan o vienen mal cerrados. Con evenodd
+      // ese defecto se lee como un hueco o, peor, infla una cuña triangular gigante que no
+      // tiene nada que ver con el dato real (el mismo bug que se corrigió para el límite
+      // cantonal). Con nonzero el relleno queda sólido pase lo que pase con el autocruce.
       for (const [col, anillos] of grupos) {
         sc += `<path d="${dDe(anillos, px, true)}" fill="${col}" fill-opacity="${e.relleno || 0.7}"` +
-              ` fill-rule="evenodd" stroke="${col}" stroke-width="${borde}"` +
+              ` fill-rule="nonzero" stroke="${col}" stroke-width="${borde}"` +
               ` vector-effect="non-scaling-stroke" stroke-linejoin="miter"/>`;
       }
       return sc;
@@ -1067,8 +1072,10 @@
     // como la figura la convierte en una mancha.
     if (anillos.length) {
       const borde = e.relleno > 0.8 ? 0 : peso;
+      // fill-rule nonzero por la misma razón que arriba: datos externos con anillos
+      // autocruzados o mal cerrados no deben inflar cuñas de relleno que no son el dato real.
       s += `<path d="${dDe(anillos, px, true)}" fill="${e.color}" fill-opacity="${e.relleno || 0.1}"` +
-           ` fill-rule="evenodd" stroke="${borde ? e.color : 'none'}" stroke-width="${borde}"` +
+           ` fill-rule="nonzero" stroke="${borde ? e.color : 'none'}" stroke-width="${borde}"` +
            `${borde ? atrDash : ''} vector-effect="non-scaling-stroke" stroke-linejoin="miter"/>`;
     }
     if (lineas.length) {
