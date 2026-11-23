@@ -603,7 +603,9 @@
   }
   function actualizarExport() {
     $('btnAtlas').disabled = !cantonSel;
+    if ($('btnAtlasPNG')) $('btnAtlasPNG').disabled = !cantonSel;
     if ($('btnImprimirVisor')) $('btnImprimirVisor').disabled = !cantonSel;
+    if ($('btnVisorPNG')) $('btnVisorPNG').disabled = !cantonSel;
   }
 
   // ---------- vista del mapa principal ----------
@@ -2026,10 +2028,13 @@
     }).join('') + '</div>';
   }
 
-  // Botón de un mapa que el atlas sí puede componer.
+  // Botones de un mapa que el atlas sí puede componer: PDF (impresión) y PNG (imagen).
   function accionesHTML(id, estado) {
     if (!id || estado === 'pendiente') return '';
-    return `<button data-descargar="${id}" title="Compone este mapa y abre el diálogo de impresión">Descargar lámina</button>`;
+    return `<div class="fila-exp">` +
+      `<button data-descargar="${id}" title="Compone este mapa y abre el diálogo de impresión (PDF)">📄 PDF</button>` +
+      `<button data-descargar-png="${id}" title="Compone este mapa y lo descarga como imagen PNG">🖼️ PNG</button>` +
+      `</div>`;
   }
 
   /* Vista principal: el índice maestro del Plan Regulador, con los códigos M que comparten
@@ -2185,6 +2190,9 @@
     cuerpo.querySelectorAll('[data-descargar]').forEach((b) => {
       b.addEventListener('click', () => descargarMapa(b.dataset.descargar));
     });
+    cuerpo.querySelectorAll('[data-descargar-png]').forEach((b) => {
+      b.addEventListener('click', () => descargarMapaPNG(b.dataset.descargarPng));
+    });
 
     /* Filtro por situación: al tocar un chip la lista se queda solo con esos mapas, y las
        tablas y componentes que quedan vacíos se esconden para no dejar títulos huérfanos.
@@ -2287,6 +2295,137 @@
     await new Promise(r => setTimeout(r, 400));
     prog.cerrar();
     window.print();
+  }
+
+  // ---------- exportación PNG con html2canvas ----------
+
+  let _h2cPromise = null;
+  function cargarHtml2Canvas() {
+    if (_h2cPromise) return _h2cPromise;
+    _h2cPromise = new Promise((ok, ko) => {
+      if (window.html2canvas) { ok(window.html2canvas); return; }
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = () => ok(window.html2canvas);
+      s.onerror = () => ko(new Error('No se pudo cargar html2canvas'));
+      document.head.appendChild(s);
+    });
+    return _h2cPromise;
+  }
+
+  // Captura todas las láminas del contenedor #laminas como PNG y las descarga.
+  async function capturarLaminasPNG(nombreBase) {
+    const html2canvas = await cargarHtml2Canvas();
+    const contenedor = $('laminas');
+    const laminas = contenedor.querySelectorAll('.lamina');
+    if (!laminas.length) { avisar('No hay láminas para exportar.'); return; }
+
+    // Hacer visible temporalmente el contenedor para que html2canvas pueda leerlo.
+    const estiloAnterior = contenedor.style.cssText;
+    contenedor.style.cssText =
+      'position:fixed; left:0; top:0; z-index:-9999; pointer-events:none; opacity:0.01;';
+
+    const total = laminas.length;
+    const prog = mostrarProgreso(`Exportando ${total} lámina${total > 1 ? 's' : ''} a PNG`);
+
+    for (let i = 0; i < total; i++) {
+      const lam = laminas[i];
+      prog.paso(`Capturando ${i + 1} de ${total}…`, '📸');
+      prog.porcentaje(Math.round(((i + 0.2) / total) * 100));
+
+      // Scroll la lámina al viewport para que html2canvas la vea
+      lam.style.position = 'relative';
+      lam.style.left = '0';
+      lam.style.top = '0';
+
+      try {
+        const canvas = await html2canvas(lam, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          width: lam.scrollWidth,
+          height: lam.scrollHeight,
+        });
+
+        // Descargar como PNG
+        const enlace = document.createElement('a');
+        const sufijo = total > 1 ? `_${String(i + 1).padStart(2, '0')}` : '';
+        enlace.download = `${nombreBase}${sufijo}.png`;
+        enlace.href = canvas.toDataURL('image/png');
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+
+        prog.porcentaje(Math.round(((i + 1) / total) * 100));
+      } catch (err) {
+        console.error('Error al capturar lámina', i, err);
+        avisar(`Error al capturar lámina ${i + 1}: ${err.message}`);
+      }
+
+      // Pequeña pausa entre descargas para no saturar el navegador
+      if (i < total - 1) await new Promise(r => setTimeout(r, 600));
+    }
+
+    // Restaurar posición original del contenedor
+    contenedor.style.cssText = estiloAnterior;
+    prog.paso('¡Listo!', '✅');
+    await new Promise(r => setTimeout(r, 600));
+    prog.cerrar();
+    limpiarLaminas();
+  }
+
+  // PNG de un solo mapa (paralelo a descargarMapa que hace PDF)
+  async function descargarMapaPNG(id) {
+    if (!cantonSel) { avisar('Elegí primero un cantón en el panel de la izquierda.'); return; }
+    const m = defMapa(id);
+    if (!m) return;
+    const canton = $('selCanton').value;
+    const papel = papelActual().nombre;
+    const nomOf = nombreMapa(m);
+    const codigo = codigoDe(m) ? codigoDe(m) + '. ' : '';
+    const nombreArchivo = `${codigo}${nomOf} ${canton} ${papel}`.replace(/[\/\\:*?"<>|]/g, '_');
+
+    const prog = mostrarProgreso(`Componiendo: ${nomOf}`);
+    prog.paso('Preparando la lámina…', '📐');
+    prog.porcentaje(5);
+    await new Promise(r => setTimeout(r, 80));
+    await construirLaminas([id], prog);
+    prog.porcentaje(60);
+    prog.paso('Cargando captura…', '📸');
+    await new Promise(r => setTimeout(r, 80));
+    prog.cerrar();
+    await capturarLaminasPNG(nombreArchivo);
+  }
+
+  // PNG de la vista actual del visor
+  async function exportarVisorPNG() {
+    if (!cantonSel) { avisar('Elegí un cantón primero.'); return; }
+    const nombres = Array.from(capasVisibles());
+    if (!nombres.length) { avisar('Prendé al menos una capa base para poder exportar.'); return; }
+    const base = mapaVisto && defMapa(mapaVisto);
+    const mapaAdHoc = {
+      id: '__visor_actual__',
+      nombre: base ? base.nombre : 'Vista actual',
+      numero: base ? base.numero : '',
+      institucion: base ? base.institucion : 'Combinación de capas del visor',
+      insumos: nombres,
+    };
+    const canton = $('selCanton').value;
+    const papel = papelActual().nombre;
+    const nombreArchivo = `${mapaAdHoc.nombre} ${canton} ${papel}`.replace(/[\/\\:*?"<>|]/g, '_');
+
+    const prog = mostrarProgreso(`Componiendo: ${mapaAdHoc.nombre}`);
+    prog.paso('Preparando la lámina…', '📐');
+    prog.porcentaje(5);
+    await new Promise(r => setTimeout(r, 80));
+    await construirLaminas(null, prog, [mapaAdHoc]);
+    prog.porcentaje(60);
+    prog.paso('Cargando captura…', '📸');
+    await new Promise(r => setTimeout(r, 80));
+    prog.cerrar();
+    await capturarLaminasPNG(nombreArchivo);
   }
 
   // Cambio de pestaña. El mapa necesita que le avisen cuando vuelve a estar visible.
@@ -2850,6 +2989,25 @@
   });
 
   $('btnImprimirVisor').addEventListener('click', imprimirVisorActual);
+
+  $('btnAtlasPNG').addEventListener('click', async () => {
+    if (!cantonSel) { avisar('Elegí un cantón primero.'); return; }
+    seleccion.clear();
+    catalogo.instituciones.forEach((inst) => inst.mapas.forEach((m) => {
+      if (sePuedeImprimir(m)) seleccion.add(m.id);
+    }));
+    if (!seleccion.size) { avisar('No hay mapas disponibles para generar.'); return; }
+    const canton = $('selCanton').value;
+    const papel = papelActual().nombre;
+    const nombreArchivo = `Atlas ${canton} ${papel}`.replace(/[\/\\:*?"<>|]/g, '_');
+    $('btnAtlasPNG').disabled = true;
+    avisar(`Preparando atlas completo PNG: ${seleccion.size} láminas en ${papel}…`);
+    await construirLaminas();
+    await capturarLaminasPNG(nombreArchivo);
+    $('btnAtlasPNG').disabled = false;
+  });
+
+  $('btnVisorPNG').addEventListener('click', exportarVisorPNG);
 
   /* ---------- matriz del Plan Regulador ----------
      Inventario de todo lo que pide la normativa (87 mapas, 32 insumos) contra lo que

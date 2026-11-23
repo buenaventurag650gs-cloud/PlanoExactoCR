@@ -212,7 +212,9 @@
   .est-ins .icono-capa .ic { width:14px; height:14px; display:block; }
   .est-calc { font-size:11px; color:var(--muted); font-style:italic; }
   .est-acc { white-space:nowrap; text-align:right; }
-  .est-acc button { width:auto; margin:0 0 4px; padding:5px 11px; font-size:11.5px; display:block; margin-left:auto; }
+  .est-acc button { width:auto; margin:0 0 4px; padding:5px 11px; font-size:11.5px; display:inline-block; }
+  .est-acc .fila-exp { display:flex; gap:4px; justify-content:flex-end; }
+  .est-acc .fila-exp button { margin:0; }
   .est-aviso { background:#1b2430; border:1px solid var(--line); border-radius:8px; padding:11px 13px;
                font-size:12px; color:var(--muted); margin-bottom:16px; }
   /* Índice maestro: bloque > componente > mapas, con los códigos M compartidos. */
@@ -438,7 +440,7 @@
   </div>
   <div id="panel">
     <h1>Tablero de mapas</h1>
-    <p class="sub">Configurá los mapas que piden SETENA (decreto 44710 / IFA) y el INVU (MAPRIOT) y exportalos en PDF. Uso interno del equipo.</p>
+    <p class="sub">Configurá los mapas que piden SETENA (decreto 44710 / IFA) y el INVU (MAPRIOT) y exportalos en PDF o PNG. Uso interno del equipo.</p>
 
     <div class="seccion" style="border-top:0; margin-top:0; padding-top:0">
       <div class="paso"><span class="n">1</span> Capas base <span class="ayuda">lo que se ve en pantalla</span></div>
@@ -454,7 +456,10 @@
     <div class="seccion">
       <div class="paso"><span class="n">3</span> Imprimir</div>
       <p class="sub" style="margin-top:0">Imprime exactamente lo que está prendido en el visor ahora mismo (capas base + el mapa que se esté viendo).</p>
-      <button id="btnImprimirVisor" disabled>🖨 Imprimir esta vista</button>
+      <div class="fila-botones">
+        <button id="btnImprimirVisor" disabled>📄 PDF de esta vista</button>
+        <button id="btnVisorPNG" disabled>🖼️ PNG de esta vista</button>
+      </div>
       <div class="fila-botones">
         <button id="btnReset" class="sec">Reiniciar</button>
       </div>
@@ -517,8 +522,11 @@
               <input id="inpProfesional" type="text" placeholder="Nombre y número de colegiado">
             </div>
             <label class="campo chk"><input type="checkbox" id="chkRelieve" checked> Relieve sombreado de fondo</label>
-            <button id="btnAtlas" disabled>Descargar Atlas completo (PDF)</button>
-            <p class="nota">Con el atlas completo, en el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>; el tamaño de la hoja ya va fijado en cada lámina.</p>
+            <div class="fila-botones">
+              <button id="btnAtlas" disabled>📄 Atlas completo PDF</button>
+              <button id="btnAtlasPNG" disabled>🖼️ Atlas completo PNG</button>
+            </div>
+            <p class="nota">PDF: en el diálogo de impresión elegí <b>Guardar como PDF</b> y <b>márgenes: ninguno</b>. PNG: se descarga una imagen por lámina.</p>
           </div>
           <div id="estResumen" class="est-resumen"></div>
         </div>
