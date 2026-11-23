@@ -1754,11 +1754,24 @@
         ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.08" fill-rule="nonzero"/>`
         : `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="nonzero"/>`;
       const marco = `M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z`;
-      const fondoMar = `<path d="${marco}" fill="#bcdcf2" fill-rule="evenodd"/>`;
-      // Capa gris de tierra, debajo del relieve/satélite pero encima del mar: así, si el
-      // recorte de abajo tuviera algún borde imperfecto (antialiasing, un vértice al límite),
-      // lo que asoma es gris de tierra y no azul de mar. El relieve se dibuja encima de todas
-      // formas, así que esta capa normalmente no se ve; es un respaldo, no el relieve en sí.
+      // --- Estrategia anti-"mar poligonal" ---
+      // Antes: un rectángulo azul de fondo → cualquier huequito en los polígonos de tierra
+      // dejaba asomar celeste en plena tierra. Ahora: fondo GRIS (color tierra), y el azul
+      // del mar se pinta ENCIMA con un <mask> que lo esconde donde hay tierra. Así, si
+      // un polígono suavizado tiene un huequito, se ve gris (tierra), nunca azul (mar).
+      const fondoGris = `<path d="${marco}" fill="#d6d6d2"/>`;
+      // Máscara SVG: blanco = mostrar, negro = esconder. Los polígonos de tierra (cantón +
+      // vecinos) se pintan negro sobre fondo blanco → el azul solo aparece FUERA de ellos.
+      // Cada path usa nonzero para evitar agujeros por autocruces del suavizado.
+      const mascaraMar = `<mask id="mmar-${i}">` +
+        `<rect width="${UV}" height="${H.toFixed(2)}" fill="white"/>` +
+        `<path d="${dCanton}" fill="black" fill-rule="nonzero"/>` +
+        dsVecinos.map((d) => `<path d="${d}" fill="black" fill-rule="nonzero"/>`).join('') +
+        `</mask>`;
+      const fondoMar = mascaraMar +
+        `<rect width="${UV}" height="${H.toFixed(2)}" fill="#bcdcf2" mask="url(#mmar-${i})"/>`;
+      // tierraBase: respaldo gris adicional. Con la nueva estrategia es menos crítico,
+      // pero lo conservamos como red de seguridad (el relieve se dibuja encima de todas formas).
       const tierraBase = `<path d="${dCanton}" fill="#d6d6d2" fill-rule="nonzero"/>` +
         dsVecinos.map((d) => `<path d="${d}" fill="#d6d6d2" fill-rule="nonzero"/>`).join('');
       const recorteTierra = `tierra-${i}`;
@@ -1795,7 +1808,7 @@
       const svg = `<svg class="lam-svg" viewBox="0 0 ${UV} ${H.toFixed(2)}" preserveAspectRatio="none" ` +
                   `xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
                   `shape-rendering="geometricPrecision">` +
-                  fondoMar + tierraBase + fondoRecortado + veloDentro + capasRecortadas + mascara + svgVecinos +
+                  fondoGris + fondoMar + tierraBase + fondoRecortado + veloDentro + capasRecortadas + mascara + svgVecinos +
                   grilla.lineas + limite + '</svg>';
 
       // Rótulos de los cantones vecinos, como HTML (así la letra no se deforma).
