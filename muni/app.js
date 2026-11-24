@@ -2333,6 +2333,35 @@
     return _h2cPromise;
   }
 
+  // Convierte un elemento <svg> del DOM en una imagen rasterizada por el propio navegador
+  // (el mismo motor que usa para pintarlo en pantalla o en el PDF), en vez de dejar que
+  // html2canvas lo intente reinterpretar a mano. html2canvas trae su propio emulador de SVG,
+  // bastante tosco con relleno de muchos polígonos chiquitos y pegados (uso urbano, cultivos,
+  // etc.): en vez de verse limpio, los apelotona en una mancha de ruido. Dibujando el SVG
+  // "de verdad" a través de una <img>, el resultado queda tan nítido como en pantalla.
+  async function svgComoImagen(svgEl, anchoPx, altoPx) {
+    const clon = svgEl.cloneNode(true);
+    // Ancho/alto explícitos en el clon: el tamaño real en pantalla lo da la hoja de estilos
+    // (width:100%; height:100%), que no viaja con el SVG al serializarlo suelto. Sin esto el
+    // navegador no sabría a qué tamaño rasterizarlo y usaría un tamaño por defecto chiquito.
+    clon.setAttribute('width', anchoPx);
+    clon.setAttribute('height', altoPx);
+    clon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const texto = new XMLSerializer().serializeToString(clon);
+    const blob = new Blob([texto], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    try {
+      return await new Promise((ok, ko) => {
+        const img = new Image();
+        img.onload = () => ok(img);
+        img.onerror = () => ko(new Error('No se pudo rasterizar el SVG de la lámina'));
+        img.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   // Captura todas las láminas del contenedor #laminas como PNG y las descarga.
   async function capturarLaminasPNG(nombreBase) {
     const html2canvas = await cargarHtml2Canvas();
@@ -2345,6 +2374,7 @@
     contenedor.style.cssText =
       'position:fixed; left:0; top:0; z-index:-9999; pointer-events:none; opacity:0.01;';
 
+    const ESCALA = 2; // resolución de salida (2x el tamaño en pantalla)
     const total = laminas.length;
     const prog = mostrarProgreso(`Exportando ${total} lámina${total > 1 ? 's' : ''} a PNG`);
 
@@ -2359,8 +2389,16 @@
       lam.style.top = '0';
 
       try {
+        // Los SVG (mapa principal + mapa de zoom, si lo hay) se ocultan mientras html2canvas
+        // trabaja: así solo "fotografía" el cajetín, los rótulos y los bordes — cosas de HTML
+        // plano que sí sabe capturar bien — y deja el hueco en blanco donde después pegamos
+        // el SVG dibujado por el navegador.
+        const svgs = Array.from(lam.querySelectorAll('svg'));
+        const visibilidadPrevia = svgs.map((s) => s.style.visibility);
+        svgs.forEach((s) => { s.style.visibility = 'hidden'; });
+
         const canvas = await html2canvas(lam, {
-          scale: 2,
+          scale: ESCALA,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -2368,6 +2406,22 @@
           width: lam.scrollWidth,
           height: lam.scrollHeight,
         });
+
+        svgs.forEach((s, idx) => { s.style.visibility = visibilidadPrevia[idx] || ''; });
+
+        // Pegar cada SVG, ya rasterizado nítido por el navegador, en su posición exacta.
+        const ctx = canvas.getContext('2d');
+        const lamRect = lam.getBoundingClientRect();
+        for (const svgEl of svgs) {
+          const r = svgEl.getBoundingClientRect();
+          if (r.width < 1 || r.height < 1) continue; // por si hay un SVG oculto/sin tamaño
+          const anchoPx = Math.round(r.width * ESCALA);
+          const altoPx = Math.round(r.height * ESCALA);
+          const img = await svgComoImagen(svgEl, anchoPx, altoPx);
+          const x = Math.round((r.left - lamRect.left) * ESCALA);
+          const y = Math.round((r.top - lamRect.top) * ESCALA);
+          ctx.drawImage(img, x, y, anchoPx, altoPx);
+        }
 
         // Descargar como PNG
         const enlace = document.createElement('a');
