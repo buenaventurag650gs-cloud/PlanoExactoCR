@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root { --bg:#0e1116; --panel:#161b22; --line:#2a313c; --ink:#e6edf3; --muted:#8b949e; --accent:#4f8cff;
-          --ok:#3fb950; --warn:#d29922; --off:#8b949e; }
+          --ok:#3fb950; --warn:#d29922; --off:#8b949e; --bad:#f85149; }
   * { box-sizing: border-box; }
   html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, sans-serif; }
   #app { display:grid; grid-template-columns: 380px 1fr; grid-template-rows: auto 1fr; height:100%; }
@@ -117,6 +117,31 @@
   .inec-tabla .num { text-align:right; font-variant-numeric:tabular-nums; color:var(--accent); font-weight:600; }
   .inec-seccion { margin-bottom:20px; }
   .inec-seccion h3 { font-size:14px; margin:0 0 8px; display:flex; align-items:center; gap:6px; }
+  /* Icono sobrio al inicio de cada título de sección, y en leyendas/tablas de la pestaña INEC. */
+  .inec-seccion .ico-tit svg, .inec-tabla .ic, .inec-nota .ic, .inec-leyenda .ic, .inec-cargando .ic
+    { width:14px; height:14px; flex:0 0 auto; display:inline-block; }
+  /* Línea corta, debajo de cada título, que dice qué es el dato y de dónde sale. */
+  .inec-def { font-size:11px; color:var(--muted); margin:-6px 0 14px; line-height:1.5; }
+  /* Recuadro de lectura/síntesis — mismo tono que las tarjetas, nunca claro-sobre-claro. */
+  .inec-nota { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+               padding:12px 14px; margin:14px 0; color:var(--ink); }
+  .inec-nota .tit { display:flex; align-items:center; gap:7px; font-weight:700; margin-bottom:6px; }
+  .inec-nota ul { margin:6px 0 0 18px; padding:0; line-height:1.75; }
+  /* Fila de indicador con icono + texto, y su línea secundaria (el % dentro de la misma celda). */
+  .inec-tabla .fila-ico { display:flex; align-items:center; gap:7px; }
+  .inec-tabla .sub { font-size:10.5px; color:var(--muted); margin-top:2px; font-weight:400; }
+  /* Línea secundaria suelta (fuera de una tabla), p. ej. dentro de una .inec-card. */
+  .inec-sub { font-size:.85em; color:var(--muted); margin-top:4px; }
+  /* Leyenda de puntos de color (sustituye los emoji 🟢🟡🔴). */
+  .inec-leyenda { display:flex; flex-wrap:wrap; gap:14px; font-size:11px; color:var(--muted); margin:4px 0 14px; }
+  .inec-leyenda .pt { display:inline-flex; align-items:center; gap:5px; }
+  .inec-leyenda .pt i { width:8px; height:8px; border-radius:50%; display:inline-block; font-style:normal; }
+  /* Indicador de carga en línea (sustituye el botón "cargar"; los datos ahora llegan solos). */
+  .inec-cargando { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); padding:6px 0 14px; }
+  .inec-cargando .ic { animation:ecGiro 1s linear infinite; }
+  .inec-card.proy { border-left:3px solid var(--accent); }
+  .inec-chart { margin:4px 0 14px; }
+  .inec-chart svg { width:100%; height:auto; display:block; }
   .est-cab h2 { font-size:17px; margin:0 0 4px; }
   .est-cab p { color:var(--muted); font-size:12.5px; margin:0 0 12px; max-width:70ch; }
   .est-resumen { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }

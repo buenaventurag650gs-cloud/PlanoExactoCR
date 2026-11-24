@@ -2048,6 +2048,14 @@
     estadist:  _s('<rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="5" width="3" height="9"/><rect x="11" y="2" width="3" height="12"/>'),
     gente:     _s('<circle cx="8" cy="5" r="2.5"/><path d="M3 14c0-3 2.5-5 5-5s5 2 5 5"/>'),
     defecto:   _s('<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="1" fill="currentColor"/>'),
+    // ---- íconos para la pestaña de Datos INEC (mismo estilo sobrio de arriba) ----
+    nino:      _s('<circle cx="8" cy="4.5" r="1.8"/><path d="M5 13.5c0-2.4 1.3-4 3-4s3 1.6 3 4"/>'),
+    grad:      _s('<path d="M8 3L2 6l6 3 6-3-6-3z"/><path d="M4.5 7.5V11c0 1 1.5 2 3.5 2s3.5-1 3.5-2V7.5"/>'),
+    mayor:     _s('<circle cx="8" cy="5" r="2.3"/><path d="M4 14c0-2.6 1.8-4.6 4-4.6s4 2 4 4.6"/><path d="M11.5 9.5l2 2.5"/>'),
+    balanza:   _s('<path d="M8 2v11"/><path d="M3 5h10"/><path d="M3 5L1 9a2 2 0 004 0L3 5z"/><path d="M13 5l-2 4a2 2 0 004 0l-2-4z"/><path d="M5 14h6"/>'),
+    lupa:      _s('<circle cx="7" cy="7" r="4.5"/><path d="M10.3 10.3L14 14"/>'),
+    grafico:   _s('<path d="M2 13V3"/><path d="M2 13h12"/><path d="M4 11l3-4 2 2 4-5"/>'),
+    carga:     _s('<path d="M14 8A6 6 0 1 1 8 2"/>'),
   };
   const ICONO_CAPA = {
     'Límites cantonales': IC.limite, 'Límites distritales': IC.limite,
@@ -2622,11 +2630,73 @@
   window.addEventListener('afterprint', limpiarLaminas);
 
   // ---------- datos INEC 2022 + CCSS serie + CCSS pirámides ----------
+  // Las tres fuentes se piden siempre desde que carga la página (no esperan a que el usuario
+  // abra la pestaña ni le dé clic a nada): así, cuando entra a "Datos INEC", ya están ahí o a
+  // punto de llegar. Si la pestaña ya está abierta cuando una fuente termina de llegar, se
+  // vuelve a construir la vista para que se complete sola, sin que el usuario tenga que hacer nada.
   let datosInec = null;
   let datosCCSS = null;
-  let datosCCSSPir = null; // pirámides completas (1.6 MB, se carga al abrir la pestaña)
-  fetch('datos/inec_2022.json').then(r => r.json()).then(d => { datosInec = d; }).catch(() => {});
-  fetch('datos/ccss_pob_serie.json').then(r => r.json()).then(d => { datosCCSS = d; }).catch(() => {});
+  let datosCCSSPir = null;     // pirámides completas por quinquenio (~1.6 MB)
+  let datosCCSSPirError = false;
+  const siInecVisible = () => { if ($('datosInec') && !$('datosInec').hidden) construirDatosInec(); };
+  fetch('datos/inec_2022.json').then(r => r.json()).then(d => { datosInec = d; siInecVisible(); }).catch(() => {});
+  fetch('datos/ccss_pob_serie.json').then(r => r.json()).then(d => { datosCCSS = d; siInecVisible(); }).catch(() => {});
+  function cargarPiramidesCCSS() {
+    datosCCSSPirError = false;
+    fetch('datos/ccss_2019_2050.json').then(r => r.json()).then(d => { datosCCSSPir = d; siInecVisible(); })
+      .catch(() => { datosCCSSPirError = true; siInecVisible(); });
+  }
+  cargarPiramidesCCSS();
+  window.reintentarPiramidesCCSS = cargarPiramidesCCSS;
+
+  // Encabezado de sección con el mismo ícono sobrio de las capas del mapa, y una línea corta
+  // debajo que dice qué es el dato y de dónde sale — para que la pestaña se explique sola.
+  const tituloSec = (ic, texto) => `<h3 class="inec-seccion"><span class="ico-tit">${ic}</span>${texto}</h3>`;
+  const defSec = (texto) => `<div class="inec-def">${texto}</div>`;
+
+  // Gráfico de línea en SVG: tramo histórico sólido + tramo proyectado punteado, con una marca
+  // en el año actual. Recibe una lista de series (no solo una) para que más adelante se pueda
+  // superponer la misma serie de otro cantón y compararlas en el mismo gráfico.
+  function graficoLinea(series, opts) {
+    const ancho = (opts && opts.ancho) || 640, alto = (opts && opts.alto) || 210;
+    const padI = 56, padD = 12, padAr = 10, padAb = 24;
+    const anioHoy = (opts && opts.anioHoy) || new Date().getFullYear();
+    const todosX = series.flatMap((s) => s.puntos.map((p) => p.x));
+    const todosY = series.flatMap((s) => s.puntos.map((p) => p.y));
+    const xMin = Math.min(...todosX), xMax = Math.max(...todosX);
+    const yMax = Math.max(...todosY, 1) * 1.08;
+    const px = (x) => padI + (x - xMin) / (xMax - xMin) * (ancho - padI - padD);
+    const py = (y) => (alto - padAb) - (y / yMax) * (alto - padAb - padAr);
+
+    let svg = '';
+    for (let i = 0; i <= 4; i++) {
+      const y = yMax * i / 4;
+      const yy = py(y);
+      svg += `<line x1="${padI}" y1="${yy.toFixed(1)}" x2="${ancho - padD}" y2="${yy.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+      svg += `<text x="${padI - 8}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="9.5" fill="var(--muted)">${Math.round(y).toLocaleString('es-CR')}</text>`;
+    }
+    const xHoy = px(Math.min(Math.max(anioHoy, xMin), xMax));
+    svg += `<line x1="${xHoy.toFixed(1)}" y1="${padAr}" x2="${xHoy.toFixed(1)}" y2="${alto - padAb}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    svg += `<text x="${xHoy.toFixed(1)}" y="${padAr - 1}" text-anchor="middle" font-size="9.5" fill="var(--muted)">hoy (${anioHoy})</text>`;
+    for (let x = Math.ceil(xMin / 5) * 5; x <= xMax; x += 5) {
+      svg += `<text x="${px(x).toFixed(1)}" y="${alto - padAb + 14}" text-anchor="middle" font-size="9.5" fill="var(--muted)">${x}</text>`;
+    }
+
+    series.forEach((s) => {
+      const hist = s.puntos.filter((p) => p.x <= anioHoy);
+      const proy = s.puntos.filter((p) => p.x >= anioHoy);
+      const linea = (pts) => pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+      if (hist.length > 1) svg += `<path d="${linea(hist)}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
+      if (proy.length > 1) svg += `<path d="${linea(proy)}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="5 3"/>`;
+      (s.marcas || []).forEach((x) => {
+        const p = s.puntos.find((pp) => pp.x === x);
+        if (!p) return;
+        svg += `<circle cx="${px(p.x).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="2.6" fill="${s.color}">` +
+               `<title>${s.nombre} · ${x}: ${Math.round(p.y).toLocaleString('es-CR')}</title></circle>`;
+      });
+    });
+    return `<div class="inec-chart"><svg viewBox="0 0 ${ancho} ${alto}" xmlns="http://www.w3.org/2000/svg">${svg}</svg></div>`;
+  }
 
   function construirDatosInec() {
     const cuerpo = $('inecCuerpo');
@@ -2660,13 +2730,15 @@
     const ind = canton.indicadores || {};
     const def = canton.deficit || {};
 
-    let html = `<h3 class="inec-seccion">Resumen del cantón: ${nombre}</h3>`;
+    let html = tituloSec(IC.gente, `Resumen del cantón: ${nombre}`);
+    html += defSec('Fuente: INEC — Estimaciones y Proyecciones de Población 2022. Es una estimación estadística ' +
+      '(Censo 2011 + registros administrativos), no un censo completo.');
     html += `<div class="inec-grid">`;
 
     // Población
     html += `<div class="inec-card">
       <div class="inec-val">${fmt(p.pob_total)}</div><div class="inec-label">Población total</div>
-      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+      <div class="inec-sub">
         ♂ ${fmt(p.hombres)} · ♀ ${fmt(p.mujeres)}
       </div>
     </div>`;
@@ -2679,7 +2751,7 @@
 
     // NBI
     html += `<div class="inec-card">
-      <div class="inec-val" style="color:#c0392b">${pct(n.pct_1mas_carencia)}</div>
+      <div class="inec-val" style="color:var(--bad)">${pct(n.pct_1mas_carencia)}</div>
       <div class="inec-label">Con al menos 1 carencia (NBI)</div>
       ${barra(n.pct_1mas_carencia, 60)}
     </div>`;
@@ -2688,7 +2760,7 @@
     html += `<div class="inec-card">
       <div class="inec-val">${pct(e.pct_ocupada)}</div>
       <div class="inec-label">Población ocupada</div>
-      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+      <div class="inec-sub">
         Desocupada: ${pct(e.pct_desocupada)} · Fuera fuerza: ${pct(e.pct_fuera_fuerza)}
       </div>
     </div>`;
@@ -2697,7 +2769,7 @@
     html += `<div class="inec-card">
       <div class="inec-val">${fmt(v.viv_total)}</div>
       <div class="inec-label">Viviendas totales</div>
-      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+      <div class="inec-sub">
         Ocupadas: ${fmt(v.viv_ocupadas)} · Desocupadas: ${fmt(v.viv_desocupadas)} · Prom. ocupantes: ${fmt(v.prom_ocupantes, 2)}
       </div>
     </div>`;
@@ -2706,7 +2778,7 @@
     html += `<div class="inec-card">
       <div class="inec-val">${pct(ind.pct_extranjeros)}</div>
       <div class="inec-label">Población extranjera</div>
-      <div style="font-size:.85em;color:var(--txt2,#666);margin-top:4px">
+      <div class="inec-sub">
         Asegurados: ${pct(ind.pct_asegurados)} · Dep. demográfica: ${fmt(ind.dep_demografica, 1)}
       </div>
     </div>`;
@@ -2717,7 +2789,8 @@
     if (distritos.length) {
       const maxPob = Math.max(...distritos.map(d => (d.poblacion || {}).pob_total || 0));
 
-      html += `<h3 class="inec-seccion">Distritos de ${nombre} — comparativa</h3>`;
+      html += tituloSec(IC.estadist, `Distritos de ${nombre} — comparativa`);
+      html += defSec('Mismos indicadores del resumen de arriba, desglosados por distrito.');
       html += `<div style="overflow-x:auto">`;
       html += `<table class="inec-tabla">
         <thead><tr>
@@ -2744,7 +2817,7 @@
           <td><strong>${d.distrito}</strong></td>
           <td style="text-align:right">${fmt(dp.pob_total)}</td>
           <td style="width:80px"><div class="inec-bar"><div style="width:${barW}%"></div></div></td>
-          <td style="text-align:right;color:${(dn.pct_1mas_carencia || 0) > 25 ? '#c0392b' : 'inherit'}">${pct(dn.pct_1mas_carencia)}</td>
+          <td style="text-align:right;color:${(dn.pct_1mas_carencia || 0) > 25 ? 'var(--bad)' : 'inherit'}">${pct(dn.pct_1mas_carencia)}</td>
           <td style="text-align:right">${pct(de.pct_ocupada)}</td>
           <td style="text-align:right">${pct(de.pct_desocupada)}</td>
           <td style="text-align:right">${pct(de.pct_terciario)}</td>
@@ -2757,10 +2830,9 @@
       // ── Densidad habitacional y territorio ──
       const distsConTerritorio = distritos.filter(d => d.territorio);
       if (distsConTerritorio.length) {
-        html += `<h3 class="inec-seccion">🗺️ Densidad habitacional y uso del territorio — ${nombre}</h3>`;
-        html += `<div style="font-size:.85em;color:var(--txt2,#666);margin-bottom:.8em">
-          Área, densidad y tasas de crecimiento según INEC Estimaciones 2022 (Cuadro 12).
-        </div>`;
+        html += tituloSec(IC.urbano, `Densidad habitacional y uso del territorio — ${nombre}`);
+        html += defSec('Área, densidad de habitantes por km² y tasas de crecimiento anual, según INEC ' +
+          'Estimaciones 2022 (Cuadro 12).');
 
         const maxDens = Math.max(...distsConTerritorio.map(d => d.territorio.densidad || 0));
         html += `<div style="overflow-x:auto"><table class="inec-tabla">
@@ -2778,7 +2850,7 @@
           const t = d.territorio;
           areaTotal += t.area_km2 || 0;
           const densW = maxDens ? ((t.densidad || 0) / maxDens * 100).toFixed(0) : 0;
-          const crecColor = (t.tasa_crec_pob || 0) < 0 ? '#c0392b' : (t.tasa_crec_pob || 0) > 1.5 ? '#27ae60' : 'inherit';
+          const crecColor = (t.tasa_crec_pob || 0) < 0 ? 'var(--bad)' : (t.tasa_crec_pob || 0) > 1.5 ? 'var(--ok)' : 'inherit';
           html += `<tr>
             <td><strong>${d.distrito}</strong></td>
             <td style="text-align:right">${fmt(t.area_km2, 1)}</td>
@@ -2790,7 +2862,7 @@
         }
         // Fila total cantón
         const densCantonProm = p.pob_total && areaTotal ? (p.pob_total / areaTotal) : null;
-        html += `<tr style="font-weight:700;border-top:2px solid var(--borde,#ccc)">
+        html += `<tr style="font-weight:700;border-top:2px solid var(--line)">
           <td>${nombre} (total)</td>
           <td style="text-align:right">${fmt(areaTotal, 1)}</td>
           <td style="text-align:right">${densCantonProm ? fmt(densCantonProm, 0) : '—'}</td>
@@ -2800,7 +2872,9 @@
       }
 
       // ── NBI por tipo de carencia ──
-      html += `<h3 class="inec-seccion">NBI por tipo de carencia — ${nombre}</h3>`;
+      html += tituloSec(IC.suelo, `NBI por tipo de carencia — ${nombre}`);
+      html += defSec('NBI = Necesidades Básicas Insatisfechas: hogares con al menos una carencia en albergue digno, ' +
+        'vida saludable, acceso al conocimiento u otros bienes y servicios. Fuente: INEC, Estimaciones 2022.');
       html += `<div style="overflow-x:auto">`;
       html += `<table class="inec-tabla">
         <thead><tr>
@@ -2825,7 +2899,9 @@
       html += `</tbody></table></div>`;
 
       // ── Estructura económica ──
-      html += `<h3 class="inec-seccion">Estructura económica — ${nombre}</h3>`;
+      html += tituloSec(IC.estadist, `Estructura económica — ${nombre}`);
+      html += defSec('Distribución de la población ocupada por sector: primario (agro, pesca, extracción), ' +
+        'secundario (industria, construcción) y terciario (comercio, servicios). Fuente: INEC, Estimaciones 2022.');
       html += `<div style="overflow-x:auto">`;
       html += `<table class="inec-tabla">
         <thead><tr>
@@ -2864,27 +2940,36 @@
           totCanton[yr] = distsCCSS.reduce((s, d) => s + (d.s[yr] || 0), 0);
         }
 
-        html += `<h3 class="inec-seccion">Población adscrita CCSS · ${nombre} (2019 – 2050)</h3>`;
+        html += tituloSec(IC.grafico, `Población adscrita CCSS · ${nombre} (2019 – 2050)`);
+        html += defSec('Personas registradas según su domicilio en el EBAIS correspondiente — no es la población ' +
+          'total del censo, es a quién atiende la CCSS en ese territorio. La línea punteada, desde ' + hoy +
+          ', es la proyección oficial de la CCSS. Fuente: CCSS — Dashboard de Población Adscrita 2019–2050.');
 
-        // Tarjetas años clave
+        // Tarjetas años clave (antes, hoy, 2050) + gráfico de línea con todo el histórico 2019-2050
         const clave = [2019, 2022, 2025, 2030, 2035, 2040, 2045, 2050];
+        const anioResumen = clave.filter((y) => y <= hoy).pop() || clave[0];
         html += `<div class="inec-grid">`;
-        for (const yr of clave) {
+        [clave[0], anioResumen, clave[clave.length - 1]].forEach((yr) => {
           const v = totCanton[yr];
-          if (v == null) continue;
+          if (v == null) return;
           const esProyeccion = yr > hoy;
-          html += `<div class="inec-card" style="${esProyeccion ? 'border-left:3px solid #3498db' : ''}">
+          html += `<div class="inec-card${esProyeccion ? ' proy' : ''}">
             <div class="inec-val" style="font-size:1.3em">${fmt(Math.round(v))}</div>
-            <div class="inec-label">${yr}${esProyeccion ? ' (proy.)' : ''}</div>
+            <div class="inec-label">${yr}${esProyeccion ? ' (proyección CCSS)' : ''}</div>
           </div>`;
-        }
+        });
         html += `</div>`;
+
+        html += graficoLinea(
+          [{ nombre, color: '#4f8cff', puntos: anios.map((yr) => ({ x: yr, y: totCanton[yr] || 0 })), marcas: clave }],
+          { anioHoy: hoy }
+        );
 
         // Tasas de crecimiento
         const tasa = (a, b, n) => n > 0 && a > 0 ? ((Math.pow(b / a, 1 / n) - 1) * 100).toFixed(2) : '—';
         const t19 = totCanton[2019], t25 = totCanton[2025], t30 = totCanton[2030], t50 = totCanton[2050];
         if (t19 && t25 && t30 && t50) {
-          html += `<div style="margin:10px 0;font-size:.9em;color:var(--txt2,#555)">
+          html += `<div class="inec-sub" style="margin:10px 0;font-size:.9em">
             Tasa de crecimiento anual: 2019→2025: <strong>${tasa(t19, t25, 6)}%</strong> ·
             2025→2030: <strong>${tasa(t25, t30, 5)}%</strong> ·
             2030→2050: <strong>${tasa(t30, t50, 20)}%</strong>
@@ -2892,6 +2977,7 @@
         }
 
         // Tabla distritos CCSS
+        html += defSec('El mismo total, desglosado por distrito.');
         html += `<div style="overflow-x:auto"><table class="inec-tabla"><thead><tr><th>Distrito</th>`;
         for (const yr of clave) html += `<th style="text-align:right">${yr}</th>`;
         html += `<th style="text-align:right">Cambio 2019–2050</th></tr></thead><tbody>`;
@@ -2906,7 +2992,7 @@
           const v19 = d.s[2019], v50 = d.s[2050];
           if (v19 && v50) {
             const cambio = ((v50 - v19) / v19 * 100).toFixed(1);
-            const color = cambio >= 0 ? '#27ae60' : '#c0392b';
+            const color = cambio >= 0 ? 'var(--ok)' : 'var(--bad)';
             html += `<td style="text-align:right;color:${color};font-weight:600">${cambio > 0 ? '+' : ''}${cambio}%</td>`;
           } else {
             html += `<td style="text-align:right">—</td>`;
@@ -2914,7 +3000,7 @@
           html += `</tr>`;
         }
         // Fila total cantón
-        html += `<tr style="font-weight:700;border-top:2px solid var(--borde,#ccc)"><td>${nombre}</td>`;
+        html += `<tr style="font-weight:700;border-top:2px solid var(--line)"><td>${nombre}</td>`;
         for (const yr of clave) html += `<td style="text-align:right">${fmt(Math.round(totCanton[yr] || 0))}</td>`;
         if (t19 && t50) {
           const cambio = ((t50 - t19) / t19 * 100).toFixed(1);
@@ -2925,24 +3011,24 @@
     }
 
     // ── Proyecciones de demanda para planificación (requiere pirámides CCSS) ──
+    // Esta fuente se pide siempre desde que carga la página (ver arriba); normalmente ya está
+    // lista, y si no, llega sola en un momento y la sección se completa sin que el usuario haga nada.
     if (!datosCCSSPir) {
-      // Ofrecer cargar pirámides si no están cargadas aún
-      html += `<h3 class="inec-seccion">📐 Proyecciones de demanda para planificación</h3>`;
-      html += `<div style="padding:1em;background:var(--fondo2,#f5f5f5);border-radius:8px;margin:.5em 0">
-        <p style="margin:0 0 .8em">
-          Esta sección muestra demanda proyectada de servicios según la pirámide de edad: escuelas, centros de salud,
-          vivienda nueva y ratio de dependencia. Requiere cargar datos adicionales (~1.6 MB).
-        </p>
-        <button onclick="cargarPiramidesYRender('${nombre.replace(/'/g, "\\'")}')"
-          style="background:#2980b9;color:#fff;border:none;padding:.5em 1.2em;border-radius:5px;cursor:pointer;font-size:.95em">
-          📊 Cargar proyecciones de demanda
-        </button>
-      </div>`;
+      html += tituloSec(IC.plan, 'Proyecciones de demanda para planificación');
+      html += defSec('Demanda proyectada de servicios según la pirámide de edad: escuelas, salud, vivienda nueva ' +
+        'y ratio de dependencia. Fuente: CCSS — Dashboard de Población Adscrita 2019–2050.');
+      if (datosCCSSPirError) {
+        html += `<div class="inec-cargando">
+          <span class="ico-tit" style="color:var(--bad)">${IC.carga}</span>
+          No se pudo cargar esta sección. <a href="#" onclick="reintentarPiramidesCCSS();return false" style="color:var(--accent)">Reintentar</a>
+        </div>`;
+      } else {
+        html += `<div class="inec-cargando"><span class="ico-tit">${IC.carga}</span> Cargando proyecciones de demanda…</div>`;
+      }
     }
 
-    html += `<p style="margin-top:1.5em;font-size:.8em;color:var(--txt2,#888)">
-      Fuentes: INEC — Estimaciones y Proyecciones 2022 (Cuadro 1, 3, 7, 10, 11, 12); CCSS — Dashboard Población Adscrita 2019–2050.
-    </p>`;
+    html += defSec('Fuentes generales de esta pestaña: INEC — Estimaciones y Proyecciones 2022 ' +
+      '(Cuadro 1, 3, 7, 10, 11, 12); CCSS — Dashboard Población Adscrita 2019–2050.');
 
     cuerpo.innerHTML = html;
 
@@ -2951,25 +3037,6 @@
       _renderDemandaFutura(nombre);
     }
   }
-
-  // Carga las pirámides completas y vuelve a renderizar la sección de demanda
-  window.cargarPiramidesYRender = function(nombreCanton) {
-    const btn = document.querySelector('button[onclick^="cargarPiramidesYRender"]');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Cargando…'; }
-    if (datosCCSSPir) {
-      construirDatosInec();
-      return;
-    }
-    fetch('datos/ccss_2019_2050.json')
-      .then(r => r.json())
-      .then(d => {
-        datosCCSSPir = d;
-        construirDatosInec(); // re-renderiza todo con pirámides disponibles
-      })
-      .catch(() => {
-        if (btn) { btn.disabled = false; btn.textContent = '⚠️ Error al cargar. Reintentar'; }
-      });
-  };
 
   // Renderiza la sección de proyecciones de demanda directamente en el DOM
   function _renderDemandaFutura(nombreCanton) {
@@ -3036,33 +3103,34 @@
     const hoy = new Date().getFullYear();
     const fmt2 = (v, dec) => v == null ? '—' : Number(v).toLocaleString('es-CR', { maximumFractionDigits: dec ?? 0 });
 
-    let bloque = `<h3 class="inec-seccion">📐 Proyecciones de demanda para planificación · ${nombreCanton}</h3>`;
-    bloque += `<div style="font-size:.85em;color:var(--txt2,#666);margin-bottom:.8em">
-      Calculado a partir de la pirámide de edad CCSS 2019–2050.
-      <strong>Años con borde azul</strong> = proyección.
-    </div>`;
+    let bloque = tituloSec(IC.plan, `Proyecciones de demanda para planificación · ${nombreCanton}`);
+    bloque += defSec('Calculado repartiendo la pirámide de edad CCSS 2019–2050 en los grupos que más pesan para ' +
+      'servicios públicos (escuelas, vivienda nueva, salud). <strong>Años con borde de color</strong> = proyección CCSS.');
 
-    // Tarjetas explicativas del ratio de dependencia
+    // Tarjetas del ratio de dependencia (dependientes por cada 100 personas en edad activa)
     bloque += `<div class="inec-grid">`;
     for (const yr of aniosDem) {
       const d = demanda[yr];
       if (!d) continue;
       const esProy = yr > hoy;
-      const ratioColor = d.ratio_dep > 55 ? '#c0392b' : d.ratio_dep > 42 ? '#e67e22' : '#27ae60';
-      bloque += `<div class="inec-card" style="${esProy ? 'border-left:3px solid #3498db' : ''}">
+      const ratioColor = d.ratio_dep > 55 ? 'var(--bad)' : d.ratio_dep > 42 ? 'var(--warn)' : 'var(--ok)';
+      bloque += `<div class="inec-card${esProy ? ' proy' : ''}">
         <div class="inec-val" style="font-size:1.4em;color:${ratioColor}">${d.ratio_dep.toFixed(1)}</div>
         <div class="inec-label">Ratio depend. ${yr}${esProy ? ' (proy.)' : ''}</div>
-        <div style="font-size:.8em;color:var(--txt2,#666);margin-top:3px">
+        <div class="inec-sub" style="font-size:.8em;margin-top:3px">
           Dependientes por cada 100 activos
         </div>
       </div>`;
     }
     bloque += `</div>`;
-    bloque += `<div style="font-size:.8em;color:var(--txt2,#666);margin:.4em 0 1em">
-      🟢 &lt;42 sostenible · 🟡 42–55 en transición · 🔴 &gt;55 presión alta sobre servicios públicos
+    bloque += `<div class="inec-leyenda">
+      <span class="pt"><i style="background:var(--ok)"></i>&lt;42 sostenible</span>
+      <span class="pt"><i style="background:var(--warn)"></i>42–55 en transición</span>
+      <span class="pt"><i style="background:var(--bad)"></i>&gt;55 presión alta sobre servicios públicos</span>
     </div>`;
 
-    // Tabla principal de indicadores
+    // Tabla principal de indicadores — cada grupo en una sola fila (el % va como línea
+    // secundaria dentro de la misma celda, no como una fila aparte que antes quedaba suelta).
     bloque += `<div style="overflow-x:auto"><table class="inec-tabla">
       <thead><tr>
         <th>Indicador</th>`;
@@ -3070,34 +3138,34 @@
     bloque += `</tr></thead><tbody>`;
 
     const filas = [
-      { label: '👶 Niños 0–14 (demanda cuido y escuela)', key: 'ninos' },
-      { label: '   % de la población', key: 'pct_014', pct: true },
-      { label: '🎓 Jóvenes 15–24 (empleo + ed. superior)', key: 'jovenes' },
-      { label: '🏘️ Cohorte formación hogar 25–39 (vivienda nueva)', key: 'form' },
-      { label: '   % de la población', key: 'pct_form', pct: true },
-      { label: '🧓 Adultos mayores 65+ (salud + vivienda asistida)', key: 'adultosMay' },
-      { label: '   % de la población', key: 'pct_65p', pct: true },
-      { label: '⚖️ Ratio de dependencia (depend/activos × 100)', key: 'ratio_dep', dec: 1 },
+      { ic: IC.nino, label: 'Niños 0–14', nota: 'demanda de cuido y escuela', key: 'ninos', pctKey: 'pct_014' },
+      { ic: IC.grad, label: 'Jóvenes 15–24', nota: 'empleo y educación superior', key: 'jovenes' },
+      { ic: IC.edif, label: 'Cohorte 25–39', nota: 'formación de hogar, vivienda nueva', key: 'form', pctKey: 'pct_form' },
+      { ic: IC.mayor, label: 'Adultos mayores 65+', nota: 'salud y vivienda asistida', key: 'adultosMay', pctKey: 'pct_65p' },
+      { ic: IC.balanza, label: 'Ratio de dependencia', nota: 'dependientes / activos × 100', key: 'ratio_dep', dec: 1 },
     ];
 
     for (const fila of filas) {
-      bloque += `<tr><td>${fila.label}</td>`;
+      bloque += `<tr><td><span class="fila-ico"><span class="ico-tit">${fila.ic}</span>` +
+        `<span>${fila.label}<br><span class="sub">${fila.nota}</span></span></span></td>`;
       let prev = null;
       for (const yr of aniosDem) {
         const val = demanda[yr] ? demanda[yr][fila.key] : null;
+        const valPct = fila.pctKey && demanda[yr] ? demanda[yr][fila.pctKey] : null;
         let arrow = '';
         if (prev != null && val != null) {
-          arrow = val > prev * 1.02 ? ' <span style="color:#27ae60">↑</span>' :
-                  val < prev * 0.98 ? ' <span style="color:#c0392b">↓</span>' : '';
+          arrow = val > prev * 1.02 ? ' <span style="color:var(--ok)">↑</span>' :
+                  val < prev * 0.98 ? ' <span style="color:var(--bad)">↓</span>' : '';
         }
-        const str = val == null ? '—' : fila.pct ? val.toFixed(1) + ' %' : fmt2(Math.round(val), fila.dec || 0);
-        bloque += `<td style="text-align:right">${str}${arrow}</td>`;
+        const str = val == null ? '—' : fila.key === 'ratio_dep' ? val.toFixed(fila.dec || 1) : fmt2(Math.round(val));
+        bloque += `<td style="text-align:right">${str}${arrow}` +
+          (valPct != null ? `<div class="sub">${valPct.toFixed(1)} % de la población</div>` : '') + `</td>`;
         prev = val;
       }
       bloque += `</tr>`;
     }
     bloque += `</tbody></table></div>`;
-    bloque += `<div style="font-size:.8em;color:var(--txt2,#666);margin-top:.5em">★ = año proyectado por CCSS</div>`;
+    bloque += `<div class="inec-def">★ = año proyectado por CCSS.</div>`;
 
     // Interpretación automática
     const d25 = demanda[2025], d50 = demanda[2050];
@@ -3105,9 +3173,9 @@
       const cambNinos = ((d50.ninos - d25.ninos) / d25.ninos * 100).toFixed(1);
       const cambMay   = ((d50.adultosMay - d25.adultosMay) / d25.adultosMay * 100).toFixed(1);
       const cambForm  = ((d50.form - d25.form) / d25.form * 100).toFixed(1);
-      bloque += `<div style="background:var(--fondo2,#f5f5f5);border-radius:8px;padding:1em;margin-top:1em;font-size:.9em">
-        <strong>🔍 Lectura para planificación territorial (2025 → 2050):</strong>
-        <ul style="margin:.5em 0 0 1.2em;padding:0;line-height:1.8">
+      bloque += `<div class="inec-nota">
+        <div class="tit"><span class="ico-tit">${IC.lupa}</span>Lectura para planificación territorial (2025 → 2050)</div>
+        <ul>
           <li>Niños 0–14: <strong>${d25.ninos.toLocaleString('es-CR')} → ${d50.ninos.toLocaleString('es-CR')}</strong> (${cambNinos > 0 ? '+' : ''}${cambNinos}%) —
             ${parseFloat(cambNinos) < -15 ? 'se libera capacidad en escuelas; oportunidad de reconvertir instalaciones educativas' :
               parseFloat(cambNinos) > 15 ? 'crecimiento de demanda escolar; prever nuevos centros y cuido' : 'demanda escolar relativamente estable'}.
