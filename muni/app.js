@@ -1769,18 +1769,34 @@
       const fondoGris = `<path d="${marco}" fill="#d6d6d2"/>`;
       // Máscara SVG: blanco = mostrar, negro = esconder. Los polígonos de tierra (cantón +
       // vecinos) se pintan negro sobre fondo blanco → el azul solo aparece FUERA de ellos.
-      // Cada path usa nonzero para evitar agujeros por autocruces del suavizado.
+      //
+      // IMPORTANTE: acá se usa la geometría CRUDA (dDe), no la suavizada (dSuaveDe). El
+      // suavizado se aplica a cada cantón por separado, así que dos cantones que en el dato
+      // original compartían exactamente el mismo borde terminan con curvas apenas distintas:
+      // entre ellos queda una rendija larga y angosta que no cubre ninguno de los dos, y por
+      // ahí se asomaba el azul del mar en plena tierra firme. Con la geometría cruda los
+      // bordes vuelven a coincidir vértice por vértice y la rendija desaparece.
+      const dCantonCrudo = dDe(partesCanton.anillos, px, true);
+      const dsVecinosCrudos = vecinos.map((v) => dDe(partesDe(v.geometry).anillos, px, true));
+      // Además, un "engorde" mínimo: cada polígono de tierra se pinta con un trazo del mismo
+      // negro, que lo agranda medio grosor hacia afuera y cierra cualquier pelito que quede
+      // por redondeo de coordenadas. Son ~12 unidades de 10000 (≈1 px en la lámina impresa),
+      // imperceptible en la costa real pero suficiente para que no quede ni una rendija.
+      const engorde = Math.max(UV * 0.0012, 2);
+      const tierraMascara = [dCantonCrudo].concat(dsVecinosCrudos).map((d) =>
+        `<path d="${d}" fill="black" fill-rule="nonzero" stroke="black" ` +
+        `stroke-width="${engorde.toFixed(2)}" stroke-linejoin="round"/>`).join('');
       const mascaraMar = `<mask id="mmar-${i}">` +
         `<rect width="${UV}" height="${H.toFixed(2)}" fill="white"/>` +
-        `<path d="${dCanton}" fill="black" fill-rule="nonzero"/>` +
-        dsVecinos.map((d) => `<path d="${d}" fill="black" fill-rule="nonzero"/>`).join('') +
+        tierraMascara +
         `</mask>`;
       const fondoMar = mascaraMar +
         `<rect width="${UV}" height="${H.toFixed(2)}" fill="#bcdcf2" mask="url(#mmar-${i})"/>`;
-      // tierraBase: respaldo gris adicional. Con la nueva estrategia es menos crítico,
-      // pero lo conservamos como red de seguridad (el relieve se dibuja encima de todas formas).
-      const tierraBase = `<path d="${dCanton}" fill="#d6d6d2" fill-rule="nonzero"/>` +
-        dsVecinos.map((d) => `<path d="${d}" fill="#d6d6d2" fill-rule="nonzero"/>`).join('');
+      // tierraBase: respaldo gris adicional, con la misma geometría cruda y el mismo engorde,
+      // para que si algo se escapa de la máscara lo que asome sea gris de tierra, no azul.
+      const tierraBase = [dCantonCrudo].concat(dsVecinosCrudos).map((d) =>
+        `<path d="${d}" fill="#d6d6d2" fill-rule="nonzero" stroke="#d6d6d2" ` +
+        `stroke-width="${engorde.toFixed(2)}" stroke-linejoin="round"/>`).join('');
       const recorteTierra = `tierra-${i}`;
       // clip-rule/fill-rule "nonzero" (no "evenodd") en el límite cantonal y de vecinos: el
       // suavizado (suavizarAnillo) corta esquinas sin comprobar si el trazo resultante se
@@ -1788,9 +1804,12 @@
       // sí puede autocruzarse. Con evenodd ese autocruce se lee como un "agujero" (recorte o
       // máscara que falla ahí) y asoma el azul del mar en plena tierra; con nonzero el
       // autocruce queda relleno igual, sin agujero.
+      // El recorte del relieve también va con la geometría cruda: si se recortara con la
+      // suavizada quedaría la misma rendija entre vecinos, y aunque ahí ya no se vea azul
+      // (la máscara del mar la tapa), sí se vería una costura gris cortando el relieve.
       const fondoRecortado = fondo
-        ? `<clipPath id="${recorteTierra}"><path d="${dCanton}" clip-rule="nonzero"/>` +
-          dsVecinos.map((d) => `<path d="${d}" clip-rule="nonzero"/>`).join('') + '</clipPath>' +
+        ? `<clipPath id="${recorteTierra}"><path d="${dCantonCrudo}" clip-rule="nonzero"/>` +
+          dsVecinosCrudos.map((d) => `<path d="${d}" clip-rule="nonzero"/>`).join('') + '</clipPath>' +
           `<g clip-path="url(#${recorteTierra})">${fondo}</g>`
         : '';
       const mascara = dsVecinos.map((d) =>
@@ -2317,113 +2336,125 @@
     window.print();
   }
 
-  // ---------- exportación PNG con html2canvas ----------
+  // ---------- exportación PNG (dibujada por el propio navegador) ----------
 
-  let _h2cPromise = null;
-  function cargarHtml2Canvas() {
-    if (_h2cPromise) return _h2cPromise;
-    _h2cPromise = new Promise((ok, ko) => {
-      if (window.html2canvas) { ok(window.html2canvas); return; }
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      s.onload = () => ok(window.html2canvas);
-      s.onerror = () => ko(new Error('No se pudo cargar html2canvas'));
-      document.head.appendChild(s);
-    });
-    return _h2cPromise;
+  /* El PDF sale bien porque lo dibuja el navegador con su propio motor (window.print()).
+     El PNG se hacía con html2canvas, una librería que "relee" el HTML y lo vuelve a pintar
+     a mano: con el cajetín se defiende, pero con el mapa SVG se pierde — apelotona las capas
+     de muchos polígonos chiquitos y le desacomoda la página a la lámina.
+
+     Así que el PNG ahora sale del mismo motor que el PDF: se mete la lámina entera —HTML,
+     CSS y SVG— adentro de un <foreignObject> de un SVG y se le pide al navegador que la
+     dibuje como imagen. Lo que queda en el PNG es exactamente lo que dibujaría al imprimir,
+     nada más que en mapa de bits. */
+
+  // base64 de un texto largo. btoa() solo entiende "bytes sueltos" (no acentos ni emojis),
+  // y pasarle de un saque un texto de varios megas revienta la pila: se hace por tandas.
+  function aBase64(texto) {
+    const bytes = new TextEncoder().encode(texto);
+    let bin = '';
+    const paso = 0x8000;
+    for (let i = 0; i < bytes.length; i += paso) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + paso));
+    }
+    return btoa(bin);
   }
 
-  // Convierte un elemento <svg> del DOM en una imagen rasterizada por el propio navegador
-  // (el mismo motor que usa para pintarlo en pantalla o en el PDF), en vez de dejar que
-  // html2canvas lo intente reinterpretar a mano. html2canvas trae su propio emulador de SVG,
-  // bastante tosco con relleno de muchos polígonos chiquitos y pegados (uso urbano, cultivos,
-  // etc.): en vez de verse limpio, los apelotona en una mancha de ruido. Dibujando el SVG
-  // "de verdad" a través de una <img>, el resultado queda tan nítido como en pantalla.
-  async function svgComoImagen(svgEl, anchoPx, altoPx) {
-    const clon = svgEl.cloneNode(true);
-    // Ancho/alto explícitos en el clon: el tamaño real en pantalla lo da la hoja de estilos
-    // (width:100%; height:100%), que no viaja con el SVG al serializarlo suelto. Sin esto el
-    // navegador no sabría a qué tamaño rasterizarlo y usaría un tamaño por defecto chiquito.
-    clon.setAttribute('width', anchoPx);
-    clon.setAttribute('height', altoPx);
-    clon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    const texto = new XMLSerializer().serializeToString(clon);
-    // data: URI en base64, NO un blob: URL. Con blob: algunos navegadores marcan el <canvas>
-    // como "contaminado" (tainted) en cuanto se le pega una imagen así, y entonces
-    // canvas.toDataURL() más adelante falla en seco (por eso no bajaba el PNG). Un data: URI
-    // no tiene ese problema porque no es un recurso aparte, va incrustado en la propia imagen.
-    const base64 = btoa(unescape(encodeURIComponent(texto)));
-    const src = 'data:image/svg+xml;charset=utf-8;base64,' + base64;
-    return await new Promise((ok, ko) => {
+  function cargarImagen(src) {
+    return new Promise((ok, ko) => {
       const img = new Image();
       img.onload = () => ok(img);
-      img.onerror = () => ko(new Error('No se pudo rasterizar el SVG de la lámina'));
+      img.onerror = () => ko(new Error('el navegador no pudo dibujar la lámina'));
       img.src = src;
     });
   }
 
-  // Captura todas las láminas del contenedor #laminas como PNG y las descarga.
+  /* Una imagen-SVG no puede salir a buscar archivos a la red: el escudo de la muni y el
+     logo son <img src="..."> y, tal cual, saldrían en blanco. Se convierten a data: URI
+     (el archivo incrustado en la propia dirección) antes de dibujar. */
+  async function incrustarImagenes(clon) {
+    for (const im of Array.from(clon.querySelectorAll('img'))) {
+      const src = im.getAttribute('src') || '';
+      if (!src || /^data:/i.test(src)) continue;
+      try {
+        const resp = await fetch(src, { cache: 'force-cache' });
+        const blob = await resp.blob();
+        im.setAttribute('src', await new Promise((ok, ko) => {
+          const fr = new FileReader();
+          fr.onload = () => ok(fr.result);
+          fr.onerror = () => ko(new Error('imagen'));
+          fr.readAsDataURL(blob);
+        }));
+      } catch (e) {
+        im.removeAttribute('src'); // mejor un hueco que romper la lámina entera
+      }
+    }
+  }
+
+  // Dibuja una lámina completa en un <canvas>, con el motor del navegador.
+  async function laminaEnCanvas(lam, escala) {
+    const r = lam.getBoundingClientRect();
+    const w = Math.max(1, Math.round(r.width));
+    const h = Math.max(1, Math.round(r.height));
+
+    const clon = lam.cloneNode(true);
+    clon.style.position = 'static';
+    clon.style.left = '';
+    clon.style.top = '';
+    clon.style.margin = '0';
+    await incrustarImagenes(clon);
+
+    // Todo el CSS de la página viaja adentro: dentro del SVG no hay hoja de estilos que valga.
+    const css = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent).join('\n');
+
+    // Las medidas del papel (--pw, --ph, --k) viven en #laminas, el contenedor; como el clon
+    // sale de ahí, hay que volver a ponérselas al envoltorio o la lámina saldría con el
+    // tamaño y la tipografía por defecto.
+    const cont = $('laminas');
+    const vars = ['--pw', '--ph', '--k']
+      .map((v) => `${v}:${cont.style.getPropertyValue(v)};`).join('');
+
+    const envoltorio = document.createElement('div');
+    envoltorio.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    envoltorio.setAttribute('style', `${vars}width:${w}px;height:${h}px;background:#fff;`);
+    const estilo = document.createElement('style');
+    estilo.textContent = css;
+    envoltorio.appendChild(estilo);
+    envoltorio.appendChild(clon);
+
+    const dentro = new XMLSerializer().serializeToString(envoltorio);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w * escala}" ` +
+      `height="${h * escala}" viewBox="0 0 ${w} ${h}">` +
+      `<foreignObject x="0" y="0" width="${w}" height="${h}">${dentro}</foreignObject></svg>`;
+
+    const img = await cargarImagen('data:image/svg+xml;charset=utf-8;base64,' + aBase64(svg));
+    const canvas = document.createElement('canvas');
+    canvas.width = w * escala;
+    canvas.height = h * escala;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  }
+
+  // Dibuja todas las láminas del contenedor #laminas y las descarga como PNG.
   async function capturarLaminasPNG(nombreBase) {
-    const html2canvas = await cargarHtml2Canvas();
     const contenedor = $('laminas');
     const laminas = contenedor.querySelectorAll('.lamina');
     if (!laminas.length) { avisar('No hay láminas para exportar.'); return; }
 
-    // Hacer visible temporalmente el contenedor para que html2canvas pueda leerlo.
-    const estiloAnterior = contenedor.style.cssText;
-    contenedor.style.cssText =
-      'position:fixed; left:0; top:0; z-index:-9999; pointer-events:none; opacity:0.01;';
-
-    const ESCALA = 2; // resolución de salida (2x el tamaño en pantalla)
+    const ESCALA = 2; // resolución de salida (2x el tamaño de la lámina en pantalla)
     const total = laminas.length;
     const prog = mostrarProgreso(`Exportando ${total} lámina${total > 1 ? 's' : ''} a PNG`);
 
     for (let i = 0; i < total; i++) {
-      const lam = laminas[i];
-      prog.paso(`Capturando ${i + 1} de ${total}…`, '📸');
+      prog.paso(`Dibujando ${i + 1} de ${total}…`, '🖼️');
       prog.porcentaje(Math.round(((i + 0.2) / total) * 100));
 
-      // Scroll la lámina al viewport para que html2canvas la vea
-      lam.style.position = 'relative';
-      lam.style.left = '0';
-      lam.style.top = '0';
-
       try {
-        // Los SVG (mapa principal + mapa de zoom, si lo hay) se ocultan mientras html2canvas
-        // trabaja: así solo "fotografía" el cajetín, los rótulos y los bordes — cosas de HTML
-        // plano que sí sabe capturar bien — y deja el hueco en blanco donde después pegamos
-        // el SVG dibujado por el navegador.
-        const svgs = Array.from(lam.querySelectorAll('svg'));
-        const visibilidadPrevia = svgs.map((s) => s.style.visibility);
-        svgs.forEach((s) => { s.style.visibility = 'hidden'; });
-
-        const canvas = await html2canvas(lam, {
-          scale: ESCALA,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          width: lam.scrollWidth,
-          height: lam.scrollHeight,
-        });
-
-        svgs.forEach((s, idx) => { s.style.visibility = visibilidadPrevia[idx] || ''; });
-
-        // Pegar cada SVG, ya rasterizado nítido por el navegador, en su posición exacta.
-        const ctx = canvas.getContext('2d');
-        const lamRect = lam.getBoundingClientRect();
-        for (const svgEl of svgs) {
-          const r = svgEl.getBoundingClientRect();
-          if (r.width < 1 || r.height < 1) continue; // por si hay un SVG oculto/sin tamaño
-          const anchoPx = Math.round(r.width * ESCALA);
-          const altoPx = Math.round(r.height * ESCALA);
-          const img = await svgComoImagen(svgEl, anchoPx, altoPx);
-          const x = Math.round((r.left - lamRect.left) * ESCALA);
-          const y = Math.round((r.top - lamRect.top) * ESCALA);
-          ctx.drawImage(img, x, y, anchoPx, altoPx);
-        }
-
-        // Descargar como PNG
+        const canvas = await laminaEnCanvas(laminas[i], ESCALA);
         const enlace = document.createElement('a');
         const sufijo = total > 1 ? `_${String(i + 1).padStart(2, '0')}` : '';
         enlace.download = `${nombreBase}${sufijo}.png`;
@@ -2434,16 +2465,14 @@
 
         prog.porcentaje(Math.round(((i + 1) / total) * 100));
       } catch (err) {
-        console.error('Error al capturar lámina', i, err);
-        avisar(`Error al capturar lámina ${i + 1}: ${err.message}`);
+        console.error('Error al dibujar la lámina', i, err);
+        avisar(`No se pudo exportar la lámina ${i + 1}: ${err.message}`);
       }
 
       // Pequeña pausa entre descargas para no saturar el navegador
       if (i < total - 1) await new Promise(r => setTimeout(r, 600));
     }
 
-    // Restaurar posición original del contenedor
-    contenedor.style.cssText = estiloAnterior;
     prog.paso('¡Listo!', '✅');
     await new Promise(r => setTimeout(r, 600));
     prog.cerrar();
