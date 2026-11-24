@@ -2348,18 +2348,18 @@
     clon.setAttribute('height', altoPx);
     clon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     const texto = new XMLSerializer().serializeToString(clon);
-    const blob = new Blob([texto], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    try {
-      return await new Promise((ok, ko) => {
-        const img = new Image();
-        img.onload = () => ok(img);
-        img.onerror = () => ko(new Error('No se pudo rasterizar el SVG de la lámina'));
-        img.src = url;
-      });
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    // data: URI en base64, NO un blob: URL. Con blob: algunos navegadores marcan el <canvas>
+    // como "contaminado" (tainted) en cuanto se le pega una imagen así, y entonces
+    // canvas.toDataURL() más adelante falla en seco (por eso no bajaba el PNG). Un data: URI
+    // no tiene ese problema porque no es un recurso aparte, va incrustado en la propia imagen.
+    const base64 = btoa(unescape(encodeURIComponent(texto)));
+    const src = 'data:image/svg+xml;charset=utf-8;base64,' + base64;
+    return await new Promise((ok, ko) => {
+      const img = new Image();
+      img.onload = () => ok(img);
+      img.onerror = () => ko(new Error('No se pudo rasterizar el SVG de la lámina'));
+      img.src = src;
+    });
   }
 
   // Captura todas las láminas del contenedor #laminas como PNG y las descarga.
