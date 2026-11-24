@@ -46,5 +46,13 @@
     "descripcion": "Aprueba remate",
     "fecha": "2026-11-18T09:39:34.187",
     "detectado": "2026-11-19"
+  },
+  {
+    "ref": "2026209739",
+    "exp": "26-002394-1200-CJ",
+    "nom": "Casa · Daniel Flores",
+    "descripcion": "10. Aprueba remate/EV=09/11/2026 15:32",
+    "fecha": "2026-11-09T16:53:06.13",
+    "detectado": "2026-11-24"
   }
 ]
