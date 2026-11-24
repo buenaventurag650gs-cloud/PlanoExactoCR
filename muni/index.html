@@ -406,6 +406,16 @@
 
   /* Sin esto, el navegador borra los colores de fondo al imprimir (cuadritos de leyenda en blanco). */
   .lamina, .lamina * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Cartelito de "estoy bajando algo" arriba del visor. No tapa el mapa: avisa nada más,
+     porque varias capas oficiales tardan y si no el visor parece trabado. */
+  #estadoCarga { position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:9000;
+    background:rgba(20,20,34,0.92); color:#e8e8f0; border:1px solid rgba(255,255,255,0.15);
+    border-radius:999px; padding:8px 18px; font-size:13px; white-space:nowrap;
+    box-shadow:0 4px 18px rgba(0,0,0,0.35); pointer-events:none; }
+  #estadoCarga[hidden] { display:none; }
+  #estadoCarga .ec-det { opacity:0.7; margin-left:6px; }
+  #estadoCarga .ec-giro { display:inline-block; animation:ecGiro 1s linear infinite; }
+  @keyframes ecGiro { to { transform:rotate(360deg); } }
   /* Panel de progreso al componer un mapa */
   #progresoMapa { position:fixed; inset:0; z-index:9999; display:flex; align-items:center;
     justify-content:center; background:rgba(0,0,0,0.55); backdrop-filter:blur(4px); }
@@ -422,7 +432,7 @@
     transition:width 0.3s ease; width:0%; }
 
   @media print {
-    #app, #avisos, #leyenda, #cajetinPreview, #progresoMapa { display:none !important; }
+    #app, #avisos, #leyenda, #cajetinPreview, #progresoMapa, #estadoCarga { display:none !important; }
     #laminas { position:static; left:0; }
     .lamina { page-break-after: always; }
     .lamina:last-child { page-break-after: auto; }

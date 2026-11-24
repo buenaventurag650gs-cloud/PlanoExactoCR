@@ -108,6 +108,7 @@
   let muniLogo = null;
   let muniLogoListo = Promise.resolve();  // se resuelve cuando el escudo terminó de cargar (o falló del todo)
   let cantonesTodos = null;
+  let paisTierra = null;   // contorno de tierra firme del país (para separar mar de tierra)
 
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -632,8 +633,16 @@
     if (cargando) { repetir = true; return; }
     cargando = true;
     const fallidas = [];
+    // Aviso en pantalla: varias capas del SNIT/CNE tardan decenas de segundos y, sin esto,
+    // el visor se queda quieto y parece trabado. Se dice qué capa se está bajando y cuántas
+    // faltan; se apaga solo al terminar.
+    const porBajar = Array.from(necesarias).filter((n) => !layerLookup[n]);
+    let hechas = 0;
     for (const nombre of necesarias) {
       if (layerLookup[nombre]) continue;
+      estadoCarga(`Bajando "${nombre}"…`,
+        porBajar.length > 1 ? `capa ${hechas + 1} de ${porBajar.length}` : '');
+      hechas++;
       const c = capaPorNombre[nombre];
       // Capas que no se descargan sino que se calculan acá mismo (pendientes desde el
       // modelo de elevación). Se dibujan como imagen, no como geometría.
@@ -653,9 +662,27 @@
       layerLookup[nombre] = capaGeoJSON(nombre, fc).addTo(map);
     }
     cargando = false;
+    estadoCarga(null);
     if (fallidas.length) avisar('No se pudo cargar: ' + fallidas.join(', '));
     actualizarLeyenda();
     if (repetir) { repetir = false; refrescarVista(); }
+  }
+
+  /* Cartelito fijo arriba del mapa mientras se baja algo. Con texto null se esconde.
+     Existe porque varias capas oficiales tardan bastante y el visor, sin avisar nada, da la
+     impresión de haberse trabado. */
+  function estadoCarga(texto, detalle) {
+    let caja = $('estadoCarga');
+    if (!caja) {
+      caja = document.createElement('div');
+      caja.id = 'estadoCarga';
+      caja.hidden = true;
+      document.body.appendChild(caja);
+    }
+    if (!texto) { caja.hidden = true; return; }
+    caja.innerHTML = `<span class="ec-giro">◴</span> <b>${texto}</b>` +
+      (detalle ? ` <span class="ec-det">${detalle}</span>` : '');
+    caja.hidden = false;
   }
 
   // Leyenda de lo que se está viendo ahora mismo (y de la rampa IFA si hay mapas IFA marcados).
@@ -700,6 +727,16 @@
 
   const baseCantones = await fetch('https://planoexactocr.com/data/cantones.geojson').then((r) => r.json()).catch(() => null);
   cantonesTodos = baseCantones;
+  /* Contorno del país (tierra firme): la unión de todos los cantones, sin los agujeros
+     interiores. Hace falta porque el dataset de cantones del IGN viene muy simplificado y
+     cada cantón se simplificó por su cuenta: entre dos vecinos quedan huecos de hasta ~1 km
+     que no son de ninguno. Si el mar se deduce como "lo que no es ningún cantón", esos
+     huecos salen pintados de azul en plena montaña. Con el contorno del país el mar lo
+     define la costa de verdad. Si el archivo no carga, más abajo se cae al método viejo. */
+  paisTierra = await fetch('https://planoexactocr.com/data/pais.geojson')
+    .then((r) => r.json())
+    .then((fc) => (fc && fc.features && fc.features[0] ? fc.features[0] : null))
+    .catch(() => null);
   if (baseCantones) {
     const sel = $('selCanton');
     // Agrupar cantones por provincia según código político-administrativo (c: 1xx=SJ, 2xx=Alajuela, …)
@@ -1761,42 +1798,39 @@
         ? `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.08" fill-rule="nonzero"/>`
         : `<path d="${dCanton}" fill="#ffffff" fill-opacity="0.55" fill-rule="nonzero"/>`;
       const marco = `M0 0L${UV} 0L${UV} ${H.toFixed(2)}L0 ${H.toFixed(2)}Z`;
-      // --- Estrategia anti-"mar poligonal" ---
-      // Antes: un rectángulo azul de fondo → cualquier huequito en los polígonos de tierra
-      // dejaba asomar celeste en plena tierra. Ahora: fondo GRIS (color tierra), y el azul
-      // del mar se pinta ENCIMA con un <mask> que lo esconde donde hay tierra. Así, si
-      // un polígono suavizado tiene un huequito, se ve gris (tierra), nunca azul (mar).
+      // Fondo gris (color tierra) debajo de todo: si algo falla más arriba, lo que asoma es
+      // tierra y no mar. El azul se pinta encima, y solo donde corresponde (ver abajo).
       const fondoGris = `<path d="${marco}" fill="#d6d6d2"/>`;
-      // Máscara SVG: blanco = mostrar, negro = esconder. Los polígonos de tierra (cantón +
-      // vecinos) se pintan negro sobre fondo blanco → el azul solo aparece FUERA de ellos.
-      //
-      // IMPORTANTE: acá se usa la geometría CRUDA (dDe), no la suavizada (dSuaveDe). El
-      // suavizado se aplica a cada cantón por separado, así que dos cantones que en el dato
-      // original compartían exactamente el mismo borde terminan con curvas apenas distintas:
-      // entre ellos queda una rendija larga y angosta que no cubre ninguno de los dos, y por
-      // ahí se asomaba el azul del mar en plena tierra firme. Con la geometría cruda los
-      // bordes vuelven a coincidir vértice por vértice y la rendija desaparece.
+      /* Qué es tierra y qué es mar lo decide el CONTORNO DEL PAÍS, no los cantones.
+         Antes la tierra se armaba juntando el cantón con sus vecinos, y el mar era "lo que
+         sobra". El problema: el dataset de cantones del IGN viene muy simplificado y cada
+         cantón se simplificó por su cuenta, así que entre dos vecinos quedan huecos reales
+         —medidos, de hasta 1 km de ancho— que no pertenecen a ninguno de los dos. Esos
+         huecos se leían como "mar" y salían pintados de azul en plena montaña, en bandas
+         largas y rectas siguiendo los límites. Engordar los bordes no alcanzaba: para tapar
+         1 km habría que correr la costa casi un 3% del ancho de la hoja.
+         El contorno del país (data/pais.geojson) es la unión de todos los cantones sin sus
+         agujeros interiores: la costa queda exacta y los huecos internos desaparecen. */
       const dCantonCrudo = dDe(partesCanton.anillos, px, true);
       const dsVecinosCrudos = vecinos.map((v) => dDe(partesDe(v.geometry).anillos, px, true));
-      // Además, un "engorde" mínimo: cada polígono de tierra se pinta con un trazo del mismo
-      // negro, que lo agranda medio grosor hacia afuera y cierra cualquier pelito que quede
-      // por redondeo de coordenadas. Son ~12 unidades de 10000 (≈1 px en la lámina impresa),
-      // imperceptible en la costa real pero suficiente para que no quede ni una rendija.
-      const engorde = Math.max(UV * 0.0012, 2);
-      const tierraMascara = [dCantonCrudo].concat(dsVecinosCrudos).map((d) =>
-        `<path d="${d}" fill="black" fill-rule="nonzero" stroke="black" ` +
-        `stroke-width="${engorde.toFixed(2)}" stroke-linejoin="round"/>`).join('');
+      const dTierra = paisTierra
+        ? dDe(partesDe(paisTierra.geometry).anillos, px, true)
+        : null;
+      // Si pais.geojson no cargó, se vuelve al método viejo (cantón + vecinos) para no
+      // quedarse sin mapa: se verá la rendija, pero sale la lámina.
+      const tierraPaths = dTierra ? [dTierra] : [dCantonCrudo].concat(dsVecinosCrudos);
+      // Máscara SVG: blanco = mostrar, negro = esconder. La tierra se pinta negra sobre fondo
+      // blanco → el azul del mar solo aparece FUERA de ella.
       const mascaraMar = `<mask id="mmar-${i}">` +
         `<rect width="${UV}" height="${H.toFixed(2)}" fill="white"/>` +
-        tierraMascara +
+        tierraPaths.map((d) => `<path d="${d}" fill="black" fill-rule="nonzero"/>`).join('') +
         `</mask>`;
       const fondoMar = mascaraMar +
         `<rect width="${UV}" height="${H.toFixed(2)}" fill="#bcdcf2" mask="url(#mmar-${i})"/>`;
-      // tierraBase: respaldo gris adicional, con la misma geometría cruda y el mismo engorde,
-      // para que si algo se escapa de la máscara lo que asome sea gris de tierra, no azul.
-      const tierraBase = [dCantonCrudo].concat(dsVecinosCrudos).map((d) =>
-        `<path d="${d}" fill="#d6d6d2" fill-rule="nonzero" stroke="#d6d6d2" ` +
-        `stroke-width="${engorde.toFixed(2)}" stroke-linejoin="round"/>`).join('');
+      // tierraBase: respaldo gris, por si algo se escapa de la máscara lo que asome sea gris
+      // de tierra y no azul de mar.
+      const tierraBase = tierraPaths.map((d) =>
+        `<path d="${d}" fill="#d6d6d2" fill-rule="nonzero"/>`).join('');
       const recorteTierra = `tierra-${i}`;
       // clip-rule/fill-rule "nonzero" (no "evenodd") en el límite cantonal y de vecinos: el
       // suavizado (suavizarAnillo) corta esquinas sin comprobar si el trazo resultante se
@@ -1804,17 +1838,25 @@
       // sí puede autocruzarse. Con evenodd ese autocruce se lee como un "agujero" (recorte o
       // máscara que falla ahí) y asoma el azul del mar en plena tierra; con nonzero el
       // autocruce queda relleno igual, sin agujero.
-      // El recorte del relieve también va con la geometría cruda: si se recortara con la
-      // suavizada quedaría la misma rendija entre vecinos, y aunque ahí ya no se vea azul
-      // (la máscara del mar la tapa), sí se vería una costura gris cortando el relieve.
+      // El relieve se recorta a la tierra para no pintar el mar con la tesela "sin datos"
+      // del servicio. Va con el contorno del país por lo mismo que la máscara del mar: si se
+      // recortara cantón por cantón, las rendijas del dataset dejarían costuras sin relieve.
       const fondoRecortado = fondo
-        ? `<clipPath id="${recorteTierra}"><path d="${dCantonCrudo}" clip-rule="nonzero"/>` +
-          dsVecinosCrudos.map((d) => `<path d="${d}" clip-rule="nonzero"/>`).join('') + '</clipPath>' +
+        ? `<clipPath id="${recorteTierra}">` +
+          tierraPaths.map((d) => `<path d="${d}" clip-rule="nonzero"/>`).join('') + '</clipPath>' +
           `<g clip-path="url(#${recorteTierra})">${fondo}</g>`
         : '';
-      const mascara = dsVecinos.map((d) =>
-        `<path d="${d}" fill="${relieve ? '#8d8d8d' : '#ececec'}" ` +
-        `fill-opacity="${relieve ? 0.33 : 1}" fill-rule="nonzero"/>`).join('');
+      // Velo gris sobre todo lo que NO es el cantón: apaga el relieve de alrededor y deja
+      // claro dónde termina el área de planificación. Antes se pintaba un velo por cada
+      // cantón vecino, así que en las rendijas del dataset quedaba una franja sin velo —
+      // una raya clara y brillante cruzando el mapa. Ahora es un solo velo sobre la tierra
+      // (contorno del país) con el cantón recortado: sin rendijas y sin velar el mar.
+      const mascara = `<mask id="mfuera-${i}">` +
+        tierraPaths.map((d) => `<path d="${d}" fill="white" fill-rule="nonzero"/>`).join('') +
+        `<path d="${dCanton}" fill="black" fill-rule="nonzero"/>` +
+        `</mask>` +
+        `<rect width="${UV}" height="${H.toFixed(2)}" fill="${relieve ? '#8d8d8d' : '#ececec'}" ` +
+        `fill-opacity="${relieve ? 0.33 : 1}" mask="url(#mfuera-${i})"/>`;
       // Las capas se recortan al cantón: el área de planificación es la que se analiza, y
       // dejar que las vías o los distritos sigan de largo por fuera confunde la lectura.
       const recorte = `recorte-${i}`;
@@ -2369,6 +2411,14 @@
     });
   }
 
+  /* Le devuelve el turno al navegador para que alcance a repintar la pantalla. Sin esto, los
+     pasos del panel de progreso se "acumulan" y recién aparecen todos juntos al final: el
+     JavaScript ocupa el único hilo que también dibuja la pantalla, así que mientras arma una
+     lámina pesada la página se ve congelada aunque esté trabajando. */
+  function respirar(ms) {
+    return new Promise((r) => requestAnimationFrame(() => setTimeout(r, ms || 0)));
+  }
+
   /* Una imagen-SVG no puede salir a buscar archivos a la red: el escudo de la muni y el
      logo son <img src="..."> y, tal cual, saldrían en blanco. Se convierten a data: URI
      (el archivo incrustado en la propia dirección) antes de dibujar. */
@@ -2392,16 +2442,24 @@
   }
 
   // Dibuja una lámina completa en un <canvas>, con el motor del navegador.
-  async function laminaEnCanvas(lam, escala) {
+  // `prog` es opcional: si viene, se van contando los pasos en pantalla, porque una lámina
+  // grande tarda varios segundos y sin avisos parece que la página se trabó.
+  async function laminaEnCanvas(lam, escala, prog) {
+    const avance = (texto, icono) => { if (prog) prog.paso(texto, icono); };
     const r = lam.getBoundingClientRect();
     const w = Math.max(1, Math.round(r.width));
     const h = Math.max(1, Math.round(r.height));
 
+    avance('Copiando la lámina…', '📐');
+    await respirar();
     const clon = lam.cloneNode(true);
     clon.style.position = 'static';
     clon.style.left = '';
     clon.style.top = '';
     clon.style.margin = '0';
+
+    avance('Incrustando escudo y logos…', '🛡️');
+    await respirar();
     await incrustarImagenes(clon);
 
     // Todo el CSS de la página viaja adentro: dentro del SVG no hay hoja de estilos que valga.
@@ -2423,10 +2481,15 @@
     envoltorio.appendChild(estilo);
     envoltorio.appendChild(clon);
 
+    avance('Empaquetando el mapa…', '📦');
+    await respirar();
     const dentro = new XMLSerializer().serializeToString(envoltorio);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w * escala}" ` +
       `height="${h * escala}" viewBox="0 0 ${w} ${h}">` +
       `<foreignObject x="0" y="0" width="${w}" height="${h}">${dentro}</foreignObject></svg>`;
+    const pesoMB = svg.length / 1048576;
+    avance(`Dibujando (${pesoMB.toFixed(1)} MB)… esto puede tardar`, '🖌️');
+    await respirar(60);
 
     const img = await cargarImagen('data:image/svg+xml;charset=utf-8;base64,' + aBase64(svg));
     const canvas = document.createElement('canvas');
@@ -2436,25 +2499,32 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    avance('Guardando el PNG…', '💾');
+    await respirar();
     return canvas;
   }
 
   // Dibuja todas las láminas del contenedor #laminas y las descarga como PNG.
-  async function capturarLaminasPNG(nombreBase) {
+  // `progExistente`: si quien llama ya tiene un panel de progreso abierto, se sigue usando
+  // ese mismo en vez de cerrarlo y abrir otro (así el usuario ve un hilo continuo de avisos
+  // y nunca queda la pantalla muda mientras se arma una lámina pesada).
+  async function capturarLaminasPNG(nombreBase, progExistente) {
     const contenedor = $('laminas');
     const laminas = contenedor.querySelectorAll('.lamina');
     if (!laminas.length) { avisar('No hay láminas para exportar.'); return; }
 
     const ESCALA = 2; // resolución de salida (2x el tamaño de la lámina en pantalla)
     const total = laminas.length;
-    const prog = mostrarProgreso(`Exportando ${total} lámina${total > 1 ? 's' : ''} a PNG`);
+    const prog = progExistente ||
+      mostrarProgreso(`Exportando ${total} lámina${total > 1 ? 's' : ''} a PNG`);
 
     for (let i = 0; i < total; i++) {
-      prog.paso(`Dibujando ${i + 1} de ${total}…`, '🖼️');
+      prog.paso(total > 1 ? `Lámina ${i + 1} de ${total}` : 'Pasando el mapa a imagen', '🖼️');
       prog.porcentaje(Math.round(((i + 0.2) / total) * 100));
+      await respirar();
 
       try {
-        const canvas = await laminaEnCanvas(laminas[i], ESCALA);
+        const canvas = await laminaEnCanvas(laminas[i], ESCALA, prog);
         const enlace = document.createElement('a');
         const sufijo = total > 1 ? `_${String(i + 1).padStart(2, '0')}` : '';
         enlace.download = `${nombreBase}${sufijo}.png`;
@@ -2496,10 +2566,7 @@
     await new Promise(r => setTimeout(r, 80));
     await construirLaminas([id], prog);
     prog.porcentaje(60);
-    prog.paso('Cargando captura…', '📸');
-    await new Promise(r => setTimeout(r, 80));
-    prog.cerrar();
-    await capturarLaminasPNG(nombreArchivo);
+    await capturarLaminasPNG(nombreArchivo, prog);
   }
 
   // PNG de la vista actual del visor
@@ -2525,10 +2592,7 @@
     await new Promise(r => setTimeout(r, 80));
     await construirLaminas(null, prog, [mapaAdHoc]);
     prog.porcentaje(60);
-    prog.paso('Cargando captura…', '📸');
-    await new Promise(r => setTimeout(r, 80));
-    prog.cerrar();
-    await capturarLaminasPNG(nombreArchivo);
+    await capturarLaminasPNG(nombreArchivo, prog);
   }
 
   // Cambio de pestaña. El mapa necesita que le avisen cuando vuelve a estar visible.
@@ -3104,9 +3168,14 @@
     const papel = papelActual().nombre;
     const nombreArchivo = `Atlas ${canton} ${papel}`.replace(/[\/\\:*?"<>|]/g, '_');
     $('btnAtlasPNG').disabled = true;
-    avisar(`Preparando atlas completo PNG: ${seleccion.size} láminas en ${papel}…`);
-    await construirLaminas();
-    await capturarLaminasPNG(nombreArchivo);
+    // Un solo panel de progreso para todo el atlas: primero se arman las láminas (bajando
+    // capas, relieve y escudos) y después se pasan a imagen. Son varios minutos, así que lo
+    // importante es que en pantalla siempre se vea en qué va.
+    const prog = mostrarProgreso(`Atlas completo en PNG · ${seleccion.size} láminas · ${papel}`);
+    prog.paso(`Armando ${seleccion.size} láminas para ${canton}…`, '📚');
+    await respirar();
+    await construirLaminas(null, prog);
+    await capturarLaminasPNG(nombreArchivo, prog);
     $('btnAtlasPNG').disabled = false;
   });
 
