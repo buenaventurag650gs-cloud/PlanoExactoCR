@@ -490,23 +490,31 @@ COMPONENTES = [
 # `condicion` : "si aplica" cuando depende del cantón.
 MAPAS = [
     # ---- Bloque 0 · Mapa Base
-    ("M0.0.01", "Localización y Área de Planificación", 2, "atlas", "base_cartografica",
-     False, None, ""),
+    # Cada código del bloque base apunta a SU propia lámina del atlas, no al mapa base
+    # unificado. Antes M0.0.01 a M0.0.04 apuntaban todos a "base_cartografica": como el
+    # rótulo usa el primer código que encuentra, el mapa base unificado salía titulado
+    # "M0.0.01 Localización y Área de Planificación" con las ocho capas encima, y la lámina
+    # de localización (que va limpia, solo el cantón sobre imagen satelital) quedaba sin
+    # código y no se imprimía nunca. Las capas se juntan en un solo mapa únicamente en
+    # M0.9.01, que es el que la guía define como síntesis del bloque.
+    ("M0.0.01", "Localización y Área de Planificación", 2, "atlas", "base_limites",
+     False, None, "Solo el cantón y su ubicación en el país, sobre imagen satelital"),
     ("M0.0.02", "División político-administrativa y localidades", 2, "atlas",
-     "base_cartografica", True, None, ""),
-    ("M0.0.03", "Topografía: DEM y curvas de nivel", 2, "atlas", "base_cartografica", True,
+     "base_distritos", True, None, ""),
+    ("M0.0.03", "Topografía: DEM y curvas de nivel", 2, "atlas", "base_curvas", True,
      None, "El atlas dibuja las curvas; el DEM hay que conseguirlo aparte"),
-    ("M0.0.04", "Hidrografía y cuerpos de agua", 2, "atlas", "base_cartografica", True,
+    ("M0.0.04", "Hidrografía y cuerpos de agua", 2, "atlas", "base_hidrica", True,
      None, ""),
-    ("M0.0.05", "Infraestructura vial, vías férreas y puentes", 2, "atlas", "vialidad",
+    ("M0.0.05", "Infraestructura vial, vías férreas y puentes", 2, "atlas", "base_vial",
      True, None, ""),
-    ("M0.0.06", "Usos actuales y áreas urbanas (base)", 2, "atlas", "uso_actual_suelo",
+    ("M0.0.06", "Usos actuales y áreas urbanas (base)", 2, "atlas", "uso_urbano",
      True, None, ""),
-    ("M0.0.07", "Cobertura vegetal (base)", 2, "atlas", "uso_actual_suelo", True, None, ""),
+    ("M0.0.07", "Cobertura vegetal (base)", 2, "atlas", "uso_cobertura", True, None,
+     "Pendiente: la cobertura MAF2020 fue retirada del servicio"),
     ("M0.0.08", "Áreas de riesgo conocidas", 2, "atlas", "amenazas_condicionantes", True,
-     None, ""),
+     None, "Reúne deslizamientos, fallas e inundación: así lo pide el nombre del mapa"),
     ("M0.0.09", "Áreas Bajo Régimen Especial (ABRE)", 2, "atlas",
-     "amenazas_condicionantes", True, None, ""),
+     "base_areas_protegidas", True, None, ""),
     ("M0.0.10", "Mosaico catastral", 2, "equipo", None, False, None,
      "Base para zonificación y Mapa Oficial; no es capa pública"),
     ("M0.0.11", "Ortofoto u ortomosaico de dron", 2, "equipo", None, False, None,
@@ -607,7 +615,9 @@ MAPAS = [
      None, ""),
     ("M2.2.06", "Circulación y transporte", 4, "equipo", None, True, None,
      "Falta la capa de transporte público"),
-    ("M2.2.07", "Jerarquía vial", 4, "atlas", "vialidad", False, None, ""),
+    # "vialidad" no es un id del atlas (la lámina se llama base_vial): la referencia estaba
+    # rota y este código no resolvía a ninguna lámina.
+    ("M2.2.07", "Jerarquía vial", 4, "atlas", "base_vial", False, None, ""),
     ("M2.2.08", "Servicios públicos: agua potable", 4, "atlas", "servicios", True, None,
      "ASADAS, concesiones y tomas registradas"),
     ("M2.2.09", "Servicios públicos: saneamiento y pluvial", 4, "equipo", None, True, None,
