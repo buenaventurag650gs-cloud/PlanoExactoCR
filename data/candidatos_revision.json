@@ -69,6 +69,22 @@
     "nom": "Finca agrícola · Atenas",
     "descripcion": "10. Aprueba remate/EV=16/11/2026 14:11",
     "fecha": "2026-11-20T11:11:14.907",
-    "detectado": "2026-11-25"
+    "detectado": "2026-11-26"
+  },
+  {
+    "ref": "2026212989",
+    "exp": "22-000806-1765-CJ",
+    "nom": "Filial 5 · San José",
+    "descripcion": "10. Aprueba remate/EV=11/11/2026 15:30",
+    "fecha": "2026-11-12T08:30:06.743",
+    "detectado": "2026-11-26"
+  },
+  {
+    "ref": "2026212976",
+    "exp": "26-002210-1204-CJ",
+    "nom": "Casa · San José",
+    "descripcion": "10. Aprueba remate/APRUEBA REMATE // FALTA PUESTA /EV=11/11/2026 15:36",
+    "fecha": "2026-11-12T17:03:02.06",
+    "detectado": "2026-11-26"
   }
 ]
